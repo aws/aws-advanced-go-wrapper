@@ -1,5 +1,4 @@
-// TODO: change package back to driver...this was set to main so hello.go could run
-package main
+package driver
 
 import (
 	"database/sql"
