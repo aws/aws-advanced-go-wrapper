@@ -60,5 +60,5 @@ func (c AwsWrapperConn) Begin() (driver.Tx, error) {
 	// do wrapper driver things
 
 	// call underlying driver
-	return c.underlyingConn.Begin()
+	return c.underlyingConn.Begin() //nolint:all
 }
