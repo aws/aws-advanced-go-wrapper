@@ -62,30 +62,30 @@ func TestImplementations(t *testing.T) {
 }
 
 func TestAwsWrapperError(t *testing.T) {
-	testError := awsDriver.NewUnavailableHostError("test")
+	testError := NewUnavailableHostError("test")
 	if testError.IsFailoverErrorType() {
 		t.Errorf("Should return false, UnavailableHostError is not a failover error type.")
 	}
-	if !testError.IsType(awsDriver.UnavailableHostErrorType) {
+	if !testError.IsType(UnavailableHostErrorType) {
 		t.Errorf("Should return true, error is a UnavailableHostErrorType.")
 	}
-	if testError.IsType(awsDriver.UnsupportedMethodErrorType) {
+	if testError.IsType(UnsupportedMethodErrorType) {
 		t.Errorf("Should return false, error is not a UnsupportedMethodErrorType.")
 	}
 	if !strings.Contains(testError.Error(), "test") {
 		t.Errorf("Error should include 'test', improperly handles message.")
 	}
 
-	if !awsDriver.FailoverSuccessError.IsFailoverErrorType() {
+	if !FailoverSuccessError.IsFailoverErrorType() {
 		t.Errorf("Should return true, FailoverSuccessError is a failover error type.")
 	}
-	if !awsDriver.FailoverSuccessError.IsType(awsDriver.FailoverSuccessErrorType) {
+	if !FailoverSuccessError.IsType(FailoverSuccessErrorType) {
 		t.Errorf("Should return true, error is a FailoverSuccessErrorType.")
 	}
-	if awsDriver.FailoverSuccessError.IsType(awsDriver.UnsupportedMethodErrorType) {
+	if FailoverSuccessError.IsType(UnsupportedMethodErrorType) {
 		t.Errorf("Should return false, error is not a UnsupportedMethodErrorType.")
 	}
-	if awsDriver.FailoverSuccessError.Error() != awsDriver.GetMessage("Failover.connectionChangedError") {
+	if FailoverSuccessError.Error() != GetMessage("Failover.connectionChangedError") {
 		t.Errorf("Should return message attached to Failover.connectionChangedError, improperly handles message.")
 	}
 }
