@@ -14,17 +14,17 @@
   limitations under the License.
 */
 
-package driver_infrastructure
+package driver
 
-import "database/sql/driver"
+import (
+	"database/sql/driver"
+)
 
-type HostListProviderService interface {
+type HostListProvider interface {
+	Refresh(conn *driver.Conn) []HostInfo
+	ForceRefresh(conn *driver.Conn) []HostInfo
+	getHostRole(conn *driver.Conn) HostRole
+	IdentifyConnection(conn *driver.Conn) HostInfo
+	GetClusterId() string
 	IsStaticHostListProvider() bool
-	GetHostListProvider() HostListProvider
-	SetHostListProvider(hostListProvider HostListProvider)
-	SetInitialConnectionHostInfo(info HostInfo)
-	GetInitialConnectionHostInfo() HostInfo
-	GetCurrentConnection() *driver.Conn
-	GetDialect() Dialect
-	GetHostInfoBuilder() HostInfoBuilder
 }

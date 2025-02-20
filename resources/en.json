@@ -8,6 +8,10 @@
 	"Conn.invalidTransactionIsolationLevel": "An invalid transaction isolation level was provided: '%v'.",
 	"Conn.unsupportedMethodError": "Method '%v' not supported.",
 	"ConnectionProvider.unsupportedHostSelectorStrategy": "Unsupported host selection strategy '%v' specified for this connection provider '%v'. Please visit the documentation for all supported strategies.",
+	"ConnectionStringHostListProvider.parsedListEmpty": "Can't parse connection string: '%v'.",
+	"ConnectionStringHostListProvider.unsupportedGetHostRole": "ConnectionStringHostListProvider does not support GetHostRole",
+	"ConnectionStringHostListProvider.unsupportedIdentifyConnection": "ConnectionStringHostListProvider does not support IdentifyConnection.",
+	"ConnectionStringHostListProvider.unsupportedGetClusterId": "ConnectionStringHostListProvider does not support GetClusterId."
 	"DatabaseDialectManager.getDialectError": "Was not able to get a database dialect.",
 	"DefaultConnectionPlugin.noHostsAvailable": "The default connection plugin received an empty host list from the plugin service.",
 	"DsnParser.failedToSplitHostPort": "Failed to split host:port in '%s', err: %w",

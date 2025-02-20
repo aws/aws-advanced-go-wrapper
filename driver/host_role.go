@@ -14,17 +14,12 @@
   limitations under the License.
 */
 
-package driver_infrastructure
+package driver
 
-import "database/sql/driver"
+type HostRole string
 
-type HostListProviderService interface {
-	IsStaticHostListProvider() bool
-	GetHostListProvider() HostListProvider
-	SetHostListProvider(hostListProvider HostListProvider)
-	SetInitialConnectionHostInfo(info HostInfo)
-	GetInitialConnectionHostInfo() HostInfo
-	GetCurrentConnection() *driver.Conn
-	GetDialect() Dialect
-	GetHostInfoBuilder() HostInfoBuilder
-}
+const (
+	READER  HostRole = "reader"
+	WRITER  HostRole = "writer"
+	UNKNOWN HostRole = "unknown"
+)

@@ -14,17 +14,10 @@
   limitations under the License.
 */
 
-package driver_infrastructure
+package driver
 
-import "database/sql/driver"
+type DsnParser struct{}
 
-type HostListProviderService interface {
-	IsStaticHostListProvider() bool
-	GetHostListProvider() HostListProvider
-	SetHostListProvider(hostListProvider HostListProvider)
-	SetInitialConnectionHostInfo(info HostInfo)
-	GetInitialConnectionHostInfo() HostInfo
-	GetCurrentConnection() *driver.Conn
-	GetDialect() Dialect
-	GetHostInfoBuilder() HostInfoBuilder
+func (parser *DsnParser) GetHostsFromDsn(initialConnection string, singleWriterString bool, hostInfoBuilderSupplier func() HostInfoBuilder) []HostInfo {
+	return []HostInfo{}
 }

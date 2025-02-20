@@ -14,17 +14,6 @@
   limitations under the License.
 */
 
-package driver_infrastructure
+package driver
 
-import "database/sql/driver"
-
-type HostListProviderService interface {
-	IsStaticHostListProvider() bool
-	GetHostListProvider() HostListProvider
-	SetHostListProvider(hostListProvider HostListProvider)
-	SetInitialConnectionHostInfo(info HostInfo)
-	GetInitialConnectionHostInfo() HostInfo
-	GetCurrentConnection() *driver.Conn
-	GetDialect() Dialect
-	GetHostInfoBuilder() HostInfoBuilder
-}
+type Dialect interface{}
