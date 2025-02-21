@@ -16,13 +16,12 @@
 
 package driver
 
-import "testing"
+func DsnFromProperties(properties map[string]any) string {
+	// TODO
+	return ""
+}
 
-func TestDummy(t *testing.T) {
-	got := 1
-	want := 1
-
-	if got != want {
-		t.Errorf("got %q, wanted %q", got, want)
-	}
+func PropertiesFromDsn(dsn string) map[string]any {
+	// TODO
+	return map[string]any{}
 }

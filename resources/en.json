@@ -1,0 +1,3 @@
+{
+	"ConnectionProvider.unsupportedHostSelectorStrategy": "Unsupported host selection strategy '%v' specified for this connection provider '%v'. Please visit the documentation for all supported strategies."
+}

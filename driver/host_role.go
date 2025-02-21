@@ -16,13 +16,10 @@
 
 package driver
 
-import "testing"
+type HostRole string
 
-func TestDummy(t *testing.T) {
-	got := 1
-	want := 1
-
-	if got != want {
-		t.Errorf("got %q, wanted %q", got, want)
-	}
-}
+const (
+	READER  HostRole = "reader"
+	WRITER  HostRole = "writer"
+	UNKNOWN HostRole = "unknown"
+)
