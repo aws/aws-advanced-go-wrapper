@@ -16,13 +16,6 @@
 
 package driver
 
-import "testing"
-
-func TestDummy(t *testing.T) {
-	got := 1
-	want := 1
-
-	if got != want {
-		t.Errorf("got %q, wanted %q", got, want)
-	}
+type HostSelector interface {
+	GetHost(hosts []HostInfo, role HostRole, props map[string]any) HostInfo
 }

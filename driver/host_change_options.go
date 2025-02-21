@@ -16,13 +16,17 @@
 
 package driver
 
-import "testing"
+type HostChangeOptions int
 
-func TestDummy(t *testing.T) {
-	got := 1
-	want := 1
-
-	if got != want {
-		t.Errorf("got %q, wanted %q", got, want)
-	}
-}
+const (
+	HOSTNAME                  HostChangeOptions = 0
+	PROMOTED_TO_WRITER        HostChangeOptions = 1
+	PROMOTED_TO_READER        HostChangeOptions = 2
+	WENT_UP                   HostChangeOptions = 3
+	WENT_DOWN                 HostChangeOptions = 4
+	CONNECTION_OBJECT_CHANGED HostChangeOptions = 5
+	INITIAL_CONNECTION        HostChangeOptions = 6
+	HOST_ADDED                HostChangeOptions = 7
+	HOST_CHANGED              HostChangeOptions = 8
+	HOST_DELETED              HostChangeOptions = 9
+)

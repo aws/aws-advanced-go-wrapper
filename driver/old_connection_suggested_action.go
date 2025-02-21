@@ -16,13 +16,10 @@
 
 package driver
 
-import "testing"
+type OldConnectionSuggestedAction string
 
-func TestDummy(t *testing.T) {
-	got := 1
-	want := 1
-
-	if got != want {
-		t.Errorf("got %q, wanted %q", got, want)
-	}
-}
+const (
+	NO_OPINION OldConnectionSuggestedAction = "no_opinion"
+	DISPOSE    OldConnectionSuggestedAction = "dispose"
+	PRESERVE   OldConnectionSuggestedAction = "preserve"
+)
