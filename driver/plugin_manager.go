@@ -22,8 +22,6 @@ import (
 
 type OpenFunc func() (driver.Conn, error)
 
-//type PrepareFunc func() (driver.Stmt, error)
-
 type PluginManager interface {
 	Init()
 	ExecuteWithSubscribedPlugins(methodName string, driverFunc ExecuteFunc) (any, error)

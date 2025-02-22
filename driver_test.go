@@ -14,9 +14,13 @@
   limitations under the License.
 */
 
-package driver
+package main
 
-import "testing"
+import (
+	awsDriver "awssql/driver"
+	"database/sql/driver"
+	"testing"
+)
 
 func TestDummy(t *testing.T) {
 	got := 1
@@ -25,4 +29,21 @@ func TestDummy(t *testing.T) {
 	if got != want {
 		t.Errorf("got %q, wanted %q", got, want)
 	}
+}
+
+func TestImplementations(t *testing.T) {
+	// Check for correct implementations of interfaces on left.
+	var _ awsDriver.PluginManager = (*awsDriver.ConnectionPluginManager)(nil)
+	var _ driver.Driver = (*awsDriver.AwsWrapperDriver)(nil)
+	var _ driver.Conn = (*awsDriver.AwsWrapperConn)(nil)
+	var _ driver.Pinger = (*awsDriver.AwsWrapperConn)(nil)
+	var _ driver.ExecerContext = (*awsDriver.AwsWrapperConn)(nil)
+	var _ driver.QueryerContext = (*awsDriver.AwsWrapperConn)(nil)
+	var _ driver.ConnPrepareContext = (*awsDriver.AwsWrapperConn)(nil)
+	var _ driver.ConnBeginTx = (*awsDriver.AwsWrapperConn)(nil)
+	var _ driver.SessionResetter = (*awsDriver.AwsWrapperConn)(nil)
+	var _ driver.Validator = (*awsDriver.AwsWrapperConn)(nil)
+	var _ driver.Stmt = (*awsDriver.AwsWrapperStmt)(nil)
+	var _ driver.StmtExecContext = (*awsDriver.AwsWrapperStmt)(nil)
+	var _ driver.StmtQueryContext = (*awsDriver.AwsWrapperStmt)(nil)
 }
