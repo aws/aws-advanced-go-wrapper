@@ -16,6 +16,35 @@
 
 package driver
 
+import "database/sql/driver"
+
 type PluginService interface {
 	SetAvailability(hostAliases map[string]bool, availability HostAvailability)
+	GetDialect() DatabaseDialect
+	UpdateDialect(conn driver.Conn)
+}
+
+type PluginServiceImpl struct {
+	// TODO: dialect should be initialized using DialectManager's GetDialect.
+	dialect         DatabaseDialect
+	dialectProvider DialectProvider
+	initialHost     string
+}
+
+func (p *PluginServiceImpl) GetDialect() DatabaseDialect {
+	return p.dialect
+}
+
+func (p *PluginServiceImpl) SetAvailability(hostAliases map[string]bool, availability HostAvailability) {
+	// TODO: add logic for SetAvailability.
+}
+
+func (p *PluginServiceImpl) UpdateDialect(conn driver.Conn) {
+	// TODO: provide information on newHost and initialHost to dialectProvider.
+	newDialect := p.dialectProvider.GetDialectForUpdate(conn, p.initialHost, "")
+	if p.dialect == newDialect {
+		return
+	}
+	p.dialect = newDialect
+	// TODO: update HostListProvider based on new dialect.
 }
