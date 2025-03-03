@@ -19,6 +19,7 @@ package main
 import (
 	awsDriver "awssql/driver"
 	"database/sql/driver"
+	"strings"
 	"testing"
 )
 
@@ -33,6 +34,7 @@ func TestDummy(t *testing.T) {
 
 func TestImplementations(t *testing.T) {
 	// Check for correct implementations of interfaces on left.
+	var _ error = (*awsDriver.AwsWrapperError)(nil)
 	var _ awsDriver.PluginManager = (*awsDriver.ConnectionPluginManager)(nil)
 	var _ driver.Driver = (*awsDriver.AwsWrapperDriver)(nil)
 	var _ driver.Conn = (*awsDriver.AwsWrapperConn)(nil)
@@ -46,4 +48,33 @@ func TestImplementations(t *testing.T) {
 	var _ driver.Stmt = (*awsDriver.AwsWrapperStmt)(nil)
 	var _ driver.StmtExecContext = (*awsDriver.AwsWrapperStmt)(nil)
 	var _ driver.StmtQueryContext = (*awsDriver.AwsWrapperStmt)(nil)
+}
+
+func TestAwsWrapperError(t *testing.T) {
+	testError := awsDriver.NewUnavailableHostError("test")
+	if testError.IsFailoverErrorType() {
+		t.Errorf("Should return false, UnavailableHostError is not a failover error type.")
+	}
+	if !testError.IsType(awsDriver.UnavailableHostErrorType) {
+		t.Errorf("Should return true, error is a UnavailableHostErrorType.")
+	}
+	if testError.IsType(awsDriver.UnsupportedMethodErrorType) {
+		t.Errorf("Should return false, error is not a UnsupportedMethodErrorType.")
+	}
+	if !strings.Contains(testError.Error(), "test") {
+		t.Errorf("Error should include 'test', improperly handles message.")
+	}
+
+	if !awsDriver.FailoverSuccessError.IsFailoverErrorType() {
+		t.Errorf("Should return true, FailoverSuccessError is a failover error type.")
+	}
+	if !awsDriver.FailoverSuccessError.IsType(awsDriver.FailoverSuccessErrorType) {
+		t.Errorf("Should return true, error is a FailoverSuccessErrorType.")
+	}
+	if awsDriver.FailoverSuccessError.IsType(awsDriver.UnsupportedMethodErrorType) {
+		t.Errorf("Should return false, error is not a UnsupportedMethodErrorType.")
+	}
+	if awsDriver.FailoverSuccessError.Error() != awsDriver.GetMessage("Failover.connectionChangedError") {
+		t.Errorf("Should return message attached to Failover.connectionChangedError, improperly handles message.")
+	}
 }
