@@ -20,9 +20,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
+
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"
-	"sync"
 )
 
 var globalLocalizer *i18n.Localizer
@@ -38,6 +39,7 @@ func getLocalizer() (*i18n.Localizer, error) {
 
 	bundle := i18n.NewBundle(language.English)
 	bundle.RegisterUnmarshalFunc("json", json.Unmarshal)
+	// TODO; clean up handling of importing file.
 	_, err := bundle.LoadMessageFile("../resources/en.json")
 	if err != nil {
 		_, err := bundle.LoadMessageFile("resources/en.json")

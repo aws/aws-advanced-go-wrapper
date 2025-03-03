@@ -20,12 +20,9 @@ import (
 	"database/sql/driver"
 )
 
-type ConnectFunc func() (driver.Conn, error)
-type ExecuteFunc func() (any, error)
-
 type ConnectionPlugin interface {
 	GetSubscribedMethods() []string
-	Execute(methodName string, executeFunc ExecuteFunc, methodArgs ...any) (any, error)
+	Execute(methodName string, executeFunc ExecuteFunc, methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error)
 	Connect(hostInfo HostInfo, properties map[string]any, isInitialConnection bool, connectFunc ConnectFunc) (*driver.Conn, error)
 	ForceConnect(hostInfo HostInfo, properties map[string]any, isInitialConnection bool, connectFunc ConnectFunc) (*driver.Conn, error)
 	AcceptsStrategy(role HostRole, strategy string) bool

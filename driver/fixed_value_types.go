@@ -66,10 +66,10 @@ const (
 type DialectCode string
 
 const (
-	AURORA_MYSQL string = "aurora-mysql"
-	RDS_MYSQL    string = "rds-mysql"
-	MYSQL        string = "mysql"
-	AURORA_PG    string = "aurora-pg"
-	RDS_PG       string = "rds-pg"
-	PG           string = "pg"
+	AURORA_MYSQL_DIALECT string = "aurora-mysql"
+	RDS_MYSQL_DIALECT    string = "rds-mysql"
+	MYSQL_DIALECT        string = "mysql"
+	AURORA_PG_DIALECT    string = "aurora-pg"
+	RDS_PG_DIALECT       string = "rds-pg"
+	PG_DIALECT           string = "pg"
 )

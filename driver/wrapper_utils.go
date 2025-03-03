@@ -21,16 +21,23 @@ import (
 	"errors"
 )
 
-func executeWithPlugins(pluginManager PluginManager, methodName string, executeFunc ExecuteFunc) (any, error) {
+func executeWithPlugins(pluginManager PluginManager, methodName string, executeFunc ExecuteFunc) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
 	return pluginManager.ExecuteWithSubscribedPlugins(methodName, executeFunc)
 }
 
-func queryWithPlugins(pluginManager PluginManager, methodName string, queryFunc ExecuteFunc) (driver.Rows, error) {
-	result, err := executeWithPlugins(pluginManager, methodName, queryFunc)
+func queryWithPlugins(pluginManager PluginManager, methodName string, queryFunc ExecuteFunc, engine DatabaseEngine) (driver.Rows, error) {
+	result, _, _, err := executeWithPlugins(pluginManager, methodName, queryFunc)
 	if err == nil {
 		driverRows, ok := result.(driver.Rows)
 		if ok {
-			return driverRows, nil
+			rows := AwsWrapperRows{driverRows, pluginManager}
+			if engine == MYSQL {
+				return &AwsWrapperMySQLRows{rows}, nil
+			}
+			if engine == PG {
+				return &AwsWrapperPgRows{rows}, nil
+			}
+			return &rows, nil
 		}
 		err = errors.New(GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Rows"))
 	}
@@ -39,11 +46,11 @@ func queryWithPlugins(pluginManager PluginManager, methodName string, queryFunc 
 }
 
 func execWithPlugins(pluginManager PluginManager, methodName string, execFunc ExecuteFunc) (driver.Result, error) {
-	result, err := executeWithPlugins(pluginManager, methodName, execFunc)
+	result, _, _, err := executeWithPlugins(pluginManager, methodName, execFunc)
 	if err == nil {
 		driverResult, ok := result.(driver.Result)
 		if ok {
-			return driverResult, nil
+			return &AwsWrapperResult{driverResult, pluginManager}, nil
 		}
 		err = errors.New(GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Result"))
 	}
@@ -51,12 +58,12 @@ func execWithPlugins(pluginManager PluginManager, methodName string, execFunc Ex
 	return nil, err
 }
 
-func prepareWithPlugins(pluginManager PluginManager, methodName string, prepareFunc ExecuteFunc) (driver.Stmt, error) {
-	result, err := executeWithPlugins(pluginManager, methodName, prepareFunc)
+func prepareWithPlugins(pluginManager PluginManager, methodName string, prepareFunc ExecuteFunc, conn AwsWrapperConn) (driver.Stmt, error) {
+	result, _, _, err := executeWithPlugins(pluginManager, methodName, prepareFunc)
 	if err == nil {
 		driverStmt, ok := result.(driver.Stmt)
 		if ok {
-			return &AwsWrapperStmt{underlyingStmt: driverStmt, pluginManager: pluginManager}, nil
+			return &AwsWrapperStmt{driverStmt, pluginManager, conn}, nil
 		}
 		err = errors.New(GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Stmt"))
 	}
@@ -64,11 +71,11 @@ func prepareWithPlugins(pluginManager PluginManager, methodName string, prepareF
 }
 
 func beginWithPlugins(pluginManager PluginManager, methodName string, beginFunc ExecuteFunc) (driver.Tx, error) {
-	result, err := executeWithPlugins(pluginManager, methodName, beginFunc)
+	result, _, _, err := executeWithPlugins(pluginManager, methodName, beginFunc)
 	if err == nil {
 		driverTx, ok := result.(driver.Tx)
 		if ok {
-			return driverTx, nil
+			return &AwsWrapperTx{driverTx, pluginManager}, nil
 		}
 		err = errors.New(GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Tx"))
 	}

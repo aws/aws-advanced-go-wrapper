@@ -25,7 +25,7 @@ type PgDatabaseDialect struct {
 }
 
 func (p *PgDatabaseDialect) GetDialectUpdateCandidates() []string {
-	return []string{AURORA_PG, RDS_PG}
+	return []string{AURORA_PG_DIALECT, RDS_PG_DIALECT}
 }
 
 func (p *PgDatabaseDialect) GetDefaultPort() int {
@@ -87,7 +87,7 @@ type RdsPgDatabaseDialect struct {
 }
 
 func (m *RdsPgDatabaseDialect) GetDialectUpdateCandidates() []string {
-	return []string{AURORA_PG}
+	return []string{AURORA_PG_DIALECT}
 }
 
 func (m *RdsPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
