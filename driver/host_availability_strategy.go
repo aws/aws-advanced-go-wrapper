@@ -16,13 +16,7 @@
 
 package driver
 
-import (
-	"database/sql/driver"
-)
-
-type ConnectionProvider interface {
-	AcceptsUrl(hostInfo HostInfo, properties map[string]any) bool
-	AcceptsStrategy(role HostRole, strategy string) bool
-	GetHostInfoByStrategy(hosts []HostInfo, role HostRole, strategy string, properties map[string]any) (HostInfo, error)
-	Connect(hostInfo HostInfo, properties map[string]any) (driver.Conn, error)
+type HostAvailabilityStrategy interface {
+	SetHostAvailability(hostAvailability HostAvailability)
+	GetHostAvailability(rawHostAvailability HostAvailability) HostAvailability
 }

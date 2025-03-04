@@ -27,11 +27,11 @@ import (
 )
 
 var globalLocalizer *i18n.Localizer
+var LocalizerMutex = &sync.Mutex{}
 
 func getLocalizer() (*i18n.Localizer, error) {
-	mutex := &sync.Mutex{}
-	mutex.Lock()
-	defer mutex.Unlock()
+	LocalizerMutex.Lock()
+	defer LocalizerMutex.Unlock()
 
 	if globalLocalizer != nil {
 		return globalLocalizer, nil

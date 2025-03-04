@@ -23,11 +23,12 @@ import (
 type ConnectionPlugin interface {
 	GetSubscribedMethods() []string
 	Execute(methodName string, executeFunc ExecuteFunc, methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error)
-	Connect(hostInfo HostInfo, properties map[string]any, isInitialConnection bool, connectFunc ConnectFunc) (*driver.Conn, error)
-	ForceConnect(hostInfo HostInfo, properties map[string]any, isInitialConnection bool, connectFunc ConnectFunc) (*driver.Conn, error)
+	Connect(hostInfo HostInfo, properties map[string]any, isInitialConnection bool, connectFunc ConnectFunc) (driver.Conn, error)
+	ForceConnect(hostInfo HostInfo, properties map[string]any, isInitialConnection bool, connectFunc ConnectFunc) (driver.Conn, error)
 	AcceptsStrategy(role HostRole, strategy string) bool
 	GetHostInfoByStrategy(role HostRole, strategy string, hosts []HostInfo) (HostInfo, error)
 	NotifyConnectionChanged() OldConnectionSuggestedAction
 	NotifyHostListChanged(changes map[HostChangeOptions]bool)
-	InitHostProvider(initialUrl string, props map[string]any, hostListProviderService HostListProviderService, initHostProviderFunc func())
+	InitHostProvider(
+		initialUrl string, props map[string]any, hostListProviderService HostListProviderService, initHostProviderFunc func() error) error
 }

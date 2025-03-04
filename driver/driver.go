@@ -42,11 +42,18 @@ type AwsWrapperDriver struct {
 
 func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 	// Set up plugin manager.
-	d.pluginManager.Init()
+	props := PropertiesFromDsn(dsn)
+	defaultConnProvider := &DriverConnectionProvider{targetDriver: d.targetDriver}
+	pluginManager := NewPluginManager(d.targetDriver, defaultConnProvider, nil, props)
+	pluginService := NewPluginServiceImpl(*pluginManager, props)
+	err := pluginManager.Init(pluginService, props, nil)
+	if err != nil {
+		return nil, err
+	}
 
 	// Call underlying driver and wrap connection.
 	conn, err := d.targetDriver.Open(dsn)
-	return &AwsWrapperConn{underlyingConn: conn, pluginManager: d.pluginManager, engine: d.engine}, err
+	return &AwsWrapperConn{underlyingConn: conn, pluginManager: *pluginManager, engine: d.engine}, err
 }
 
 // TODO: remove hard coding of underlying drivers.
@@ -57,14 +64,14 @@ func init() {
 		"aws-mysql",
 		&AwsWrapperDriver{
 			targetDriver,
-			&ConnectionPluginManager{targetDriver: targetDriver},
+			PluginManager{targetDriver: targetDriver},
 			MYSQL})
 	var otherDriver = &stdlib.Driver{}
 	sql.Register(
 		"aws-pgx",
 		&AwsWrapperDriver{
 			otherDriver,
-			&ConnectionPluginManager{targetDriver: otherDriver},
+			PluginManager{targetDriver: otherDriver},
 			PG})
 }
 

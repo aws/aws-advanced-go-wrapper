@@ -54,7 +54,9 @@ func NewGenericAwsWrapperError(message string) *AwsWrapperError {
 }
 
 func NewUnsupportedStrategyError(strategy string, connectionProvider string) *AwsWrapperError {
-	return &AwsWrapperError{GetMessage("ConnectionProvider.unsupportedHostSelectorStrategy", strategy, connectionProvider), UnsupportedStrategyErrorType}
+	return &AwsWrapperError{
+		GetMessage("ConnectionProvider.unsupportedHostSelectorStrategy", strategy, connectionProvider),
+		UnsupportedStrategyErrorType}
 }
 
 func NewUnsupportedMethodError(methodName string) *AwsWrapperError {
@@ -71,7 +73,9 @@ func NewFailoverFailedError(message string) *AwsWrapperError {
 	return &AwsWrapperError{message, FailoverFailedErrorType}
 }
 
-var TransactionResolutionUnknownError = &AwsWrapperError{GetMessage("Failover.transactionResolutionUnknownError"), TransactionResolutionUnknownErrorType}
+var TransactionResolutionUnknownError = &AwsWrapperError{
+	GetMessage("Failover.transactionResolutionUnknownError"),
+	TransactionResolutionUnknownErrorType}
 
 func NewLoginError(message string) *AwsWrapperError {
 	return &AwsWrapperError{message, LoginErrorType}

@@ -21,7 +21,9 @@ type ConnectionProviderManager struct {
 	effectiveProvider ConnectionProvider
 }
 
-func (connProviderManager *ConnectionProviderManager) GetConnectionProvider(hostInfo HostInfo, properties map[string]any) ConnectionProvider {
+func (connProviderManager *ConnectionProviderManager) GetConnectionProvider(
+	hostInfo HostInfo,
+	properties map[string]any) ConnectionProvider {
 	if connProviderManager.effectiveProvider != nil && connProviderManager.effectiveProvider.AcceptsUrl(hostInfo, properties) {
 		return connProviderManager.effectiveProvider
 	}
@@ -41,7 +43,11 @@ func (connProviderManager *ConnectionProviderManager) AcceptsStrategy(role HostR
 	return connProviderManager.defaultProvider.AcceptsStrategy(role, strategy)
 }
 
-func (connProviderManager *ConnectionProviderManager) GetHostInfoByStrategy(hosts []HostInfo, role HostRole, strategy string, properties map[string]any) (HostInfo, error) {
+func (connProviderManager *ConnectionProviderManager) GetHostInfoByStrategy(
+	hosts []HostInfo,
+	role HostRole,
+	strategy string,
+	properties map[string]any) (HostInfo, error) {
 	if connProviderManager.effectiveProvider.AcceptsStrategy(role, strategy) {
 		host, err := connProviderManager.effectiveProvider.GetHostInfoByStrategy(hosts, role, strategy, properties)
 		if err == nil {

@@ -20,9 +20,11 @@ import (
 	"database/sql/driver"
 )
 
-type ConnectionProvider interface {
-	AcceptsUrl(hostInfo HostInfo, properties map[string]any) bool
-	AcceptsStrategy(role HostRole, strategy string) bool
-	GetHostInfoByStrategy(hosts []HostInfo, role HostRole, strategy string, properties map[string]any) (HostInfo, error)
-	Connect(hostInfo HostInfo, properties map[string]any) (driver.Conn, error)
+type HostListProvider interface {
+	Refresh(conn driver.Conn) []HostInfo
+	ForceRefresh(conn driver.Conn) []HostInfo
+	GetHostRole(conn driver.Conn) HostRole
+	IdentifyConnection(conn driver.Conn) HostInfo
+	GetClusterId() string
+	IsStaticHostListProvider() bool
 }

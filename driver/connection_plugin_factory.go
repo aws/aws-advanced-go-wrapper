@@ -16,13 +16,6 @@
 
 package driver
 
-import (
-	"database/sql/driver"
-)
-
-type ConnectionProvider interface {
-	AcceptsUrl(hostInfo HostInfo, properties map[string]any) bool
-	AcceptsStrategy(role HostRole, strategy string) bool
-	GetHostInfoByStrategy(hosts []HostInfo, role HostRole, strategy string, properties map[string]any) (HostInfo, error)
-	Connect(hostInfo HostInfo, properties map[string]any) (driver.Conn, error)
+type ConnectionPluginFactory interface {
+	getInstance(pluginService *PluginService, properties map[string]any) (ConnectionPlugin, error)
 }
