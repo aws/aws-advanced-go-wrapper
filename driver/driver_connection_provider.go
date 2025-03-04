@@ -18,7 +18,6 @@ package driver
 
 import (
 	"database/sql/driver"
-	"errors"
 	"reflect"
 )
 
@@ -45,7 +44,7 @@ func (d DriverConnectionProvider) AcceptsStrategy(role HostRole, strategy string
 func (d DriverConnectionProvider) GetHostInfoByStrategy(hosts []HostInfo, role HostRole, strategy string, properties map[string]any) (HostInfo, error) {
 	acceptedStrategy, ok := d.acceptedStrategies[strategy]
 	if !ok {
-		return HostInfo{}, errors.New(GetMessage("ConnectionProvider.unsupportedHostSelectorStrategy", strategy, reflect.TypeOf(d)))
+		return HostInfo{}, NewUnsupportedStrategyError(strategy, reflect.TypeOf(d).String())
 	}
 
 	return acceptedStrategy.GetHost(hosts, role, properties), nil
