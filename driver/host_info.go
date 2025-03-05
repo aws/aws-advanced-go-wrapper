@@ -17,7 +17,6 @@
 package driver
 
 import (
-	"errors"
 	"strconv"
 	"time"
 )
@@ -40,45 +39,45 @@ type HostInfo struct {
 }
 
 //nolint:unused
-func (hostSpec *HostInfo) addAlias(alias string) {
-	hostSpec.Aliases[alias] = true
-	hostSpec.AllAliases[alias] = true
+func (hostInfo *HostInfo) addAlias(alias string) {
+	hostInfo.Aliases[alias] = true
+	hostInfo.AllAliases[alias] = true
 }
 
 //nolint:unused
-func (hostSpec *HostInfo) removeAlias(alias string) {
-	delete(hostSpec.Aliases, alias)
-	delete(hostSpec.AllAliases, alias)
+func (hostInfo *HostInfo) removeAlias(alias string) {
+	delete(hostInfo.Aliases, alias)
+	delete(hostInfo.AllAliases, alias)
 }
 
 //nolint:unused
-func (hostSpec *HostInfo) resetAliases() {
-	hostSpec.Aliases = make(map[string]bool)
-	hostSpec.Aliases = make(map[string]bool)
+func (hostInfo *HostInfo) resetAliases() {
+	hostInfo.Aliases = make(map[string]bool)
+	hostInfo.Aliases = make(map[string]bool)
 
-	if hostSpec.Port == HOST_NO_PORT {
-		hostSpec.AllAliases[hostSpec.Host] = true
+	if hostInfo.Port == HOST_NO_PORT {
+		hostInfo.AllAliases[hostInfo.Host] = true
 	} else {
-		hostSpec.AllAliases[hostSpec.Host+":"+strconv.Itoa(hostSpec.Port)] = true
+		hostInfo.AllAliases[hostInfo.Host+":"+strconv.Itoa(hostInfo.Port)] = true
 	}
 }
 
 //nolint:unused
-func (hostSpec *HostInfo) getUrl() string {
-	return hostSpec.getHostAndPort() + "/"
+func (hostInfo *HostInfo) getUrl() string {
+	return hostInfo.getHostAndPort() + "/"
 }
 
 //nolint:unused
-func (hostSpec *HostInfo) getHostAndPort() string {
-	if hostSpec.isPortSpecified() {
-		return hostSpec.Host + ":" + strconv.Itoa(hostSpec.Port)
+func (hostInfo *HostInfo) getHostAndPort() string {
+	if hostInfo.isPortSpecified() {
+		return hostInfo.Host + ":" + strconv.Itoa(hostInfo.Port)
 	}
-	return hostSpec.Host
+	return hostInfo.Host
 }
 
 //nolint:unused
-func (hostSpec *HostInfo) isPortSpecified() bool {
-	return hostSpec.Port != HOST_NO_PORT
+func (hostInfo *HostInfo) isPortSpecified() bool {
+	return hostInfo.Port != HOST_NO_PORT
 }
 
 type HostInfoBuilder struct {
@@ -100,68 +99,68 @@ func NewHostInfoBuilder() *HostInfoBuilder {
 	}
 }
 
-func (hostSpecBuilder *HostInfoBuilder) SetHost(host string) *HostInfoBuilder {
-	hostSpecBuilder.Host = host
-	return hostSpecBuilder
+func (hostInfoBuilder *HostInfoBuilder) SetHost(host string) *HostInfoBuilder {
+	hostInfoBuilder.Host = host
+	return hostInfoBuilder
 }
 
-func (hostSpecBuilder *HostInfoBuilder) SetPort(port int) *HostInfoBuilder {
-	hostSpecBuilder.Port = port
-	return hostSpecBuilder
+func (hostInfoBuilder *HostInfoBuilder) SetPort(port int) *HostInfoBuilder {
+	hostInfoBuilder.Port = port
+	return hostInfoBuilder
 }
 
-func (hostSpecBuilder *HostInfoBuilder) SetAvailability(availability HostAvailability) *HostInfoBuilder {
-	hostSpecBuilder.Availability = availability
-	return hostSpecBuilder
+func (hostInfoBuilder *HostInfoBuilder) SetAvailability(availability HostAvailability) *HostInfoBuilder {
+	hostInfoBuilder.Availability = availability
+	return hostInfoBuilder
 }
 
-func (hostSpecBuilder *HostInfoBuilder) SetRole(role HostRole) *HostInfoBuilder {
-	hostSpecBuilder.Role = role
-	return hostSpecBuilder
+func (hostInfoBuilder *HostInfoBuilder) SetRole(role HostRole) *HostInfoBuilder {
+	hostInfoBuilder.Role = role
+	return hostInfoBuilder
 }
 
-func (hostSpecBuilder *HostInfoBuilder) SetWeight(weight int) *HostInfoBuilder {
-	hostSpecBuilder.Weight = weight
-	return hostSpecBuilder
+func (hostInfoBuilder *HostInfoBuilder) SetWeight(weight int) *HostInfoBuilder {
+	hostInfoBuilder.Weight = weight
+	return hostInfoBuilder
 }
 
-func (hostSpecBuilder *HostInfoBuilder) SetHostId(hostId int) *HostInfoBuilder {
-	hostSpecBuilder.HostId = hostId
-	return hostSpecBuilder
+func (hostInfoBuilder *HostInfoBuilder) SetHostId(hostId int) *HostInfoBuilder {
+	hostInfoBuilder.HostId = hostId
+	return hostInfoBuilder
 }
 
-func (hostSpecBuilder *HostInfoBuilder) SetLastUpdateTime(lastUpdateTime time.Time) *HostInfoBuilder {
-	hostSpecBuilder.LastUpdateTime = lastUpdateTime
-	return hostSpecBuilder
+func (hostInfoBuilder *HostInfoBuilder) SetLastUpdateTime(lastUpdateTime time.Time) *HostInfoBuilder {
+	hostInfoBuilder.LastUpdateTime = lastUpdateTime
+	return hostInfoBuilder
 }
 
-func (hostSpecBuilder *HostInfoBuilder) Build() (hostSpec *HostInfo, err error) {
+func (hostInfoBuilder *HostInfoBuilder) Build() (hostInfo *HostInfo, err error) {
 	// validate
-	err = hostSpecBuilder.checkHostIsSet()
+	err = hostInfoBuilder.checkHostIsSet()
 
-	hostSpec = &HostInfo{
-		Host:           hostSpecBuilder.Host,
-		HostId:         hostSpecBuilder.HostId,
-		Port:           hostSpecBuilder.Port,
-		Availability:   hostSpecBuilder.Availability,
-		Role:           hostSpecBuilder.Role,
-		Weight:         hostSpecBuilder.Weight,
-		LastUpdateTime: hostSpecBuilder.LastUpdateTime,
+	hostInfo = &HostInfo{
+		Host:           hostInfoBuilder.Host,
+		HostId:         hostInfoBuilder.HostId,
+		Port:           hostInfoBuilder.Port,
+		Availability:   hostInfoBuilder.Availability,
+		Role:           hostInfoBuilder.Role,
+		Weight:         hostInfoBuilder.Weight,
+		LastUpdateTime: hostInfoBuilder.LastUpdateTime,
 		Aliases:        make(map[string]bool),
 		AllAliases:     make(map[string]bool),
 	}
 
-	if hostSpecBuilder.Port == HOST_NO_PORT {
-		hostSpec.AllAliases[hostSpecBuilder.Host] = true
+	if hostInfoBuilder.Port == HOST_NO_PORT {
+		hostInfo.AllAliases[hostInfoBuilder.Host] = true
 	} else {
-		hostSpec.AllAliases[hostSpecBuilder.Host+":"+strconv.Itoa(hostSpecBuilder.Port)] = true
+		hostInfo.AllAliases[hostInfoBuilder.Host+":"+strconv.Itoa(hostInfoBuilder.Port)] = true
 	}
 	return
 }
 
-func (hostSpecBuilder *HostInfoBuilder) checkHostIsSet() error {
-	if hostSpecBuilder.Host == "" {
-		return errors.New("TODO: import illegal argument error")
+func (hostInfoBuilder *HostInfoBuilder) checkHostIsSet() error {
+	if hostInfoBuilder.Host == "" {
+		return NewIllegalArgumentError(GetMessage("HostInfoBuilder.InvalidEmptyHost"))
 	}
 	return nil
 }

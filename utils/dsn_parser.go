@@ -117,7 +117,7 @@ func GetProtocol(dsn string) (string, error) {
 		return "postgresql", nil
 	}
 
-	return "", errors.New(driver.GetMessage("DsnParser.unableToDetermineProtocol", dsn))
+	return "", driver.NewDsnParseError(driver.GetMessage("DsnParser.unableToDetermineProtocol", dsn))
 }
 
 func ParseDsn(dsn string) (map[string]string, error) {
@@ -249,7 +249,7 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 		var key, val string
 		eqIdx := strings.IndexRune(dsn, '=')
 		if eqIdx < 0 {
-			return nil, errors.New(driver.GetMessage("DsnParser.invalidKeyValue", dsn))
+			return nil, driver.NewDsnParseError(driver.GetMessage("DsnParser.invalidKeyValue", dsn))
 		}
 
 		key = strings.Trim(dsn[:eqIdx], " \t\n\r\v\f")
@@ -264,7 +264,7 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 				if dsn[end] == '\\' {
 					end++
 					if end == len(dsn) {
-						return nil, errors.New(driver.GetMessage("DsnParser.invalidBackslash", dsn))
+						return nil, driver.NewDsnParseError(driver.GetMessage("DsnParser.invalidBackslash", dsn))
 					}
 				}
 			}
@@ -286,7 +286,7 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 				}
 			}
 			if end == len(dsn) {
-				return nil, errors.New(driver.GetMessage("DsnParser.unterminatedQuotedString", dsn))
+				return nil, driver.NewDsnParseError(driver.GetMessage("DsnParser.unterminatedQuotedString", dsn))
 			}
 			val = strings.Replace(strings.Replace(dsn[:end], "\\\\", "\\", -1), "\\'", "'", -1)
 			if end == len(dsn) {
@@ -301,7 +301,7 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 		}
 
 		if key == "" {
-			return nil, errors.New(driver.GetMessage("DsnParser.invalidKeyValue", dsn))
+			return nil, driver.NewDsnParseError(driver.GetMessage("DsnParser.invalidKeyValue", dsn))
 		}
 
 		properties[key] = val
@@ -350,9 +350,9 @@ func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 						// dsn[i-1] must be == ')' if an address is specified
 						if dsn[i-1] != ')' {
 							if strings.ContainsRune(dsn[k+1:i], ')') {
-								return nil, errors.New(driver.GetMessage("DsnParser.invalidUnescaped", dsn))
+								return nil, driver.NewDsnParseError(driver.GetMessage("DsnParser.invalidUnescaped", dsn))
 							}
-							return nil, errors.New(driver.GetMessage("DsnParser.invalidAddress", dsn))
+							return nil, driver.NewDsnParseError(driver.GetMessage("DsnParser.invalidAddress", dsn))
 						}
 
 						address := dsn[k+1 : i-1]
@@ -390,7 +390,7 @@ func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 	properties[PROTOCOL] = "mysql"
 
 	if !foundSlash && len(dsn) > 0 {
-		return nil, errors.New(driver.GetMessage("DsnParser.invalidDatabaseNoSlash", dsn))
+		return nil, driver.NewDsnParseError(driver.GetMessage("DsnParser.invalidDatabaseNoSlash", dsn))
 	}
 
 	return

@@ -16,5 +16,6 @@
 	"Failover.transactionResolutionUnknownError": "Transaction resolution unknown. Please re-configure session state if required and try restarting the transaction.",
   	"Failover.connectionChangedError": "The active SQL connection has changed due to a connection failure. Please re-configure session state if required.",
 	"Failover.timeoutError": "Internal failover task has timed out.",
+	"HostInfoBuilder.InvalidEmptyHost": "HostInfoBuilder Host parameter must be set.",
 	"HostMonitoringConnectionPlugin.unavailableHost": "Host '%v' is unavailable."
 }
