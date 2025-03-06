@@ -16,6 +16,14 @@
 
 package driver
 
+type HostRole string
+
+const (
+	READER  HostRole = "reader"
+	WRITER  HostRole = "writer"
+	UNKNOWN HostRole = "unknown"
+)
+
 type HostChangeOptions int
 
 const (
@@ -29,4 +37,39 @@ const (
 	HOST_ADDED                HostChangeOptions = 7
 	HOST_CHANGED              HostChangeOptions = 8
 	HOST_DELETED              HostChangeOptions = 9
+)
+
+type HostAvailability string
+
+const (
+	AVAILABLE   HostAvailability = "available"
+	UNAVAILABLE HostAvailability = "unavailable"
+)
+
+type OldConnectionSuggestedAction string
+
+const (
+	NO_OPINION OldConnectionSuggestedAction = "no_opinion"
+	DISPOSE    OldConnectionSuggestedAction = "dispose"
+	PRESERVE   OldConnectionSuggestedAction = "preserve"
+)
+
+type TransactionIsolationLevel int
+
+const (
+	TRANSACTION_READ_UNCOMMITTED TransactionIsolationLevel = 0
+	TRANSACTION_READ_COMMITTED   TransactionIsolationLevel = 1
+	TRANSACTION_REPEATABLE_READ  TransactionIsolationLevel = 2
+	TRANSACTION_SERIALIZABLE     TransactionIsolationLevel = 3
+)
+
+type DialectCode string
+
+const (
+	AURORA_MYSQL string = "aurora-mysql"
+	RDS_MYSQL    string = "rds-mysql"
+	MYSQL        string = "mysql"
+	AURORA_PG    string = "aurora-pg"
+	RDS_PG       string = "rds-pg"
+	PG           string = "pg"
 )

@@ -16,10 +16,21 @@
 
 package driver
 
-type OldConnectionSuggestedAction string
-
-const (
-	NO_OPINION OldConnectionSuggestedAction = "no_opinion"
-	DISPOSE    OldConnectionSuggestedAction = "dispose"
-	PRESERVE   OldConnectionSuggestedAction = "preserve"
+import (
+	"database/sql/driver"
 )
+
+type DatabaseDialect interface {
+	GetDefaultPort() int
+	GetHostAliasQuery() string
+	GetServerVersionQuery() string
+	GetSetReadOnlyQuery(readOnly bool) string
+	GetSetTransactionIsolationQuery(level TransactionIsolationLevel) (string, error)
+	GetSetAutoCommitQuery(autoCommit bool) (string, error)
+	GetSetSchemaQuery(schema string) (string, error)
+	GetSetCatalogQuery(catalog string) (string, error)
+	GetDialectUpdateCandidates() []string
+	IsDialect(conn driver.Conn) bool
+	// TODO: implement GetHostListProvider, see ticket: "dev: RdsHostListProvider".
+	// GetHostListProvider() HostListProvider
+}
