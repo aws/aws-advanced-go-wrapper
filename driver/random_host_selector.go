@@ -16,10 +16,19 @@
 
 package driver
 
-const (
-	SELECTOR_RANDOM = "random"
-)
+import "math/rand"
 
-type HostSelector interface {
-	GetHost(hosts []HostInfo, role HostRole, props map[string]any) (HostInfo, error)
+type RandomHostSelector struct{}
+
+func (r *RandomHostSelector) GetHost(hosts []HostInfo, role HostRole, props map[string]any) (HostInfo, error) {
+	eligibleHosts := FilterSlice(hosts, func(hostInfo HostInfo) bool {
+		return role == hostInfo.Role && hostInfo.Availability == AVAILABLE
+	})
+
+	if len(eligibleHosts) == 0 {
+		return HostInfo{}, NewGenericAwsWrapperError(GetMessage("HostSelector.noHostsMatchingRole", role))
+	}
+
+	randomIndex := rand.Intn(len(eligibleHosts))
+	return eligibleHosts[randomIndex], nil
 }

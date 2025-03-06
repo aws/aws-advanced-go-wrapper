@@ -72,7 +72,7 @@ func (m *MySQLDatabaseDialect) GetSetTransactionIsolationQuery(level Transaction
 	case TRANSACTION_SERIALIZABLE:
 		transactionIsolationLevel = "SERIALIZABLE"
 	default:
-		return "", &AwsWrapperError{GetMessage("Conn.invalidTransactionIsolationLevel", level), 0}
+		return "", NewGenericAwsWrapperError(GetMessage("Conn.invalidTransactionIsolationLevel", level))
 	}
 	return fmt.Sprintf("SET SESSION TRANSACTION ISOLATION LEVEL %s", transactionIsolationLevel), nil
 }

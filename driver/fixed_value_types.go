@@ -19,9 +19,8 @@ package driver
 type HostRole string
 
 const (
-	READER  HostRole = "reader"
-	WRITER  HostRole = "writer"
-	UNKNOWN HostRole = "unknown"
+	READER HostRole = "reader"
+	WRITER HostRole = "writer"
 )
 
 type HostChangeOptions int

@@ -20,6 +20,7 @@ import "database/sql/driver"
 
 type PluginService interface {
 	SetAvailability(hostAliases map[string]bool, availability HostAvailability)
+	GetProperties() map[string]any
 	GetDialect() DatabaseDialect
 	UpdateDialect(conn driver.Conn)
 }
@@ -29,14 +30,19 @@ type PluginServiceImpl struct {
 	dialect         DatabaseDialect
 	dialectProvider DialectProvider
 	initialHost     string
-}
-
-func (p *PluginServiceImpl) GetDialect() DatabaseDialect {
-	return p.dialect
+	props           map[string]any
 }
 
 func (p *PluginServiceImpl) SetAvailability(hostAliases map[string]bool, availability HostAvailability) {
 	// TODO: add logic for SetAvailability.
+}
+
+func (p *PluginServiceImpl) GetProperties() map[string]any {
+	return p.props
+}
+
+func (p *PluginServiceImpl) GetDialect() DatabaseDialect {
+	return p.dialect
 }
 
 func (p *PluginServiceImpl) UpdateDialect(conn driver.Conn) {

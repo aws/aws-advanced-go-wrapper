@@ -27,8 +27,8 @@ type DriverConnectionProvider struct {
 }
 
 func NewDriverConnectionProvider(targetDriver driver.Driver) *DriverConnectionProvider {
-	// TODO: complete accepted strategies list
 	acceptedStrategies := make(map[string]HostSelector)
+	acceptedStrategies[SELECTOR_RANDOM] = &RandomHostSelector{}
 	return &DriverConnectionProvider{acceptedStrategies, targetDriver}
 }
 
@@ -47,7 +47,7 @@ func (d DriverConnectionProvider) GetHostInfoByStrategy(hosts []HostInfo, role H
 		return HostInfo{}, NewUnsupportedStrategyError(strategy, reflect.TypeOf(d).String())
 	}
 
-	return acceptedStrategy.GetHost(hosts, role, properties), nil
+	return acceptedStrategy.GetHost(hosts, role, properties)
 }
 
 func (d DriverConnectionProvider) Connect(hostInfo HostInfo, properties map[string]any) (*driver.Conn, error) {

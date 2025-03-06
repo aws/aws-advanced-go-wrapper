@@ -100,7 +100,7 @@ func (d *DialectManager) GetDialect(dsn string) (DatabaseDialect, error) {
 		d.logCurrentDialect()
 		return d.dialect, nil
 	}
-	return nil, &AwsWrapperError{GetMessage("DatabaseDialectManager.getDialectError"), 0}
+	return nil, NewGenericAwsWrapperError(GetMessage("DatabaseDialectManager.getDialectError"))
 }
 
 func (d *DialectManager) GetDialectForUpdate(conn driver.Conn, originalHost string, newHost string) DatabaseDialect {
