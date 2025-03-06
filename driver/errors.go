@@ -29,7 +29,7 @@ const (
 	LoginErrorType                        AwsWrapperErrorType = 7
 	InternalQueryTimeoutErrorType         AwsWrapperErrorType = 8
 	UnavailableHostErrorType              AwsWrapperErrorType = 9
-	DsnParseErrorType                     AwsWrapperErrorType = 10
+	DsnParsingErrorType                   AwsWrapperErrorType = 10
 )
 
 type AwsWrapperError struct {
@@ -79,6 +79,6 @@ func NewUnavailableHostError(host string) *AwsWrapperError {
 	return &AwsWrapperError{GetMessage("HostMonitoringConnectionPlugin.unavailableHost", host), UnavailableHostErrorType}
 }
 
-func NewDsnParseError(message string) *AwsWrapperError {
-	return &AwsWrapperError{message, DsnParseErrorType}
+func NewDsnParsingError(message string) *AwsWrapperError {
+	return &AwsWrapperError{message, DsnParsingErrorType}
 }

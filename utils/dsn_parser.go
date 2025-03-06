@@ -1,9 +1,24 @@
+/*
+  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License").
+  You may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
 package utils
 
 import (
 	"awssql/driver"
 	"errors"
-	"fmt"
 	"net"
 	"net/url"
 	"regexp"
@@ -18,6 +33,7 @@ const (
 	PORT     = "port"
 	DATABASE = "database"
 	PROTOCOL = "protocol"
+	NET      = "net"
 )
 
 var (
@@ -65,12 +81,8 @@ func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []driver.
 
 		builder := driver.NewHostInfoBuilder()
 		builder.SetHost(hostString).SetPort(port).SetRole(hostRole)
-		hostInfo, err := builder.Build()
-		if err == nil {
-			hostInfoList = append(hostInfoList, *hostInfo)
-		} else {
-			panic(err)
-		}
+		hostInfo := builder.Build()
+		hostInfoList = append(hostInfoList, *hostInfo)
 	}
 	return
 }
@@ -117,7 +129,7 @@ func GetProtocol(dsn string) (string, error) {
 		return "postgresql", nil
 	}
 
-	return "", driver.NewDsnParseError(driver.GetMessage("DsnParser.unableToDetermineProtocol", dsn))
+	return "", driver.NewDsnParsingError(driver.GetMessage("DsnParser.unableToDetermineProtocol", dsn))
 }
 
 func ParseDsn(dsn string) (map[string]string, error) {
@@ -194,7 +206,7 @@ func parsePgxURLSettings(connString string) (map[string]string, error) {
 		}
 		h, p, err := net.SplitHostPort(host)
 		if err != nil {
-			return nil, fmt.Errorf("failed to split host:port in '%s', err: %w", host, err)
+			return nil, driver.NewDsnParsingError(driver.GetMessage("DsnParser.failedToSplitHostPort", host, err))
 		}
 		if h != "" {
 			hosts = append(hosts, h)
@@ -249,7 +261,7 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 		var key, val string
 		eqIdx := strings.IndexRune(dsn, '=')
 		if eqIdx < 0 {
-			return nil, driver.NewDsnParseError(driver.GetMessage("DsnParser.invalidKeyValue", dsn))
+			return nil, driver.NewDsnParsingError(driver.GetMessage("DsnParser.invalidKeyValue", dsn))
 		}
 
 		key = strings.Trim(dsn[:eqIdx], " \t\n\r\v\f")
@@ -264,7 +276,7 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 				if dsn[end] == '\\' {
 					end++
 					if end == len(dsn) {
-						return nil, driver.NewDsnParseError(driver.GetMessage("DsnParser.invalidBackslash", dsn))
+						return nil, driver.NewDsnParsingError(driver.GetMessage("DsnParser.invalidBackslash", dsn))
 					}
 				}
 			}
@@ -286,7 +298,7 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 				}
 			}
 			if end == len(dsn) {
-				return nil, driver.NewDsnParseError(driver.GetMessage("DsnParser.unterminatedQuotedString", dsn))
+				return nil, driver.NewDsnParsingError(driver.GetMessage("DsnParser.unterminatedQuotedString", dsn))
 			}
 			val = strings.Replace(strings.Replace(dsn[:end], "\\\\", "\\", -1), "\\'", "'", -1)
 			if end == len(dsn) {
@@ -301,7 +313,7 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 		}
 
 		if key == "" {
-			return nil, driver.NewDsnParseError(driver.GetMessage("DsnParser.invalidKeyValue", dsn))
+			return nil, driver.NewDsnParsingError(driver.GetMessage("DsnParser.invalidKeyValue", dsn))
 		}
 
 		properties[key] = val
@@ -313,84 +325,59 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 }
 
 func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
-	// New config with some default values
 	properties = make(map[string]string)
+	properties[PROTOCOL] = "mysql"
 
 	// [user[:password]@][net[(addr)]]/dbname[?param1=value1&paramN=valueN]
-	// Find the last '/' (since the password or the net addr might contain a '/')
-	foundSlash := false
-	for i := len(dsn) - 1; i >= 0; i-- {
-		if dsn[i] == '/' {
-			foundSlash = true
-			var j, k int
+	lastSlashIndex := strings.LastIndex(dsn, "/")
+	if lastSlashIndex == -1 {
+		return nil, driver.NewDsnParsingError(driver.GetMessage("DsnParser.invalidDatabaseNoSlash", dsn))
+	}
 
-			// left part is empty if i <= 0
-			if i > 0 {
-				// [username[:password]@][protocol[(address)]]
-				// Find the last '@' in dsn[:i]
-				for j = i; j >= 0; j-- {
-					if dsn[j] == '@' {
-						// username[:password]
-						// Find the first ':' in dsn[:j]
-						for k = 0; k < j; k++ {
-							if dsn[k] == ':' {
-								properties[PASSWORD] = dsn[k+1 : j]
-								break
-							}
-						}
-						properties[USER] = dsn[:k]
-						break
-					}
-				}
-
-				// [protocol[(address)]]
-				// Find the first '(' in dsn[j+1:i]
-				for k = j + 1; k < i; k++ {
-					if dsn[k] == '(' {
-						// dsn[i-1] must be == ')' if an address is specified
-						if dsn[i-1] != ')' {
-							if strings.ContainsRune(dsn[k+1:i], ')') {
-								return nil, driver.NewDsnParseError(driver.GetMessage("DsnParser.invalidUnescaped", dsn))
-							}
-							return nil, driver.NewDsnParseError(driver.GetMessage("DsnParser.invalidAddress", dsn))
-						}
-
-						address := dsn[k+1 : i-1]
-						hostPortPair := strings.Split(address, ":")
-						properties[HOST] = hostPortPair[0]
-						if len(hostPortPair) == 2 {
-							properties[PORT] = hostPortPair[1]
-						}
-						break
-					}
-				}
-				properties["net"] = dsn[j+1 : k]
-			}
-
-			// dbname[?param1=value1&...&paramN=valueN]
-			// Find the first '?' in dsn[i+1:]
-			for j = i + 1; j < len(dsn); j++ {
-				if dsn[j] == '?' {
-					if err = parseDSNParams(properties, dsn[j+1:]); err != nil {
-						return
-					}
-					break
-				}
-			}
-
-			dbname := dsn[i+1 : j]
-			if properties[DATABASE], err = url.PathUnescape(dbname); err != nil {
-				return nil, fmt.Errorf("invalid dbname %q: %w", dbname, err)
-			}
-
-			break
+	// [username[:password]@][protocol[(address)]]
+	lastAtIndex := strings.LastIndex(dsn[:lastSlashIndex], "@")
+	if lastAtIndex != -1 {
+		colonIndex := strings.Index(dsn[:lastAtIndex], ":")
+		if colonIndex == -1 {
+			properties[USER] = dsn[:lastAtIndex]
+		} else {
+			properties[USER] = dsn[:colonIndex]
+			properties[PASSWORD] = dsn[colonIndex+1 : lastAtIndex]
 		}
 	}
 
-	properties[PROTOCOL] = "mysql"
+	// [protocol[(address)]]
+	openParenIndex := strings.Index(dsn[lastAtIndex:lastSlashIndex], "(") + lastAtIndex
+	if openParenIndex == -1 {
+		properties[NET] = dsn[lastAtIndex+1 : lastSlashIndex]
+	} else {
+		properties[NET] = dsn[lastAtIndex+1 : openParenIndex]
 
-	if !foundSlash && len(dsn) > 0 {
-		return nil, driver.NewDsnParseError(driver.GetMessage("DsnParser.invalidDatabaseNoSlash", dsn))
+		closeParenIndex := strings.LastIndex(dsn[lastAtIndex:lastSlashIndex], ")") + lastAtIndex
+		if closeParenIndex == -1 {
+			return nil, driver.NewDsnParsingError(driver.GetMessage("DsnParser.invalidAddress", dsn))
+		} else if closeParenIndex < openParenIndex {
+			return nil, driver.NewDsnParsingError(driver.GetMessage("DsnParser.invalidAddress", dsn))
+		}
+		address := dsn[openParenIndex+1 : closeParenIndex]
+		hostPortPair := strings.Split(address, ":")
+		properties[HOST] = hostPortPair[0]
+		if len(hostPortPair) > 1 {
+			properties[PORT] = hostPortPair[1]
+		}
+	}
+
+	// dbname[?param1=value1&...&paramN=valueN]
+	queryIndex := strings.Index(dsn[lastSlashIndex:], "?") + lastSlashIndex
+	if queryIndex == -1 {
+		properties[DATABASE], err = url.PathUnescape(dsn[lastSlashIndex+1:])
+	} else {
+		properties[DATABASE], err = url.PathUnescape(dsn[lastSlashIndex+1 : queryIndex])
+		if err != nil {
+			return
+		}
+
+		err = parseDSNParams(properties, dsn[queryIndex+1:])
 	}
 
 	return
@@ -398,12 +385,13 @@ func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 
 func parseDSNParams(properties map[string]string, params string) (err error) {
 	for _, v := range strings.Split(params, "&") {
-		key, value, found := strings.Cut(v, "=")
-		if !found {
+		key, value, ok := strings.Cut(v, "=")
+		if !ok {
 			continue
 		}
 
-		if properties[key], err = url.QueryUnescape(value); err != nil {
+		properties[key], err = url.QueryUnescape(value)
+		if err != nil {
 			return
 		}
 	}

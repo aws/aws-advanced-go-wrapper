@@ -30,14 +30,14 @@ func TestParseDsnPgxUrl(t *testing.T) {
 		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
 	}
 
-	assert.Equal(t, props[PROTOCOL], "postgres")
-	assert.Equal(t, props[USER], "someUser")
-	assert.Equal(t, props[PASSWORD], "somePassword")
-	assert.Equal(t, props[HOST], "localhost")
-	assert.Equal(t, props[PORT], "5432")
-	assert.Equal(t, props[DATABASE], "pgx_test")
-	assert.Equal(t, props["sslmode"], "disable")
-	assert.Equal(t, props["foo"], "bar")
+	assert.Equal(t, "postgresql", props[PROTOCOL])
+	assert.Equal(t, "someUser", props[USER])
+	assert.Equal(t, "somePassword", props[PASSWORD])
+	assert.Equal(t, "localhost", props[HOST])
+	assert.Equal(t, "5432", props[PORT])
+	assert.Equal(t, "pgx_test", props[DATABASE])
+	assert.Equal(t, "disable", props["sslmode"])
+	assert.Equal(t, "bar", props["foo"])
 }
 
 func TestParseDsnPgxKeyValue(t *testing.T) {
@@ -48,29 +48,30 @@ func TestParseDsnPgxKeyValue(t *testing.T) {
 		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
 	}
 
-	assert.Equal(t, props[PROTOCOL], "postgresql")
-	assert.Equal(t, props[USER], "someUser")
-	assert.Equal(t, props[PASSWORD], "somePassword")
-	assert.Equal(t, props[HOST], "localhost")
-	assert.Equal(t, props[PORT], "5432")
-	assert.Equal(t, props[DATABASE], "pgx_test")
-	assert.Equal(t, props["sslmode"], "disable")
-	assert.Equal(t, props["foo"], "bar")
+	assert.Equal(t, "postgresql", props[PROTOCOL])
+	assert.Equal(t, "someUser", props[USER])
+	assert.Equal(t, "somePassword", props[PASSWORD])
+	assert.Equal(t, "localhost", props[HOST])
+	assert.Equal(t, "5432", props[PORT])
+	assert.Equal(t, "pgx_test", props[DATABASE])
+	assert.Equal(t, "disable", props["sslmode"])
+	assert.Equal(t, "bar", props["foo"])
 }
 
 func TestParseDsnMySql(t *testing.T) {
-	dsn := "someUser:somePassword@tcp(mydatabase.com:3306)/myDatabase?foo=bar"
+	dsn := "someUser:somePassword@tcp(mydatabase.com:3306)/myDatabase?foo=bar&pop=snap"
 	props, err := ParseDsn(dsn)
 
 	if err != nil {
 		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
 	}
 
-	assert.Equal(t, props[PROTOCOL], "mysql")
-	assert.Equal(t, props[USER], "someUser")
-	assert.Equal(t, props[PASSWORD], "somePassword")
-	assert.Equal(t, props[HOST], "mydatabase.com")
-	assert.Equal(t, props[PORT], "3306")
-	assert.Equal(t, props[DATABASE], "myDatabase")
-	assert.Equal(t, props["foo"], "bar")
+	assert.Equal(t, "mysql", props[PROTOCOL])
+	assert.Equal(t, "someUser", props[USER])
+	assert.Equal(t, "somePassword", props[PASSWORD])
+	assert.Equal(t, "mydatabase.com", props[HOST])
+	assert.Equal(t, "3306", props[PORT])
+	assert.Equal(t, "myDatabase", props[DATABASE])
+	assert.Equal(t, "bar", props["foo"])
+	assert.Equal(t, "snap", props["pop"])
 }

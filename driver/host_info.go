@@ -134,9 +134,12 @@ func (hostInfoBuilder *HostInfoBuilder) SetLastUpdateTime(lastUpdateTime time.Ti
 	return hostInfoBuilder
 }
 
-func (hostInfoBuilder *HostInfoBuilder) Build() (hostInfo *HostInfo, err error) {
+func (hostInfoBuilder *HostInfoBuilder) Build() (hostInfo *HostInfo) {
 	// validate
-	err = hostInfoBuilder.checkHostIsSet()
+	err := hostInfoBuilder.checkHostIsSet()
+	if err != nil {
+		panic(err)
+	}
 
 	hostInfo = &HostInfo{
 		Host:           hostInfoBuilder.Host,
