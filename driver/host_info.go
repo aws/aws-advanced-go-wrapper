@@ -81,56 +81,56 @@ func (hostInfo *HostInfo) isPortSpecified() bool {
 }
 
 type HostInfoBuilder struct {
-	Host           string
-	Port           int
-	Availability   HostAvailability
-	Role           HostRole
-	Weight         int
-	HostId         int
-	LastUpdateTime time.Time
+	host           string
+	port           int
+	availability   HostAvailability
+	role           HostRole
+	weight         int
+	hostId         int
+	lastUpdateTime time.Time
 }
 
 func NewHostInfoBuilder() *HostInfoBuilder {
 	return &HostInfoBuilder{
-		Port:         HOST_NO_PORT,
-		Availability: AVAILABLE,
-		Role:         WRITER,
-		Weight:       HOST_DEFAULT_WEIGHT,
+		port:         HOST_NO_PORT,
+		availability: AVAILABLE,
+		role:         WRITER,
+		weight:       HOST_DEFAULT_WEIGHT,
 	}
 }
 
 func (hostInfoBuilder *HostInfoBuilder) SetHost(host string) *HostInfoBuilder {
-	hostInfoBuilder.Host = host
+	hostInfoBuilder.host = host
 	return hostInfoBuilder
 }
 
 func (hostInfoBuilder *HostInfoBuilder) SetPort(port int) *HostInfoBuilder {
-	hostInfoBuilder.Port = port
+	hostInfoBuilder.port = port
 	return hostInfoBuilder
 }
 
 func (hostInfoBuilder *HostInfoBuilder) SetAvailability(availability HostAvailability) *HostInfoBuilder {
-	hostInfoBuilder.Availability = availability
+	hostInfoBuilder.availability = availability
 	return hostInfoBuilder
 }
 
 func (hostInfoBuilder *HostInfoBuilder) SetRole(role HostRole) *HostInfoBuilder {
-	hostInfoBuilder.Role = role
+	hostInfoBuilder.role = role
 	return hostInfoBuilder
 }
 
 func (hostInfoBuilder *HostInfoBuilder) SetWeight(weight int) *HostInfoBuilder {
-	hostInfoBuilder.Weight = weight
+	hostInfoBuilder.weight = weight
 	return hostInfoBuilder
 }
 
 func (hostInfoBuilder *HostInfoBuilder) SetHostId(hostId int) *HostInfoBuilder {
-	hostInfoBuilder.HostId = hostId
+	hostInfoBuilder.hostId = hostId
 	return hostInfoBuilder
 }
 
 func (hostInfoBuilder *HostInfoBuilder) SetLastUpdateTime(lastUpdateTime time.Time) *HostInfoBuilder {
-	hostInfoBuilder.LastUpdateTime = lastUpdateTime
+	hostInfoBuilder.lastUpdateTime = lastUpdateTime
 	return hostInfoBuilder
 }
 
@@ -142,27 +142,27 @@ func (hostInfoBuilder *HostInfoBuilder) Build() (hostInfo *HostInfo) {
 	}
 
 	hostInfo = &HostInfo{
-		Host:           hostInfoBuilder.Host,
-		HostId:         hostInfoBuilder.HostId,
-		Port:           hostInfoBuilder.Port,
-		Availability:   hostInfoBuilder.Availability,
-		Role:           hostInfoBuilder.Role,
-		Weight:         hostInfoBuilder.Weight,
-		LastUpdateTime: hostInfoBuilder.LastUpdateTime,
+		Host:           hostInfoBuilder.host,
+		HostId:         hostInfoBuilder.hostId,
+		Port:           hostInfoBuilder.port,
+		Availability:   hostInfoBuilder.availability,
+		Role:           hostInfoBuilder.role,
+		Weight:         hostInfoBuilder.weight,
+		LastUpdateTime: hostInfoBuilder.lastUpdateTime,
 		Aliases:        make(map[string]bool),
 		AllAliases:     make(map[string]bool),
 	}
 
-	if hostInfoBuilder.Port == HOST_NO_PORT {
-		hostInfo.AllAliases[hostInfoBuilder.Host] = true
+	if hostInfoBuilder.port == HOST_NO_PORT {
+		hostInfo.AllAliases[hostInfoBuilder.host] = true
 	} else {
-		hostInfo.AllAliases[hostInfoBuilder.Host+":"+strconv.Itoa(hostInfoBuilder.Port)] = true
+		hostInfo.AllAliases[hostInfoBuilder.host+":"+strconv.Itoa(hostInfoBuilder.port)] = true
 	}
 	return
 }
 
 func (hostInfoBuilder *HostInfoBuilder) checkHostIsSet() error {
-	if hostInfoBuilder.Host == "" {
+	if hostInfoBuilder.host == "" {
 		return NewIllegalArgumentError(GetMessage("HostInfoBuilder.InvalidEmptyHost"))
 	}
 	return nil
