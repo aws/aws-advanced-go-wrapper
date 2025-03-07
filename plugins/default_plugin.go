@@ -1,0 +1,97 @@
+/*
+  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License").
+  You may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
+package plugins
+
+import (
+	"awssql/driver_infrastructure"
+	"database/sql/driver"
+)
+
+type DefaultPlugin struct {
+	PluginService       *driver_infrastructure.PluginService
+	DefaultConnProvider *driver_infrastructure.ConnectionProvider
+	ConnProviderManager driver_infrastructure.ConnectionProviderManager
+}
+
+func (d *DefaultPlugin) InitHostProvider(
+	initialUrl string,
+	props map[string]any,
+	hostListProviderService driver_infrastructure.HostListProviderService,
+	initHostProviderFunc func() error) error {
+	// Do nothing.
+	// It's guaranteed that this plugin is always the last in plugin chain so initHostProviderFunc can be omitted.
+	return nil
+}
+
+func (d *DefaultPlugin) GetSubscribedMethods() []string {
+	return []string{"*"}
+}
+
+func (d *DefaultPlugin) Execute(methodName string, executeFunc driver_infrastructure.ExecuteFunc, methodArgs ...any) (any, any, bool, error) {
+	return executeFunc()
+}
+
+func (d *DefaultPlugin) Connect(
+	hostInfo driver_infrastructure.HostInfo,
+	properties map[string]any,
+	isInitialConnection bool,
+	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
+	// It's guaranteed that this plugin is always the last in plugin chain so connectFunc can be ignored.
+	connProvider := d.ConnProviderManager.GetConnectionProvider(hostInfo, properties)
+	return d.connectInternal(hostInfo, properties, connProvider)
+}
+
+func (d *DefaultPlugin) ForceConnect(
+	hostInfo driver_infrastructure.HostInfo,
+	properties map[string]any,
+	isInitialConnection bool,
+	forceConnectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
+	// It's guaranteed that this plugin is always the last in plugin chain so connectFunc can be ignored.
+	return d.connectInternal(hostInfo, properties, d.DefaultConnProvider)
+}
+
+func (d *DefaultPlugin) connectInternal(
+	hostInfo driver_infrastructure.HostInfo,
+	properties map[string]any,
+	connProvider *driver_infrastructure.ConnectionProvider) (driver.Conn, error) {
+	conn, err := (*connProvider).Connect(hostInfo, properties)
+	(*d.PluginService).SetAvailability(hostInfo.AllAliases, driver_infrastructure.AVAILABLE)
+	return conn, err
+}
+
+func (d *DefaultPlugin) AcceptsStrategy(role driver_infrastructure.HostRole, strategy string) bool {
+	return d.ConnProviderManager.AcceptsStrategy(role, strategy)
+}
+
+func (d *DefaultPlugin) GetHostInfoByStrategy(
+	role driver_infrastructure.HostRole,
+	strategy string,
+	hosts []driver_infrastructure.HostInfo) (driver_infrastructure.HostInfo, error) {
+	if len(hosts) == 0 {
+		return driver_infrastructure.HostInfo{}, driver_infrastructure.NewGenericAwsWrapperError(driver_infrastructure.GetMessage("DefaultConnectionPlugin.noHostsAvailable"))
+	}
+
+	return d.ConnProviderManager.GetHostInfoByStrategy(hosts, role, strategy, (*d.PluginService).GetProperties())
+}
+
+func (d *DefaultPlugin) NotifyConnectionChanged(changes map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {
+	return driver_infrastructure.NO_OPINION
+}
+
+func (d *DefaultPlugin) NotifyHostListChanged(changes map[string]map[driver_infrastructure.HostChangeOptions]bool) {
+	// Do nothing.
+}

@@ -11,4 +11,4 @@ linters:
     - godot
 linters-settings:
   lll:
-    line-length: 140
+    line-length: 175

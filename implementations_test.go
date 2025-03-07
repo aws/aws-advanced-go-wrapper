@@ -18,22 +18,24 @@ package main
 
 import (
 	awsDriver "awssql/driver"
+	"awssql/driver_infrastructure"
+	"awssql/plugin_helpers"
 	"database/sql/driver"
 	"testing"
 )
 
 func TestImplementations(t *testing.T) {
 	// Check for correct implementations of interfaces on left.
-	var _ error = (*awsDriver.AwsWrapperError)(nil)
-	var _ awsDriver.DatabaseDialect = (*awsDriver.MySQLDatabaseDialect)(nil)
-	var _ awsDriver.DatabaseDialect = (*awsDriver.RdsMySQLDatabaseDialect)(nil)
-	var _ awsDriver.DatabaseDialect = (*awsDriver.AuroraMySQLDatabaseDialect)(nil)
-	var _ awsDriver.DatabaseDialect = (*awsDriver.PgDatabaseDialect)(nil)
-	var _ awsDriver.DatabaseDialect = (*awsDriver.RdsPgDatabaseDialect)(nil)
-	var _ awsDriver.DatabaseDialect = (*awsDriver.AuroraPgDatabaseDialect)(nil)
-	var _ awsDriver.DialectProvider = (*awsDriver.DialectManager)(nil)
-	var _ awsDriver.PluginManager = (*awsDriver.ConnectionPluginManager)(nil)
-	var _ awsDriver.PluginService = (*awsDriver.PluginServiceImpl)(nil)
+	var _ error = (*driver_infrastructure.AwsWrapperError)(nil)
+	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.MySQLDatabaseDialect)(nil)
+	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.RdsMySQLDatabaseDialect)(nil)
+	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.AuroraMySQLDatabaseDialect)(nil)
+	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.PgDatabaseDialect)(nil)
+	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.RdsPgDatabaseDialect)(nil)
+	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.AuroraPgDatabaseDialect)(nil)
+	var _ driver_infrastructure.DialectProvider = (*driver_infrastructure.DialectManager)(nil)
+	var _ driver_infrastructure.PluginManager = (*plugin_helpers.PluginManagerImpl)(nil)
+	var _ driver_infrastructure.PluginService = (*plugin_helpers.PluginServiceImpl)(nil)
 	var _ driver.Driver = (*awsDriver.AwsWrapperDriver)(nil)
 	var _ driver.Conn = (*awsDriver.AwsWrapperConn)(nil)
 	var _ driver.Pinger = (*awsDriver.AwsWrapperConn)(nil)
