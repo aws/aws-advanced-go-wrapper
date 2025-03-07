@@ -3,6 +3,7 @@
 	"Conn.invalidTransactionIsolationLevel": "An invalid transaction isolation level was provided: '%v'.",
 	"ConnectionProvider.unsupportedHostSelectorStrategy": "Unsupported host selection strategy '%v' specified for this connection provider '%v'. Please visit the documentation for all supported strategies.",
 	"DatabaseDialectManager.getDialectError": "Was not able to get a database dialect.",
+	"DatabaseDialectManager.invalidDriverProtocol": "Invalid driver protocol from properties:%v",
 	"AwsWrapperExecuteWithPlugins.unableToCastResult": "Returned result does not match expected type '%v'.",
 	"AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface": "The underlying driver connection does not implement the required interface '%v'.",
 	"AwsWrapperStmt.underlyingStmtDoesNotImplementRequiredInterface": "The underlying driver statement does not implement the required interface '%v'.",

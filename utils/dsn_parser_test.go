@@ -30,7 +30,7 @@ func TestParseDsnPgxUrl(t *testing.T) {
 		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
 	}
 
-	assert.Equal(t, "postgresql", props[PROTOCOL])
+	assert.Equal(t, "postgresql", props[DRIVER_PROTOCOL])
 	assert.Equal(t, "someUser", props[USER])
 	assert.Equal(t, "somePassword", props[PASSWORD])
 	assert.Equal(t, "localhost", props[HOST])
@@ -48,7 +48,7 @@ func TestParseDsnPgxKeyValue(t *testing.T) {
 		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
 	}
 
-	assert.Equal(t, "postgresql", props[PROTOCOL])
+	assert.Equal(t, "postgresql", props[DRIVER_PROTOCOL])
 	assert.Equal(t, "someUser", props[USER])
 	assert.Equal(t, "somePassword", props[PASSWORD])
 	assert.Equal(t, "localhost", props[HOST])
@@ -66,7 +66,7 @@ func TestParseDsnMySql(t *testing.T) {
 		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
 	}
 
-	assert.Equal(t, "mysql", props[PROTOCOL])
+	assert.Equal(t, "mysql", props[DRIVER_PROTOCOL])
 	assert.Equal(t, "someUser", props[USER])
 	assert.Equal(t, "somePassword", props[PASSWORD])
 	assert.Equal(t, "mydatabase.com", props[HOST])

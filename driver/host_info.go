@@ -53,7 +53,6 @@ func (hostInfo *HostInfo) removeAlias(alias string) {
 //nolint:unused
 func (hostInfo *HostInfo) resetAliases() {
 	hostInfo.Aliases = make(map[string]bool)
-	hostInfo.Aliases = make(map[string]bool)
 
 	if hostInfo.Port == HOST_NO_PORT {
 		hostInfo.AllAliases[hostInfo.Host] = true

@@ -27,13 +27,13 @@ import (
 )
 
 const (
-	USER     = "user"
-	PASSWORD = "password"
-	HOST     = "host"
-	PORT     = "port"
-	DATABASE = "database"
-	PROTOCOL = "protocol"
-	NET      = "net"
+	USER            = "user"
+	PASSWORD        = "password"
+	HOST            = "host"
+	PORT            = "port"
+	DATABASE        = "database"
+	DRIVER_PROTOCOL = "protocol"
+	NET             = "net"
 )
 
 var (
@@ -231,8 +231,6 @@ func parsePgxURLSettings(connString string) (map[string]string, error) {
 		"dbname": "database",
 	}
 
-	properties[PROTOCOL] = "postgresql"
-
 	for k, v := range parsedURL.Query() {
 		if k2, present := nameMap[k]; present {
 			k = k2
@@ -241,6 +239,7 @@ func parsePgxURLSettings(connString string) (map[string]string, error) {
 		properties[k] = v[0]
 	}
 
+	properties[DRIVER_PROTOCOL] = "postgresql"
 	return properties, nil
 }
 
@@ -319,14 +318,13 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 		properties[key] = val
 	}
 
-	properties[PROTOCOL] = "postgresql"
+	properties[DRIVER_PROTOCOL] = "postgresql"
 
 	return properties, nil
 }
 
 func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 	properties = make(map[string]string)
-	properties[PROTOCOL] = "mysql"
 
 	// [user[:password]@][net[(addr)]]/dbname[?param1=value1&paramN=valueN]
 	lastSlashIndex := strings.LastIndex(dsn, "/")
@@ -380,6 +378,7 @@ func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 		err = parseDSNParams(properties, dsn[queryIndex+1:])
 	}
 
+	properties[DRIVER_PROTOCOL] = "mysql"
 	return
 }
 
