@@ -69,13 +69,9 @@ func (hostInfo *HostInfo) removeAlias(alias string) {
 //nolint:unused
 func (hostInfo *HostInfo) resetAliases() {
 	hostInfo.Aliases = make(map[string]bool)
-	hostInfo.Aliases = make(map[string]bool)
+	hostInfo.AllAliases = make(map[string]bool)
 
-	if hostInfo.Port == HOST_NO_PORT {
-		hostInfo.AllAliases[hostInfo.Host] = true
-	} else {
-		hostInfo.AllAliases[hostInfo.Host+":"+strconv.Itoa(hostInfo.Port)] = true
-	}
+	hostInfo.AllAliases[hostInfo.getHostAndPort()] = true
 }
 
 //nolint:unused
@@ -176,11 +172,7 @@ func (hostInfoBuilder *HostInfoBuilder) Build() (hostInfo *HostInfo) {
 		AllAliases:     make(map[string]bool),
 	}
 
-	if hostInfoBuilder.port == HOST_NO_PORT {
-		hostInfo.AllAliases[hostInfoBuilder.host] = true
-	} else {
-		hostInfo.AllAliases[hostInfoBuilder.host+":"+strconv.Itoa(hostInfoBuilder.port)] = true
-	}
+	hostInfo.AllAliases[hostInfo.getHostAndPort()] = true
 	return
 }
 
