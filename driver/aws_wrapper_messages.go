@@ -38,9 +38,12 @@ func getLocalizer() (*i18n.Localizer, error) {
 
 	bundle := i18n.NewBundle(language.English)
 	bundle.RegisterUnmarshalFunc("json", json.Unmarshal)
-	_, err := bundle.LoadMessageFile("resources/en.json")
+	_, err := bundle.LoadMessageFile("../resources/en.json")
 	if err != nil {
-		return nil, errors.New("could not load messages file")
+		_, err := bundle.LoadMessageFile("resources/en.json")
+		if err != nil {
+			return nil, errors.New("could not load messages file")
+		}
 	}
 	globalLocalizer = i18n.NewLocalizer(bundle, language.English.String())
 	return globalLocalizer, nil
