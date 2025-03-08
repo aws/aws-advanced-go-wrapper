@@ -6,7 +6,7 @@
 	"AwsWrapperExecuteWithPlugins.unableToCastResult": "Returned result does not match expected type '%v'.",
 	"AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface": "The underlying driver connection does not implement the required interface '%v'.",
 	"AwsWrapperStmt.underlyingStmtDoesNotImplementRequiredInterface": "The underlying driver statement does not implement the required interface '%v'.",
-	"DsnParser.failedToSplitHostPort": "failed to split host:port in '%s', err: %w",
+	"DsnParser.failedToSplitHostPort": "Failed to split host:port in '%s', err: %w",
 	"DsnParser.invalidAddress": "Invalid address from DSN string: '%v'",
 	"DsnParser.invalidBackslash":"Invalid backslash found in DSN string: '%v'",
 	"DsnParser.invalidDatabaseNoSlash": "Invalid DSN with no slash separating the database name. DSN string: '%v'",

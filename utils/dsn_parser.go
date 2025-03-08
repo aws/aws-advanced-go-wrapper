@@ -267,6 +267,7 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 		key = strings.Trim(dsn[:eqIdx], " \t\n\r\v\f")
 		dsn = strings.TrimLeft(dsn[eqIdx+1:], " \t\n\r\v\f")
 		if len(dsn) == 0 {
+			// do nothing
 		} else if dsn[0] != '\'' {
 			end := 0
 			for ; end < len(dsn); end++ {

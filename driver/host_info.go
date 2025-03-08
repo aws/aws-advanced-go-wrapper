@@ -135,7 +135,6 @@ func (hostInfoBuilder *HostInfoBuilder) SetLastUpdateTime(lastUpdateTime time.Ti
 }
 
 func (hostInfoBuilder *HostInfoBuilder) Build() (hostInfo *HostInfo) {
-	// validate
 	err := hostInfoBuilder.checkHostIsSet()
 	if err != nil {
 		panic(err)
