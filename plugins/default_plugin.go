@@ -22,8 +22,9 @@ import (
 )
 
 type DefaultPlugin struct {
-	pluginService       awsDriver.PluginService
-	pluginManager       awsDriver.PluginManager //nolint:all
+	pluginService awsDriver.PluginService
+	// TODO: uncomment when needed.
+	// pluginManager       awsDriver.PluginManager
 	defaultConnProvider awsDriver.ConnectionProvider
 	connProviderManager awsDriver.ConnectionProviderManager
 }
@@ -37,7 +38,7 @@ func (d DefaultPlugin) GetSubscribedMethods() []string {
 	return []string{"*"}
 }
 
-func (d DefaultPlugin) Execute(methodName string, executeFunc awsDriver.ExecuteFunc, methodArgs ...any) (any, error) {
+func (d DefaultPlugin) Execute(methodName string, executeFunc awsDriver.ExecuteFunc, methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
 	return executeFunc()
 }
 

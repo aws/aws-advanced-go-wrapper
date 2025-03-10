@@ -20,11 +20,12 @@ import (
 	"database/sql/driver"
 )
 
-type OpenFunc func() (driver.Conn, error)
+type ConnectFunc func() (driver.Conn, error)
+type ExecuteFunc func() (any, any, bool, error)
 
 type PluginManager interface {
 	Init()
-	ExecuteWithSubscribedPlugins(methodName string, driverFunc ExecuteFunc) (any, error)
+	ExecuteWithSubscribedPlugins(methodName string, driverFunc ExecuteFunc) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error)
 }
 
 type ConnectionPluginManager struct {
@@ -37,11 +38,11 @@ func (pluginManager *ConnectionPluginManager) Init() {
 	pluginManager.plugins = []ConnectionPlugin{}
 }
 
-func (pluginManager *ConnectionPluginManager) ExecuteWithSubscribedPlugins(methodName string, executeFunc ExecuteFunc) (any, error) {
+func (pluginManager *ConnectionPluginManager) ExecuteWithSubscribedPlugins(methodName string, executeFunc ExecuteFunc) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
 	pluginChain := executeFunc
 	for _, plugin := range pluginManager.plugins {
 		oldPluginChain := pluginChain
-		pluginChain = func() (any, error) {
+		pluginChain = func() (any, any, bool, error) {
 			return plugin.Execute(methodName, oldPluginChain)
 		}
 	}

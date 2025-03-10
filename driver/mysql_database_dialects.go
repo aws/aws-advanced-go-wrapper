@@ -26,7 +26,7 @@ type MySQLDatabaseDialect struct {
 }
 
 func (m *MySQLDatabaseDialect) GetDialectUpdateCandidates() []string {
-	return []string{AURORA_MYSQL, RDS_MYSQL}
+	return []string{AURORA_MYSQL_DIALECT, RDS_MYSQL_DIALECT}
 }
 
 func (m *MySQLDatabaseDialect) GetSetAutoCommitQuery(autoCommit bool) (string, error) {
@@ -96,7 +96,7 @@ type RdsMySQLDatabaseDialect struct {
 }
 
 func (m *RdsMySQLDatabaseDialect) GetDialectUpdateCandidates() []string {
-	return []string{AURORA_MYSQL}
+	return []string{AURORA_MYSQL_DIALECT}
 }
 
 func (m *RdsMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {

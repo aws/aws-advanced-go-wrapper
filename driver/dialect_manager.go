@@ -23,12 +23,12 @@ import (
 )
 
 var knownDialectsByCode map[string]DatabaseDialect = map[string]DatabaseDialect{
-	MYSQL:        &MySQLDatabaseDialect{},
-	PG:           &PgDatabaseDialect{},
-	RDS_MYSQL:    &RdsMySQLDatabaseDialect{},
-	RDS_PG:       &RdsPgDatabaseDialect{},
-	AURORA_MYSQL: &AuroraMySQLDatabaseDialect{},
-	AURORA_PG:    &AuroraPgDatabaseDialect{},
+	MYSQL_DIALECT:        &MySQLDatabaseDialect{},
+	PG_DIALECT:           &PgDatabaseDialect{},
+	RDS_MYSQL_DIALECT:    &RdsMySQLDatabaseDialect{},
+	RDS_PG_DIALECT:       &RdsPgDatabaseDialect{},
+	AURORA_MYSQL_DIALECT: &AuroraMySQLDatabaseDialect{},
+	AURORA_PG_DIALECT:    &AuroraPgDatabaseDialect{},
 }
 
 type DialectProvider interface {
@@ -61,42 +61,42 @@ func (d *DialectManager) GetDialect(dsn string) (DatabaseDialect, error) {
 	if strings.Contains(dsn, "mysql") {
 		if strings.Contains(dsn, "amazonaws") {
 			d.canUpdate = false
-			d.dialectCode = AURORA_MYSQL
-			d.dialect = knownDialectsByCode[AURORA_MYSQL]
+			d.dialectCode = AURORA_MYSQL_DIALECT
+			d.dialect = knownDialectsByCode[AURORA_MYSQL_DIALECT]
 			d.logCurrentDialect()
 			return d.dialect, nil
 		}
 		if strings.Contains(dsn, "rds") {
 			d.canUpdate = true
-			d.dialectCode = RDS_MYSQL
-			d.dialect = knownDialectsByCode[RDS_MYSQL]
+			d.dialectCode = RDS_MYSQL_DIALECT
+			d.dialect = knownDialectsByCode[RDS_MYSQL_DIALECT]
 			d.logCurrentDialect()
 			return d.dialect, nil
 		}
 		d.canUpdate = true
-		d.dialectCode = MYSQL
-		d.dialect = knownDialectsByCode[MYSQL]
+		d.dialectCode = MYSQL_DIALECT
+		d.dialect = knownDialectsByCode[MYSQL_DIALECT]
 		d.logCurrentDialect()
 		return d.dialect, nil
 	}
 	if strings.Contains(dsn, "postgres") {
 		if strings.Contains(dsn, "amazonaws") {
 			d.canUpdate = false
-			d.dialectCode = AURORA_PG
-			d.dialect = knownDialectsByCode[AURORA_PG]
+			d.dialectCode = AURORA_PG_DIALECT
+			d.dialect = knownDialectsByCode[AURORA_PG_DIALECT]
 			d.logCurrentDialect()
 			return d.dialect, nil
 		}
 		if strings.Contains(dsn, "rds") {
 			d.canUpdate = true
-			d.dialectCode = RDS_PG
-			d.dialect = knownDialectsByCode[RDS_PG]
+			d.dialectCode = RDS_PG_DIALECT
+			d.dialect = knownDialectsByCode[RDS_PG_DIALECT]
 			d.logCurrentDialect()
 			return d.dialect, nil
 		}
 		d.canUpdate = true
-		d.dialectCode = PG
-		d.dialect = knownDialectsByCode[PG]
+		d.dialectCode = PG_DIALECT
+		d.dialect = knownDialectsByCode[PG_DIALECT]
 		d.logCurrentDialect()
 		return d.dialect, nil
 	}
