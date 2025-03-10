@@ -308,7 +308,7 @@ func (a *AwsWrapperTx) Commit() error {
 
 func (a *AwsWrapperTx) Rollback() error {
 	rollbackFunc := func() (any, any, bool, error) { return nil, nil, false, a.underlyingTx.Rollback() }
-	_, _, _, err := executeWithPlugins(a.pluginManager, "Tx.Commit", rollbackFunc)
+	_, _, _, err := executeWithPlugins(a.pluginManager, "Tx.Rollback", rollbackFunc)
 	return err
 }
 
@@ -381,8 +381,8 @@ func (a *AwsWrapperPgRows) ColumnTypeLength(index int) (int64, bool) {
 			return result, nil, boolean, nil
 		}
 		result, _, ok, _ := executeWithPlugins(a.pluginManager, "Rows.ColumnTypeLength", rowFunc)
-		num, num_ok := result.(int64)
-		if num_ok {
+		num, numOk := result.(int64)
+		if numOk {
 			return num, ok
 		}
 	}
@@ -434,8 +434,8 @@ func (a *AwsWrapperMySQLRows) ColumnTypeNullable(index int) (bool, bool) {
 			return nil, boolean1, boolean2, nil
 		}
 		_, result, ok, _ := executeWithPlugins(a.pluginManager, "Rows.ColumnTypeNullable", rowFunc)
-		nullable, bool_ok := result.(bool)
-		if bool_ok {
+		nullable, boolOk := result.(bool)
+		if boolOk {
 			return nullable, ok
 		}
 	}

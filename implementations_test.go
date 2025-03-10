@@ -33,7 +33,6 @@ func TestImplementations(t *testing.T) {
 	var _ awsDriver.DatabaseDialect = (*awsDriver.AuroraPgDatabaseDialect)(nil)
 	var _ awsDriver.DialectProvider = (*awsDriver.DialectManager)(nil)
 	var _ awsDriver.PluginManager = (*awsDriver.ConnectionPluginManager)(nil)
-	var _ awsDriver.PluginManager = (*awsDriver.ConnectionPluginManager)(nil)
 	var _ awsDriver.PluginService = (*awsDriver.PluginServiceImpl)(nil)
 	var _ driver.Driver = (*awsDriver.AwsWrapperDriver)(nil)
 	var _ driver.Conn = (*awsDriver.AwsWrapperConn)(nil)
