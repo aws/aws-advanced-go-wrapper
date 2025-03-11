@@ -20,6 +20,7 @@ import (
 	"awssql/container"
 	awsDriver "awssql/driver"
 	"awssql/driver_infrastructure"
+	"awssql/error_util"
 	"awssql/plugin_helpers"
 	"context"
 	"database/sql/driver"
@@ -29,30 +30,30 @@ import (
 )
 
 func TestAwsWrapperError(t *testing.T) {
-	testError := driver_infrastructure.NewUnavailableHostError("test")
+	testError := error_util.NewUnavailableHostError("test")
 	if testError.IsFailoverErrorType() {
 		t.Errorf("Should return false, UnavailableHostError is not a failover error type.")
 	}
-	if !testError.IsType(driver_infrastructure.UnavailableHostErrorType) {
+	if !testError.IsType(error_util.UnavailableHostErrorType) {
 		t.Errorf("Should return true, error is a UnavailableHostErrorType.")
 	}
-	if testError.IsType(driver_infrastructure.UnsupportedMethodErrorType) {
+	if testError.IsType(error_util.UnsupportedMethodErrorType) {
 		t.Errorf("Should return false, error is not a UnsupportedMethodErrorType.")
 	}
 	if !strings.Contains(testError.Error(), "test") {
 		t.Errorf("Error should include 'test', improperly handles message.")
 	}
 
-	if !driver_infrastructure.FailoverSuccessError.IsFailoverErrorType() {
+	if !error_util.FailoverSuccessError.IsFailoverErrorType() {
 		t.Errorf("Should return true, FailoverSuccessError is a failover error type.")
 	}
-	if !driver_infrastructure.FailoverSuccessError.IsType(driver_infrastructure.FailoverSuccessErrorType) {
+	if !error_util.FailoverSuccessError.IsType(error_util.FailoverSuccessErrorType) {
 		t.Errorf("Should return true, error is a FailoverSuccessErrorType.")
 	}
-	if driver_infrastructure.FailoverSuccessError.IsType(driver_infrastructure.UnsupportedMethodErrorType) {
+	if error_util.FailoverSuccessError.IsType(error_util.UnsupportedMethodErrorType) {
 		t.Errorf("Should return false, error is not a UnsupportedMethodErrorType.")
 	}
-	if driver_infrastructure.FailoverSuccessError.Error() != driver_infrastructure.GetMessage("Failover.connectionChangedError") {
+	if error_util.FailoverSuccessError.Error() != error_util.GetMessage("Failover.connectionChangedError") {
 		t.Errorf("Should return message attached to Failover.connectionChangedError, improperly handles message.")
 	}
 }

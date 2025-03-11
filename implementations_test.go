@@ -19,14 +19,15 @@ package main
 import (
 	awsDriver "awssql/driver"
 	"awssql/driver_infrastructure"
+	"awssql/error_util"
 	"awssql/plugin_helpers"
+	"awssql/plugins"
 	"database/sql/driver"
 	"testing"
 )
 
 func TestImplementations(t *testing.T) {
 	// Check for correct implementations of interfaces on left.
-	var _ error = (*driver_infrastructure.AwsWrapperError)(nil)
 	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.MySQLDatabaseDialect)(nil)
 	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.RdsMySQLDatabaseDialect)(nil)
 	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.AuroraMySQLDatabaseDialect)(nil)
@@ -36,6 +37,10 @@ func TestImplementations(t *testing.T) {
 	var _ driver_infrastructure.DialectProvider = (*driver_infrastructure.DialectManager)(nil)
 	var _ driver_infrastructure.PluginManager = (*plugin_helpers.PluginManagerImpl)(nil)
 	var _ driver_infrastructure.PluginService = (*plugin_helpers.PluginServiceImpl)(nil)
+	var _ driver_infrastructure.HostSelector = (*driver_infrastructure.RandomHostSelector)(nil)
+	var _ driver_infrastructure.HostListProvider = (*driver_infrastructure.DsnHostListProvider)(nil)
+	var _ driver_infrastructure.ConnectionProvider = (*driver_infrastructure.DriverConnectionProvider)(nil)
+	var _ driver_infrastructure.ConnectionPlugin = (*plugins.DefaultPlugin)(nil)
 	var _ driver.Driver = (*awsDriver.AwsWrapperDriver)(nil)
 	var _ driver.Conn = (*awsDriver.AwsWrapperConn)(nil)
 	var _ driver.Pinger = (*awsDriver.AwsWrapperConn)(nil)
@@ -59,4 +64,5 @@ func TestImplementations(t *testing.T) {
 	var _ driver.RowsNextResultSet = (*awsDriver.AwsWrapperMySQLRows)(nil)
 	var _ driver.RowsColumnTypeScanType = (*awsDriver.AwsWrapperMySQLRows)(nil)
 	var _ driver.RowsColumnTypeNullable = (*awsDriver.AwsWrapperMySQLRows)(nil)
+	var _ error = (*error_util.AwsWrapperError)(nil)
 }

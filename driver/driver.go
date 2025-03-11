@@ -19,6 +19,7 @@ package driver
 import (
 	"awssql/container"
 	"awssql/driver_infrastructure"
+	"awssql/error_util"
 	"context"
 	"database/sql"
 	"database/sql/driver"
@@ -95,7 +96,7 @@ func (c *AwsWrapperConn) Prepare(query string) (driver.Stmt, error) {
 func (c *AwsWrapperConn) PrepareContext(ctx context.Context, query string) (driver.Stmt, error) {
 	prepareCtx, ok := c.underlyingConn.(driver.ConnPrepareContext)
 	if !ok {
-		return nil, errors.New(driver_infrastructure.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.ConnPrepareContext"))
+		return nil, errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.ConnPrepareContext"))
 	}
 	prepareFunc := func() (any, any, bool, error) {
 		result, err := prepareCtx.PrepareContext(ctx, query)
@@ -121,7 +122,7 @@ func (c *AwsWrapperConn) Begin() (driver.Tx, error) {
 func (c *AwsWrapperConn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
 	beginTx, ok := c.underlyingConn.(driver.ConnBeginTx)
 	if !ok {
-		return nil, errors.New(driver_infrastructure.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.ConnBeginTx"))
+		return nil, errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.ConnBeginTx"))
 	}
 	beginFunc := func() (any, any, bool, error) {
 		result, err := beginTx.BeginTx(ctx, opts)
@@ -133,7 +134,7 @@ func (c *AwsWrapperConn) BeginTx(ctx context.Context, opts driver.TxOptions) (dr
 func (c *AwsWrapperConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
 	queryerCtx, ok := c.underlyingConn.(driver.QueryerContext)
 	if !ok {
-		return nil, errors.New(driver_infrastructure.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.QueryerContext"))
+		return nil, errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.QueryerContext"))
 	}
 	queryFunc := func() (any, any, bool, error) {
 		result, err := queryerCtx.QueryContext(ctx, query, args)
@@ -145,7 +146,7 @@ func (c *AwsWrapperConn) QueryContext(ctx context.Context, query string, args []
 func (c *AwsWrapperConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
 	execerCtx, ok := c.underlyingConn.(driver.ExecerContext)
 	if !ok {
-		return nil, errors.New(driver_infrastructure.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.ExecerContext"))
+		return nil, errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.ExecerContext"))
 	}
 	execFunc := func() (any, any, bool, error) {
 		result, err := execerCtx.ExecContext(ctx, query, args)
@@ -157,7 +158,7 @@ func (c *AwsWrapperConn) ExecContext(ctx context.Context, query string, args []d
 func (c *AwsWrapperConn) Ping(ctx context.Context) error {
 	pinger, ok := c.underlyingConn.(driver.Pinger)
 	if !ok {
-		return errors.New(driver_infrastructure.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.Pinger"))
+		return errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.Pinger"))
 	}
 	pingFunc := func() (any, any, bool, error) { return nil, nil, false, pinger.Ping(ctx) }
 	_, _, _, err := ExecuteWithPlugins(c.pluginManager, "Conn.Ping", pingFunc)
@@ -177,7 +178,7 @@ func (c *AwsWrapperConn) IsValid() bool {
 func (c *AwsWrapperConn) ResetSession(ctx context.Context) error {
 	resetter, ok := c.underlyingConn.(driver.SessionResetter)
 	if !ok {
-		return errors.New(driver_infrastructure.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.SessionResetter"))
+		return errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.SessionResetter"))
 	}
 	resetSessionFunc := func() (any, any, bool, error) { return nil, nil, false, resetter.ResetSession(ctx) }
 	_, _, _, err := ExecuteWithPlugins(c.pluginManager, "Conn.ResetSession", resetSessionFunc)
@@ -187,7 +188,7 @@ func (c *AwsWrapperConn) ResetSession(ctx context.Context) error {
 func (c *AwsWrapperConn) CheckNamedValue(val *driver.NamedValue) error {
 	namedValueChecker, ok := c.underlyingConn.(driver.NamedValueChecker)
 	if !ok {
-		return errors.New(driver_infrastructure.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.NamedValueChecker"))
+		return errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.NamedValueChecker"))
 	}
 
 	checkNamedValueFunc := func() (any, any, bool, error) { return nil, nil, false, namedValueChecker.CheckNamedValue(val) }
@@ -218,7 +219,7 @@ func (a *AwsWrapperStmt) Exec(args []driver.Value) (driver.Result, error) {
 func (a *AwsWrapperStmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
 	execerCtx, ok := a.underlyingStmt.(driver.StmtExecContext)
 	if !ok {
-		return nil, errors.New(driver_infrastructure.GetMessage("AwsWrapperStmt.underlyingStmtDoesNotImplementRequiredInterface", "driver.StmtExecContext"))
+		return nil, errors.New(error_util.GetMessage("AwsWrapperStmt.underlyingStmtDoesNotImplementRequiredInterface", "driver.StmtExecContext"))
 	}
 	execFunc := func() (any, any, bool, error) {
 		result, err := execerCtx.ExecContext(ctx, args)
@@ -248,7 +249,7 @@ func (a *AwsWrapperStmt) Query(args []driver.Value) (driver.Rows, error) {
 func (a *AwsWrapperStmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
 	queryerCtx, ok := a.underlyingStmt.(driver.StmtQueryContext)
 	if !ok {
-		return nil, errors.New(driver_infrastructure.GetMessage("AwsWrapperStmt.underlyingStmtDoesNotImplementRequiredInterface", "driver.StmtQueryContext"))
+		return nil, errors.New(error_util.GetMessage("AwsWrapperStmt.underlyingStmtDoesNotImplementRequiredInterface", "driver.StmtQueryContext"))
 	}
 	queryFunc := func() (any, any, bool, error) {
 		result, err := queryerCtx.QueryContext(ctx, args)
@@ -284,7 +285,7 @@ func (a *AwsWrapperResult) LastInsertId() (int64, error) {
 		if ok {
 			return num, nil
 		}
-		err = errors.New(driver_infrastructure.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "int64"))
+		err = errors.New(error_util.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "int64"))
 	}
 	return -1, err
 }
@@ -300,7 +301,7 @@ func (a *AwsWrapperResult) RowsAffected() (int64, error) {
 		if ok {
 			return num, nil
 		}
-		err = errors.New(driver_infrastructure.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "int64"))
+		err = errors.New(error_util.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "int64"))
 	}
 	return -1, err
 }
@@ -416,7 +417,7 @@ func (a *AwsWrapperMySQLRows) HasNextResultSet() bool {
 func (a *AwsWrapperMySQLRows) NextResultSet() error {
 	rowInterface, ok := a.underlyingRows.(driver.RowsNextResultSet)
 	if !ok {
-		return errors.New(driver_infrastructure.GetMessage("AwsWrapperRows.underlyingRowsDoNotImplementRequiredInterface", "driver.RowsNextResultSet"))
+		return errors.New(error_util.GetMessage("AwsWrapperRows.underlyingRowsDoNotImplementRequiredInterface", "driver.RowsNextResultSet"))
 	}
 	rowFunc := func() (any, any, bool, error) { return nil, nil, false, rowInterface.NextResultSet() }
 	_, _, _, err := ExecuteWithPlugins(a.pluginManager, "Rows.NextResultSet", rowFunc)

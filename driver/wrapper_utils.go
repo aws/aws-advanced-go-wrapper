@@ -18,6 +18,7 @@ package driver
 
 import (
 	"awssql/driver_infrastructure"
+	"awssql/error_util"
 	"database/sql/driver"
 	"errors"
 )
@@ -48,7 +49,7 @@ func queryWithPlugins(
 			}
 			return &rows, nil
 		}
-		err = errors.New(driver_infrastructure.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Rows"))
+		err = errors.New(error_util.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Rows"))
 	}
 
 	return nil, err
@@ -61,7 +62,7 @@ func execWithPlugins(pluginManager driver_infrastructure.PluginManager, methodNa
 		if ok {
 			return &AwsWrapperResult{driverResult, pluginManager}, nil
 		}
-		err = errors.New(driver_infrastructure.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Result"))
+		err = errors.New(error_util.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Result"))
 	}
 
 	return nil, err
@@ -78,7 +79,7 @@ func prepareWithPlugins(
 		if ok {
 			return &AwsWrapperStmt{driverStmt, pluginManager, conn}, nil
 		}
-		err = errors.New(driver_infrastructure.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Stmt"))
+		err = errors.New(error_util.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Stmt"))
 	}
 	return nil, err
 }
@@ -90,7 +91,7 @@ func beginWithPlugins(pluginManager driver_infrastructure.PluginManager, methodN
 		if ok {
 			return &AwsWrapperTx{driverTx, pluginManager}, nil
 		}
-		err = errors.New(driver_infrastructure.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Tx"))
+		err = errors.New(error_util.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Tx"))
 	}
 	return nil, err
 }

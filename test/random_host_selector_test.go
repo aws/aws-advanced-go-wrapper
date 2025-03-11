@@ -18,6 +18,7 @@ package test
 
 import (
 	"awssql/driver_infrastructure"
+	"awssql/host_info_util"
 	"testing"
 )
 
@@ -25,13 +26,13 @@ func TestGetHostGivenUnavailableHost(t *testing.T) {
 	for i := 0; i < 50; i++ {
 		props := map[string]string{}
 
-		unavailableHost := driver_infrastructure.HostInfo{Host: "someUnavailableHost", Role: driver_infrastructure.READER, Availability: driver_infrastructure.UNAVAILABLE}
-		availableHost := driver_infrastructure.HostInfo{Host: "someAvailableHost", Role: driver_infrastructure.READER, Availability: driver_infrastructure.AVAILABLE}
-		hosts := []driver_infrastructure.HostInfo{unavailableHost, availableHost}
+		unavailableHost := host_info_util.HostInfo{Host: "someUnavailableHost", Role: host_info_util.READER, Availability: host_info_util.UNAVAILABLE}
+		availableHost := host_info_util.HostInfo{Host: "someAvailableHost", Role: host_info_util.READER, Availability: host_info_util.AVAILABLE}
+		hosts := []host_info_util.HostInfo{unavailableHost, availableHost}
 
 		hostSelector := driver_infrastructure.RandomHostSelector{}
 
-		actualHost, err := hostSelector.GetHost(hosts, driver_infrastructure.READER, props)
+		actualHost, err := hostSelector.GetHost(hosts, host_info_util.READER, props)
 
 		if err != nil {
 			t.Fatalf("Unexpected error getting host: %v on iteration %v", err, i)
@@ -46,21 +47,21 @@ func TestGetHostGivenMultipleUnavailableHosts(t *testing.T) {
 	for i := 0; i < 50; i++ {
 		props := map[string]string{}
 
-		hosts := []driver_infrastructure.HostInfo{
-			{Host: "someUnavailableHost", Role: driver_infrastructure.READER, Availability: driver_infrastructure.UNAVAILABLE},
-			{Host: "someUnavailableHost", Role: driver_infrastructure.READER, Availability: driver_infrastructure.UNAVAILABLE},
-			{Host: "someAvailableHost", Role: driver_infrastructure.READER, Availability: driver_infrastructure.AVAILABLE},
-			{Host: "someAvailableHost", Role: driver_infrastructure.READER, Availability: driver_infrastructure.AVAILABLE},
+		hosts := []host_info_util.HostInfo{
+			{Host: "someUnavailableHost", Role: host_info_util.READER, Availability: host_info_util.UNAVAILABLE},
+			{Host: "someUnavailableHost", Role: host_info_util.READER, Availability: host_info_util.UNAVAILABLE},
+			{Host: "someAvailableHost", Role: host_info_util.READER, Availability: host_info_util.AVAILABLE},
+			{Host: "someAvailableHost", Role: host_info_util.READER, Availability: host_info_util.AVAILABLE},
 		}
 
 		hostSelector := driver_infrastructure.RandomHostSelector{}
 
-		actualHost, err := hostSelector.GetHost(hosts, driver_infrastructure.READER, props)
+		actualHost, err := hostSelector.GetHost(hosts, host_info_util.READER, props)
 
 		if err != nil {
 			t.Fatalf("Unexpected error getting host: %v on iteration %v", err, i)
 		}
-		if actualHost.Availability != driver_infrastructure.AVAILABLE {
+		if actualHost.Availability != host_info_util.AVAILABLE {
 			t.Fatalf("Expected available host on iteration %v", i)
 		}
 	}

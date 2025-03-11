@@ -17,14 +17,15 @@
 package driver_infrastructure
 
 import (
+	"awssql/host_info_util"
 	"database/sql/driver"
 )
 
 type HostListProvider interface {
-	Refresh(conn driver.Conn) []HostInfo
-	ForceRefresh(conn driver.Conn) []HostInfo
-	GetHostRole(conn driver.Conn) HostRole
-	IdentifyConnection(conn driver.Conn) HostInfo
+	Refresh(conn driver.Conn) []host_info_util.HostInfo
+	ForceRefresh(conn driver.Conn) []host_info_util.HostInfo
+	GetHostRole(conn driver.Conn) host_info_util.HostRole
+	IdentifyConnection(conn driver.Conn) host_info_util.HostInfo
 	GetClusterId() string
 	IsStaticHostListProvider() bool
 }

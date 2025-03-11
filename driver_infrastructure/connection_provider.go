@@ -17,12 +17,13 @@
 package driver_infrastructure
 
 import (
+	"awssql/host_info_util"
 	"database/sql/driver"
 )
 
 type ConnectionProvider interface {
-	AcceptsUrl(hostInfo HostInfo, props map[string]string) bool
-	AcceptsStrategy(role HostRole, strategy string) bool
-	GetHostInfoByStrategy(hosts []HostInfo, role HostRole, strategy string, props map[string]string) (HostInfo, error)
-	Connect(hostInfo HostInfo, props map[string]string, pluginService *PluginService) (driver.Conn, error)
+	AcceptsUrl(hostInfo host_info_util.HostInfo, props map[string]string) bool
+	AcceptsStrategy(role host_info_util.HostRole, strategy string) bool
+	GetHostInfoByStrategy(hosts []host_info_util.HostInfo, role host_info_util.HostRole, strategy string, props map[string]string) (host_info_util.HostInfo, error)
+	Connect(hostInfo host_info_util.HostInfo, props map[string]string, pluginService *PluginService) (driver.Conn, error)
 }

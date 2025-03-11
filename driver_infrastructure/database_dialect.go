@@ -31,6 +31,5 @@ type DatabaseDialect interface {
 	GetSetCatalogQuery(catalog string) (string, error)
 	GetDialectUpdateCandidates() []string
 	IsDialect(conn driver.Conn) bool
-	// TODO: implement GetHostListProvider, see ticket: "dev: RdsHostListProvider".
-	// GetHostListProvider() HostListProvider
+	GetHostListProvider(props map[string]string, initialDsn string, hostListProviderService HostListProviderService) *HostListProvider
 }

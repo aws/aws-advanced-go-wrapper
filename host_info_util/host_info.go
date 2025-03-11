@@ -14,11 +14,27 @@
   limitations under the License.
 */
 
-package driver_infrastructure
+package host_info_util
 
 import (
+	"awssql/error_util"
 	"strconv"
 	"time"
+)
+
+type HostAvailability string
+
+const (
+	AVAILABLE   HostAvailability = "available"
+	UNAVAILABLE HostAvailability = "unavailable"
+)
+
+type HostRole string
+
+const (
+	READER  HostRole = "reader"
+	WRITER  HostRole = "writer"
+	UNKNOWN HostRole = "unknown"
 )
 
 const (
@@ -170,7 +186,7 @@ func (hostInfoBuilder *HostInfoBuilder) Build() (hostInfo *HostInfo) {
 
 func (hostInfoBuilder *HostInfoBuilder) checkHostIsSet() error {
 	if hostInfoBuilder.host == "" {
-		return NewIllegalArgumentError(GetMessage("HostInfoBuilder.InvalidEmptyHost"))
+		return error_util.NewIllegalArgumentError(error_util.GetMessage("HostInfoBuilder.InvalidEmptyHost"))
 	}
 	return nil
 }

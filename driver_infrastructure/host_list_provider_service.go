@@ -16,15 +16,18 @@
 
 package driver_infrastructure
 
-import "database/sql/driver"
+import (
+	"awssql/host_info_util"
+	"database/sql/driver"
+)
 
 type HostListProviderService interface {
 	IsStaticHostListProvider() bool
 	GetHostListProvider() HostListProvider
 	SetHostListProvider(hostListProvider HostListProvider)
-	SetInitialConnectionHostInfo(info HostInfo)
-	GetInitialConnectionHostInfo() HostInfo
+	SetInitialConnectionHostInfo(info host_info_util.HostInfo)
+	GetInitialConnectionHostInfo() host_info_util.HostInfo
 	GetCurrentConnection() *driver.Conn
-	GetDialect() Dialect
-	GetHostInfoBuilder() HostInfoBuilder
+	GetDialect() DatabaseDialect
+	GetHostInfoBuilder() host_info_util.HostInfoBuilder
 }

@@ -18,6 +18,8 @@ package plugin_helpers
 
 import (
 	"awssql/driver_infrastructure"
+	"awssql/error_util"
+	"awssql/host_info_util"
 	"database/sql/driver"
 	"slices"
 )
@@ -68,14 +70,14 @@ func (chain *PluginChain) ConnectAddToHead(plugin driver_infrastructure.Connecti
 
 func (chain *PluginChain) Execute(pluginFunc driver_infrastructure.PluginExecFunc) (any, any, bool, error) {
 	if chain.execChain == nil {
-		panic(driver_infrastructure.GetMessage("PluginManager.pipelineNone"))
+		panic(error_util.GetMessage("PluginManager.pipelineNone"))
 	}
 	return chain.execChain(pluginFunc, chain.execFunc)
 }
 
 func (chain *PluginChain) Connect(pluginFunc driver_infrastructure.PluginConnectFunc) (any, error) {
 	if chain.connectChain == nil {
-		panic(driver_infrastructure.GetMessage("PluginManager.pipelineNone"))
+		panic(error_util.GetMessage("PluginManager.pipelineNone"))
 	}
 	return chain.connectChain(pluginFunc, chain.connectFunc)
 }
@@ -131,7 +133,7 @@ func (pluginManager *PluginManagerImpl) InitHostProvider(
 		return nil, nil, true, nil
 	}
 	targetFunc := func() (any, any, bool, error) {
-		return nil, nil, false, driver_infrastructure.ShouldNotBeCalledError
+		return nil, nil, false, error_util.ShouldNotBeCalledError
 	}
 	_, _, _, err := pluginManager.ExecuteWithSubscribedPlugins(INIT_HOST_PROVIDER_METHOD, pluginFunc, targetFunc)
 	if err != nil {
@@ -142,14 +144,14 @@ func (pluginManager *PluginManagerImpl) InitHostProvider(
 }
 
 func (pluginManager *PluginManagerImpl) Connect(
-	hostInfo driver_infrastructure.HostInfo,
+	hostInfo host_info_util.HostInfo,
 	props map[string]string,
 	isInitialConnection bool) (driver.Conn, error) {
 	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (any, error)) (any, error) {
 		return plugin.Connect(hostInfo, props, isInitialConnection, targetFunc)
 	}
 	targetFunc := func() (any, error) {
-		return nil, driver_infrastructure.ShouldNotBeCalledError
+		return nil, error_util.ShouldNotBeCalledError
 	}
 	result, err := pluginManager.ConnectWithSubscribedPlugins(CONNECT_METHOD, pluginFunc, targetFunc)
 	conn, ok := result.(driver.Conn)
@@ -160,14 +162,14 @@ func (pluginManager *PluginManagerImpl) Connect(
 }
 
 func (pluginManager *PluginManagerImpl) ForceConnect(
-	hostInfo driver_infrastructure.HostInfo,
+	hostInfo host_info_util.HostInfo,
 	props map[string]string,
 	isInitialConnection bool) (driver.Conn, error) {
 	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (any, error)) (any, error) {
 		return plugin.ForceConnect(hostInfo, props, isInitialConnection, targetFunc)
 	}
 	targetFunc := func() (any, error) {
-		return nil, driver_infrastructure.ShouldNotBeCalledError
+		return nil, error_util.ShouldNotBeCalledError
 	}
 	result, err := pluginManager.ConnectWithSubscribedPlugins(FORCE_CONNECT_METHOD, pluginFunc, targetFunc)
 	conn, ok := result.(driver.Conn)
@@ -231,7 +233,7 @@ func (pluginManager *PluginManagerImpl) MakePluginChain(
 	return chain
 }
 
-func (pluginManager *PluginManagerImpl) AcceptsStrategy(role driver_infrastructure.HostRole, strategy string) bool {
+func (pluginManager *PluginManagerImpl) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
 	for i := 0; i < len(pluginManager.plugins); i++ {
 		currentPlugin := *pluginManager.plugins[i]
 		pluginSubscribedMethods := currentPlugin.GetSubscribedMethods()
@@ -288,9 +290,9 @@ func (pluginManager *PluginManagerImpl) NotifySubscribedPlugins(
 }
 
 func (pluginManager *PluginManagerImpl) GetHostInfoByStrategy(
-	role driver_infrastructure.HostRole,
+	role host_info_util.HostRole,
 	strategy string,
-	hosts []driver_infrastructure.HostInfo) (driver_infrastructure.HostInfo, error) {
+	hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error) {
 	for i := 0; i < len(pluginManager.plugins); i++ {
 		currentPlugin := *pluginManager.plugins[i]
 		isSubscribed := slices.Contains(currentPlugin.GetSubscribedMethods(), strategy)
@@ -304,8 +306,8 @@ func (pluginManager *PluginManagerImpl) GetHostInfoByStrategy(
 		}
 	}
 
-	return driver_infrastructure.HostInfo{}, driver_infrastructure.NewUnsupportedStrategyError(
-		driver_infrastructure.GetMessage("The wrapper does not support the requested host selection strategy: " + strategy))
+	return host_info_util.HostInfo{}, error_util.NewUnsupportedStrategyError(
+		error_util.GetMessage("The wrapper does not support the requested host selection strategy: " + strategy))
 }
 
 func (pluginManager *PluginManagerImpl) GetDefaultConnectionProvider() *driver_infrastructure.ConnectionProvider {
