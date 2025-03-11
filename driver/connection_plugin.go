@@ -26,7 +26,7 @@ type ConnectionPlugin interface {
 	Connect(hostInfo HostInfo, properties map[string]any, isInitialConnection bool, connectFunc ConnectFunc) (*driver.Conn, error)
 	ForceConnect(hostInfo HostInfo, properties map[string]any, isInitialConnection bool, connectFunc ConnectFunc) (*driver.Conn, error)
 	AcceptsStrategy(role HostRole, strategy string) bool
-	GetHostInfoByStrategy(role HostRole, strategy string, hosts []HostInfo) HostInfo
+	GetHostInfoByStrategy(role HostRole, strategy string, hosts []HostInfo) (HostInfo, error)
 	NotifyConnectionChanged() OldConnectionSuggestedAction
 	NotifyHostListChanged(changes map[HostChangeOptions]bool)
 	InitHostProvider(initialUrl string, props map[string]any, hostListProviderService HostListProviderService, initHostProviderFunc func())

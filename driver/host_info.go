@@ -80,6 +80,14 @@ func (hostInfo *HostInfo) isPortSpecified() bool {
 	return hostInfo.Port != HOST_NO_PORT
 }
 
+func (hostInfo *HostInfo) Equals(host HostInfo) bool {
+	return hostInfo.Host == host.Host &&
+		hostInfo.Port == host.Port &&
+		hostInfo.Availability == host.Availability &&
+		hostInfo.Role == host.Role &&
+		hostInfo.Weight == host.Weight
+}
+
 type HostInfoBuilder struct {
 	host           string
 	port           int

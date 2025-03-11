@@ -61,13 +61,15 @@ func (d DefaultPlugin) connectInternal(hostInfo awsDriver.HostInfo, properties m
 }
 
 func (d DefaultPlugin) AcceptsStrategy(role awsDriver.HostRole, strategy string) bool {
-	//TODO implement me
-	panic("implement me")
+	return d.connProviderManager.AcceptsStrategy(role, strategy)
 }
 
-func (d DefaultPlugin) GetHostInfoByStrategy(role awsDriver.HostRole, strategy string, hosts []awsDriver.HostInfo) awsDriver.HostInfo {
-	//TODO implement me
-	panic("implement me")
+func (d DefaultPlugin) GetHostInfoByStrategy(role awsDriver.HostRole, strategy string, hosts []awsDriver.HostInfo) (awsDriver.HostInfo, error) {
+	if len(hosts) == 0 {
+		return awsDriver.HostInfo{}, awsDriver.NewGenericAwsWrapperError(awsDriver.GetMessage("DefaultConnectionPlugin.noHostsAvailable"))
+	}
+
+	return d.connProviderManager.GetHostInfoByStrategy(hosts, role, strategy, d.pluginService.GetProperties())
 }
 
 func (d DefaultPlugin) NotifyConnectionChanged() awsDriver.OldConnectionSuggestedAction {

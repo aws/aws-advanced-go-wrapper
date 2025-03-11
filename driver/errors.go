@@ -19,34 +19,38 @@ package driver
 type AwsWrapperErrorType int
 
 const (
-	UnknownErrorType                      AwsWrapperErrorType = 0
+	GenericAwsWrapperErrorType            AwsWrapperErrorType = 0
 	UnsupportedStrategyErrorType          AwsWrapperErrorType = 1
 	UnsupportedMethodErrorType            AwsWrapperErrorType = 2
 	IllegalArgumentErrorType              AwsWrapperErrorType = 3
-	FailoverSuccessErrorType              AwsWrapperErrorType = 4
-	FailoverFailedErrorType               AwsWrapperErrorType = 5
-	TransactionResolutionUnknownErrorType AwsWrapperErrorType = 6
-	LoginErrorType                        AwsWrapperErrorType = 7
-	InternalQueryTimeoutErrorType         AwsWrapperErrorType = 8
-	UnavailableHostErrorType              AwsWrapperErrorType = 9
-	DsnParsingErrorType                   AwsWrapperErrorType = 10
+	LoginErrorType                        AwsWrapperErrorType = 4
+	InternalQueryTimeoutErrorType         AwsWrapperErrorType = 5
+	UnavailableHostErrorType              AwsWrapperErrorType = 6
+	DsnParsingErrorType                   AwsWrapperErrorType = 7
+	FailoverSuccessErrorType              AwsWrapperErrorType = 300
+	FailoverFailedErrorType               AwsWrapperErrorType = 301
+	TransactionResolutionUnknownErrorType AwsWrapperErrorType = 302
 )
 
 type AwsWrapperError struct {
-	message   string
-	errorType AwsWrapperErrorType
+	Message   string
+	ErrorType AwsWrapperErrorType
 }
 
 func (a *AwsWrapperError) Error() string {
-	return a.message
+	return a.Message
 }
 
 func (a *AwsWrapperError) IsType(errorType AwsWrapperErrorType) bool {
-	return a.errorType == errorType
+	return a.ErrorType == errorType
 }
 
 func (a *AwsWrapperError) IsFailoverErrorType() bool {
-	return a.errorType == FailoverSuccessErrorType || a.errorType == FailoverFailedErrorType || a.errorType == TransactionResolutionUnknownErrorType
+	return a.ErrorType >= 300
+}
+
+func NewGenericAwsWrapperError(message string) *AwsWrapperError {
+	return &AwsWrapperError{message, GenericAwsWrapperErrorType}
 }
 
 func NewUnsupportedStrategyError(strategy string, connectionProvider string) *AwsWrapperError {

@@ -71,7 +71,7 @@ func (p *PgDatabaseDialect) GetSetTransactionIsolationQuery(level TransactionIso
 	case TRANSACTION_SERIALIZABLE:
 		transactionIsolationLevel = "SERIALIZABLE"
 	default:
-		return "", &AwsWrapperError{GetMessage("Conn.invalidTransactionIsolationLevel", level), 0}
+		return "", NewGenericAwsWrapperError(GetMessage("Conn.invalidTransactionIsolationLevel", level))
 	}
 	return fmt.Sprintf("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL %s", transactionIsolationLevel), nil
 }
