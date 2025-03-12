@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-package driver
+package driver_infrastructure
 
 type HostRole string
 

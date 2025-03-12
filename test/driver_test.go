@@ -14,9 +14,13 @@
   limitations under the License.
 */
 
-package driver
+package test
 
 import (
+	"awssql/container"
+	awsDriver "awssql/driver"
+	"awssql/driver_infrastructure"
+	"awssql/plugin_helpers"
 	"context"
 	"database/sql/driver"
 	"errors"
@@ -25,37 +29,37 @@ import (
 )
 
 func TestAwsWrapperError(t *testing.T) {
-	testError := NewUnavailableHostError("test")
+	testError := driver_infrastructure.NewUnavailableHostError("test")
 	if testError.IsFailoverErrorType() {
 		t.Errorf("Should return false, UnavailableHostError is not a failover error type.")
 	}
-	if !testError.IsType(UnavailableHostErrorType) {
+	if !testError.IsType(driver_infrastructure.UnavailableHostErrorType) {
 		t.Errorf("Should return true, error is a UnavailableHostErrorType.")
 	}
-	if testError.IsType(UnsupportedMethodErrorType) {
+	if testError.IsType(driver_infrastructure.UnsupportedMethodErrorType) {
 		t.Errorf("Should return false, error is not a UnsupportedMethodErrorType.")
 	}
 	if !strings.Contains(testError.Error(), "test") {
 		t.Errorf("Error should include 'test', improperly handles message.")
 	}
 
-	if !FailoverSuccessError.IsFailoverErrorType() {
+	if !driver_infrastructure.FailoverSuccessError.IsFailoverErrorType() {
 		t.Errorf("Should return true, FailoverSuccessError is a failover error type.")
 	}
-	if !FailoverSuccessError.IsType(FailoverSuccessErrorType) {
+	if !driver_infrastructure.FailoverSuccessError.IsType(driver_infrastructure.FailoverSuccessErrorType) {
 		t.Errorf("Should return true, error is a FailoverSuccessErrorType.")
 	}
-	if FailoverSuccessError.IsType(UnsupportedMethodErrorType) {
+	if driver_infrastructure.FailoverSuccessError.IsType(driver_infrastructure.UnsupportedMethodErrorType) {
 		t.Errorf("Should return false, error is not a UnsupportedMethodErrorType.")
 	}
-	if FailoverSuccessError.Error() != GetMessage("Failover.connectionChangedError") {
+	if driver_infrastructure.FailoverSuccessError.Error() != driver_infrastructure.GetMessage("Failover.connectionChangedError") {
 		t.Errorf("Should return message attached to Failover.connectionChangedError, improperly handles message.")
 	}
 }
 
 func TestIsDialectPg(t *testing.T) {
 	testConn := MockDriverConn{nil}
-	pgDialect := PgDatabaseDialect{}
+	pgDialect := driver_infrastructure.PgDatabaseDialect{}
 	implementsQueryer := pgDialect.IsDialect(testConn)
 	if implementsQueryer {
 		t.Errorf("Should return false, connection does not implement QueryContext.")
@@ -77,7 +81,7 @@ func TestIsDialectPg(t *testing.T) {
 		t.Errorf("Should return true, query results in a row.")
 	}
 
-	rdsPgDialect := RdsPgDatabaseDialect{}
+	rdsPgDialect := driver_infrastructure.RdsPgDatabaseDialect{}
 
 	testConnWithQuery.updateQueryRow([]string{"rds", "aurora"}, []driver.Value{false, false})
 	returnsRow = rdsPgDialect.IsDialect(testConnWithQuery)
@@ -95,7 +99,7 @@ func TestIsDialectPg(t *testing.T) {
 		t.Errorf("Should return true as is a RDS dialect.")
 	}
 
-	auroraPgDialect := AuroraPgDatabaseDialect{}
+	auroraPgDialect := driver_infrastructure.AuroraPgDatabaseDialect{}
 
 	testConnWithQuery.updateQueryRow([]string{"extensions"}, []driver.Value{false})
 	returnsRow = auroraPgDialect.IsDialect(testConnWithQuery)
@@ -110,7 +114,7 @@ func TestIsDialectPg(t *testing.T) {
 }
 
 func TestIsDialectMySQL(t *testing.T) {
-	mySqlDialect := MySQLDatabaseDialect{}
+	mySqlDialect := driver_infrastructure.MySQLDatabaseDialect{}
 	testConnWithQuery := MockConn{nil, nil, nil, nil, true}
 
 	testConnWithQuery.updateQueryRow([]string{"variable_name"}, []driver.Value{"version_comment"})
@@ -119,19 +123,23 @@ func TestIsDialectMySQL(t *testing.T) {
 		t.Errorf("Should return false as needed value is out of range.")
 	}
 
-	testConnWithQuery.updateQueryRow([]string{"variable_name", "value"}, []driver.Value{"version_comment", []uint8{109, 121, 115, 113, 108}})
+	testConnWithQuery.updateQueryRow(
+		[]string{"variable_name", "value"},
+		[]driver.Value{"version_comment", []uint8{109, 121, 115, 113, 108}})
 	returnsRow = mySqlDialect.IsDialect(testConnWithQuery)
 	if returnsRow {
 		t.Errorf("Should return false as query result does not contains 'MySQL'.")
 	}
 
-	testConnWithQuery.updateQueryRow([]string{"variable_name", "value"}, []driver.Value{"version_comment", []uint8{77, 121, 83, 81, 76}})
+	testConnWithQuery.updateQueryRow(
+		[]string{"variable_name", "value"},
+		[]driver.Value{"version_comment", []uint8{77, 121, 83, 81, 76}})
 	returnsRow = mySqlDialect.IsDialect(testConnWithQuery)
 	if !returnsRow {
 		t.Errorf("Should return true as query result contains 'MySQL'.")
 	}
 
-	rdsMySQLDialect := RdsMySQLDatabaseDialect{}
+	rdsMySQLDialect := driver_infrastructure.RdsMySQLDatabaseDialect{}
 
 	testConnWithQuery.updateQueryRow([]string{"variable_name"}, []driver.Value{"version_comment"})
 	returnsRow = rdsMySQLDialect.IsDialect(testConnWithQuery)
@@ -145,13 +153,17 @@ func TestIsDialectMySQL(t *testing.T) {
 		t.Errorf("Should return false as query result does not contains 'Source Distribution'.")
 	}
 
-	testConnWithQuery.updateQueryRow([]string{"variable_name", "value"}, []driver.Value{"version_comment", []uint8{83, 111, 117, 114, 99, 101, 32, 100, 105, 115, 116, 114, 105, 98, 117, 116, 105, 111, 110}})
+	testConnWithQuery.updateQueryRow(
+		[]string{"variable_name", "value"},
+		[]driver.Value{
+			"version_comment",
+			[]uint8{83, 111, 117, 114, 99, 101, 32, 100, 105, 115, 116, 114, 105, 98, 117, 116, 105, 111, 110}})
 	returnsRow = rdsMySQLDialect.IsDialect(testConnWithQuery)
 	if !returnsRow {
 		t.Errorf("Should return true as query result contains 'Source Distribution'.")
 	}
 
-	auroraMySQLDialect := AuroraMySQLDatabaseDialect{}
+	auroraMySQLDialect := driver_infrastructure.AuroraMySQLDatabaseDialect{}
 
 	testConnWithQuery.updateQueryRow([]string{}, []driver.Value{})
 	returnsRow = auroraMySQLDialect.IsDialect(testConnWithQuery)
@@ -167,23 +179,30 @@ func TestIsDialectMySQL(t *testing.T) {
 }
 
 func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
-	mockPluginManager := &ConnectionPluginManager{targetDriver: nil}
-
-	baseAwsWrapperConn := AwsWrapperConn{underlyingConn: MockDriverConn{}, pluginManager: mockPluginManager, engine: MYSQL}
+	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, nil, nil, map[string]any{}))
+	plugins := []*driver_infrastructure.ConnectionPlugin{
+		CreateTestPlugin(nil, 1, nil, nil, false),
+	}
+	_ = mockPluginManager.Init(nil, map[string]any{}, plugins)
+	mockContainer := container.Container{PluginManager: &mockPluginManager}
+	baseAwsWrapperConn := *awsDriver.NewAwsWrapperConn(MockDriverConn{}, mockContainer, awsDriver.MYSQL)
 	res, err := baseAwsWrapperConn.QueryContext(context.Background(), "", nil)
-	if res != nil || !strings.Contains(err.Error(), "The underlying driver connection does not implement the required interface 'driver.QueryerContext'.") {
+	if res != nil ||
+		!strings.Contains(
+			err.Error(),
+			"The underlying driver connection does not implement the required interface 'driver.QueryerContext'.") {
 		t.Errorf("An AWS Wrapper Conn with an underlying connection that does not support QueryContext should not return a result.")
 	}
 
 	mockUnderlyingConn := MockConn{nil, nil, nil, nil, false}
 	mockUnderlyingConn.updateQueryRow([]string{"column"}, []driver.Value{"test"})
-	mockAwsWrapperConn := AwsWrapperConn{underlyingConn: mockUnderlyingConn, pluginManager: mockPluginManager, engine: MYSQL}
+	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockUnderlyingConn, mockContainer, awsDriver.MYSQL)
 	res, err = mockAwsWrapperConn.QueryContext(context.Background(), "", nil)
 	if err != nil || res.Columns()[0] != "column" {
 		t.Errorf("An AWS Wrapper Conn with an underlying connection that does support QueryContext should return a result.")
 	}
 
-	mysqlRows, ok := res.(*AwsWrapperMySQLRows)
+	mysqlRows, ok := res.(*awsDriver.AwsWrapperMySQLRows)
 	if ok == false {
 		t.Errorf("Wrapped QueryContext with DatabaseEngine MYSQL should return type of AwsWrapperMySQLRows.")
 	}
@@ -200,23 +219,31 @@ func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
 }
 
 func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
-	mockPluginManager := &ConnectionPluginManager{targetDriver: nil}
+	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, nil, nil, map[string]any{}))
+	plugins := []*driver_infrastructure.ConnectionPlugin{
+		CreateTestPlugin(nil, 1, nil, nil, false),
+	}
+	_ = mockPluginManager.Init(nil, map[string]any{}, plugins)
+	mockContainer := container.Container{PluginManager: &mockPluginManager}
 
-	baseAwsWrapperConn := AwsWrapperConn{underlyingConn: MockDriverConn{}, pluginManager: mockPluginManager, engine: PG}
+	baseAwsWrapperConn := *awsDriver.NewAwsWrapperConn(MockDriverConn{}, mockContainer, awsDriver.PG)
 	res, err := baseAwsWrapperConn.QueryContext(context.Background(), "", nil)
-	if res != nil || !strings.Contains(err.Error(), "The underlying driver connection does not implement the required interface 'driver.QueryerContext'.") {
+	if res != nil ||
+		!strings.Contains(
+			err.Error(),
+			"The underlying driver connection does not implement the required interface 'driver.QueryerContext'.") {
 		t.Errorf("An AWS Wrapper Conn with an underlying connection that does not support QueryContext should not return a result.")
 	}
 
 	mockUnderlyingConn := MockConn{nil, nil, nil, nil, false}
 	mockUnderlyingConn.updateQueryRow([]string{"column"}, []driver.Value{"test"})
-	mockAwsWrapperConn := AwsWrapperConn{underlyingConn: mockUnderlyingConn, pluginManager: mockPluginManager, engine: PG}
+	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockUnderlyingConn, mockContainer, awsDriver.PG)
 	res, err = mockAwsWrapperConn.QueryContext(context.Background(), "", nil)
 	if err != nil || res.Columns()[0] != "column" {
 		t.Errorf("An AWS Wrapper Conn with an underlying connection that does support QueryContext should return a result.")
 	}
 
-	pgRows, ok := res.(*AwsWrapperPgRows)
+	pgRows, ok := res.(*awsDriver.AwsWrapperPgRows)
 	if ok == false {
 		t.Errorf("Wrapped QueryContext with DatabaseEngine PG should return type of AwsWrapperPgRows.")
 	}
@@ -233,17 +260,22 @@ func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
 }
 
 func TestWrapperUtilsExecWithPlugins(t *testing.T) {
-	mockPluginManager := &ConnectionPluginManager{targetDriver: nil}
+	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, nil, nil, map[string]any{}))
+	plugins := []*driver_infrastructure.ConnectionPlugin{
+		CreateTestPlugin(nil, 1, nil, nil, false),
+	}
+	_ = mockPluginManager.Init(nil, map[string]any{}, plugins)
+	mockContainer := container.Container{PluginManager: &mockPluginManager}
 
 	mockUnderlyingConn := MockConn{nil, MockResult{}, nil, nil, false}
-	mockAwsWrapperConn := AwsWrapperConn{underlyingConn: mockUnderlyingConn, pluginManager: mockPluginManager, engine: PG}
+	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockUnderlyingConn, mockContainer, awsDriver.PG)
 
 	res, err := mockAwsWrapperConn.ExecContext(context.Background(), "", nil)
 	if err != nil || res == nil {
 		t.Errorf("An AWS Wrapper Conn with an underlying connection that does support ExecContext should return a result.")
 	}
 
-	awsResult, ok := res.(*AwsWrapperResult)
+	awsResult, ok := res.(*awsDriver.AwsWrapperResult)
 	if ok == false {
 		t.Errorf("Wrapped ExecContext should return type of AwsWrapperResult.")
 	}
@@ -255,17 +287,22 @@ func TestWrapperUtilsExecWithPlugins(t *testing.T) {
 }
 
 func TestWrapperUtilsBeginWithPlugins(t *testing.T) {
-	mockPluginManager := &ConnectionPluginManager{targetDriver: nil}
+	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, nil, nil, map[string]any{}))
+	plugins := []*driver_infrastructure.ConnectionPlugin{
+		CreateTestPlugin(nil, 1, nil, nil, false),
+	}
+	_ = mockPluginManager.Init(nil, map[string]any{}, plugins)
+	mockContainer := container.Container{PluginManager: &mockPluginManager}
 
 	mockUnderlyingConn := MockConn{nil, nil, MockTx{}, nil, false}
-	mockAwsWrapperConn := AwsWrapperConn{underlyingConn: mockUnderlyingConn, pluginManager: mockPluginManager, engine: PG}
+	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockUnderlyingConn, mockContainer, awsDriver.PG)
 
 	tx, err := mockAwsWrapperConn.Begin()
 	if err != nil || tx == nil {
 		t.Errorf("An AWS Wrapper Conn with an underlying connection should return a result to Begin.")
 	}
 
-	awsTx, ok := tx.(*AwsWrapperTx)
+	awsTx, ok := tx.(*awsDriver.AwsWrapperTx)
 	if ok == false {
 		t.Errorf("Wrapped Begin should return type of AwsWrapperTx.")
 	}
@@ -277,17 +314,22 @@ func TestWrapperUtilsBeginWithPlugins(t *testing.T) {
 }
 
 func TestWrapperUtilsPrepareWithPlugins(t *testing.T) {
-	mockPluginManager := &ConnectionPluginManager{targetDriver: nil}
+	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, nil, nil, map[string]any{}))
+	plugins := []*driver_infrastructure.ConnectionPlugin{
+		CreateTestPlugin(nil, 1, nil, nil, false),
+	}
+	_ = mockPluginManager.Init(nil, map[string]any{}, plugins)
+	mockContainer := container.Container{PluginManager: &mockPluginManager}
 
 	mockUnderlyingConn := MockConn{nil, nil, nil, MockStmt{}, false}
-	mockAwsWrapperConn := AwsWrapperConn{underlyingConn: mockUnderlyingConn, pluginManager: mockPluginManager, engine: PG}
+	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockUnderlyingConn, mockContainer, awsDriver.PG)
 
 	res, err := mockAwsWrapperConn.Prepare("")
 	if err != nil || res == nil {
 		t.Errorf("An AWS Wrapper Conn with an underlying connection should return a result to Prepare.")
 	}
 
-	awsStmt, ok := res.(*AwsWrapperStmt)
+	awsStmt, ok := res.(*awsDriver.AwsWrapperStmt)
 	if ok == false {
 		t.Errorf("Wrapped Prepare should return type of AwsWrapperStmt.")
 	}
@@ -298,7 +340,10 @@ func TestWrapperUtilsPrepareWithPlugins(t *testing.T) {
 	}
 
 	val, err = awsStmt.ExecContext(context.Background(), nil)
-	if val != nil || !strings.Contains(err.Error(), "The underlying driver statement does not implement the required interface 'driver.StmtExecContext'.") {
+	if val != nil ||
+		!strings.Contains(
+			err.Error(),
+			"The underlying driver statement does not implement the required interface 'driver.StmtExecContext'.") {
 		t.Errorf("The returned stmt should attempt optional interfaces that are supported by both pgx and mysql drivers.")
 	}
 }

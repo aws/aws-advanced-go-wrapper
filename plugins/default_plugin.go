@@ -17,65 +17,81 @@
 package plugins
 
 import (
-	awsDriver "awssql/driver"
+	"awssql/driver_infrastructure"
 	"database/sql/driver"
 )
 
 type DefaultPlugin struct {
-	pluginService awsDriver.PluginService
-	// TODO: uncomment when needed.
-	// pluginManager       awsDriver.PluginManager
-	defaultConnProvider awsDriver.ConnectionProvider
-	connProviderManager awsDriver.ConnectionProviderManager
+	PluginService       *driver_infrastructure.PluginService
+	DefaultConnProvider *driver_infrastructure.ConnectionProvider
+	ConnProviderManager driver_infrastructure.ConnectionProviderManager
 }
 
-func (d DefaultPlugin) InitHostProvider(initialUrl string, props map[string]any, hostListProviderService awsDriver.HostListProviderService, initHostProviderFunc func()) {
+func (d *DefaultPlugin) InitHostProvider(
+	initialUrl string,
+	props map[string]any,
+	hostListProviderService driver_infrastructure.HostListProviderService,
+	initHostProviderFunc func() error) error {
 	// Do nothing.
 	// It's guaranteed that this plugin is always the last in plugin chain so initHostProviderFunc can be omitted.
+	return nil
 }
 
-func (d DefaultPlugin) GetSubscribedMethods() []string {
+func (d *DefaultPlugin) GetSubscribedMethods() []string {
 	return []string{"*"}
 }
 
-func (d DefaultPlugin) Execute(methodName string, executeFunc awsDriver.ExecuteFunc, methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
+func (d *DefaultPlugin) Execute(methodName string, executeFunc driver_infrastructure.ExecuteFunc, methodArgs ...any) (any, any, bool, error) {
 	return executeFunc()
 }
 
-func (d DefaultPlugin) Connect(hostInfo awsDriver.HostInfo, properties map[string]any, isInitialConnection bool, connectFunc awsDriver.ConnectFunc) (*driver.Conn, error) {
-	connProvider := d.connProviderManager.GetConnectionProvider(hostInfo, properties)
-	return d.connectInternal(hostInfo, properties, connectFunc, connProvider)
+func (d *DefaultPlugin) Connect(
+	hostInfo driver_infrastructure.HostInfo,
+	properties map[string]any,
+	isInitialConnection bool,
+	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
+	// It's guaranteed that this plugin is always the last in plugin chain so connectFunc can be ignored.
+	connProvider := d.ConnProviderManager.GetConnectionProvider(hostInfo, properties)
+	return d.connectInternal(hostInfo, properties, connProvider)
 }
 
-func (d DefaultPlugin) ForceConnect(hostInfo awsDriver.HostInfo, properties map[string]any, isInitialConnection bool, connectFunc awsDriver.ConnectFunc) (*driver.Conn, error) {
-	return d.connectInternal(hostInfo, properties, connectFunc, d.defaultConnProvider)
+func (d *DefaultPlugin) ForceConnect(
+	hostInfo driver_infrastructure.HostInfo,
+	properties map[string]any,
+	isInitialConnection bool,
+	forceConnectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
+	// It's guaranteed that this plugin is always the last in plugin chain so connectFunc can be ignored.
+	return d.connectInternal(hostInfo, properties, d.DefaultConnProvider)
 }
 
-func (d DefaultPlugin) connectInternal(hostInfo awsDriver.HostInfo, properties map[string]any, connectFunc awsDriver.ConnectFunc, connProvider awsDriver.ConnectionProvider) (*driver.Conn, error) {
-	conn, err := connProvider.Connect(hostInfo, properties)
-
-	service := d.pluginService
-	service.SetAvailability(hostInfo.AllAliases, awsDriver.AVAILABLE)
-
+func (d *DefaultPlugin) connectInternal(
+	hostInfo driver_infrastructure.HostInfo,
+	properties map[string]any,
+	connProvider *driver_infrastructure.ConnectionProvider) (driver.Conn, error) {
+	conn, err := (*connProvider).Connect(hostInfo, properties)
+	(*d.PluginService).SetAvailability(hostInfo.AllAliases, driver_infrastructure.AVAILABLE)
 	return conn, err
 }
 
-func (d DefaultPlugin) AcceptsStrategy(role awsDriver.HostRole, strategy string) bool {
-	return d.connProviderManager.AcceptsStrategy(role, strategy)
+func (d *DefaultPlugin) AcceptsStrategy(role driver_infrastructure.HostRole, strategy string) bool {
+	return d.ConnProviderManager.AcceptsStrategy(role, strategy)
 }
 
-func (d DefaultPlugin) GetHostInfoByStrategy(role awsDriver.HostRole, strategy string, hosts []awsDriver.HostInfo) (awsDriver.HostInfo, error) {
+func (d *DefaultPlugin) GetHostInfoByStrategy(
+	role driver_infrastructure.HostRole,
+	strategy string,
+	hosts []driver_infrastructure.HostInfo) (driver_infrastructure.HostInfo, error) {
 	if len(hosts) == 0 {
-		return awsDriver.HostInfo{}, awsDriver.NewGenericAwsWrapperError(awsDriver.GetMessage("DefaultConnectionPlugin.noHostsAvailable"))
+		return driver_infrastructure.HostInfo{}, driver_infrastructure.NewGenericAwsWrapperError(driver_infrastructure.GetMessage("DefaultConnectionPlugin.noHostsAvailable"))
 	}
 
-	return d.connProviderManager.GetHostInfoByStrategy(hosts, role, strategy, d.pluginService.GetProperties())
+	return d.ConnProviderManager.GetHostInfoByStrategy(hosts, role, strategy, (*d.PluginService).GetProperties())
 }
 
-func (d DefaultPlugin) NotifyConnectionChanged() awsDriver.OldConnectionSuggestedAction {
-	return awsDriver.NO_OPINION
+func (d *DefaultPlugin) NotifyConnectionChanged(changes map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {
+	return driver_infrastructure.NO_OPINION
 }
 
-func (d DefaultPlugin) NotifyHostListChanged(changes map[awsDriver.HostChangeOptions]bool) {
+func (d *DefaultPlugin) NotifyHostListChanged(changes map[string]map[driver_infrastructure.HostChangeOptions]bool) {
 	// Do nothing.
 }

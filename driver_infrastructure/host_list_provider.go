@@ -14,21 +14,17 @@
   limitations under the License.
 */
 
-package driver
+package driver_infrastructure
 
-import "math/rand"
+import (
+	"database/sql/driver"
+)
 
-type RandomHostSelector struct{}
-
-func (r *RandomHostSelector) GetHost(hosts []HostInfo, role HostRole, props map[string]any) (HostInfo, error) {
-	eligibleHosts := FilterSlice(hosts, func(hostInfo HostInfo) bool {
-		return role == hostInfo.Role && hostInfo.Availability == AVAILABLE
-	})
-
-	if len(eligibleHosts) == 0 {
-		return HostInfo{}, NewGenericAwsWrapperError(GetMessage("HostSelector.noHostsMatchingRole", role))
-	}
-
-	randomIndex := rand.Intn(len(eligibleHosts))
-	return eligibleHosts[randomIndex], nil
+type HostListProvider interface {
+	Refresh(conn driver.Conn) []HostInfo
+	ForceRefresh(conn driver.Conn) []HostInfo
+	GetHostRole(conn driver.Conn) HostRole
+	IdentifyConnection(conn driver.Conn) HostInfo
+	GetClusterId() string
+	IsStaticHostListProvider() bool
 }

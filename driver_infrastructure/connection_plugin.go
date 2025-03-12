@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-package driver
+package driver_infrastructure
 
 import (
 	"database/sql/driver"
@@ -22,12 +22,16 @@ import (
 
 type ConnectionPlugin interface {
 	GetSubscribedMethods() []string
-	Execute(methodName string, executeFunc ExecuteFunc, methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error)
-	Connect(hostInfo HostInfo, properties map[string]any, isInitialConnection bool, connectFunc ConnectFunc) (*driver.Conn, error)
-	ForceConnect(hostInfo HostInfo, properties map[string]any, isInitialConnection bool, connectFunc ConnectFunc) (*driver.Conn, error)
+	Execute(
+		methodName string,
+		executeFunc ExecuteFunc,
+		methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error)
+	Connect(hostInfo HostInfo, properties map[string]any, isInitialConnection bool, connectFunc ConnectFunc) (driver.Conn, error)
+	ForceConnect(hostInfo HostInfo, properties map[string]any, isInitialConnection bool, connectFunc ConnectFunc) (driver.Conn, error)
 	AcceptsStrategy(role HostRole, strategy string) bool
 	GetHostInfoByStrategy(role HostRole, strategy string, hosts []HostInfo) (HostInfo, error)
-	NotifyConnectionChanged() OldConnectionSuggestedAction
-	NotifyHostListChanged(changes map[HostChangeOptions]bool)
-	InitHostProvider(initialUrl string, props map[string]any, hostListProviderService HostListProviderService, initHostProviderFunc func())
+	NotifyConnectionChanged(changes map[HostChangeOptions]bool) OldConnectionSuggestedAction
+	NotifyHostListChanged(changes map[string]map[HostChangeOptions]bool)
+	InitHostProvider(
+		initialUrl string, props map[string]any, hostListProviderService HostListProviderService, initHostProviderFunc func() error) error
 }

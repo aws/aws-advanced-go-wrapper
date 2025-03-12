@@ -14,23 +14,15 @@
   limitations under the License.
 */
 
-package driver
+package driver_infrastructure
 
 import (
 	"database/sql/driver"
 )
 
-type DatabaseDialect interface {
-	GetDefaultPort() int
-	GetHostAliasQuery() string
-	GetServerVersionQuery() string
-	GetSetReadOnlyQuery(readOnly bool) string
-	GetSetTransactionIsolationQuery(level TransactionIsolationLevel) (string, error)
-	GetSetAutoCommitQuery(autoCommit bool) (string, error)
-	GetSetSchemaQuery(schema string) (string, error)
-	GetSetCatalogQuery(catalog string) (string, error)
-	GetDialectUpdateCandidates() []string
-	IsDialect(conn driver.Conn) bool
-	// TODO: implement GetHostListProvider, see ticket: "dev: RdsHostListProvider".
-	// GetHostListProvider() HostListProvider
+type ConnectionProvider interface {
+	AcceptsUrl(hostInfo HostInfo, properties map[string]any) bool
+	AcceptsStrategy(role HostRole, strategy string) bool
+	GetHostInfoByStrategy(hosts []HostInfo, role HostRole, strategy string, properties map[string]any) (HostInfo, error)
+	Connect(hostInfo HostInfo, properties map[string]any) (driver.Conn, error)
 }

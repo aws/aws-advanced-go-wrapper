@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-package driver
+package driver_infrastructure
 
 type AwsWrapperErrorType int
 
@@ -53,8 +53,10 @@ func NewGenericAwsWrapperError(message string) *AwsWrapperError {
 	return &AwsWrapperError{message, GenericAwsWrapperErrorType}
 }
 
-func NewUnsupportedStrategyError(strategy string, connectionProvider string) *AwsWrapperError {
-	return &AwsWrapperError{GetMessage("ConnectionProvider.unsupportedHostSelectorStrategy", strategy, connectionProvider), UnsupportedStrategyErrorType}
+func NewUnsupportedStrategyError(message string) *AwsWrapperError {
+	return &AwsWrapperError{
+		message,
+		UnsupportedStrategyErrorType}
 }
 
 func NewUnsupportedMethodError(methodName string) *AwsWrapperError {
@@ -71,7 +73,9 @@ func NewFailoverFailedError(message string) *AwsWrapperError {
 	return &AwsWrapperError{message, FailoverFailedErrorType}
 }
 
-var TransactionResolutionUnknownError = &AwsWrapperError{GetMessage("Failover.transactionResolutionUnknownError"), TransactionResolutionUnknownErrorType}
+var TransactionResolutionUnknownError = &AwsWrapperError{
+	GetMessage("Failover.transactionResolutionUnknownError"),
+	TransactionResolutionUnknownErrorType}
 
 func NewLoginError(message string) *AwsWrapperError {
 	return &AwsWrapperError{message, LoginErrorType}
@@ -86,3 +90,5 @@ func NewUnavailableHostError(host string) *AwsWrapperError {
 func NewDsnParsingError(message string) *AwsWrapperError {
 	return &AwsWrapperError{message, DsnParsingErrorType}
 }
+
+var ShouldNotBeCalledError = &AwsWrapperError{Message: "Shouldn't be called.", ErrorType: GenericAwsWrapperErrorType}

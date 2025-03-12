@@ -17,16 +17,25 @@
 package driver
 
 import (
+	"awssql/driver_infrastructure"
 	"database/sql/driver"
 	"errors"
 )
 
-func executeWithPlugins(pluginManager PluginManager, methodName string, executeFunc ExecuteFunc) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
-	return pluginManager.ExecuteWithSubscribedPlugins(methodName, executeFunc)
+func ExecuteWithPlugins(
+	pluginManager driver_infrastructure.PluginManager,
+	methodName string,
+	executeFunc driver_infrastructure.ExecuteFunc) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
+	return pluginManager.Execute(methodName, executeFunc)
 }
 
-func queryWithPlugins(pluginManager PluginManager, methodName string, queryFunc ExecuteFunc, engine DatabaseEngine) (driver.Rows, error) {
-	result, _, _, err := executeWithPlugins(pluginManager, methodName, queryFunc)
+func queryWithPlugins(
+	pluginManager driver_infrastructure.PluginManager,
+	methodName string,
+	queryFunc driver_infrastructure.ExecuteFunc,
+	engine DatabaseEngine) (driver.Rows, error) {
+	result, _, _, err := ExecuteWithPlugins(pluginManager, methodName, queryFunc)
+
 	if err == nil {
 		driverRows, ok := result.(driver.Rows)
 		if ok {
@@ -39,45 +48,49 @@ func queryWithPlugins(pluginManager PluginManager, methodName string, queryFunc 
 			}
 			return &rows, nil
 		}
-		err = errors.New(GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Rows"))
+		err = errors.New(driver_infrastructure.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Rows"))
 	}
 
 	return nil, err
 }
 
-func execWithPlugins(pluginManager PluginManager, methodName string, execFunc ExecuteFunc) (driver.Result, error) {
-	result, _, _, err := executeWithPlugins(pluginManager, methodName, execFunc)
+func execWithPlugins(pluginManager driver_infrastructure.PluginManager, methodName string, execFunc driver_infrastructure.ExecuteFunc) (driver.Result, error) {
+	result, _, _, err := ExecuteWithPlugins(pluginManager, methodName, execFunc)
 	if err == nil {
 		driverResult, ok := result.(driver.Result)
 		if ok {
 			return &AwsWrapperResult{driverResult, pluginManager}, nil
 		}
-		err = errors.New(GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Result"))
+		err = errors.New(driver_infrastructure.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Result"))
 	}
 
 	return nil, err
 }
 
-func prepareWithPlugins(pluginManager PluginManager, methodName string, prepareFunc ExecuteFunc, conn AwsWrapperConn) (driver.Stmt, error) {
-	result, _, _, err := executeWithPlugins(pluginManager, methodName, prepareFunc)
+func prepareWithPlugins(
+	pluginManager driver_infrastructure.PluginManager,
+	methodName string,
+	prepareFunc driver_infrastructure.ExecuteFunc,
+	conn AwsWrapperConn) (driver.Stmt, error) {
+	result, _, _, err := ExecuteWithPlugins(pluginManager, methodName, prepareFunc)
 	if err == nil {
 		driverStmt, ok := result.(driver.Stmt)
 		if ok {
 			return &AwsWrapperStmt{driverStmt, pluginManager, conn}, nil
 		}
-		err = errors.New(GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Stmt"))
+		err = errors.New(driver_infrastructure.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Stmt"))
 	}
 	return nil, err
 }
 
-func beginWithPlugins(pluginManager PluginManager, methodName string, beginFunc ExecuteFunc) (driver.Tx, error) {
-	result, _, _, err := executeWithPlugins(pluginManager, methodName, beginFunc)
+func beginWithPlugins(pluginManager driver_infrastructure.PluginManager, methodName string, beginFunc driver_infrastructure.ExecuteFunc) (driver.Tx, error) {
+	result, _, _, err := ExecuteWithPlugins(pluginManager, methodName, beginFunc)
 	if err == nil {
 		driverTx, ok := result.(driver.Tx)
 		if ok {
 			return &AwsWrapperTx{driverTx, pluginManager}, nil
 		}
-		err = errors.New(GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Tx"))
+		err = errors.New(driver_infrastructure.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Tx"))
 	}
 	return nil, err
 }

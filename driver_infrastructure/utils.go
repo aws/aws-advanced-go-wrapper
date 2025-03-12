@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-package driver
+package driver_infrastructure
 
 import (
 	"context"
@@ -82,6 +82,15 @@ func FilterSlice[T any](slice []T, filter func(T) bool) []T {
 		if filter(v) {
 			result = append(result, v)
 		}
+	}
+	return result
+}
+
+func GetVerifiedWrapperPropertyValue[T any](props map[string]any, property AwsWrapperProperty) T {
+	propValue := property.Get(props)
+	result, ok := propValue.(T)
+	if !ok {
+		panic(GetMessage("AwsWrapperProperty.unexpectedType", property.Name, propValue))
 	}
 	return result
 }

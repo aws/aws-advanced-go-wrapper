@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-package driver
+package driver_infrastructure
 
 import (
 	"database/sql/driver"
@@ -94,7 +94,10 @@ func (m *RdsPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	if !m.PgDatabaseDialect.IsDialect(conn) {
 		return false
 	}
-	hasExtensions := GetFirstRowFromQuery(conn, "SELECT (setting LIKE '%rds_tools%') AS rds_tools, (setting LIKE '%aurora_stat_utils%') AS aurora_stat_utils FROM pg_settings WHERE name='rds.extensions'")
+	hasExtensions := GetFirstRowFromQuery(
+		conn,
+		"SELECT (setting LIKE '%rds_tools%') AS rds_tools, (setting LIKE '%aurora_stat_utils%') AS aurora_stat_utils FROM pg_settings "+
+			"WHERE name='rds.extensions'")
 	return hasExtensions != nil && hasExtensions[0] == true && // If a variables with such name is present then it is an RDS cluster.
 		hasExtensions[1] == false // If aurora_stat_utils is present then it should be treated as an Aurora cluster, not an RDS cluster.
 }
@@ -111,7 +114,9 @@ func (m *AuroraPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	if !m.PgDatabaseDialect.IsDialect(conn) {
 		return false
 	}
-	hasExtensions := GetFirstRowFromQuery(conn, "SELECT (setting LIKE '%aurora_stat_utils%') AS aurora_stat_utils FROM pg_settings WHERE name='rds.extensions'")
+	hasExtensions := GetFirstRowFromQuery(
+		conn,
+		"SELECT (setting LIKE '%aurora_stat_utils%') AS aurora_stat_utils FROM pg_settings WHERE name='rds.extensions'")
 	hasTopology := GetFirstRowFromQuery(conn, "SELECT 1 FROM aurora_replica_status() LIMIT 1")
 	// If both variables with such name are presented then it means it's an Aurora cluster.
 	return hasExtensions != nil && hasExtensions[0] == true && hasTopology != nil

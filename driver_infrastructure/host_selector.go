@@ -14,15 +14,12 @@
   limitations under the License.
 */
 
-package driver
+package driver_infrastructure
 
-import (
-	"database/sql/driver"
+const (
+	SELECTOR_RANDOM = "random"
 )
 
-type ConnectionProvider interface {
-	AcceptsUrl(hostInfo HostInfo, properties map[string]any) bool
-	AcceptsStrategy(role HostRole, strategy string) bool
-	GetHostInfoByStrategy(hosts []HostInfo, role HostRole, strategy string, properties map[string]any) (HostInfo, error)
-	Connect(hostInfo HostInfo, properties map[string]any) (*driver.Conn, error)
+type HostSelector interface {
+	GetHost(hosts []HostInfo, role HostRole, props map[string]any) (HostInfo, error)
 }

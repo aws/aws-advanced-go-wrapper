@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-package driver
+package driver_infrastructure
 
 import (
 	"database/sql/driver"
@@ -41,21 +41,26 @@ func (d DriverConnectionProvider) AcceptsStrategy(role HostRole, strategy string
 	return ok
 }
 
-func (d DriverConnectionProvider) GetHostInfoByStrategy(hosts []HostInfo, role HostRole, strategy string, properties map[string]any) (HostInfo, error) {
+func (d DriverConnectionProvider) GetHostInfoByStrategy(
+	hosts []HostInfo,
+	role HostRole,
+	strategy string,
+	properties map[string]any) (HostInfo, error) {
 	acceptedStrategy, ok := d.acceptedStrategies[strategy]
 	if !ok {
-		return HostInfo{}, NewUnsupportedStrategyError(strategy, reflect.TypeOf(d).String())
+		return HostInfo{}, NewUnsupportedStrategyError(
+			GetMessage("ConnectionProvider.unsupportedHostSelectorStrategy", strategy, reflect.TypeOf(d).String()))
 	}
 
 	return acceptedStrategy.GetHost(hosts, role, properties)
 }
 
-func (d DriverConnectionProvider) Connect(hostInfo HostInfo, properties map[string]any) (*driver.Conn, error) {
+func (d DriverConnectionProvider) Connect(hostInfo HostInfo, properties map[string]any) (driver.Conn, error) {
 	dsn := DsnFromProperties(properties)
 	conn, err := d.targetDriver.Open(dsn)
 	//nolint:all
 	if err != nil {
 		// TODO: green node replacement
 	}
-	return &conn, err
+	return conn, err
 }

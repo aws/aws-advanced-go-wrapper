@@ -7,3 +7,8 @@ linters:
     - staticcheck
     - unused
     - whitespace
+    - lll
+    - godot
+linters-settings:
+  lll:
+    line-length: 175

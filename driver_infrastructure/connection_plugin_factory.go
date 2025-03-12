@@ -14,12 +14,8 @@
   limitations under the License.
 */
 
-package driver
+package driver_infrastructure
 
-const (
-	SELECTOR_RANDOM = "random"
-)
-
-type HostSelector interface {
-	GetHost(hosts []HostInfo, role HostRole, props map[string]any) (HostInfo, error)
+type ConnectionPluginFactory interface {
+	GetInstance(pluginService *PluginService, properties map[string]any) (*ConnectionPlugin, error)
 }
