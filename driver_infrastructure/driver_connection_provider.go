@@ -32,7 +32,7 @@ func NewDriverConnectionProvider(targetDriver driver.Driver) *DriverConnectionPr
 	return &DriverConnectionProvider{acceptedStrategies, targetDriver}
 }
 
-func (d DriverConnectionProvider) AcceptsUrl(hostInfo HostInfo, properties map[string]any) bool {
+func (d DriverConnectionProvider) AcceptsUrl(hostInfo HostInfo, props map[string]string) bool {
 	return true
 }
 
@@ -45,18 +45,19 @@ func (d DriverConnectionProvider) GetHostInfoByStrategy(
 	hosts []HostInfo,
 	role HostRole,
 	strategy string,
-	properties map[string]any) (HostInfo, error) {
+	props map[string]string) (HostInfo, error) {
 	acceptedStrategy, ok := d.acceptedStrategies[strategy]
 	if !ok {
 		return HostInfo{}, NewUnsupportedStrategyError(
 			GetMessage("ConnectionProvider.unsupportedHostSelectorStrategy", strategy, reflect.TypeOf(d).String()))
 	}
 
-	return acceptedStrategy.GetHost(hosts, role, properties)
+	return acceptedStrategy.GetHost(hosts, role, props)
 }
 
-func (d DriverConnectionProvider) Connect(hostInfo HostInfo, properties map[string]any) (driver.Conn, error) {
-	dsn := DsnFromProperties(properties)
+func (d DriverConnectionProvider) Connect(hostInfo HostInfo, props map[string]string, pluginService *PluginService) (driver.Conn, error) {
+	targetDriverDialect := (*pluginService).GetTargetDriverDialect()
+	dsn := targetDriverDialect.GetDsnFromProperties(props)
 	conn, err := d.targetDriver.Open(dsn)
 	//nolint:all
 	if err != nil {

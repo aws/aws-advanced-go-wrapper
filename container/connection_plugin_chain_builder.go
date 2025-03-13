@@ -44,7 +44,7 @@ type ConnectionPluginChainBuilder struct {
 func (builder *ConnectionPluginChainBuilder) GetPlugins(
 	pluginService *driver_infrastructure.PluginService,
 	pluginManager *driver_infrastructure.PluginManager,
-	props map[string]any) ([]*driver_infrastructure.ConnectionPlugin, error) {
+	props map[string]string) ([]*driver_infrastructure.ConnectionPlugin, error) {
 	var resultPlugins []*driver_infrastructure.ConnectionPlugin
 	var pluginFactoryFuncWeights []PluginFactoryFuncWeight
 	usingDefault := false

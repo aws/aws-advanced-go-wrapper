@@ -26,12 +26,11 @@ type ConnectionPlugin interface {
 		methodName string,
 		executeFunc ExecuteFunc,
 		methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error)
-	Connect(hostInfo HostInfo, properties map[string]any, isInitialConnection bool, connectFunc ConnectFunc) (driver.Conn, error)
-	ForceConnect(hostInfo HostInfo, properties map[string]any, isInitialConnection bool, connectFunc ConnectFunc) (driver.Conn, error)
+	Connect(hostInfo HostInfo, props map[string]string, isInitialConnection bool, connectFunc ConnectFunc) (driver.Conn, error)
+	ForceConnect(hostInfo HostInfo, props map[string]string, isInitialConnection bool, connectFunc ConnectFunc) (driver.Conn, error)
 	AcceptsStrategy(role HostRole, strategy string) bool
 	GetHostInfoByStrategy(role HostRole, strategy string, hosts []HostInfo) (HostInfo, error)
 	NotifyConnectionChanged(changes map[HostChangeOptions]bool) OldConnectionSuggestedAction
 	NotifyHostListChanged(changes map[string]map[HostChangeOptions]bool)
-	InitHostProvider(
-		initialUrl string, props map[string]any, hostListProviderService HostListProviderService, initHostProviderFunc func() error) error
+	InitHostProvider(initialUrl string, props map[string]string, hostListProviderService HostListProviderService, initHostProviderFunc func() error) error
 }

@@ -20,7 +20,7 @@ import "math/rand"
 
 type RandomHostSelector struct{}
 
-func (r *RandomHostSelector) GetHost(hosts []HostInfo, role HostRole, props map[string]any) (HostInfo, error) {
+func (r *RandomHostSelector) GetHost(hosts []HostInfo, role HostRole, props map[string]string) (HostInfo, error) {
 	eligibleHosts := FilterSlice(hosts, func(hostInfo HostInfo) bool {
 		return role == hostInfo.Role && hostInfo.Availability == AVAILABLE
 	})

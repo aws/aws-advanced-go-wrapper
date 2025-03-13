@@ -86,7 +86,7 @@ type PluginManagerImpl struct {
 	connProviderManager   driver_infrastructure.ConnectionProviderManager
 	defaultConnProvider   *driver_infrastructure.ConnectionProvider
 	effectiveConnProvider *driver_infrastructure.ConnectionProvider
-	props                 map[string]any
+	props                 map[string]string
 	pluginFuncMap         map[string]PluginChain
 	plugins               []*driver_infrastructure.ConnectionPlugin
 }
@@ -95,7 +95,7 @@ func NewPluginManagerImpl(
 	targetDriver driver.Driver,
 	defaultConnProvider *driver_infrastructure.ConnectionProvider,
 	effectiveConnProvider *driver_infrastructure.ConnectionProvider,
-	props map[string]any) *PluginManagerImpl {
+	props map[string]string) *PluginManagerImpl {
 	pluginFuncMap := make(map[string]PluginChain)
 	return &PluginManagerImpl{
 		targetDriver:          targetDriver,
@@ -108,7 +108,7 @@ func NewPluginManagerImpl(
 
 func (pluginManager *PluginManagerImpl) Init(
 	pluginService *driver_infrastructure.PluginService,
-	props map[string]any,
+	props map[string]string,
 	plugins []*driver_infrastructure.ConnectionPlugin) error {
 	pluginManager.pluginService = pluginService
 	pluginManager.plugins = plugins
@@ -117,7 +117,7 @@ func (pluginManager *PluginManagerImpl) Init(
 
 func (pluginManager *PluginManagerImpl) InitHostProvider(
 	initialUrl string,
-	props map[string]any,
+	props map[string]string,
 	hostListProviderService driver_infrastructure.HostListProviderService) error {
 	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (any, any, bool, error)) (any, any, bool, error) {
 		initFunc := func() error {
@@ -143,7 +143,7 @@ func (pluginManager *PluginManagerImpl) InitHostProvider(
 
 func (pluginManager *PluginManagerImpl) Connect(
 	hostInfo driver_infrastructure.HostInfo,
-	props map[string]any,
+	props map[string]string,
 	isInitialConnection bool) (driver.Conn, error) {
 	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (any, error)) (any, error) {
 		return plugin.Connect(hostInfo, props, isInitialConnection, targetFunc)
@@ -161,7 +161,7 @@ func (pluginManager *PluginManagerImpl) Connect(
 
 func (pluginManager *PluginManagerImpl) ForceConnect(
 	hostInfo driver_infrastructure.HostInfo,
-	props map[string]any,
+	props map[string]string,
 	isInitialConnection bool) (driver.Conn, error) {
 	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (any, error)) (any, error) {
 		return plugin.ForceConnect(hostInfo, props, isInitialConnection, targetFunc)

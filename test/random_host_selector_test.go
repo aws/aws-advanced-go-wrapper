@@ -23,7 +23,7 @@ import (
 
 func TestGetHostGivenUnavailableHost(t *testing.T) {
 	for i := 0; i < 50; i++ {
-		props := map[string]any{}
+		props := map[string]string{}
 
 		unavailableHost := driver_infrastructure.HostInfo{Host: "someUnavailableHost", Role: driver_infrastructure.READER, Availability: driver_infrastructure.UNAVAILABLE}
 		availableHost := driver_infrastructure.HostInfo{Host: "someAvailableHost", Role: driver_infrastructure.READER, Availability: driver_infrastructure.AVAILABLE}
@@ -44,7 +44,7 @@ func TestGetHostGivenUnavailableHost(t *testing.T) {
 
 func TestGetHostGivenMultipleUnavailableHosts(t *testing.T) {
 	for i := 0; i < 50; i++ {
-		props := map[string]any{}
+		props := map[string]string{}
 
 		hosts := []driver_infrastructure.HostInfo{
 			{Host: "someUnavailableHost", Role: driver_infrastructure.READER, Availability: driver_infrastructure.UNAVAILABLE},

@@ -21,8 +21,8 @@ import (
 )
 
 type ConnectionProvider interface {
-	AcceptsUrl(hostInfo HostInfo, properties map[string]any) bool
+	AcceptsUrl(hostInfo HostInfo, props map[string]string) bool
 	AcceptsStrategy(role HostRole, strategy string) bool
-	GetHostInfoByStrategy(hosts []HostInfo, role HostRole, strategy string, properties map[string]any) (HostInfo, error)
-	Connect(hostInfo HostInfo, properties map[string]any) (driver.Conn, error)
+	GetHostInfoByStrategy(hosts []HostInfo, role HostRole, strategy string, props map[string]string) (HostInfo, error)
+	Connect(hostInfo HostInfo, props map[string]string, pluginService *PluginService) (driver.Conn, error)
 }

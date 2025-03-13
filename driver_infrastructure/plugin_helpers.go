@@ -39,8 +39,8 @@ type PluginService interface {
 	GetHostListProvider() HostListProvider
 	RefreshHostList(conn driver.Conn) error
 	ForceRefreshHostList(conn driver.Conn) error // TODO: double check signatures, there are multiple
-	Connect(hostInfo HostInfo, props map[string]any) (driver.Conn, error)
-	ForceConnect(hostInfo HostInfo, props map[string]any) (driver.Conn, error)
+	Connect(hostInfo HostInfo, props map[string]string) (driver.Conn, error)
+	ForceConnect(hostInfo HostInfo, props map[string]string) (driver.Conn, error)
 	GetDialect() DatabaseDialect
 	UpdateDialect(conn driver.Conn)
 	GetTargetDriverDialect() TargetDriverDialect
@@ -48,14 +48,14 @@ type PluginService interface {
 	FillAliases(conn driver.Conn, hostInfo HostInfo) error
 	GetHostInfoBuilder() HostInfoBuilder
 	GetConnectionProvider() ConnectionProvider
-	GetProperties() map[string]any
+	GetProperties() map[string]string
 }
 
 type PluginManager interface {
-	Init(pluginService *PluginService, props map[string]any, plugins []*ConnectionPlugin) error
-	InitHostProvider(initialUrl string, props map[string]any, hostListProviderService HostListProviderService) error
-	Connect(hostInfo HostInfo, props map[string]any, isInitialConnection bool) (driver.Conn, error)
-	ForceConnect(hostInfo HostInfo, props map[string]any, isInitialConnection bool) (driver.Conn, error)
+	Init(pluginService *PluginService, props map[string]string, plugins []*ConnectionPlugin) error
+	InitHostProvider(initialUrl string, props map[string]string, hostListProviderService HostListProviderService) error
+	Connect(hostInfo HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)
+	ForceConnect(hostInfo HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)
 	Execute(name string, methodFunc ExecuteFunc, methodArgs ...any) (
 		wrappedReturnValue any,
 		wrappedReturnValue2 any,

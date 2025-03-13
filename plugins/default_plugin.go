@@ -29,7 +29,7 @@ type DefaultPlugin struct {
 
 func (d *DefaultPlugin) InitHostProvider(
 	initialUrl string,
-	props map[string]any,
+	props map[string]string,
 	hostListProviderService driver_infrastructure.HostListProviderService,
 	initHostProviderFunc func() error) error {
 	// Do nothing.
@@ -47,28 +47,28 @@ func (d *DefaultPlugin) Execute(methodName string, executeFunc driver_infrastruc
 
 func (d *DefaultPlugin) Connect(
 	hostInfo driver_infrastructure.HostInfo,
-	properties map[string]any,
+	props map[string]string,
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	// It's guaranteed that this plugin is always the last in plugin chain so connectFunc can be ignored.
-	connProvider := d.ConnProviderManager.GetConnectionProvider(hostInfo, properties)
-	return d.connectInternal(hostInfo, properties, connProvider)
+	connProvider := d.ConnProviderManager.GetConnectionProvider(hostInfo, props)
+	return d.connectInternal(hostInfo, props, connProvider)
 }
 
 func (d *DefaultPlugin) ForceConnect(
 	hostInfo driver_infrastructure.HostInfo,
-	properties map[string]any,
+	props map[string]string,
 	isInitialConnection bool,
 	forceConnectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	// It's guaranteed that this plugin is always the last in plugin chain so connectFunc can be ignored.
-	return d.connectInternal(hostInfo, properties, d.DefaultConnProvider)
+	return d.connectInternal(hostInfo, props, d.DefaultConnProvider)
 }
 
 func (d *DefaultPlugin) connectInternal(
 	hostInfo driver_infrastructure.HostInfo,
-	properties map[string]any,
+	props map[string]string,
 	connProvider *driver_infrastructure.ConnectionProvider) (driver.Conn, error) {
-	conn, err := (*connProvider).Connect(hostInfo, properties)
+	conn, err := (*connProvider).Connect(hostInfo, props, d.PluginService)
 	(*d.PluginService).SetAvailability(hostInfo.AllAliases, driver_infrastructure.AVAILABLE)
 	return conn, err
 }

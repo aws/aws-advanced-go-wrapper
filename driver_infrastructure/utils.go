@@ -21,16 +21,6 @@ import (
 	"database/sql/driver"
 )
 
-func DsnFromProperties(properties map[string]any) string {
-	// TODO
-	return ""
-}
-
-func PropertiesFromDsn(dsn string) map[string]any {
-	// TODO
-	return map[string]any{}
-}
-
 // Directly executes query on conn, and returns the first row.
 // Returns nil if unable to obtain a row.
 func GetFirstRowFromQuery(conn driver.Conn, query string) []driver.Value {
@@ -82,15 +72,6 @@ func FilterSlice[T any](slice []T, filter func(T) bool) []T {
 		if filter(v) {
 			result = append(result, v)
 		}
-	}
-	return result
-}
-
-func GetVerifiedWrapperPropertyValue[T any](props map[string]any, property AwsWrapperProperty) T {
-	propValue := property.Get(props)
-	result, ok := propValue.(T)
-	if !ok {
-		panic(GetMessage("AwsWrapperProperty.unexpectedType", property.Name, propValue))
 	}
 	return result
 }

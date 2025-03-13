@@ -16,4 +16,6 @@
 
 package driver_infrastructure
 
-type TargetDriverDialect interface{}
+type TargetDriverDialect interface {
+	GetDsnFromProperties(properties map[string]string) string
+}
