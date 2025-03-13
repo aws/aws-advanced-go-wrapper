@@ -17,6 +17,7 @@
 package utils
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"sync"
@@ -198,4 +199,12 @@ func GetPreparedHost(host string) string {
 	} else {
 		return preparedHost
 	}
+}
+
+func GetRdsInstanceHostPattern(host string) string {
+	group := getDnsGroup(GetPreparedHost(host))
+	if group == "" {
+		return "?"
+	}
+	return fmt.Sprintf("?.%s", group)
 }

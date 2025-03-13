@@ -22,12 +22,10 @@ import (
 )
 
 type HostListProviderService interface {
-	IsStaticHostListProvider() bool
 	GetHostListProvider() HostListProvider
 	SetHostListProvider(hostListProvider HostListProvider)
 	SetInitialConnectionHostInfo(info host_info_util.HostInfo)
 	GetInitialConnectionHostInfo() host_info_util.HostInfo
-	GetCurrentConnection() driver.Conn
+	GetCurrentConnection() *driver.Conn
 	GetDialect() DatabaseDialect
-	GetHostInfoBuilder() host_info_util.HostInfoBuilder
 }

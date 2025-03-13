@@ -27,7 +27,7 @@ type PluginExecFunc func(plugin ConnectionPlugin, targetFunc func() (any, any, b
 type PluginConnectFunc func(plugin ConnectionPlugin, targetFunc func() (any, error)) (any, error)
 
 type PluginService interface {
-	GetCurrentConnection() driver.Conn
+	GetCurrentConnection() *driver.Conn
 	SetCurrentConnection(conn driver.Conn, hostInfo host_info_util.HostInfo, skipNotificationForThisPlugin ConnectionPlugin) error
 	GetCurrentHostInfo() host_info_util.HostInfo
 	GetHosts() []host_info_util.HostInfo
@@ -47,7 +47,6 @@ type PluginService interface {
 	GetTargetDriverDialect() DriverDialect
 	IdentifyConnection(conn driver.Conn) (host_info_util.HostInfo, error)
 	FillAliases(conn driver.Conn, hostInfo host_info_util.HostInfo) error
-	GetHostInfoBuilder() host_info_util.HostInfoBuilder
 	GetConnectionProvider() ConnectionProvider
 	GetProperties() map[string]string
 	IsNetworkError(err error) bool

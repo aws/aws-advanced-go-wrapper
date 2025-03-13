@@ -18,6 +18,7 @@ package host_info_util
 
 import (
 	"awssql/error_util"
+	"fmt"
 	"strconv"
 	"time"
 )
@@ -71,16 +72,14 @@ func (hostInfo *HostInfo) resetAliases() {
 	hostInfo.Aliases = make(map[string]bool)
 	hostInfo.AllAliases = make(map[string]bool)
 
-	hostInfo.AllAliases[hostInfo.getHostAndPort()] = true
+	hostInfo.AllAliases[hostInfo.GetHostAndPort()] = true
 }
 
-//nolint:unused
-func (hostInfo *HostInfo) getUrl() string {
-	return hostInfo.getHostAndPort() + "/"
+func (hostInfo *HostInfo) GetUrl() string {
+	return hostInfo.GetHostAndPort() + "/"
 }
 
-//nolint:unused
-func (hostInfo *HostInfo) getHostAndPort() string {
+func (hostInfo *HostInfo) GetHostAndPort() string {
 	if hostInfo.isPortSpecified() {
 		return hostInfo.Host + ":" + strconv.Itoa(hostInfo.Port)
 	}
@@ -98,6 +97,11 @@ func (hostInfo *HostInfo) Equals(host HostInfo) bool {
 		hostInfo.Availability == host.Availability &&
 		hostInfo.Role == host.Role &&
 		hostInfo.Weight == host.Weight
+}
+
+func (hostInfo *HostInfo) String() string {
+	return fmt.Sprintf("HostInfo[host=%s, port=%d, %s, %s, weight=%d, %s]",
+		hostInfo.Host, hostInfo.Port, hostInfo.Role, hostInfo.Availability, hostInfo.Weight, hostInfo.LastUpdateTime)
 }
 
 type HostInfoBuilder struct {
@@ -172,7 +176,7 @@ func (hostInfoBuilder *HostInfoBuilder) Build() (hostInfo *HostInfo) {
 		AllAliases:     make(map[string]bool),
 	}
 
-	hostInfo.AllAliases[hostInfo.getHostAndPort()] = true
+	hostInfo.AllAliases[hostInfo.GetHostAndPort()] = true
 	return
 }
 

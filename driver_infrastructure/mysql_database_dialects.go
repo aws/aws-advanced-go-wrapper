@@ -18,10 +18,13 @@ package driver_infrastructure
 
 import (
 	"awssql/error_util"
+	"awssql/host_info_util"
 	"awssql/utils"
+	"context"
 	"database/sql/driver"
 	"fmt"
 	"strings"
+	"time"
 )
 
 type MySQLDatabaseDialect struct {
@@ -137,10 +140,86 @@ func (m *AuroraMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	return row != nil
 }
 
-func (m *AuroraMySQLDatabaseDialect) GetHostListProvider(
-	props map[string]string,
-	initialDsn string,
-	hostListProviderService HostListProviderService) *HostListProvider {
-	// TODO: implement GetHostListProvider, see ticket: "dev: RdsHostListProvider".
-	panic("implement me")
+func (m *AuroraMySQLDatabaseDialect) GetHostListProvider(props map[string]string, initialDsn string, hostListProviderService HostListProviderService) *HostListProvider {
+	provider := HostListProvider(NewRdsHostListProvider(hostListProviderService, m, props, initialDsn))
+	return &provider
+}
+
+func (m *AuroraMySQLDatabaseDialect) GetHostName(conn driver.Conn) (hostName string) {
+	hostIdQuery := "SELECT @@aurora_server_id"
+	res := utils.GetFirstRowFromQueryAsString(conn, hostIdQuery)
+	if len(res) > 0 {
+		return res[0]
+	}
+	return ""
+}
+
+func (m *AuroraMySQLDatabaseDialect) GetHostRole(conn driver.Conn) host_info_util.HostRole {
+	isReaderQuery := "SELECT @@innodb_read_only"
+	res := utils.GetFirstRowFromQuery(conn, isReaderQuery)
+	if len(res) > 0 {
+		isReader, ok := res[0].(int64)
+		if ok {
+			if isReader == 1 {
+				return host_info_util.READER
+			}
+			return host_info_util.WRITER
+		}
+	}
+
+	return host_info_util.UNKNOWN
+}
+
+func (m *AuroraMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider *RdsHostListProvider) []host_info_util.HostInfo {
+	topologyQuery := "SELECT server_id, CASE WHEN SESSION_ID = 'MASTER_SESSION_ID' THEN TRUE ELSE FALSE END as is_writer, " +
+		"cpu, REPLICA_LAG_IN_MILLISECONDS as 'lag', LAST_UPDATE_TIMESTAMP as last_update_timestamp " +
+		"FROM information_schema.replica_host_status " +
+		// Filter out hosts that haven't been updated in the last 5 minutes.
+		"WHERE time_to_sec(timediff(now(), LAST_UPDATE_TIMESTAMP)) <= 300 OR SESSION_ID = 'MASTER_SESSION_ID' "
+
+	queryerCtx, ok := conn.(driver.QueryerContext)
+	if !ok {
+		// Unable to query, conn does not implement QueryerContext.
+		return nil
+	}
+
+	rows, err := queryerCtx.QueryContext(context.Background(), topologyQuery, nil)
+	if err != nil {
+		// Query failed.
+		return nil
+	}
+
+	hosts := []host_info_util.HostInfo{}
+	row := make([]driver.Value, len(rows.Columns()))
+	err = rows.Next(row)
+
+	for err == nil && len(row) > 4 {
+		hostNameAsInt, ok1 := row[0].([]uint8)
+		isWriterAsInt, ok2 := row[1].(int64)
+		cpu, ok3 := row[2].(float64)
+		lag, ok4 := row[3].(float64)
+		lastUpdateTimeAsInt, ok5 := row[4].([]uint8)
+		if !ok1 || !ok2 || !ok3 || !ok4 {
+			// Unable to use information from row to create a host, try next row.
+			err = rows.Next(row)
+			continue
+		}
+
+		var lastUpdateTime time.Time
+		if ok5 {
+			lastUpdateTime, err = time.Parse("2006-01-02 15:04:05.999999", string(lastUpdateTimeAsInt))
+		}
+		if !ok5 || err != nil {
+			// Unable to get or convert last update time, use current time.
+			lastUpdateTime = time.Now()
+		}
+		role := host_info_util.READER
+		if isWriterAsInt == 1 {
+			role = host_info_util.WRITER
+		}
+		hosts = append(hosts, provider.createHost(string(hostNameAsInt), role, lag, cpu, lastUpdateTime))
+		err = rows.Next(row)
+	}
+	rows.Close()
+	return hosts
 }

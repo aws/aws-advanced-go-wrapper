@@ -22,10 +22,11 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"github.com/jackc/pgx/v5/stdlib"
 	"reflect"
 	"slices"
 	"strings"
+
+	"github.com/jackc/pgx/v5/stdlib"
 )
 
 var pgxPersistingProperties = []string{
@@ -67,7 +68,7 @@ func (p PgxDriverDialect) IsLoginError(err error) bool {
 }
 
 func (p PgxDriverDialect) IsDriverRegistered(drivers map[string]driver.Driver) bool {
-	for driverName, _ := range drivers {
+	for driverName := range drivers {
 		if driverName == PGX_DRIVER_REGISTRATION_NAME || driverName == PGX_V5_DRIVER_REGISTRATION_NAME {
 			return true
 		}

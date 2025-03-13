@@ -43,8 +43,8 @@ func NewSlidingExpirationCache[T any](id string, funcs ...DisposalFunc) *Sliding
 	cache := &SlidingExpirationCache[T]{
 		cacheId:              id,
 		cache:                make(map[string]*cacheItem[T]),
-		cleanupIntervalNanos: cleanupIntervalNanos,
-		cleanupTimeNanos:     time.Now().Add(cleanupIntervalNanos),
+		cleanupIntervalNanos: CleanupIntervalNanos,
+		cleanupTimeNanos:     time.Now().Add(CleanupIntervalNanos),
 		cancelCleanup:        cancel,
 	}
 
@@ -111,7 +111,7 @@ func (c *SlidingExpirationCache[T]) Clear() {
 
 	c.lock.Lock()
 	c.cache = make(map[string]*cacheItem[T])
-	c.cleanupTimeNanos = time.Now().Add(cleanupIntervalNanos)
+	c.cleanupTimeNanos = time.Now().Add(CleanupIntervalNanos)
 	c.lock.Unlock()
 
 	if c.itemDisposalFunc != nil {
@@ -158,7 +158,7 @@ func (c *SlidingExpirationCache[T]) cleanupExpiredItems(ctx context.Context) {
 			log.Println(error_util.GetMessage("SlidingExpirationCache.exitingCacheCleanupRoutine", c.cacheId))
 			return
 		default:
-			time.Sleep(cleanupIntervalNanos)
+			time.Sleep(CleanupIntervalNanos)
 
 			var itemList []any
 			c.lock.Lock()
