@@ -17,6 +17,8 @@
 package driver_infrastructure
 
 import (
+	"awssql/error_util"
+	"awssql/host_info_util"
 	"database/sql/driver"
 	"reflect"
 )
@@ -32,30 +34,30 @@ func NewDriverConnectionProvider(targetDriver driver.Driver) *DriverConnectionPr
 	return &DriverConnectionProvider{acceptedStrategies, targetDriver}
 }
 
-func (d DriverConnectionProvider) AcceptsUrl(hostInfo HostInfo, props map[string]string) bool {
+func (d DriverConnectionProvider) AcceptsUrl(hostInfo host_info_util.HostInfo, props map[string]string) bool {
 	return true
 }
 
-func (d DriverConnectionProvider) AcceptsStrategy(role HostRole, strategy string) bool {
+func (d DriverConnectionProvider) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
 	_, ok := d.acceptedStrategies[strategy]
 	return ok
 }
 
 func (d DriverConnectionProvider) GetHostInfoByStrategy(
-	hosts []HostInfo,
-	role HostRole,
+	hosts []host_info_util.HostInfo,
+	role host_info_util.HostRole,
 	strategy string,
-	props map[string]string) (HostInfo, error) {
+	props map[string]string) (host_info_util.HostInfo, error) {
 	acceptedStrategy, ok := d.acceptedStrategies[strategy]
 	if !ok {
-		return HostInfo{}, NewUnsupportedStrategyError(
-			GetMessage("ConnectionProvider.unsupportedHostSelectorStrategy", strategy, reflect.TypeOf(d).String()))
+		return host_info_util.HostInfo{}, error_util.NewUnsupportedStrategyError(
+			error_util.GetMessage("ConnectionProvider.unsupportedHostSelectorStrategy", strategy, reflect.TypeOf(d).String()))
 	}
 
 	return acceptedStrategy.GetHost(hosts, role, props)
 }
 
-func (d DriverConnectionProvider) Connect(hostInfo HostInfo, props map[string]string, pluginService *PluginService) (driver.Conn, error) {
+func (d DriverConnectionProvider) Connect(hostInfo host_info_util.HostInfo, props map[string]string, pluginService *PluginService) (driver.Conn, error) {
 	targetDriverDialect := (*pluginService).GetTargetDriverDialect()
 	dsn := targetDriverDialect.GetDsnFromProperties(props)
 	conn, err := d.targetDriver.Open(dsn)

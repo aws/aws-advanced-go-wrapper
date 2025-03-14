@@ -16,13 +16,15 @@
 
 package driver_infrastructure
 
+import "awssql/host_info_util"
+
 type ConnectionProviderManager struct {
 	defaultProvider   *ConnectionProvider
 	effectiveProvider *ConnectionProvider
 }
 
 func (connProviderManager *ConnectionProviderManager) GetConnectionProvider(
-	hostInfo HostInfo,
+	hostInfo host_info_util.HostInfo,
 	props map[string]string) *ConnectionProvider {
 	if connProviderManager.effectiveProvider != nil && (*connProviderManager.effectiveProvider).AcceptsUrl(hostInfo, props) {
 		return connProviderManager.effectiveProvider
@@ -35,7 +37,7 @@ func (connProviderManager *ConnectionProviderManager) GetDefaultProvider() *Conn
 	return connProviderManager.defaultProvider
 }
 
-func (connProviderManager *ConnectionProviderManager) AcceptsStrategy(role HostRole, strategy string) bool {
+func (connProviderManager *ConnectionProviderManager) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
 	if connProviderManager.effectiveProvider != nil && (*connProviderManager.effectiveProvider).AcceptsStrategy(role, strategy) {
 		return true
 	}
@@ -44,10 +46,10 @@ func (connProviderManager *ConnectionProviderManager) AcceptsStrategy(role HostR
 }
 
 func (connProviderManager *ConnectionProviderManager) GetHostInfoByStrategy(
-	hosts []HostInfo,
-	role HostRole,
+	hosts []host_info_util.HostInfo,
+	role host_info_util.HostRole,
 	strategy string,
-	props map[string]string) (HostInfo, error) {
+	props map[string]string) (host_info_util.HostInfo, error) {
 	if (*connProviderManager.effectiveProvider).AcceptsStrategy(role, strategy) {
 		host, err := (*connProviderManager.effectiveProvider).GetHostInfoByStrategy(hosts, role, strategy, props)
 		if err == nil {

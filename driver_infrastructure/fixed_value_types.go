@@ -16,13 +16,6 @@
 
 package driver_infrastructure
 
-type HostRole string
-
-const (
-	READER HostRole = "reader"
-	WRITER HostRole = "writer"
-)
-
 type HostChangeOptions int
 
 const (
@@ -36,13 +29,6 @@ const (
 	HOST_ADDED                HostChangeOptions = 7
 	HOST_CHANGED              HostChangeOptions = 8
 	HOST_DELETED              HostChangeOptions = 9
-)
-
-type HostAvailability string
-
-const (
-	AVAILABLE   HostAvailability = "available"
-	UNAVAILABLE HostAvailability = "unavailable"
 )
 
 type OldConnectionSuggestedAction string

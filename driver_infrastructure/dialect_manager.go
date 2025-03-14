@@ -17,6 +17,7 @@
 package driver_infrastructure
 
 import (
+	"awssql/error_util"
 	"database/sql/driver"
 	"log"
 	"strings"
@@ -100,7 +101,7 @@ func (d *DialectManager) GetDialect(dsn string) (DatabaseDialect, error) {
 		d.logCurrentDialect()
 		return d.dialect, nil
 	}
-	return nil, NewGenericAwsWrapperError(GetMessage("DatabaseDialectManager.getDialectError"))
+	return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DatabaseDialectManager.getDialectError"))
 }
 
 func (d *DialectManager) GetDialectForUpdate(conn driver.Conn, originalHost string, newHost string) DatabaseDialect {

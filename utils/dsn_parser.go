@@ -17,7 +17,8 @@
 package utils
 
 import (
-	"awssql/driver_infrastructure"
+	"awssql/error_util"
+	"awssql/host_info_util"
 	"errors"
 	"net"
 	"net/url"
@@ -44,7 +45,7 @@ var (
 		`(?:\?(?P<params>[^\?]*))?$`) // [?param1=value1&paramN=valueN]
 )
 
-func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []driver_infrastructure.HostInfo, err error) {
+func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []host_info_util.HostInfo, err error) {
 	// check if valid dsn... if not return empty hostlist
 	properties, err := ParseDsn(dsn)
 	if err != nil {
@@ -56,30 +57,30 @@ func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []driver_
 
 	for i, hostString := range hostStringList {
 		portString := portStringList[i]
-		port := driver_infrastructure.HOST_NO_PORT
+		port := host_info_util.HOST_NO_PORT
 		if portString != "" {
 			port, err = strconv.Atoi(portString)
 			if err != nil {
-				port = driver_infrastructure.HOST_NO_PORT
+				port = host_info_util.HOST_NO_PORT
 			}
 		}
 
-		var hostRole driver_infrastructure.HostRole
+		var hostRole host_info_util.HostRole
 		if isSingleWriterDsn {
-			hostRole = driver_infrastructure.READER
+			hostRole = host_info_util.READER
 			if i == 0 {
-				hostRole = driver_infrastructure.WRITER
+				hostRole = host_info_util.WRITER
 			}
 		} else {
 			urlType := IdentifyRdsUrlType(hostString)
 			if urlType == RDS_READER_CLUSTER {
-				hostRole = driver_infrastructure.READER
+				hostRole = host_info_util.READER
 			} else {
-				hostRole = driver_infrastructure.WRITER
+				hostRole = host_info_util.WRITER
 			}
 		}
 
-		builder := driver_infrastructure.NewHostInfoBuilder()
+		builder := host_info_util.NewHostInfoBuilder()
 		builder.SetHost(hostString).SetPort(port).SetRole(hostRole)
 		hostInfo := builder.Build()
 		hostInfoList = append(hostInfoList, *hostInfo)
@@ -87,7 +88,7 @@ func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []driver_
 	return
 }
 
-func ParseHostPortPair(dsn string) (driver_infrastructure.HostInfo, error) {
+func ParseHostPortPair(dsn string) (host_info_util.HostInfo, error) {
 	hosts, err := GetHostsFromDsn(dsn, true)
 	return hosts[0], err
 }
@@ -129,7 +130,7 @@ func GetProtocol(dsn string) (string, error) {
 		return "postgresql", nil
 	}
 
-	return "", driver_infrastructure.NewDsnParsingError(driver_infrastructure.GetMessage("DsnParser.unableToDetermineProtocol", dsn))
+	return "", error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.unableToDetermineProtocol", dsn))
 }
 
 func ParseDsn(dsn string) (map[string]string, error) {
@@ -206,7 +207,7 @@ func parsePgxURLSettings(connString string) (map[string]string, error) {
 		}
 		h, p, err := net.SplitHostPort(host)
 		if err != nil {
-			return nil, driver_infrastructure.NewDsnParsingError(driver_infrastructure.GetMessage("DsnParser.failedToSplitHostPort", host, err))
+			return nil, error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.failedToSplitHostPort", host, err))
 		}
 		if h != "" {
 			hosts = append(hosts, h)
@@ -261,7 +262,7 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 		var key, val string
 		eqIdx := strings.IndexRune(dsn, '=')
 		if eqIdx < 0 {
-			return nil, driver_infrastructure.NewDsnParsingError(driver_infrastructure.GetMessage("DsnParser.invalidKeyValue", dsn))
+			return nil, error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.invalidKeyValue", dsn))
 		}
 
 		key = strings.Trim(dsn[:eqIdx], " \t\n\r\v\f")
@@ -277,7 +278,7 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 				if dsn[end] == '\\' {
 					end++
 					if end == len(dsn) {
-						return nil, driver_infrastructure.NewDsnParsingError(driver_infrastructure.GetMessage("DsnParser.invalidBackslash", dsn))
+						return nil, error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.invalidBackslash", dsn))
 					}
 				}
 			}
@@ -299,7 +300,7 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 				}
 			}
 			if end == len(dsn) {
-				return nil, driver_infrastructure.NewDsnParsingError(driver_infrastructure.GetMessage("DsnParser.unterminatedQuotedString", dsn))
+				return nil, error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.unterminatedQuotedString", dsn))
 			}
 			val = strings.Replace(strings.Replace(dsn[:end], "\\\\", "\\", -1), "\\'", "'", -1)
 			if end == len(dsn) {
@@ -314,7 +315,7 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 		}
 
 		if key == "" {
-			return nil, driver_infrastructure.NewDsnParsingError(driver_infrastructure.GetMessage("DsnParser.invalidKeyValue", dsn))
+			return nil, error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.invalidKeyValue", dsn))
 		}
 
 		properties[key] = val
@@ -332,7 +333,7 @@ func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 	// [user[:password]@][net[(addr)]]/dbname[?param1=value1&paramN=valueN]
 	lastSlashIndex := strings.LastIndex(dsn, "/")
 	if lastSlashIndex == -1 {
-		return nil, driver_infrastructure.NewDsnParsingError(driver_infrastructure.GetMessage("DsnParser.invalidDatabaseNoSlash", dsn))
+		return nil, error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.invalidDatabaseNoSlash", dsn))
 	}
 
 	// [username[:password]@][protocol[(address)]]
@@ -356,9 +357,9 @@ func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 
 		closeParenIndex := strings.LastIndex(dsn[lastAtIndex:lastSlashIndex], ")") + lastAtIndex
 		if closeParenIndex == -1 {
-			return nil, driver_infrastructure.NewDsnParsingError(driver_infrastructure.GetMessage("DsnParser.invalidAddress", dsn))
+			return nil, error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.invalidAddress", dsn))
 		} else if closeParenIndex < openParenIndex {
-			return nil, driver_infrastructure.NewDsnParsingError(driver_infrastructure.GetMessage("DsnParser.invalidAddress", dsn))
+			return nil, error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.invalidAddress", dsn))
 		}
 		address := dsn[openParenIndex+1 : closeParenIndex]
 		hostPortPair := strings.Split(address, ":")

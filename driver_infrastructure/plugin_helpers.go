@@ -17,6 +17,7 @@
 package driver_infrastructure
 
 import (
+	"awssql/host_info_util"
 	"database/sql/driver"
 )
 
@@ -27,26 +28,26 @@ type PluginConnectFunc func(plugin ConnectionPlugin, targetFunc func() (any, err
 
 type PluginService interface {
 	GetCurrentConnection() driver.Conn
-	SetCurrentConnection(conn driver.Conn, hostInfo HostInfo, skipNotificationForThisPlugin ConnectionPlugin) error
-	GetCurrentHostInfo() HostInfo
-	GetHosts() []HostInfo
-	GetInitialConnectionHostInfo() HostInfo
-	AcceptsStrategy(role HostRole, strategy string) bool
-	GetHostInfoByStrategy(role HostRole, strategy string, hosts []HostInfo) (HostInfo, error)
-	GetHostRole(driver.Conn) HostRole
-	SetAvailability(hostAliases map[string]bool, availability HostAvailability)
+	SetCurrentConnection(conn driver.Conn, hostInfo host_info_util.HostInfo, skipNotificationForThisPlugin ConnectionPlugin) error
+	GetCurrentHostInfo() host_info_util.HostInfo
+	GetHosts() []host_info_util.HostInfo
+	GetInitialConnectionHostInfo() host_info_util.HostInfo
+	AcceptsStrategy(role host_info_util.HostRole, strategy string) bool
+	GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error)
+	GetHostRole(driver.Conn) host_info_util.HostRole
+	SetAvailability(hostAliases map[string]bool, availability host_info_util.HostAvailability)
 	InTransaction() bool
 	GetHostListProvider() HostListProvider
 	RefreshHostList(conn driver.Conn) error
 	ForceRefreshHostList(conn driver.Conn) error // TODO: double check signatures, there are multiple
-	Connect(hostInfo HostInfo, props map[string]string) (driver.Conn, error)
-	ForceConnect(hostInfo HostInfo, props map[string]string) (driver.Conn, error)
+	Connect(hostInfo host_info_util.HostInfo, props map[string]string) (driver.Conn, error)
+	ForceConnect(hostInfo host_info_util.HostInfo, props map[string]string) (driver.Conn, error)
 	GetDialect() DatabaseDialect
 	UpdateDialect(conn driver.Conn)
 	GetTargetDriverDialect() TargetDriverDialect
-	IdentifyConnection(conn driver.Conn) (HostInfo, error)
-	FillAliases(conn driver.Conn, hostInfo HostInfo) error
-	GetHostInfoBuilder() HostInfoBuilder
+	IdentifyConnection(conn driver.Conn) (host_info_util.HostInfo, error)
+	FillAliases(conn driver.Conn, hostInfo host_info_util.HostInfo) error
+	GetHostInfoBuilder() host_info_util.HostInfoBuilder
 	GetConnectionProvider() ConnectionProvider
 	GetProperties() map[string]string
 }
@@ -54,19 +55,19 @@ type PluginService interface {
 type PluginManager interface {
 	Init(pluginService *PluginService, props map[string]string, plugins []*ConnectionPlugin) error
 	InitHostProvider(initialUrl string, props map[string]string, hostListProviderService HostListProviderService) error
-	Connect(hostInfo HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)
-	ForceConnect(hostInfo HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)
+	Connect(hostInfo host_info_util.HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)
+	ForceConnect(hostInfo host_info_util.HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)
 	Execute(name string, methodFunc ExecuteFunc, methodArgs ...any) (
 		wrappedReturnValue any,
 		wrappedReturnValue2 any,
 		wrappedOk bool,
 		wrappedErr error)
-	AcceptsStrategy(role HostRole, strategy string) bool
+	AcceptsStrategy(role host_info_util.HostRole, strategy string) bool
 	NotifyHostListChanged(changes map[string]map[HostChangeOptions]bool)
 	NotifyConnectionChanged(
 		changes map[HostChangeOptions]bool, skipNotificationForThisPlugin ConnectionPlugin) map[OldConnectionSuggestedAction]bool
 	NotifySubscribedPlugins(methodName string, pluginFunc PluginExecFunc, skipNotificationForThisPlugin ConnectionPlugin) error
-	GetHostInfoByStrategy(role HostRole, strategy string, hosts []HostInfo) (HostInfo, error)
+	GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error)
 	GetDefaultConnectionProvider() *ConnectionProvider
 	GetEffectiveConnectionProvider() *ConnectionProvider
 	GetConnectionProviderManager() ConnectionProviderManager

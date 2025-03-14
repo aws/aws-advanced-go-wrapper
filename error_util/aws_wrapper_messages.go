@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-package driver_infrastructure
+package error_util
 
 import (
 	"encoding/json"

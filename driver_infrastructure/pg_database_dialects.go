@@ -17,6 +17,7 @@
 package driver_infrastructure
 
 import (
+	"awssql/error_util"
 	"database/sql/driver"
 	"fmt"
 )
@@ -41,11 +42,11 @@ func (p *PgDatabaseDialect) GetServerVersionQuery() string {
 }
 
 func (p *PgDatabaseDialect) GetSetAutoCommitQuery(autoCommit bool) (string, error) {
-	return "", NewUnsupportedMethodError("setAutoCommit")
+	return "", error_util.NewUnsupportedMethodError("setAutoCommit")
 }
 
 func (p *PgDatabaseDialect) GetSetCatalogQuery(catalog string) (string, error) {
-	return "", NewUnsupportedMethodError("setCatalog")
+	return "", error_util.NewUnsupportedMethodError("setCatalog")
 }
 
 func (p *PgDatabaseDialect) GetSetReadOnlyQuery(readOnly bool) string {
@@ -71,7 +72,7 @@ func (p *PgDatabaseDialect) GetSetTransactionIsolationQuery(level TransactionIso
 	case TRANSACTION_SERIALIZABLE:
 		transactionIsolationLevel = "SERIALIZABLE"
 	default:
-		return "", NewGenericAwsWrapperError(GetMessage("Conn.invalidTransactionIsolationLevel", level))
+		return "", error_util.NewGenericAwsWrapperError(error_util.GetMessage("Conn.invalidTransactionIsolationLevel", level))
 	}
 	return fmt.Sprintf("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL %s", transactionIsolationLevel), nil
 }
@@ -80,6 +81,14 @@ func (p *PgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	row := GetFirstRowFromQuery(conn, "SELECT 1 FROM pg_proc LIMIT 1")
 	// If the pg_proc table exists then it's a PostgreSQL cluster.
 	return row != nil
+}
+
+func (m *PgDatabaseDialect) GetHostListProvider(
+	props map[string]string,
+	initialDsn string,
+	hostListProviderService HostListProviderService) *HostListProvider {
+	provider := HostListProvider(NewDsnHostListProvider(props, initialDsn, hostListProviderService))
+	return &provider
 }
 
 type RdsPgDatabaseDialect struct {
@@ -120,4 +129,12 @@ func (m *AuroraPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	hasTopology := GetFirstRowFromQuery(conn, "SELECT 1 FROM aurora_replica_status() LIMIT 1")
 	// If both variables with such name are presented then it means it's an Aurora cluster.
 	return hasExtensions != nil && hasExtensions[0] == true && hasTopology != nil
+}
+
+func (m *AuroraPgDatabaseDialect) GetHostListProvider(
+	props map[string]string,
+	initialDsn string,
+	hostListProviderService HostListProviderService) *HostListProvider {
+	// TODO: implement GetHostListProvider, see ticket: "dev: RdsHostListProvider".
+	panic("implement me")
 }

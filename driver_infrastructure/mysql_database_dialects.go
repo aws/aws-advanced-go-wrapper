@@ -17,6 +17,7 @@
 package driver_infrastructure
 
 import (
+	"awssql/error_util"
 	"database/sql/driver"
 	"fmt"
 	"strings"
@@ -57,7 +58,7 @@ func (m *MySQLDatabaseDialect) GetSetCatalogQuery(catalog string) (string, error
 }
 
 func (m *MySQLDatabaseDialect) GetSetSchemaQuery(schema string) (string, error) {
-	return "", NewUnsupportedMethodError("setSchema")
+	return "", error_util.NewUnsupportedMethodError("setSchema")
 }
 
 func (m *MySQLDatabaseDialect) GetSetTransactionIsolationQuery(level TransactionIsolationLevel) (string, error) {
@@ -72,7 +73,7 @@ func (m *MySQLDatabaseDialect) GetSetTransactionIsolationQuery(level Transaction
 	case TRANSACTION_SERIALIZABLE:
 		transactionIsolationLevel = "SERIALIZABLE"
 	default:
-		return "", NewGenericAwsWrapperError(GetMessage("Conn.invalidTransactionIsolationLevel", level))
+		return "", error_util.NewGenericAwsWrapperError(error_util.GetMessage("Conn.invalidTransactionIsolationLevel", level))
 	}
 	return fmt.Sprintf("SET SESSION TRANSACTION ISOLATION LEVEL %s", transactionIsolationLevel), nil
 }
@@ -89,6 +90,14 @@ func (m *MySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 		return true
 	}
 	return false
+}
+
+func (m *MySQLDatabaseDialect) GetHostListProvider(
+	props map[string]string,
+	initialDsn string,
+	hostListProviderService HostListProviderService) *HostListProvider {
+	provider := HostListProvider(NewDsnHostListProvider(props, initialDsn, hostListProviderService))
+	return &provider
 }
 
 type RdsMySQLDatabaseDialect struct {
@@ -125,4 +134,12 @@ func (m *AuroraMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	row := GetFirstRowFromQueryAsString(conn, "SHOW VARIABLES LIKE 'aurora_version'")
 	// If a variable with such name is presented then it means it's an Aurora cluster.
 	return row != nil
+}
+
+func (m *AuroraMySQLDatabaseDialect) GetHostListProvider(
+	props map[string]string,
+	initialDsn string,
+	hostListProviderService HostListProviderService) *HostListProvider {
+	// TODO: implement GetHostListProvider, see ticket: "dev: RdsHostListProvider".
+	panic("implement me")
 }

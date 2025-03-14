@@ -19,6 +19,7 @@ package test
 import (
 	awsDriver "awssql/driver"
 	"awssql/driver_infrastructure"
+	"awssql/host_info_util"
 	"awssql/plugin_helpers"
 	"database/sql/driver"
 	"errors"
@@ -65,8 +66,8 @@ func (t TestPlugin) Execute(methodName string, executeFunc driver_infrastructure
 }
 
 func (t TestPlugin) Connect(
-	hostInfo driver_infrastructure.HostInfo,
-	props map[string]string,
+	hostInfo host_info_util.HostInfo,
+	properties map[string]string,
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:before connect", reflect.TypeOf(t), t.id))
@@ -90,8 +91,8 @@ func (t TestPlugin) Connect(
 }
 
 func (t TestPlugin) ForceConnect(
-	hostInfo driver_infrastructure.HostInfo,
-	props map[string]string,
+	hostInfo host_info_util.HostInfo,
+	properties map[string]string,
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:before forceConnect", reflect.TypeOf(t), t.id))
@@ -108,16 +109,16 @@ func (t TestPlugin) ForceConnect(
 	return nil, err
 }
 
-func (t TestPlugin) AcceptsStrategy(role driver_infrastructure.HostRole, strategy string) bool {
+func (t TestPlugin) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
 	return false
 }
 
 func (t TestPlugin) GetHostInfoByStrategy(
-	role driver_infrastructure.HostRole,
+	role host_info_util.HostRole,
 	strategy string,
-	hosts []driver_infrastructure.HostInfo) (driver_infrastructure.HostInfo, error) {
+	hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error) {
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:before GetHostInfoByStrategy", reflect.TypeOf(t), t.id))
-	result := driver_infrastructure.HostInfo{}
+	result := host_info_util.HostInfo{}
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:after GetHostInfoByStrategy", reflect.TypeOf(t), t.id))
 	return result, nil
 }
@@ -309,7 +310,7 @@ func TestConnect(t *testing.T) {
 		return
 	}
 
-	_, _ = target.Connect(driver_infrastructure.HostInfo{}, props, true)
+	_, _ = target.Connect(host_info_util.HostInfo{}, props, true)
 	if len(calls) != 4 {
 		t.Fatalf(`Should have 4 calls, got "%v"`, len(calls))
 	}
@@ -340,7 +341,7 @@ func TestForceConnect(t *testing.T) {
 		return
 	}
 
-	_, _ = target.ForceConnect(driver_infrastructure.HostInfo{}, props, true)
+	_, _ = target.ForceConnect(host_info_util.HostInfo{}, props, true)
 	if len(calls) != 4 {
 		t.Fatalf(`Should have 4 calls, got "%v"`, len(calls))
 	}
@@ -374,7 +375,7 @@ func TestConnectWithErrorBefore(t *testing.T) {
 		return
 	}
 
-	_, _ = target.Connect(driver_infrastructure.HostInfo{}, props, true)
+	_, _ = target.Connect(host_info_util.HostInfo{}, props, true)
 	if len(calls) != 3 {
 		t.Fatalf(`Should have 3 calls, got "%v"`, len(calls))
 	}
@@ -406,7 +407,7 @@ func TestConnectWithErrorAfter(t *testing.T) {
 		return
 	}
 
-	_, _ = target.Connect(driver_infrastructure.HostInfo{}, props, true)
+	_, _ = target.Connect(host_info_util.HostInfo{}, props, true)
 	if len(calls) != 5 {
 		t.Fatalf(`Should have 5 calls, got "%v"`, len(calls))
 	}

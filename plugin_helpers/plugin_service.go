@@ -18,6 +18,7 @@ package plugin_helpers
 
 import (
 	"awssql/driver_infrastructure"
+	"awssql/host_info_util"
 	"database/sql/driver"
 )
 
@@ -28,16 +29,16 @@ type PluginServiceImpl struct {
 	props                     map[string]string
 	currentConnection         driver.Conn
 	hostListProvider          driver_infrastructure.HostListProvider
-	currentHostInfo           driver_infrastructure.HostInfo
+	currentHostInfo           host_info_util.HostInfo
 	dialect                   driver_infrastructure.DatabaseDialect
 	targetDriverDialect       driver_infrastructure.TargetDriverDialect
 	dialectProvider           driver_infrastructure.DialectProvider
 	connectionProviderManager driver_infrastructure.ConnectionProviderManager
 	originalDsn               string
-	hosts                     []driver_infrastructure.HostInfo
-	allHosts                  []driver_infrastructure.HostInfo
+	hosts                     []host_info_util.HostInfo
+	allHosts                  []host_info_util.HostInfo
 	initialHost               string
-	initialHostInfo           driver_infrastructure.HostInfo
+	initialHostInfo           host_info_util.HostInfo
 	isInTransaction           bool
 }
 
@@ -65,41 +66,41 @@ func (p *PluginServiceImpl) GetCurrentConnection() driver.Conn {
 
 func (p *PluginServiceImpl) SetCurrentConnection(
 	conn driver.Conn,
-	hostInfo driver_infrastructure.HostInfo,
+	hostInfo host_info_util.HostInfo,
 	skipNotificationForThisPlugin driver_infrastructure.ConnectionPlugin) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (p *PluginServiceImpl) GetCurrentHostInfo() driver_infrastructure.HostInfo {
+func (p *PluginServiceImpl) GetCurrentHostInfo() host_info_util.HostInfo {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (p *PluginServiceImpl) GetHosts() []driver_infrastructure.HostInfo {
+func (p *PluginServiceImpl) GetHosts() []host_info_util.HostInfo {
 	return p.allHosts
 }
 
-func (p *PluginServiceImpl) GetInitialConnectionHostInfo() driver_infrastructure.HostInfo {
+func (p *PluginServiceImpl) GetInitialConnectionHostInfo() host_info_util.HostInfo {
 	return p.initialHostInfo
 }
 
-func (p *PluginServiceImpl) AcceptsStrategy(role driver_infrastructure.HostRole, strategy string) bool {
+func (p *PluginServiceImpl) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
 	return (*p.pluginManager).AcceptsStrategy(role, strategy)
 }
 
 func (p *PluginServiceImpl) GetHostInfoByStrategy(
-	role driver_infrastructure.HostRole,
+	role host_info_util.HostRole,
 	strategy string,
-	hosts []driver_infrastructure.HostInfo) (driver_infrastructure.HostInfo, error) {
+	hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error) {
 	return (*p.pluginManager).GetHostInfoByStrategy(role, strategy, hosts)
 }
 
-func (p *PluginServiceImpl) GetHostRole(conn driver.Conn) driver_infrastructure.HostRole {
+func (p *PluginServiceImpl) GetHostRole(conn driver.Conn) host_info_util.HostRole {
 	return p.hostListProvider.GetHostRole(conn)
 }
 
-func (p *PluginServiceImpl) SetAvailability(hostAliases map[string]bool, availability driver_infrastructure.HostAvailability) {
+func (p *PluginServiceImpl) SetAvailability(hostAliases map[string]bool, availability host_info_util.HostAvailability) {
 	//TODO implement me
 	panic("implement me")
 }
@@ -122,12 +123,12 @@ func (p *PluginServiceImpl) ForceRefreshHostList(conn driver.Conn) error {
 	panic("implement me")
 }
 
-func (p *PluginServiceImpl) UpdateHostAvailability(hosts []driver_infrastructure.HostInfo) error {
+func (p *PluginServiceImpl) UpdateHostAvailability(hosts []host_info_util.HostInfo) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (p *PluginServiceImpl) Connect(hostInfo driver_infrastructure.HostInfo, props map[string]string) (driver.Conn, error) {
+func (p *PluginServiceImpl) Connect(hostInfo host_info_util.HostInfo, props map[string]string) (driver.Conn, error) {
 	isInitialConnection := true
 	if p.currentConnection != nil {
 		isInitialConnection = false
@@ -135,7 +136,7 @@ func (p *PluginServiceImpl) Connect(hostInfo driver_infrastructure.HostInfo, pro
 	return (*p.pluginManager).Connect(hostInfo, props, isInitialConnection)
 }
 
-func (p *PluginServiceImpl) ForceConnect(hostInfo driver_infrastructure.HostInfo, props map[string]string) (driver.Conn, error) {
+func (p *PluginServiceImpl) ForceConnect(hostInfo host_info_util.HostInfo, props map[string]string) (driver.Conn, error) {
 	isInitialConnection := true
 	if p.currentConnection != nil {
 		isInitialConnection = false
@@ -148,17 +149,17 @@ func (p *PluginServiceImpl) GetTargetDriverDialect() driver_infrastructure.Targe
 	panic("implement me")
 }
 
-func (p *PluginServiceImpl) IdentifyConnection(conn driver.Conn) (driver_infrastructure.HostInfo, error) {
+func (p *PluginServiceImpl) IdentifyConnection(conn driver.Conn) (host_info_util.HostInfo, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (p *PluginServiceImpl) FillAliases(conn driver.Conn, hostInfo driver_infrastructure.HostInfo) error {
+func (p *PluginServiceImpl) FillAliases(conn driver.Conn, hostInfo host_info_util.HostInfo) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (p *PluginServiceImpl) GetHostInfoBuilder() driver_infrastructure.HostInfoBuilder {
+func (p *PluginServiceImpl) GetHostInfoBuilder() host_info_util.HostInfoBuilder {
 	//TODO implement me
 	panic("implement me")
 }

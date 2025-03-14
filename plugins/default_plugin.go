@@ -18,6 +18,8 @@ package plugins
 
 import (
 	"awssql/driver_infrastructure"
+	"awssql/error_util"
+	"awssql/host_info_util"
 	"database/sql/driver"
 )
 
@@ -46,7 +48,7 @@ func (d *DefaultPlugin) Execute(methodName string, executeFunc driver_infrastruc
 }
 
 func (d *DefaultPlugin) Connect(
-	hostInfo driver_infrastructure.HostInfo,
+	hostInfo host_info_util.HostInfo,
 	props map[string]string,
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
@@ -56,7 +58,7 @@ func (d *DefaultPlugin) Connect(
 }
 
 func (d *DefaultPlugin) ForceConnect(
-	hostInfo driver_infrastructure.HostInfo,
+	hostInfo host_info_util.HostInfo,
 	props map[string]string,
 	isInitialConnection bool,
 	forceConnectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
@@ -65,26 +67,25 @@ func (d *DefaultPlugin) ForceConnect(
 }
 
 func (d *DefaultPlugin) connectInternal(
-	hostInfo driver_infrastructure.HostInfo,
+	hostInfo host_info_util.HostInfo,
 	props map[string]string,
 	connProvider *driver_infrastructure.ConnectionProvider) (driver.Conn, error) {
 	conn, err := (*connProvider).Connect(hostInfo, props, d.PluginService)
-	(*d.PluginService).SetAvailability(hostInfo.AllAliases, driver_infrastructure.AVAILABLE)
+	(*d.PluginService).SetAvailability(hostInfo.AllAliases, host_info_util.AVAILABLE)
 	return conn, err
 }
 
-func (d *DefaultPlugin) AcceptsStrategy(role driver_infrastructure.HostRole, strategy string) bool {
+func (d *DefaultPlugin) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
 	return d.ConnProviderManager.AcceptsStrategy(role, strategy)
 }
 
 func (d *DefaultPlugin) GetHostInfoByStrategy(
-	role driver_infrastructure.HostRole,
+	role host_info_util.HostRole,
 	strategy string,
-	hosts []driver_infrastructure.HostInfo) (driver_infrastructure.HostInfo, error) {
+	hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error) {
 	if len(hosts) == 0 {
-		return driver_infrastructure.HostInfo{}, driver_infrastructure.NewGenericAwsWrapperError(driver_infrastructure.GetMessage("DefaultConnectionPlugin.noHostsAvailable"))
+		return host_info_util.HostInfo{}, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DefaultConnectionPlugin.noHostsAvailable"))
 	}
-
 	return d.ConnProviderManager.GetHostInfoByStrategy(hosts, role, strategy, (*d.PluginService).GetProperties())
 }
 

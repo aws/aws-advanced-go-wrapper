@@ -16,10 +16,12 @@
 
 package driver_infrastructure
 
+import "awssql/host_info_util"
+
 const (
 	SELECTOR_RANDOM = "random"
 )
 
 type HostSelector interface {
-	GetHost(hosts []HostInfo, role HostRole, props map[string]string) (HostInfo, error)
+	GetHost(hosts []host_info_util.HostInfo, role host_info_util.HostRole, props map[string]string) (host_info_util.HostInfo, error)
 }

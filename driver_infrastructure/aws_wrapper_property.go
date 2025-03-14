@@ -16,7 +16,10 @@
 
 package driver_infrastructure
 
-import "strconv"
+import (
+	"awssql/error_util"
+	"strconv"
+)
 
 const DEFAULT_PLUGINS = ""
 
@@ -58,15 +61,22 @@ func GetVerifiedWrapperPropertyValue[T any](props map[string]string, property Aw
 	case WRAPPER_TYPE_BOOL:
 		parsedValue, _ = strconv.ParseBool(propValue)
 	default:
-		panic(GetMessage("AwsWrapperProperty.invalidPropertyType", property.Name, property.wrapperPropertyType))
+		panic(error_util.GetMessage("AwsWrapperProperty.invalidPropertyType", property.Name, property.wrapperPropertyType))
 	}
 
 	result, ok := parsedValue.(T)
 	if !ok {
-		panic(GetMessage("AwsWrapperProperty.unexpectedType", property.Name, propValue))
+		panic(error_util.GetMessage("AwsWrapperProperty.unexpectedType", property.Name, propValue))
 	}
 
 	return result
+}
+
+var SINGLE_WRITER_DSN = AwsWrapperProperty{
+	"singleWriterDsn",
+	"Set to true if you are providing a dsn with multiple comma-delimited hosts and your cluster has only one writer. The writer must be the first host in the dsn.",
+	"false",
+	WRAPPER_TYPE_BOOL,
 }
 
 var PLUGINS = AwsWrapperProperty{

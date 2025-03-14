@@ -18,6 +18,7 @@ package container
 
 import (
 	"awssql/driver_infrastructure"
+	"awssql/error_util"
 	"awssql/plugins"
 	"fmt"
 	"log/slog"
@@ -60,10 +61,7 @@ func (builder *ConnectionPluginChainBuilder) GetPlugins(
 	for _, pluginCode := range pluginCodesSlice {
 		factoryFunc, ok := pluginFactoryFuncByCode[pluginCode]
 		if !ok {
-			return nil, &driver_infrastructure.AwsWrapperError{
-				Message:   driver_infrastructure.GetMessage("ConnectionPluginManager.unknownPluginCode", pluginCode),
-				ErrorType: driver_infrastructure.GenericAwsWrapperErrorType,
-			}
+			return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("ConnectionPluginManager.unknownPluginCode", pluginCode))
 		}
 		if lastWeight == WEIGHT_RELATIVE_TO_PRIOR_PLUGIN {
 			lastWeight++

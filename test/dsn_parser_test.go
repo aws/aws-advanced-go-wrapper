@@ -17,7 +17,7 @@
 package test
 
 import (
-	"awssql/driver_infrastructure"
+	"awssql/host_info_util"
 	"awssql/utils"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -34,9 +34,9 @@ func TestGetHostsFromDsnWithPgxDsnUrl(t *testing.T) {
 	assert.Equal(t, 1, len(hosts))
 	assert.Equal(t, "localhost", hosts[0].Host)
 	assert.Equal(t, 5432, hosts[0].Port)
-	assert.Equal(t, driver_infrastructure.AVAILABLE, hosts[0].Availability)
-	assert.Equal(t, driver_infrastructure.WRITER, hosts[0].Role)
-	assert.Equal(t, driver_infrastructure.HOST_DEFAULT_WEIGHT, hosts[0].Weight)
+	assert.Equal(t, host_info_util.AVAILABLE, hosts[0].Availability)
+	assert.Equal(t, host_info_util.WRITER, hosts[0].Role)
+	assert.Equal(t, host_info_util.HOST_DEFAULT_WEIGHT, hosts[0].Weight)
 }
 
 func TestParseDsnPgxUrl(t *testing.T) {
