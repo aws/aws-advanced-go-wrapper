@@ -20,14 +20,12 @@ import (
 	"awssql/container"
 	"awssql/driver_infrastructure"
 	"awssql/error_util"
+	"awssql/utils"
 	"context"
 	"database/sql"
 	"database/sql/driver"
 	"errors"
 	"reflect"
-
-	"github.com/go-sql-driver/mysql"
-	"github.com/jackc/pgx/v5/stdlib"
 )
 
 type DatabaseEngine string
@@ -38,40 +36,32 @@ const (
 )
 
 type AwsWrapperDriver struct {
-	targetDriver driver.Driver
-	engine       DatabaseEngine
 }
 
 func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 	// Call underlying driver_infrastructure and wrap connection.
-	conn, err := d.targetDriver.Open(dsn)
+	props, err := utils.ParseDsn(dsn)
+	if err != nil {
+		return nil, err
+	}
+	targetDriver := GetTargetDriver(props)
+	conn, err := targetDriver.Open(dsn)
 	if err != nil {
 		return nil, err
 	}
 
-	wrapperContainer, err := container.NewContainer(dsn, d.targetDriver)
+	wrapperContainer, err := container.NewContainer(dsn, targetDriver)
 	if err != nil || wrapperContainer.PluginService == nil || wrapperContainer.PluginManager == nil {
 		return nil, err
 	}
 
-	return NewAwsWrapperConn(conn, wrapperContainer, d.engine), err
+	return NewAwsWrapperConn(conn, wrapperContainer, GetDatabaseEngine(props)), err
 }
 
-// TODO: remove hard coding of underlying drivers.
-// See ticket: "dev: address hardcoded underlying driver".
 func init() {
-	var targetDriver = &mysql.MySQLDriver{}
 	sql.Register(
-		"aws-mysql",
-		&AwsWrapperDriver{
-			targetDriver: targetDriver,
-			engine:       MYSQL})
-	var otherDriver = &stdlib.Driver{}
-	sql.Register(
-		"aws-pgx",
-		&AwsWrapperDriver{
-			targetDriver: otherDriver,
-			engine:       PG})
+		"awssql",
+		&AwsWrapperDriver{})
 }
 
 type AwsWrapperConn struct {

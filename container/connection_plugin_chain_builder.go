@@ -20,6 +20,7 @@ import (
 	"awssql/driver_infrastructure"
 	"awssql/error_util"
 	"awssql/plugins"
+	"awssql/property_util"
 	"fmt"
 	"log/slog"
 	"reflect"
@@ -50,8 +51,8 @@ func (builder *ConnectionPluginChainBuilder) GetPlugins(
 	var pluginFactoryFuncWeights []PluginFactoryFuncWeight
 	usingDefault := false
 
-	pluginCodes := driver_infrastructure.GetVerifiedWrapperPropertyValue[string](props, driver_infrastructure.PLUGINS)
-	if pluginCodes == driver_infrastructure.DEFAULT_PLUGINS {
+	pluginCodes := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PLUGINS)
+	if pluginCodes == property_util.DEFAULT_PLUGINS {
 		usingDefault = true
 	}
 
@@ -71,7 +72,7 @@ func (builder *ConnectionPluginChainBuilder) GetPlugins(
 		pluginFactoryFuncWeights = append(pluginFactoryFuncWeights, PluginFactoryFuncWeight{factoryFunc, lastWeight})
 	}
 
-	autoSort := driver_infrastructure.GetVerifiedWrapperPropertyValue[bool](props, driver_infrastructure.AUTO_SORT_PLUGIN_ORDER)
+	autoSort := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.AUTO_SORT_PLUGIN_ORDER)
 	pluginsSorted := false
 	if !usingDefault && len(pluginFactoryFuncWeights) > 1 && autoSort {
 		sort.Slice(pluginFactoryFuncWeights, func(i, j int) bool {

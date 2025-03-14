@@ -19,6 +19,7 @@ package driver_infrastructure
 import (
 	"awssql/error_util"
 	"awssql/host_info_util"
+	"awssql/property_util"
 	"awssql/utils"
 	"database/sql/driver"
 )
@@ -32,7 +33,7 @@ type DsnHostListProvider struct {
 }
 
 func NewDsnHostListProvider(props map[string]string, dsn string, hostListProviderService HostListProviderService) *DsnHostListProvider {
-	isSingleWriterConnectionString := GetVerifiedWrapperPropertyValue[bool](props, SINGLE_WRITER_DSN)
+	isSingleWriterConnectionString := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.SINGLE_WRITER_DSN)
 	return &DsnHostListProvider{isSingleWriterConnectionString, dsn, hostListProviderService, false, []host_info_util.HostInfo{}}
 }
 

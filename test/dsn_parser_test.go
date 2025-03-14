@@ -18,6 +18,7 @@ package test
 
 import (
 	"awssql/host_info_util"
+	"awssql/property_util"
 	"awssql/utils"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -47,12 +48,12 @@ func TestParseDsnPgxUrl(t *testing.T) {
 		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
 	}
 
-	assert.Equal(t, "postgresql", props[utils.DRIVER_PROTOCOL])
-	assert.Equal(t, "someUser", props[utils.USER])
-	assert.Equal(t, "somePassword", props[utils.PASSWORD])
-	assert.Equal(t, "localhost", props[utils.HOST])
-	assert.Equal(t, "5432", props[utils.PORT])
-	assert.Equal(t, "pgx_test", props[utils.DATABASE])
+	assert.Equal(t, "postgresql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "localhost", props[property_util.HOST.Name])
+	assert.Equal(t, "5432", props[property_util.PORT.Name])
+	assert.Equal(t, "pgx_test", props[property_util.DATABASE.Name])
 	assert.Equal(t, "disable", props["sslmode"])
 	assert.Equal(t, "bar", props["foo"])
 }
@@ -65,12 +66,12 @@ func TestParseDsnPgxUrlWithoutParams(t *testing.T) {
 		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
 	}
 
-	assert.Equal(t, "postgresql", props[utils.DRIVER_PROTOCOL])
-	assert.Equal(t, "someUser", props[utils.USER])
-	assert.Equal(t, "somePassword", props[utils.PASSWORD])
-	assert.Equal(t, "localhost", props[utils.HOST])
-	assert.Equal(t, "5432", props[utils.PORT])
-	assert.Equal(t, "pgx_test", props[utils.DATABASE])
+	assert.Equal(t, "postgresql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "localhost", props[property_util.HOST.Name])
+	assert.Equal(t, "5432", props[property_util.PORT.Name])
+	assert.Equal(t, "pgx_test", props[property_util.DATABASE.Name])
 }
 
 func TestParseDsnPgxKeyValue(t *testing.T) {
@@ -81,12 +82,12 @@ func TestParseDsnPgxKeyValue(t *testing.T) {
 		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
 	}
 
-	assert.Equal(t, "postgresql", props[utils.DRIVER_PROTOCOL])
-	assert.Equal(t, "someUser", props[utils.USER])
-	assert.Equal(t, "somePassword", props[utils.PASSWORD])
-	assert.Equal(t, "localhost", props[utils.HOST])
-	assert.Equal(t, "5432", props[utils.PORT])
-	assert.Equal(t, "pgx_test", props[utils.DATABASE])
+	assert.Equal(t, "postgresql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "localhost", props[property_util.HOST.Name])
+	assert.Equal(t, "5432", props[property_util.PORT.Name])
+	assert.Equal(t, "pgx_test", props[property_util.DATABASE.Name])
 	assert.Equal(t, "disable", props["sslmode"])
 	assert.Equal(t, "bar", props["foo"])
 }
@@ -99,12 +100,12 @@ func TestParseDsnMySql(t *testing.T) {
 		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
 	}
 
-	assert.Equal(t, "mysql", props[utils.DRIVER_PROTOCOL])
-	assert.Equal(t, "someUser", props[utils.USER])
-	assert.Equal(t, "somePassword", props[utils.PASSWORD])
-	assert.Equal(t, "mydatabase.com", props[utils.HOST])
-	assert.Equal(t, "3306", props[utils.PORT])
-	assert.Equal(t, "myDatabase", props[utils.DATABASE])
+	assert.Equal(t, "mysql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "mydatabase.com", props[property_util.HOST.Name])
+	assert.Equal(t, "3306", props[property_util.PORT.Name])
+	assert.Equal(t, "myDatabase", props[property_util.DATABASE.Name])
 	assert.Equal(t, "bar", props["foo"])
 	assert.Equal(t, "snap", props["pop"])
 }
@@ -117,10 +118,10 @@ func TestParseDsnMySqlWithoutParams(t *testing.T) {
 		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
 	}
 
-	assert.Equal(t, "mysql", props[utils.DRIVER_PROTOCOL])
-	assert.Equal(t, "someUser", props[utils.USER])
-	assert.Equal(t, "somePassword", props[utils.PASSWORD])
-	assert.Equal(t, "mydatabase.com", props[utils.HOST])
-	assert.Equal(t, "3306", props[utils.PORT])
-	assert.Equal(t, "myDatabase", props[utils.DATABASE])
+	assert.Equal(t, "mysql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "mydatabase.com", props[property_util.HOST.Name])
+	assert.Equal(t, "3306", props[property_util.PORT.Name])
+	assert.Equal(t, "myDatabase", props[property_util.DATABASE.Name])
 }

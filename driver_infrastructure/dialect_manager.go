@@ -18,6 +18,7 @@ package driver_infrastructure
 
 import (
 	"awssql/error_util"
+	"awssql/property_util"
 	"awssql/utils"
 	"database/sql/driver"
 	"log"
@@ -46,8 +47,6 @@ type DialectManager struct {
 }
 
 func (d *DialectManager) GetDialect(dsn string, props map[string]string) (DatabaseDialect, error) {
-	// TODO: requires dsn parsing to determine what the initial dialect should be. Currently bases off of inaccurate
-	// checks for phrases in the dsn.
 	dialectCode := d.knownEndpointDialects[dsn]
 	var userDialect DatabaseDialect
 	if dialectCode != "" {
@@ -60,10 +59,7 @@ func (d *DialectManager) GetDialect(dsn string, props map[string]string) (Databa
 		}
 	}
 
-	driverProtocol, ok := props[utils.DRIVER_PROTOCOL]
-	if !ok && driverProtocol != "" {
-		return nil, error_util.NewIllegalArgumentError(error_util.GetMessage("DatabaseDialectManager.invalidDriverProtocol", driverProtocol))
-	}
+	driverProtocol := property_util.DRIVER_PROTOCOL.Get(props)
 
 	hostString := dsn
 	hostInfoList, err := utils.GetHostsFromDsn(dsn, true)
