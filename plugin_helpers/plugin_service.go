@@ -25,7 +25,7 @@ import (
 type PluginServiceImpl struct {
 	// TODO: dialect should be initialized using DialectManager's GetDialect.
 	pluginManager             *driver_infrastructure.PluginManager
-	props                     map[string]any
+	props                     map[string]string
 	currentConnection         driver.Conn
 	hostListProvider          driver_infrastructure.HostListProvider
 	currentHostInfo           driver_infrastructure.HostInfo
@@ -41,7 +41,7 @@ type PluginServiceImpl struct {
 	isInTransaction           bool
 }
 
-func NewPluginServiceImpl(pluginManager *driver_infrastructure.PluginManager, props map[string]any) *PluginServiceImpl {
+func NewPluginServiceImpl(pluginManager *driver_infrastructure.PluginManager, props map[string]string) *PluginServiceImpl {
 	return &PluginServiceImpl{pluginManager: pluginManager, props: props}
 }
 
@@ -127,7 +127,7 @@ func (p *PluginServiceImpl) UpdateHostAvailability(hosts []driver_infrastructure
 	panic("implement me")
 }
 
-func (p *PluginServiceImpl) Connect(hostInfo driver_infrastructure.HostInfo, props map[string]any) (driver.Conn, error) {
+func (p *PluginServiceImpl) Connect(hostInfo driver_infrastructure.HostInfo, props map[string]string) (driver.Conn, error) {
 	isInitialConnection := true
 	if p.currentConnection != nil {
 		isInitialConnection = false
@@ -135,7 +135,7 @@ func (p *PluginServiceImpl) Connect(hostInfo driver_infrastructure.HostInfo, pro
 	return (*p.pluginManager).Connect(hostInfo, props, isInitialConnection)
 }
 
-func (p *PluginServiceImpl) ForceConnect(hostInfo driver_infrastructure.HostInfo, props map[string]any) (driver.Conn, error) {
+func (p *PluginServiceImpl) ForceConnect(hostInfo driver_infrastructure.HostInfo, props map[string]string) (driver.Conn, error) {
 	isInitialConnection := true
 	if p.currentConnection != nil {
 		isInitialConnection = false
@@ -168,6 +168,6 @@ func (p *PluginServiceImpl) GetConnectionProvider() driver_infrastructure.Connec
 	panic("implement me")
 }
 
-func (p *PluginServiceImpl) GetProperties() map[string]any {
+func (p *PluginServiceImpl) GetProperties() map[string]string {
 	return p.props
 }

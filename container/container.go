@@ -19,6 +19,7 @@ package container
 import (
 	"awssql/driver_infrastructure"
 	"awssql/plugin_helpers"
+	"awssql/utils"
 	"database/sql/driver"
 )
 
@@ -28,7 +29,10 @@ type Container struct {
 }
 
 func NewContainer(dsn string, targetDriver driver.Driver) (Container, error) {
-	props := driver_infrastructure.PropertiesFromDsn(dsn)
+	props, parseErr := utils.ParseDsn(dsn)
+	if parseErr != nil {
+		return Container{}, parseErr
+	}
 	defaultConnProvider := driver_infrastructure.ConnectionProvider(driver_infrastructure.NewDriverConnectionProvider(targetDriver))
 
 	pluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(targetDriver, &defaultConnProvider, nil, props))

@@ -21,5 +21,5 @@ const (
 )
 
 type HostSelector interface {
-	GetHost(hosts []HostInfo, role HostRole, props map[string]any) (HostInfo, error)
+	GetHost(hosts []HostInfo, role HostRole, props map[string]string) (HostInfo, error)
 }

@@ -27,7 +27,7 @@ package test
 //// TODO: complete once additional plugins have been added.
 //func TestSortPlugins(t *testing.T) {
 //	builder := &container.ConnectionPluginChainBuilder{}
-//	props := map[string]any{}
+//	props := map[string]string{}
 //	props[driver_infrastructure.PLUGINS.Name] = "iam,efm,failover"
 //	pluginManagerImpl := plugin_helpers.PluginManagerImpl{}
 //	pluginManager := driver_infrastructure.PluginManager(&pluginManagerImpl)
@@ -63,7 +63,7 @@ package test
 //
 //func TestPreservePluginOrder(t *testing.T) {
 //	builder := &container.ConnectionPluginChainBuilder{}
-//	props := map[string]any{}
+//	props := map[string]string{}
 //	props[driver_infrastructure.PLUGINS.Name] = "iam,efm,failover"
 //	props[driver_infrastructure.AUTO_SORT_PLUGIN_ORDER.Name] = false
 //	pluginManagerImpl := plugin_helpers.PluginManagerImpl{}
@@ -100,7 +100,7 @@ package test
 //
 //func TestSortPluginsWithStickToPrior(t *testing.T) {
 //	builder := &container.ConnectionPluginChainBuilder{}
-//	props := map[string]any{}
+//	props := map[string]string{}
 //	props[driver_infrastructure.PLUGINS.Name] = "dev,iam,executionTime,connectTime,efm,failover"
 //	pluginManagerImpl := plugin_helpers.PluginManagerImpl{}
 //	pluginManager := driver_infrastructure.PluginManager(&pluginManagerImpl)

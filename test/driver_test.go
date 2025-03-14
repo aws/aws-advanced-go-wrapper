@@ -179,11 +179,11 @@ func TestIsDialectMySQL(t *testing.T) {
 }
 
 func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, nil, nil, map[string]any{}))
+	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, nil, nil, map[string]string{}))
 	plugins := []*driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
-	_ = mockPluginManager.Init(nil, map[string]any{}, plugins)
+	_ = mockPluginManager.Init(nil, map[string]string{}, plugins)
 	mockContainer := container.Container{PluginManager: &mockPluginManager}
 	baseAwsWrapperConn := *awsDriver.NewAwsWrapperConn(MockDriverConn{}, mockContainer, awsDriver.MYSQL)
 	res, err := baseAwsWrapperConn.QueryContext(context.Background(), "", nil)
@@ -219,11 +219,11 @@ func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
 }
 
 func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, nil, nil, map[string]any{}))
+	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, nil, nil, map[string]string{}))
 	plugins := []*driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
-	_ = mockPluginManager.Init(nil, map[string]any{}, plugins)
+	_ = mockPluginManager.Init(nil, map[string]string{}, plugins)
 	mockContainer := container.Container{PluginManager: &mockPluginManager}
 
 	baseAwsWrapperConn := *awsDriver.NewAwsWrapperConn(MockDriverConn{}, mockContainer, awsDriver.PG)
@@ -260,11 +260,11 @@ func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
 }
 
 func TestWrapperUtilsExecWithPlugins(t *testing.T) {
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, nil, nil, map[string]any{}))
+	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, nil, nil, map[string]string{}))
 	plugins := []*driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
-	_ = mockPluginManager.Init(nil, map[string]any{}, plugins)
+	_ = mockPluginManager.Init(nil, map[string]string{}, plugins)
 	mockContainer := container.Container{PluginManager: &mockPluginManager}
 
 	mockUnderlyingConn := MockConn{nil, MockResult{}, nil, nil, false}
@@ -287,11 +287,11 @@ func TestWrapperUtilsExecWithPlugins(t *testing.T) {
 }
 
 func TestWrapperUtilsBeginWithPlugins(t *testing.T) {
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, nil, nil, map[string]any{}))
+	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, nil, nil, map[string]string{}))
 	plugins := []*driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
-	_ = mockPluginManager.Init(nil, map[string]any{}, plugins)
+	_ = mockPluginManager.Init(nil, map[string]string{}, plugins)
 	mockContainer := container.Container{PluginManager: &mockPluginManager}
 
 	mockUnderlyingConn := MockConn{nil, nil, MockTx{}, nil, false}
@@ -314,11 +314,11 @@ func TestWrapperUtilsBeginWithPlugins(t *testing.T) {
 }
 
 func TestWrapperUtilsPrepareWithPlugins(t *testing.T) {
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, nil, nil, map[string]any{}))
+	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, nil, nil, map[string]string{}))
 	plugins := []*driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
-	_ = mockPluginManager.Init(nil, map[string]any{}, plugins)
+	_ = mockPluginManager.Init(nil, map[string]string{}, plugins)
 	mockContainer := container.Container{PluginManager: &mockPluginManager}
 
 	mockUnderlyingConn := MockConn{nil, nil, nil, MockStmt{}, false}
