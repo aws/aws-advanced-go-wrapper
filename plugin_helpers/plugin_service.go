@@ -31,7 +31,7 @@ type PluginServiceImpl struct {
 	hostListProvider          driver_infrastructure.HostListProvider
 	currentHostInfo           host_info_util.HostInfo
 	dialect                   driver_infrastructure.DatabaseDialect
-	targetDriverDialect       driver_infrastructure.TargetDriverDialect
+	driverDialect             driver_infrastructure.DriverDialect
 	dialectProvider           driver_infrastructure.DialectProvider
 	connectionProviderManager driver_infrastructure.ConnectionProviderManager
 	originalDsn               string
@@ -144,7 +144,7 @@ func (p *PluginServiceImpl) ForceConnect(hostInfo host_info_util.HostInfo, props
 	return (*p.pluginManager).ForceConnect(hostInfo, props, isInitialConnection)
 }
 
-func (p *PluginServiceImpl) GetTargetDriverDialect() driver_infrastructure.TargetDriverDialect {
+func (p *PluginServiceImpl) GetTargetDriverDialect() driver_infrastructure.DriverDialect {
 	//TODO implement me
 	panic("implement me")
 }
@@ -171,4 +171,12 @@ func (p *PluginServiceImpl) GetConnectionProvider() driver_infrastructure.Connec
 
 func (p *PluginServiceImpl) GetProperties() map[string]string {
 	return p.props
+}
+
+func (p *PluginServiceImpl) IsNetworkError(err error) bool {
+	return p.driverDialect.IsNetworkError(err)
+}
+
+func (p *PluginServiceImpl) IsLoginError(err error) bool {
+	return p.driverDialect.IsLoginError(err)
 }

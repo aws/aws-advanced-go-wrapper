@@ -16,6 +16,27 @@
 
 package driver_infrastructure
 
-type TargetDriverDialect interface {
-	GetDsnFromProperties(properties map[string]string) string
+import (
+	"awssql/error_util"
+)
+
+type MySQLDriverDialect struct {
+	errorHandler error_util.ErrorHandler
+}
+
+func NewMySQLDriverDialect() *MySQLDriverDialect {
+	return &MySQLDriverDialect{errorHandler: MySQLErrorHandler{}}
+}
+
+func (m MySQLDriverDialect) GetDsnFromProperties(properties map[string]string) string {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MySQLDriverDialect) IsNetworkError(err error) bool {
+	return m.errorHandler.IsNetworkError(err)
+}
+
+func (m MySQLDriverDialect) IsLoginError(err error) bool {
+	return m.errorHandler.IsLoginError(err)
 }
