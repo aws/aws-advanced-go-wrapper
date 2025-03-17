@@ -134,7 +134,7 @@ func (t TestPlugin) NotifyHostListChanged(changes map[string]map[driver_infrastr
 func (t TestPlugin) InitHostProvider(
 	initialUrl string,
 	props map[string]string,
-	hostListProviderService driver_infrastructure.HostListProviderService,
+	hostListProviderService *driver_infrastructure.HostListProviderService,
 	initHostProviderFunc func() error) error {
 	// Do nothing
 	return nil

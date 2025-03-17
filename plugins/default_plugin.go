@@ -32,7 +32,7 @@ type DefaultPlugin struct {
 func (d *DefaultPlugin) InitHostProvider(
 	initialUrl string,
 	props map[string]string,
-	hostListProviderService driver_infrastructure.HostListProviderService,
+	hostListProviderService *driver_infrastructure.HostListProviderService,
 	initHostProviderFunc func() error) error {
 	// Do nothing.
 	// It's guaranteed that this plugin is always the last in plugin chain so initHostProviderFunc can be omitted.

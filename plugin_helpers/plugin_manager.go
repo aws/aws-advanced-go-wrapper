@@ -121,7 +121,7 @@ func (pluginManager *PluginManagerImpl) Init(
 func (pluginManager *PluginManagerImpl) InitHostProvider(
 	initialUrl string,
 	props map[string]string,
-	hostListProviderService driver_infrastructure.HostListProviderService) error {
+	hostListProviderService *driver_infrastructure.HostListProviderService) error {
 	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (any, any, bool, error)) (any, any, bool, error) {
 		initFunc := func() error {
 			_, _, _, err := targetFunc()

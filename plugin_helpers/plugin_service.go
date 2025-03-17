@@ -48,6 +48,18 @@ func NewPluginServiceImpl(pluginManager *driver_infrastructure.PluginManager, pr
 	return &PluginServiceImpl{pluginManager: pluginManager, props: props}
 }
 
+func (p *PluginServiceImpl) IsStaticHostListProvider() bool {
+	return p.hostListProvider.IsStaticHostListProvider()
+}
+
+func (p *PluginServiceImpl) SetHostListProvider(hostListProvider driver_infrastructure.HostListProvider) {
+	p.hostListProvider = hostListProvider
+}
+
+func (p *PluginServiceImpl) SetInitialConnectionHostInfo(hostInfo host_info_util.HostInfo) {
+	p.initialHostInfo = hostInfo
+}
+
 func (p *PluginServiceImpl) GetDialect() driver_infrastructure.DatabaseDialect {
 	return p.dialect
 }

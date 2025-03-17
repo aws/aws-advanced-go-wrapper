@@ -33,5 +33,5 @@ type ConnectionPlugin interface {
 	GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error)
 	NotifyConnectionChanged(changes map[HostChangeOptions]bool) OldConnectionSuggestedAction
 	NotifyHostListChanged(changes map[string]map[HostChangeOptions]bool)
-	InitHostProvider(initialUrl string, props map[string]string, hostListProviderService HostListProviderService, initHostProviderFunc func() error) error
+	InitHostProvider(initialUrl string, props map[string]string, hostListProviderService *HostListProviderService, initHostProviderFunc func() error) error
 }

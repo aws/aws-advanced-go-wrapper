@@ -39,6 +39,7 @@ func TestImplementations(t *testing.T) {
 	var _ driver_infrastructure.PluginService = (*plugin_helpers.PluginServiceImpl)(nil)
 	var _ driver_infrastructure.CanReleaseResources = (*plugin_helpers.PluginManagerImpl)(nil)
 	var _ driver_infrastructure.CanReleaseResources = (*plugin_helpers.PluginServiceImpl)(nil)
+	var _ driver_infrastructure.HostListProviderService = (*plugin_helpers.PluginServiceImpl)(nil)
 	var _ driver_infrastructure.HostSelector = (*driver_infrastructure.RandomHostSelector)(nil)
 	var _ driver_infrastructure.HostListProvider = (*driver_infrastructure.DsnHostListProvider)(nil)
 	var _ driver_infrastructure.ConnectionProvider = (*driver_infrastructure.DriverConnectionProvider)(nil)
