@@ -18,6 +18,7 @@ package driver_infrastructure
 
 import (
 	"awssql/error_util"
+	"awssql/utils"
 	"database/sql/driver"
 	"fmt"
 	"strings"
@@ -85,7 +86,7 @@ func (m *MySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	// |-----------------|------------------------------|
 	// | version_comment | MySQL Community Server (GPL) |
 	// for community Mysql.
-	row := GetFirstRowFromQueryAsString(conn, m.GetServerVersionQuery())
+	row := utils.GetFirstRowFromQueryAsString(conn, m.GetServerVersionQuery())
 	if len(row) > 1 && strings.Contains(row[1], "MySQL") {
 		return true
 	}
@@ -115,7 +116,7 @@ func (m *RdsMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	// |-----------------|---------------------|
 	// | version_comment | Source distribution |
 	// for RDS MySQL.
-	row := GetFirstRowFromQueryAsString(conn, m.GetServerVersionQuery())
+	row := utils.GetFirstRowFromQueryAsString(conn, m.GetServerVersionQuery())
 	if len(row) > 1 && strings.Contains(row[1], "Source distribution") {
 		return true
 	}
@@ -131,7 +132,7 @@ func (m *AuroraMySQLDatabaseDialect) GetDialectUpdateCandidates() []string {
 }
 
 func (m *AuroraMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
-	row := GetFirstRowFromQueryAsString(conn, "SHOW VARIABLES LIKE 'aurora_version'")
+	row := utils.GetFirstRowFromQueryAsString(conn, "SHOW VARIABLES LIKE 'aurora_version'")
 	// If a variable with such name is presented then it means it's an Aurora cluster.
 	return row != nil
 }

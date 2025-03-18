@@ -18,6 +18,7 @@ package driver_infrastructure
 
 import (
 	"awssql/error_util"
+	"awssql/utils"
 	"database/sql/driver"
 	"fmt"
 )
@@ -78,7 +79,7 @@ func (p *PgDatabaseDialect) GetSetTransactionIsolationQuery(level TransactionIso
 }
 
 func (p *PgDatabaseDialect) IsDialect(conn driver.Conn) bool {
-	row := GetFirstRowFromQuery(conn, "SELECT 1 FROM pg_proc LIMIT 1")
+	row := utils.GetFirstRowFromQuery(conn, "SELECT 1 FROM pg_proc LIMIT 1")
 	// If the pg_proc table exists then it's a PostgreSQL cluster.
 	return row != nil
 }
@@ -103,7 +104,7 @@ func (m *RdsPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	if !m.PgDatabaseDialect.IsDialect(conn) {
 		return false
 	}
-	hasExtensions := GetFirstRowFromQuery(
+	hasExtensions := utils.GetFirstRowFromQuery(
 		conn,
 		"SELECT (setting LIKE '%rds_tools%') AS rds_tools, (setting LIKE '%aurora_stat_utils%') AS aurora_stat_utils FROM pg_settings "+
 			"WHERE name='rds.extensions'")
@@ -123,10 +124,10 @@ func (m *AuroraPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	if !m.PgDatabaseDialect.IsDialect(conn) {
 		return false
 	}
-	hasExtensions := GetFirstRowFromQuery(
+	hasExtensions := utils.GetFirstRowFromQuery(
 		conn,
 		"SELECT (setting LIKE '%aurora_stat_utils%') AS aurora_stat_utils FROM pg_settings WHERE name='rds.extensions'")
-	hasTopology := GetFirstRowFromQuery(conn, "SELECT 1 FROM aurora_replica_status() LIMIT 1")
+	hasTopology := utils.GetFirstRowFromQuery(conn, "SELECT 1 FROM aurora_replica_status() LIMIT 1")
 	// If both variables with such name are presented then it means it's an Aurora cluster.
 	return hasExtensions != nil && hasExtensions[0] == true && hasTopology != nil
 }
