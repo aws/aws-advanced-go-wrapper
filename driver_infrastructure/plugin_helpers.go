@@ -74,3 +74,7 @@ type PluginManager interface {
 	GetEffectiveConnectionProvider() *ConnectionProvider
 	GetConnectionProviderManager() ConnectionProviderManager
 }
+
+type CanReleaseResources interface {
+	ReleaseResources()
+}

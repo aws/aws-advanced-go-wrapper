@@ -18,8 +18,10 @@ package plugin_helpers
 
 import (
 	"awssql/driver_infrastructure"
+	"awssql/error_util"
 	"awssql/host_info_util"
 	"database/sql/driver"
+	"log"
 )
 
 //nolint:unused
@@ -179,4 +181,21 @@ func (p *PluginServiceImpl) IsNetworkError(err error) bool {
 
 func (p *PluginServiceImpl) IsLoginError(err error) bool {
 	return p.driverDialect.IsLoginError(err)
+}
+
+func (p *PluginServiceImpl) ReleaseResources() {
+	log.Println(error_util.GetMessage("PluginServiceImpl.releaseResources"))
+
+	if p.currentConnection != nil {
+		p.currentConnection.Close() // Ignore any error.
+		p.currentConnection = nil
+	}
+
+	if p.hostListProvider != nil {
+		canReleaseResources, ok := p.hostListProvider.(driver_infrastructure.CanReleaseResources)
+
+		if ok {
+			canReleaseResources.ReleaseResources()
+		}
+	}
 }
