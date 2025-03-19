@@ -57,6 +57,22 @@ func TestParseDsnPgxUrl(t *testing.T) {
 	assert.Equal(t, "bar", props["foo"])
 }
 
+func TestParseDsnPgxUrlWithoutParams(t *testing.T) {
+	dsn := "postgres://someUser:somePassword@localhost:5432/pgx_test"
+	props, err := utils.ParseDsn(dsn)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
+	}
+
+	assert.Equal(t, "postgresql", props[utils.DRIVER_PROTOCOL])
+	assert.Equal(t, "someUser", props[utils.USER])
+	assert.Equal(t, "somePassword", props[utils.PASSWORD])
+	assert.Equal(t, "localhost", props[utils.HOST])
+	assert.Equal(t, "5432", props[utils.PORT])
+	assert.Equal(t, "pgx_test", props[utils.DATABASE])
+}
+
 func TestParseDsnPgxKeyValue(t *testing.T) {
 	dsn := "user=someUser password=somePassword host=localhost port=5432 database=pgx_test sslmode=disable foo=bar"
 	props, err := utils.ParseDsn(dsn)
@@ -91,4 +107,20 @@ func TestParseDsnMySql(t *testing.T) {
 	assert.Equal(t, "myDatabase", props[utils.DATABASE])
 	assert.Equal(t, "bar", props["foo"])
 	assert.Equal(t, "snap", props["pop"])
+}
+
+func TestParseDsnMySqlWithoutParams(t *testing.T) {
+	dsn := "someUser:somePassword@tcp(mydatabase.com:3306)/myDatabase"
+	props, err := utils.ParseDsn(dsn)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
+	}
+
+	assert.Equal(t, "mysql", props[utils.DRIVER_PROTOCOL])
+	assert.Equal(t, "someUser", props[utils.USER])
+	assert.Equal(t, "somePassword", props[utils.PASSWORD])
+	assert.Equal(t, "mydatabase.com", props[utils.HOST])
+	assert.Equal(t, "3306", props[utils.PORT])
+	assert.Equal(t, "myDatabase", props[utils.DATABASE])
 }

@@ -369,7 +369,7 @@ func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 
 	// dbname[?param1=value1&...&paramN=valueN]
 	queryIndex := strings.Index(dsn[lastSlashIndex:], "?") + lastSlashIndex
-	if queryIndex == -1 {
+	if queryIndex <= lastSlashIndex {
 		properties[DATABASE], err = url.PathUnescape(dsn[lastSlashIndex+1:])
 	} else {
 		properties[DATABASE], err = url.PathUnescape(dsn[lastSlashIndex+1 : queryIndex])
