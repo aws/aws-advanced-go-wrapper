@@ -44,12 +44,14 @@ type PluginService interface {
 	ForceConnect(hostInfo host_info_util.HostInfo, props map[string]string) (driver.Conn, error)
 	GetDialect() DatabaseDialect
 	UpdateDialect(conn driver.Conn)
-	GetTargetDriverDialect() TargetDriverDialect
+	GetTargetDriverDialect() DriverDialect
 	IdentifyConnection(conn driver.Conn) (host_info_util.HostInfo, error)
 	FillAliases(conn driver.Conn, hostInfo host_info_util.HostInfo) error
 	GetHostInfoBuilder() host_info_util.HostInfoBuilder
 	GetConnectionProvider() ConnectionProvider
 	GetProperties() map[string]string
+	IsNetworkError(err error) bool
+	IsLoginError(err error) bool
 }
 
 type PluginManager interface {
