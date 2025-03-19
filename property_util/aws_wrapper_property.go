@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-package driver_infrastructure
+package property_util
 
 import (
 	"awssql/error_util"
@@ -70,6 +70,42 @@ func GetVerifiedWrapperPropertyValue[T any](props map[string]string, property Aw
 	}
 
 	return result
+}
+
+var USER = AwsWrapperProperty{
+	Name:                "user",
+	description:         "The user name that the driver will use to connect to database.",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var PASSWORD = AwsWrapperProperty{
+	Name:                "password",
+	description:         "The password that the driver will use to connect to database.",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var HOST = AwsWrapperProperty{
+	Name:                "host",
+	description:         "The host name of the database server the driver wil connect to.",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var PORT = AwsWrapperProperty{
+	Name:                "port",
+	description:         "The port of the database server the driver will connection to.",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var DATABASE = AwsWrapperProperty{
+	Name:                "database",
+	description:         "The name of the database the driver will connect to.",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var DRIVER_PROTOCOL = AwsWrapperProperty{
+	Name:                "protocol",
+	description:         "The underlying driver protocol AWS Go driver will connect using.",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
 var SINGLE_WRITER_DSN = AwsWrapperProperty{

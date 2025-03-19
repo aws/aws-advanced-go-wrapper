@@ -19,6 +19,7 @@ package utils
 import (
 	"awssql/error_util"
 	"awssql/host_info_util"
+	"awssql/property_util"
 	"errors"
 	"net"
 	"net/url"
@@ -28,13 +29,9 @@ import (
 )
 
 const (
-	USER            = "user"
-	PASSWORD        = "password"
-	HOST            = "host"
-	PORT            = "port"
-	DATABASE        = "database"
-	DRIVER_PROTOCOL = "protocol"
-	NET             = "net"
+	PGX_DRIVER_PROTOCOL   = "postgresql"
+	MYSQL_DRIVER_PROTOCOL = "mysql"
+	NET_PROP_KEY          = "net"
 )
 
 var (
@@ -52,8 +49,8 @@ func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []host_in
 		return hostInfoList, err
 	}
 
-	hostStringList := strings.Split(properties[HOST], ",")
-	portStringList := strings.Split(properties[PORT], ",")
+	hostStringList := strings.Split(properties[property_util.HOST.Name], ",")
+	portStringList := strings.Split(properties[property_util.PORT.Name], ",")
 
 	for i, hostString := range hostStringList {
 		portString := portStringList[i]
@@ -96,7 +93,7 @@ func ParseHostPortPair(dsn string) (host_info_util.HostInfo, error) {
 func ParseDatabaseFromDsn(dsn string) (string, error) {
 	props, err := ParseDsn(dsn)
 	if err != nil {
-		return props[DATABASE], nil
+		return property_util.DATABASE.Get(props), nil
 	}
 	return "", err
 }
@@ -104,7 +101,7 @@ func ParseDatabaseFromDsn(dsn string) (string, error) {
 func ParseUserFromDsn(dsn string) (string, error) {
 	props, err := ParseDsn(dsn)
 	if err != nil {
-		return props[USER], nil
+		return property_util.USER.Get(props), nil
 	}
 	return "", err
 }
@@ -112,22 +109,22 @@ func ParseUserFromDsn(dsn string) (string, error) {
 func ParsePasswordFromDsn(dsn string) (string, error) {
 	props, err := ParseDsn(dsn)
 	if err != nil {
-		return props[PASSWORD], nil
+		return property_util.PASSWORD.Get(props), nil
 	}
 	return "", err
 }
 
 func GetProtocol(dsn string) (string, error) {
 	if isDsnPgxUrl(dsn) {
-		return "postgresql", nil
+		return PGX_DRIVER_PROTOCOL, nil
 	}
 
 	if isDsnMySql(dsn) {
-		return "mysql", nil
+		return MYSQL_DRIVER_PROTOCOL, nil
 	}
 
 	if isDsnPgxKeyValueString(dsn) {
-		return "postgresql", nil
+		return PGX_DRIVER_PROTOCOL, nil
 	}
 
 	return "", error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.unableToDetermineProtocol", dsn))
@@ -188,9 +185,9 @@ func parsePgxURLSettings(connString string) (map[string]string, error) {
 	}
 
 	if parsedURL.User != nil {
-		properties[USER] = parsedURL.User.Username()
+		properties[property_util.USER.Name] = parsedURL.User.Username()
 		if password, present := parsedURL.User.Password(); present {
-			properties[PASSWORD] = password
+			properties[property_util.PASSWORD.Name] = password
 		}
 	}
 
@@ -217,15 +214,15 @@ func parsePgxURLSettings(connString string) (map[string]string, error) {
 		}
 	}
 	if len(hosts) > 0 {
-		properties[HOST] = strings.Join(hosts, ",")
+		properties[property_util.HOST.Name] = strings.Join(hosts, ",")
 	}
 	if len(ports) > 0 {
-		properties[PORT] = strings.Join(ports, ",")
+		properties[property_util.PORT.Name] = strings.Join(ports, ",")
 	}
 
 	database := strings.TrimLeft(parsedURL.Path, "/")
 	if database != "" {
-		properties[DATABASE] = database
+		properties[property_util.DATABASE.Name] = database
 	}
 
 	nameMap := map[string]string{
@@ -240,7 +237,7 @@ func parsePgxURLSettings(connString string) (map[string]string, error) {
 		properties[k] = v[0]
 	}
 
-	properties[DRIVER_PROTOCOL] = "postgresql"
+	properties[property_util.DRIVER_PROTOCOL.Name] = PGX_DRIVER_PROTOCOL
 	return properties, nil
 }
 
@@ -320,7 +317,7 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 		properties[key] = val
 	}
 
-	properties[DRIVER_PROTOCOL] = "postgresql"
+	properties[property_util.DRIVER_PROTOCOL.Name] = PGX_DRIVER_PROTOCOL
 
 	return properties, nil
 }
@@ -339,19 +336,19 @@ func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 	if lastAtIndex != -1 {
 		colonIndex := strings.Index(dsn[:lastAtIndex], ":")
 		if colonIndex == -1 {
-			properties[USER] = dsn[:lastAtIndex]
+			properties[property_util.USER.Name] = dsn[:lastAtIndex]
 		} else {
-			properties[USER] = dsn[:colonIndex]
-			properties[PASSWORD] = dsn[colonIndex+1 : lastAtIndex]
+			properties[property_util.USER.Name] = dsn[:colonIndex]
+			properties[property_util.PASSWORD.Name] = dsn[colonIndex+1 : lastAtIndex]
 		}
 	}
 
 	// [protocol[(address)]]
 	openParenIndex := strings.Index(dsn[lastAtIndex:lastSlashIndex], "(") + lastAtIndex
 	if openParenIndex == -1 {
-		properties[NET] = dsn[lastAtIndex+1 : lastSlashIndex]
+		properties[NET_PROP_KEY] = dsn[lastAtIndex+1 : lastSlashIndex]
 	} else {
-		properties[NET] = dsn[lastAtIndex+1 : openParenIndex]
+		properties[NET_PROP_KEY] = dsn[lastAtIndex+1 : openParenIndex]
 
 		closeParenIndex := strings.LastIndex(dsn[lastAtIndex:lastSlashIndex], ")") + lastAtIndex
 		if closeParenIndex == -1 {
@@ -361,18 +358,18 @@ func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 		}
 		address := dsn[openParenIndex+1 : closeParenIndex]
 		hostPortPair := strings.Split(address, ":")
-		properties[HOST] = hostPortPair[0]
+		properties[property_util.HOST.Name] = hostPortPair[0]
 		if len(hostPortPair) > 1 {
-			properties[PORT] = hostPortPair[1]
+			properties[property_util.PORT.Name] = hostPortPair[1]
 		}
 	}
 
 	// dbname[?param1=value1&...&paramN=valueN]
 	queryIndex := strings.Index(dsn[lastSlashIndex:], "?") + lastSlashIndex
 	if queryIndex <= lastSlashIndex {
-		properties[DATABASE], err = url.PathUnescape(dsn[lastSlashIndex+1:])
+		properties[property_util.DATABASE.Name], err = url.PathUnescape(dsn[lastSlashIndex+1:])
 	} else {
-		properties[DATABASE], err = url.PathUnescape(dsn[lastSlashIndex+1 : queryIndex])
+		properties[property_util.DATABASE.Name], err = url.PathUnescape(dsn[lastSlashIndex+1 : queryIndex])
 		if err != nil {
 			return
 		}
@@ -380,7 +377,7 @@ func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 		err = parseDSNParams(properties, dsn[queryIndex+1:])
 	}
 
-	properties[DRIVER_PROTOCOL] = "mysql"
+	properties[property_util.DRIVER_PROTOCOL.Name] = MYSQL_DRIVER_PROTOCOL
 	return
 }
 
