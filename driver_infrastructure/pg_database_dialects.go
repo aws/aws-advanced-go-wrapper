@@ -42,11 +42,11 @@ func (p *PgDatabaseDialect) GetServerVersionQuery() string {
 }
 
 func (p *PgDatabaseDialect) GetSetAutoCommitQuery(autoCommit bool) (string, error) {
-	return "", error_util.NewUnsupportedMethodError("setAutoCommit")
+	return "", error_util.NewUnsupportedMethodError(error_util.GetMessage("Conn.unsupportedMethodError", "setAutoCommit"))
 }
 
 func (p *PgDatabaseDialect) GetSetCatalogQuery(catalog string) (string, error) {
-	return "", error_util.NewUnsupportedMethodError("setCatalog")
+	return "", error_util.NewUnsupportedMethodError(error_util.GetMessage("Conn.unsupportedMethodError", "setCatalog"))
 }
 
 func (p *PgDatabaseDialect) GetSetReadOnlyQuery(readOnly bool) string {
