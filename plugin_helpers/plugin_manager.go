@@ -329,10 +329,10 @@ func (pluginManager *PluginManagerImpl) ReleaseResources() {
 	// This step allows all plugins a chance to perform any last tasks before shutting down.
 	for i := 0; i < len(pluginManager.plugins); i++ {
 		currentPlugin := *pluginManager.plugins[i]
-		canReleaseResources, ok := currentPlugin.(driver_infrastructure.CanReleaseResources)
+		currentPluginCanReleaseResources, ok := currentPlugin.(driver_infrastructure.CanReleaseResources)
 
 		if ok {
-			canReleaseResources.ReleaseResources()
+			currentPluginCanReleaseResources.ReleaseResources()
 		}
 	}
 

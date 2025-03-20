@@ -30,6 +30,6 @@
 	"HostSelector.noHostsMatchingRole": "No available hosts were found matching the requested '%v' role.",
 	"PluginManager.pipelineNone": "A pipeline was requested but the created pipeline evaluated to nil.",
 	"PluginManager.unknownPluginCode": "Unknown plugin code: '%v'.",
-	"PluginManagerImpl.releaseResources": "Releasing resources from PluginManager.",
-	"PluginServiceImpl.releaseResources": "Releasing resources from PluginService."
+	"PluginManagerImpl.releaseResources": "Releasing resources from PluginManagerImpl.",
+	"PluginServiceImpl.releaseResources": "Releasing resources from PluginServiceImpl."
 }

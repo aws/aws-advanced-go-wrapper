@@ -98,9 +98,9 @@ func (c *AwsWrapperConn) PrepareContext(ctx context.Context, query string) (driv
 func (c *AwsWrapperConn) Close() error {
 	closeFunc := func() (any, any, bool, error) { return nil, nil, false, c.underlyingConn.Close() }
 	_, _, _, err := ExecuteWithPlugins(c.pluginManager, "Conn.Close", closeFunc)
-	canReleaseResources, ok := c.pluginManager.(driver_infrastructure.CanReleaseResources)
+	pluginManager, ok := c.pluginManager.(driver_infrastructure.CanReleaseResources)
 	if ok {
-		canReleaseResources.ReleaseResources()
+		pluginManager.ReleaseResources()
 	}
 	return err
 }
