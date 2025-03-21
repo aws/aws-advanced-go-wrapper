@@ -93,3 +93,10 @@ const (
 	ROWS_COLUMN_TYPE_SCAN_TYPE          = "Rows.ColumnTypeScanType"
 	ROWS_CLUMN_TYPE_NULLABLE            = "Rows.ColumnTypeNullable"
 )
+
+type DatabaseEngine string
+
+const (
+	MYSQL DatabaseEngine = "mysql"
+	PG    DatabaseEngine = "pg"
+)

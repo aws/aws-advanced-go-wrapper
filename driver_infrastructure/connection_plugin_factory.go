@@ -17,5 +17,5 @@
 package driver_infrastructure
 
 type ConnectionPluginFactory interface {
-	GetInstance(pluginService *PluginService, props map[string]string) (*ConnectionPlugin, error)
+	GetInstance(pluginService PluginService, props map[string]string) (ConnectionPlugin, error)
 }

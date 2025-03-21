@@ -32,7 +32,7 @@ type DatabaseDialect interface {
 	GetSetCatalogQuery(catalog string) (string, error)
 	GetDialectUpdateCandidates() []string
 	IsDialect(conn driver.Conn) bool
-	GetHostListProvider(props map[string]string, initialDsn string, hostListProviderService HostListProviderService) *HostListProvider
+	GetHostListProvider(props map[string]string, initialDsn string, hostListProviderService HostListProviderService) HostListProvider
 }
 
 type TopologyAwareDialect interface {

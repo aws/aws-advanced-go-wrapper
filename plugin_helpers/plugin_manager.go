@@ -84,44 +84,39 @@ func (chain *PluginChain) Connect(pluginFunc driver_infrastructure.PluginConnect
 }
 
 type PluginManagerImpl struct {
-	targetDriver          driver.Driver
-	pluginService         *driver_infrastructure.PluginService
-	connProviderManager   driver_infrastructure.ConnectionProviderManager
-	defaultConnProvider   *driver_infrastructure.ConnectionProvider
-	effectiveConnProvider *driver_infrastructure.ConnectionProvider
-	props                 map[string]string
-	pluginFuncMap         map[string]PluginChain
-	plugins               []*driver_infrastructure.ConnectionPlugin
+	targetDriver        driver.Driver
+	pluginService       driver_infrastructure.PluginService
+	connProviderManager driver_infrastructure.ConnectionProviderManager
+	props               map[string]string
+	pluginFuncMap       map[string]PluginChain
+	plugins             []driver_infrastructure.ConnectionPlugin
 }
 
 func NewPluginManagerImpl(
 	targetDriver driver.Driver,
-	defaultConnProvider *driver_infrastructure.ConnectionProvider,
-	effectiveConnProvider *driver_infrastructure.ConnectionProvider,
 	props map[string]string) *PluginManagerImpl {
 	pluginFuncMap := make(map[string]PluginChain)
 	return &PluginManagerImpl{
-		targetDriver:          targetDriver,
-		defaultConnProvider:   defaultConnProvider,
-		effectiveConnProvider: effectiveConnProvider,
-		props:                 props,
-		pluginFuncMap:         pluginFuncMap,
+		targetDriver:  targetDriver,
+		props:         props,
+		pluginFuncMap: pluginFuncMap,
 	}
 }
 
 func (pluginManager *PluginManagerImpl) Init(
-	pluginService *driver_infrastructure.PluginService,
-	props map[string]string,
-	plugins []*driver_infrastructure.ConnectionPlugin) error {
+	pluginService driver_infrastructure.PluginService,
+	plugins []driver_infrastructure.ConnectionPlugin,
+	connProviderManager driver_infrastructure.ConnectionProviderManager) error {
 	pluginManager.pluginService = pluginService
 	pluginManager.plugins = plugins
+	pluginManager.connProviderManager = connProviderManager
 	return nil
 }
 
 func (pluginManager *PluginManagerImpl) InitHostProvider(
 	initialUrl string,
 	props map[string]string,
-	hostListProviderService *driver_infrastructure.HostListProviderService) error {
+	hostListProviderService driver_infrastructure.HostListProviderService) error {
 	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (any, any, bool, error)) (any, any, bool, error) {
 		initFunc := func() error {
 			_, _, _, err := targetFunc()
@@ -220,7 +215,7 @@ func (pluginManager *PluginManagerImpl) MakePluginChain(
 	connectFunc func() (any, error)) PluginChain {
 	chain := PluginChain{execFunc: execFunc, connectFunc: connectFunc}
 	for i := len(pluginManager.plugins) - 1; i >= 0; i-- {
-		currentPlugin := *pluginManager.plugins[i]
+		currentPlugin := pluginManager.plugins[i]
 		pluginSubscribedMethods := currentPlugin.GetSubscribedMethods()
 		if slices.Contains(pluginSubscribedMethods, ALL_METHODS) || slices.Contains(pluginSubscribedMethods, name) {
 			if execFunc != nil {
@@ -236,7 +231,7 @@ func (pluginManager *PluginManagerImpl) MakePluginChain(
 
 func (pluginManager *PluginManagerImpl) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
 	for i := 0; i < len(pluginManager.plugins); i++ {
-		currentPlugin := *pluginManager.plugins[i]
+		currentPlugin := pluginManager.plugins[i]
 		pluginSubscribedMethods := currentPlugin.GetSubscribedMethods()
 		isSubscribed := slices.Contains(pluginSubscribedMethods, strategy) || slices.Contains(pluginSubscribedMethods, ALL_METHODS)
 
@@ -274,7 +269,7 @@ func (pluginManager *PluginManagerImpl) NotifySubscribedPlugins(
 	pluginFunc driver_infrastructure.PluginExecFunc,
 	skipNotificationForThisPlugin driver_infrastructure.ConnectionPlugin) error {
 	for i := 0; i < len(pluginManager.plugins); i++ {
-		currentPlugin := *pluginManager.plugins[i]
+		currentPlugin := pluginManager.plugins[i]
 		if currentPlugin == skipNotificationForThisPlugin {
 			continue
 		}
@@ -295,7 +290,7 @@ func (pluginManager *PluginManagerImpl) GetHostInfoByStrategy(
 	strategy string,
 	hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error) {
 	for i := 0; i < len(pluginManager.plugins); i++ {
-		currentPlugin := *pluginManager.plugins[i]
+		currentPlugin := pluginManager.plugins[i]
 		isSubscribed := slices.Contains(currentPlugin.GetSubscribedMethods(), strategy)
 
 		if isSubscribed {
@@ -311,12 +306,12 @@ func (pluginManager *PluginManagerImpl) GetHostInfoByStrategy(
 		error_util.GetMessage("The wrapper does not support the requested host selection strategy: " + strategy))
 }
 
-func (pluginManager *PluginManagerImpl) GetDefaultConnectionProvider() *driver_infrastructure.ConnectionProvider {
-	return pluginManager.defaultConnProvider
+func (pluginManager *PluginManagerImpl) GetDefaultConnectionProvider() driver_infrastructure.ConnectionProvider {
+	return pluginManager.connProviderManager.DefaultProvider
 }
 
-func (pluginManager *PluginManagerImpl) GetEffectiveConnectionProvider() *driver_infrastructure.ConnectionProvider {
-	return pluginManager.effectiveConnProvider
+func (pluginManager *PluginManagerImpl) GetEffectiveConnectionProvider() driver_infrastructure.ConnectionProvider {
+	return pluginManager.connProviderManager.EffectiveProvider
 }
 
 func (pluginManager *PluginManagerImpl) GetConnectionProviderManager() driver_infrastructure.ConnectionProviderManager {
@@ -328,7 +323,7 @@ func (pluginManager *PluginManagerImpl) ReleaseResources() {
 
 	// This step allows all plugins a chance to perform any last tasks before shutting down.
 	for i := 0; i < len(pluginManager.plugins); i++ {
-		currentPlugin := *pluginManager.plugins[i]
+		currentPlugin := pluginManager.plugins[i]
 		currentPluginCanReleaseResources, ok := currentPlugin.(driver_infrastructure.CanReleaseResources)
 
 		if ok {
@@ -336,7 +331,7 @@ func (pluginManager *PluginManagerImpl) ReleaseResources() {
 		}
 	}
 
-	canReleaseResources, ok := (*pluginManager.pluginService).(driver_infrastructure.CanReleaseResources)
+	canReleaseResources, ok := pluginManager.pluginService.(driver_infrastructure.CanReleaseResources)
 	if ok {
 		canReleaseResources.ReleaseResources()
 	}

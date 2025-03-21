@@ -23,7 +23,6 @@ import (
 	"awssql/property_util"
 	"fmt"
 	"log/slog"
-	"reflect"
 	"sort"
 	"strings"
 )
@@ -44,10 +43,10 @@ type ConnectionPluginChainBuilder struct {
 }
 
 func (builder *ConnectionPluginChainBuilder) GetPlugins(
-	pluginService *driver_infrastructure.PluginService,
-	pluginManager *driver_infrastructure.PluginManager,
-	props map[string]string) ([]*driver_infrastructure.ConnectionPlugin, error) {
-	var resultPlugins []*driver_infrastructure.ConnectionPlugin
+	pluginService driver_infrastructure.PluginService,
+	pluginManager driver_infrastructure.PluginManager,
+	props map[string]string) ([]driver_infrastructure.ConnectionPlugin, error) {
+	var resultPlugins []driver_infrastructure.ConnectionPlugin
 	var pluginFactoryFuncWeights []PluginFactoryFuncWeight
 	usingDefault := false
 
@@ -57,7 +56,10 @@ func (builder *ConnectionPluginChainBuilder) GetPlugins(
 	}
 
 	pluginCodes = strings.ReplaceAll(strings.TrimSpace(pluginCodes), " ", "")
-	pluginCodesSlice := strings.Split(pluginCodes, ",")
+	var pluginCodesSlice []string
+	if len(pluginCodes) != 0 {
+		pluginCodesSlice = strings.Split(pluginCodes, ",")
+	}
 	lastWeight := 0
 	for _, pluginCode := range pluginCodesSlice {
 		if pluginCode == "" {
@@ -95,10 +97,10 @@ func (builder *ConnectionPluginChainBuilder) GetPlugins(
 
 	defaultPlugin := driver_infrastructure.ConnectionPlugin(&plugins.DefaultPlugin{
 		PluginService:       pluginService,
-		DefaultConnProvider: (*pluginManager).GetDefaultConnectionProvider(),
-		ConnProviderManager: (*pluginManager).GetConnectionProviderManager(),
+		DefaultConnProvider: pluginManager.GetDefaultConnectionProvider(),
+		ConnProviderManager: pluginManager.GetConnectionProviderManager(),
 	})
-	resultPlugins = append(resultPlugins, &defaultPlugin)
+	resultPlugins = append(resultPlugins, defaultPlugin)
 	if pluginsSorted {
 		slog.Info(fmt.Sprintf("Plugins order has been rearranged. The following order is in effect: '%v'.", getFactoryOrder(resultPlugins)))
 	}
@@ -106,10 +108,10 @@ func (builder *ConnectionPluginChainBuilder) GetPlugins(
 	return resultPlugins, nil
 }
 
-func getFactoryOrder(pluginFactoryFuncWeights []*driver_infrastructure.ConnectionPlugin) string {
+func getFactoryOrder(pluginFactoryFuncWeights []driver_infrastructure.ConnectionPlugin) string {
 	var pluginFactories []string
-	for i := 0; i < len(pluginFactoryFuncWeights); i++ {
-		pluginFactories = append(pluginFactories, reflect.TypeOf(*pluginFactoryFuncWeights[i]).String())
+	for _, pluginFactoryFuncWeight := range pluginFactoryFuncWeights {
+		pluginFactories = append(pluginFactories, fmt.Sprintf("%T", pluginFactoryFuncWeight))
 	}
 	return strings.Join(pluginFactories, ",")
 }

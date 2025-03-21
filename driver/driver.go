@@ -20,7 +20,6 @@ import (
 	"awssql/container"
 	"awssql/driver_infrastructure"
 	"awssql/error_util"
-	"awssql/utils"
 	"context"
 	"database/sql"
 	"database/sql/driver"
@@ -28,40 +27,50 @@ import (
 	"reflect"
 )
 
-type DatabaseEngine string
-
-const (
-	MYSQL DatabaseEngine = "mysql"
-	PG    DatabaseEngine = "pg"
-)
-
 type AwsWrapperDriver struct {
 }
 
 func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
-	// Call underlying driver_infrastructure and wrap connection.
-	props, err := utils.ParseDsn(dsn)
-	if err != nil {
-		return nil, err
-	}
-	targetDriver, err := GetTargetDriver(dsn, props)
-	if err != nil {
-		return nil, err
-	}
-	conn, err := targetDriver.Open(dsn)
-	if err != nil {
-		return nil, err
-	}
-	wrapperContainer, err := container.NewContainer(dsn, targetDriver)
-	if err != nil || wrapperContainer.PluginService == nil || wrapperContainer.PluginManager == nil {
-		return nil, err
-	}
-	dbEngine, err := GetDatabaseEngine(props)
-	if err != nil {
-		return nil, err
+	wrapperContainer, containerErr := container.NewContainer(dsn)
+	if containerErr != nil || wrapperContainer.PluginService == nil || wrapperContainer.PluginManager == nil {
+		return nil, containerErr
 	}
 
-	return NewAwsWrapperConn(conn, wrapperContainer, dbEngine), nil
+	pluginService := wrapperContainer.PluginService
+	refreshErr := pluginService.RefreshHostList(nil)
+	if refreshErr != nil {
+		return nil, refreshErr
+	}
+
+	dbEngine, dbEngineErr := container.GetDatabaseEngine(wrapperContainer.Props)
+	if dbEngineErr != nil {
+		return nil, dbEngineErr
+	}
+
+	conn := pluginService.GetCurrentConnection()
+	var connErr error
+	if conn == nil {
+		conn, connErr = wrapperContainer.PluginManager.Connect(pluginService.GetInitialConnectionHostInfo(), pluginService.GetProperties(), true)
+		if connErr != nil {
+			return nil, connErr
+		}
+
+		if conn == nil {
+			return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("Driver.connectionNotOpen"))
+		}
+
+		err := pluginService.SetCurrentConnection(conn, pluginService.GetInitialConnectionHostInfo(), nil)
+		if err != nil {
+			return nil, err
+		}
+
+		refreshErr = pluginService.RefreshHostList(conn)
+		if refreshErr != nil {
+			return nil, refreshErr
+		}
+	}
+
+	return NewAwsWrapperConn(wrapperContainer, dbEngine), nil
 }
 
 func init() {
@@ -71,30 +80,29 @@ func init() {
 }
 
 type AwsWrapperConn struct {
-	underlyingConn driver.Conn
-	container      container.Container
-	pluginManager  driver_infrastructure.PluginManager
-	engine         DatabaseEngine
+	pluginManager driver_infrastructure.PluginManager
+	pluginService driver_infrastructure.PluginService
+	engine        driver_infrastructure.DatabaseEngine
 }
 
-func NewAwsWrapperConn(underlyingConn driver.Conn, container container.Container, engine DatabaseEngine) *AwsWrapperConn {
-	return &AwsWrapperConn{underlyingConn, container, *container.PluginManager, engine}
+func NewAwsWrapperConn(container container.Container, engine driver_infrastructure.DatabaseEngine) *AwsWrapperConn {
+	return &AwsWrapperConn{container.PluginManager, container.PluginService, engine}
 }
 
 func (c *AwsWrapperConn) Prepare(query string) (driver.Stmt, error) {
 	prepareFunc := func() (any, any, bool, error) {
-		result, err := c.underlyingConn.Prepare(query)
+		result, err := c.pluginService.GetCurrentConnection().Prepare(query)
 		return result, nil, false, err
 	}
 	return prepareWithPlugins(c.pluginManager, driver_infrastructure.CONN_PREPARE, prepareFunc, *c)
 }
 
 func (c *AwsWrapperConn) PrepareContext(ctx context.Context, query string) (driver.Stmt, error) {
-	prepareCtx, ok := c.underlyingConn.(driver.ConnPrepareContext)
-	if !ok {
-		return nil, errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.ConnPrepareContext"))
-	}
 	prepareFunc := func() (any, any, bool, error) {
+		prepareCtx, ok := c.pluginService.GetCurrentConnection().(driver.ConnPrepareContext)
+		if !ok {
+			return nil, nil, false, errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.ConnPrepareContext"))
+		}
 		result, err := prepareCtx.PrepareContext(ctx, query)
 		return result, nil, false, err
 	}
@@ -102,7 +110,7 @@ func (c *AwsWrapperConn) PrepareContext(ctx context.Context, query string) (driv
 }
 
 func (c *AwsWrapperConn) Close() error {
-	closeFunc := func() (any, any, bool, error) { return nil, nil, false, c.underlyingConn.Close() }
+	closeFunc := func() (any, any, bool, error) { return nil, nil, false, c.pluginService.GetCurrentConnection().Close() }
 	_, _, _, err := ExecuteWithPlugins(c.pluginManager, driver_infrastructure.CONN_CLOSE, closeFunc)
 	pluginManager, ok := c.pluginManager.(driver_infrastructure.CanReleaseResources)
 	if ok {
@@ -113,18 +121,18 @@ func (c *AwsWrapperConn) Close() error {
 
 func (c *AwsWrapperConn) Begin() (driver.Tx, error) {
 	beginFunc := func() (any, any, bool, error) {
-		result, err := c.underlyingConn.Begin() //nolint:all
+		result, err := c.pluginService.GetCurrentConnection().Begin() //nolint:all
 		return result, nil, false, err
 	}
 	return beginWithPlugins(c.pluginManager, driver_infrastructure.CONN_BEGIN, beginFunc)
 }
 
 func (c *AwsWrapperConn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
-	beginTx, ok := c.underlyingConn.(driver.ConnBeginTx)
-	if !ok {
-		return nil, errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.ConnBeginTx"))
-	}
 	beginFunc := func() (any, any, bool, error) {
+		beginTx, ok := c.pluginService.GetCurrentConnection().(driver.ConnBeginTx)
+		if !ok {
+			return nil, nil, false, errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.ConnBeginTx"))
+		}
 		result, err := beginTx.BeginTx(ctx, opts)
 		return result, nil, false, err
 	}
@@ -132,11 +140,11 @@ func (c *AwsWrapperConn) BeginTx(ctx context.Context, opts driver.TxOptions) (dr
 }
 
 func (c *AwsWrapperConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
-	queryerCtx, ok := c.underlyingConn.(driver.QueryerContext)
-	if !ok {
-		return nil, errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.QueryerContext"))
-	}
 	queryFunc := func() (any, any, bool, error) {
+		queryerCtx, ok := c.pluginService.GetCurrentConnection().(driver.QueryerContext)
+		if !ok {
+			return nil, nil, false, errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.QueryerContext"))
+		}
 		result, err := queryerCtx.QueryContext(ctx, query, args)
 		return result, nil, false, err
 	}
@@ -144,11 +152,11 @@ func (c *AwsWrapperConn) QueryContext(ctx context.Context, query string, args []
 }
 
 func (c *AwsWrapperConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
-	execerCtx, ok := c.underlyingConn.(driver.ExecerContext)
-	if !ok {
-		return nil, errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.ExecerContext"))
-	}
 	execFunc := func() (any, any, bool, error) {
+		execerCtx, ok := c.pluginService.GetCurrentConnection().(driver.ExecerContext)
+		if !ok {
+			return nil, nil, false, errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.ExecerContext"))
+		}
 		result, err := execerCtx.ExecContext(ctx, query, args)
 		return result, nil, false, err
 	}
@@ -156,42 +164,49 @@ func (c *AwsWrapperConn) ExecContext(ctx context.Context, query string, args []d
 }
 
 func (c *AwsWrapperConn) Ping(ctx context.Context) error {
-	pinger, ok := c.underlyingConn.(driver.Pinger)
-	if !ok {
-		return errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.Pinger"))
+	pingFunc := func() (any, any, bool, error) {
+		pinger, ok := c.pluginService.GetCurrentConnection().(driver.Pinger)
+		if !ok {
+			return nil, nil, false, errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.Pinger"))
+		}
+		return nil, nil, false, pinger.Ping(ctx)
 	}
-	pingFunc := func() (any, any, bool, error) { return nil, nil, false, pinger.Ping(ctx) }
 	_, _, _, err := ExecuteWithPlugins(c.pluginManager, driver_infrastructure.CONN_PING, pingFunc)
 	return err
 }
 
 func (c *AwsWrapperConn) IsValid() bool {
-	validator, ok := c.underlyingConn.(driver.Validator)
-	if ok {
-		isValidFunc := func() (any, any, bool, error) { return nil, nil, validator.IsValid(), nil }
-		_, _, result, _ := ExecuteWithPlugins(c.pluginManager, driver_infrastructure.CONN_IS_VALID, isValidFunc)
-		return result
+	isValidFunc := func() (any, any, bool, error) {
+		validator, ok := c.pluginService.GetCurrentConnection().(driver.Validator)
+		if ok {
+			return nil, nil, validator.IsValid(), nil
+		}
+		return nil, nil, false, nil
 	}
-	return true
+	_, _, result, _ := ExecuteWithPlugins(c.pluginManager, driver_infrastructure.CONN_IS_VALID, isValidFunc)
+	return result
 }
 
 func (c *AwsWrapperConn) ResetSession(ctx context.Context) error {
-	resetter, ok := c.underlyingConn.(driver.SessionResetter)
-	if !ok {
-		return errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.SessionResetter"))
+	resetSessionFunc := func() (any, any, bool, error) {
+		resetter, ok := c.pluginService.GetCurrentConnection().(driver.SessionResetter)
+		if !ok {
+			return nil, nil, false, errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.SessionResetter"))
+		}
+		return nil, nil, false, resetter.ResetSession(ctx)
 	}
-	resetSessionFunc := func() (any, any, bool, error) { return nil, nil, false, resetter.ResetSession(ctx) }
 	_, _, _, err := ExecuteWithPlugins(c.pluginManager, driver_infrastructure.CONN_RESET_SESSION, resetSessionFunc)
 	return err
 }
 
 func (c *AwsWrapperConn) CheckNamedValue(val *driver.NamedValue) error {
-	namedValueChecker, ok := c.underlyingConn.(driver.NamedValueChecker)
-	if !ok {
-		return errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.NamedValueChecker"))
+	checkNamedValueFunc := func() (any, any, bool, error) {
+		namedValueChecker, ok := c.pluginService.GetCurrentConnection().(driver.NamedValueChecker)
+		if !ok {
+			return nil, nil, false, errors.New(error_util.GetMessage("AwsWrapperConn.underlyingConnDoesNotImplementRequiredInterface", "driver.NamedValueChecker"))
+		}
+		return nil, nil, false, namedValueChecker.CheckNamedValue(val)
 	}
-
-	checkNamedValueFunc := func() (any, any, bool, error) { return nil, nil, false, namedValueChecker.CheckNamedValue(val) }
 	_, _, _, err := ExecuteWithPlugins(c.pluginManager, driver_infrastructure.CONN_CHECK_NAMED_VALUE, checkNamedValueFunc)
 	return err
 }
