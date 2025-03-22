@@ -59,7 +59,7 @@ func (d DriverConnectionProvider) GetHostInfoByStrategy(
 
 func (d DriverConnectionProvider) Connect(hostInfo host_info_util.HostInfo, props map[string]string, pluginService *PluginService) (driver.Conn, error) {
 	targetDriverDialect := (*pluginService).GetTargetDriverDialect()
-	dsn := targetDriverDialect.GetDsnFromProperties(props)
+	dsn := targetDriverDialect.PrepareDsn(props)
 	conn, err := d.targetDriver.Open(dsn)
 	//nolint:all
 	if err != nil {

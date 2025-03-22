@@ -50,8 +50,8 @@ var REQUIRED_METHODS = []string{
 
 type DriverDialect interface {
 	IsDialect(driver driver.Driver) bool
-	GetDsnFromProperties(properties map[string]string) string
 	GetAllowedOnConnectionMethodNames() []string
+	PrepareDsn(properties map[string]string) string
 	IsNetworkError(err error) bool
 	IsLoginError(err error) bool
 	IsDriverRegistered(drivers map[string]driver.Driver) bool

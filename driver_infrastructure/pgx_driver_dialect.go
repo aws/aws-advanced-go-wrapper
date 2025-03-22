@@ -18,11 +18,23 @@ package driver_infrastructure
 
 import (
 	"awssql/error_util"
+	"awssql/property_util"
 	"database/sql"
 	"database/sql/driver"
+	"fmt"
 	"github.com/jackc/pgx/v5/stdlib"
 	"reflect"
+	"slices"
+	"strings"
 )
+
+var pgxPersistingProperties = []string{
+	property_util.USER.Name,
+	property_util.PASSWORD.Name,
+	property_util.HOST.Name,
+	property_util.DATABASE.Name,
+	property_util.PORT.Name,
+}
 
 type PgxDriverDialect struct {
 	errorHandler error_util.ErrorHandler
@@ -46,11 +58,6 @@ func (p PgxDriverDialect) GetAllowedOnConnectionMethodNames() []string {
 	return append(REQUIRED_METHODS, ROWS_COLUMN_TYPE_LENGTH)
 }
 
-func (p PgxDriverDialect) GetDsnFromProperties(properties map[string]string) string {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (p PgxDriverDialect) IsNetworkError(err error) bool {
 	return p.errorHandler.IsNetworkError(err)
 }
@@ -70,4 +77,17 @@ func (p PgxDriverDialect) IsDriverRegistered(drivers map[string]driver.Driver) b
 
 func (p PgxDriverDialect) RegisterDriver() {
 	sql.Register(PGX_DRIVER_REGISTRATION_NAME, &stdlib.Driver{})
+}
+
+func (p PgxDriverDialect) PrepareDsn(properties map[string]string) string {
+	var builder strings.Builder
+	for k, v := range properties {
+		if slices.Contains(pgxPersistingProperties, k) || !property_util.ALL_WRAPPER_PROPERTIES[k] {
+			if builder.Len() != 0 {
+				builder.WriteString(" ")
+			}
+			builder.WriteString(fmt.Sprintf("%s=%s", k, v))
+		}
+	}
+	return builder.String()
 }
