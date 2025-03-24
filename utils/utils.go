@@ -21,6 +21,7 @@ import (
 	"context"
 	"database/sql/driver"
 	"log/slog"
+	"slices"
 	"strings"
 )
 
@@ -93,6 +94,17 @@ func GetFirstRowFromQueryAsString(conn driver.Conn, query string) []string {
 	return res
 }
 
+func ConvertDriverValueToString(value driver.Value) (string, bool) {
+	valueAsString, ok := value.(string)
+	if !ok {
+		valueAsInt, ok := value.([]uint8)
+		if ok {
+			valueAsString = string(valueAsInt)
+		}
+	}
+	return valueAsString, ok
+}
+
 func FilterSlice[T any](slice []T, filter func(T) bool) []T {
 	var result []T
 	for _, v := range slice {
@@ -101,4 +113,45 @@ func FilterSlice[T any](slice []T, filter func(T) bool) []T {
 		}
 	}
 	return result
+}
+
+func SliceAndMapHaveCommonElement[T comparable, V any](sliceA []T, mapOfKeysAndValues map[T]V) bool {
+	for item := range mapOfKeysAndValues {
+		if slices.Contains(sliceA, item) {
+			return true
+		}
+	}
+	return false
+}
+
+func AllKeys[T comparable, V any](mapOfKeysAndValues map[T]V) []T {
+	keys := make([]T, len(mapOfKeysAndValues))
+	i := 0
+	for key := range mapOfKeysAndValues {
+		keys[i] = key
+		i++
+	}
+	return keys
+}
+
+func GetWriter(hosts []*host_info_util.HostInfo) *host_info_util.HostInfo {
+	for _, host := range hosts {
+		if host.Role == host_info_util.WRITER {
+			return host
+		}
+	}
+	return &host_info_util.HostInfo{}
+}
+
+func IsConnectionLost(conn driver.Conn) (isConnected bool) {
+	connectionPinger, ok := conn.(driver.Pinger)
+	if ok {
+		err := connectionPinger.Ping(context.Background())
+		if err != nil {
+			// Unable to ping connection, return that connection is lost.
+			return true
+		}
+	}
+	// Unable to confirm that connection is lost.
+	return false
 }

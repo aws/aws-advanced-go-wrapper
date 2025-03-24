@@ -55,8 +55,7 @@ type HostInfo struct {
 	LastUpdateTime time.Time
 }
 
-//nolint:unused
-func (hostInfo *HostInfo) addAlias(alias string) {
+func (hostInfo *HostInfo) AddAlias(alias string) {
 	hostInfo.Aliases[alias] = true
 	hostInfo.AllAliases[alias] = true
 }
@@ -97,6 +96,16 @@ func (hostInfo *HostInfo) Equals(host HostInfo) bool {
 		hostInfo.Availability == host.Availability &&
 		hostInfo.Role == host.Role &&
 		hostInfo.Weight == host.Weight
+}
+
+func (hostInfo *HostInfo) IsNil() bool {
+	return (hostInfo.Host == "" &&
+		hostInfo.Port == 0 &&
+		hostInfo.Aliases == nil &&
+		hostInfo.AllAliases == nil &&
+		hostInfo.HostId == 0 &&
+		hostInfo.Weight == 0 &&
+		hostInfo.LastUpdateTime == time.Time{})
 }
 
 func (hostInfo *HostInfo) String() string {
@@ -158,6 +167,24 @@ func (hostInfoBuilder *HostInfoBuilder) SetLastUpdateTime(lastUpdateTime time.Ti
 	return hostInfoBuilder
 }
 
+func (hostInfoBuilder *HostInfoBuilder) CopyHost(hostInfo HostInfo) *HostInfo {
+	if hostInfo.Host == "" {
+		panic(error_util.NewIllegalArgumentError(error_util.GetMessage("HostInfoBuilder.InvalidEmptyHost")))
+	}
+
+	return &HostInfo{
+		Host:           hostInfo.Host,
+		HostId:         hostInfo.HostId,
+		Port:           hostInfo.Port,
+		Availability:   hostInfo.Availability,
+		Role:           hostInfo.Role,
+		Weight:         hostInfo.Weight,
+		LastUpdateTime: hostInfo.LastUpdateTime,
+		Aliases:        hostInfo.Aliases,
+		AllAliases:     hostInfo.AllAliases,
+	}
+}
+
 func (hostInfoBuilder *HostInfoBuilder) Build() (hostInfo *HostInfo) {
 	err := hostInfoBuilder.checkHostIsSet()
 	if err != nil {
@@ -185,4 +212,18 @@ func (hostInfoBuilder *HostInfoBuilder) checkHostIsSet() error {
 		return error_util.NewIllegalArgumentError(error_util.GetMessage("HostInfoBuilder.InvalidEmptyHost"))
 	}
 	return nil
+}
+
+func AreHostListsEqual(s1 []*HostInfo, s2 []*HostInfo) bool {
+	if len(s1) != len(s2) {
+		return false
+	}
+
+	for i := 0; i < len(s1); i++ {
+		if !s1[i].Equals(*s2[i]) {
+			return false
+		}
+	}
+
+	return true
 }

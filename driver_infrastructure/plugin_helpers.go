@@ -26,12 +26,21 @@ type ExecuteFunc func() (any, any, bool, error)
 type PluginExecFunc func(plugin ConnectionPlugin, targetFunc func() (any, any, bool, error)) (any, any, bool, error)
 type PluginConnectFunc func(plugin ConnectionPlugin, targetFunc func() (any, error)) (any, error)
 
-type PluginService interface {
-	GetCurrentConnection() driver.Conn
-	SetCurrentConnection(conn driver.Conn, hostInfo host_info_util.HostInfo, skipNotificationForThisPlugin ConnectionPlugin) error
-	GetCurrentHostInfo() host_info_util.HostInfo
-	GetHosts() []host_info_util.HostInfo
+type HostListProviderService interface {
+	IsStaticHostListProvider() bool
+	CreateHostListProvider(props map[string]string, dsn string) HostListProvider
+	GetHostListProvider() HostListProvider
+	SetHostListProvider(hostListProvider HostListProvider)
+	SetInitialConnectionHostInfo(info *host_info_util.HostInfo)
 	GetInitialConnectionHostInfo() host_info_util.HostInfo
+	GetCurrentConnection() driver.Conn
+	GetDialect() DatabaseDialect
+}
+
+type PluginService interface {
+	SetCurrentConnection(conn driver.Conn, hostInfo *host_info_util.HostInfo, skipNotificationForThisPlugin ConnectionPlugin)
+	GetCurrentHostInfo() (host_info_util.HostInfo, error)
+	GetHosts() []*host_info_util.HostInfo
 	AcceptsStrategy(role host_info_util.HostRole, strategy string) bool
 	GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error)
 	GetHostRole(driver.Conn) host_info_util.HostRole
@@ -39,14 +48,14 @@ type PluginService interface {
 	InTransaction() bool
 	GetHostListProvider() HostListProvider
 	RefreshHostList(conn driver.Conn) error
-	ForceRefreshHostList(conn driver.Conn) error // TODO: double check signatures, there are multiple
+	ForceRefreshHostList(conn driver.Conn) error
 	Connect(hostInfo host_info_util.HostInfo, props map[string]string) (driver.Conn, error)
 	ForceConnect(hostInfo host_info_util.HostInfo, props map[string]string) (driver.Conn, error)
 	GetDialect() DatabaseDialect
 	UpdateDialect(conn driver.Conn)
 	GetTargetDriverDialect() DriverDialect
-	IdentifyConnection(conn driver.Conn) (host_info_util.HostInfo, error)
-	FillAliases(conn driver.Conn, hostInfo host_info_util.HostInfo) error
+	IdentifyConnection(conn driver.Conn) host_info_util.HostInfo
+	FillAliases(conn driver.Conn, hostInfo *host_info_util.HostInfo)
 	GetConnectionProvider() ConnectionProvider
 	GetProperties() map[string]string
 	IsNetworkError(err error) bool

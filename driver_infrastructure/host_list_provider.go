@@ -22,8 +22,8 @@ import (
 )
 
 type HostListProvider interface {
-	Refresh(conn driver.Conn) []host_info_util.HostInfo
-	ForceRefresh(conn driver.Conn) []host_info_util.HostInfo
+	Refresh(conn driver.Conn) ([]*host_info_util.HostInfo, error)
+	ForceRefresh(conn driver.Conn) ([]*host_info_util.HostInfo, error)
 	GetHostRole(conn driver.Conn) host_info_util.HostRole
 	IdentifyConnection(conn driver.Conn) host_info_util.HostInfo
 	GetClusterId() string
