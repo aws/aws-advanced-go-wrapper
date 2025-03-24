@@ -114,12 +114,12 @@ func (c *CacheMap[T]) CleanUp() {
 	defer c.lock.Unlock()
 
 	if time.Now().After(c.cleanupTimeNanos) {
-		c.cleanupTimeNanos = time.Now().Add(cleanupIntervalNanos)
 		for key, value := range c.cache {
 			if value.isExpired() {
 				delete(c.cache, key)
 			}
 		}
+		c.cleanupTimeNanos = time.Now().Add(cleanupIntervalNanos)
 	}
 }
 
@@ -141,10 +141,5 @@ func (c cacheValue[T]) Equals(valueToCompare any) bool {
 }
 
 func (c cacheValue[T]) String() string {
-	var itemToPrint any = c.item
-	stringer, ok := any(c.item).(fmt.Stringer)
-	if ok {
-		itemToPrint = stringer.String()
-	}
-	return fmt.Sprintf("CacheItem [item= %v, expirationTime= %s]", itemToPrint, c.expirationTime.Format(time.RFC1123))
+	return fmt.Sprintf("CacheItem [item= %v, expirationTime= %s]", c.item, c.expirationTime.Format(time.RFC1123))
 }

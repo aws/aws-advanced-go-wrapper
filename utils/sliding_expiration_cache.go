@@ -19,7 +19,6 @@ package utils
 import (
 	"awssql/error_util"
 	"context"
-	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -135,7 +134,6 @@ func (c *SlidingExpirationCache[T]) GetAllEntries() map[string]T {
 	entryMap := make(map[string]T)
 	for key, value := range c.cache {
 		entryMap[key] = value.item
-		fmt.Println(value.String())
 	}
 	return entryMap
 }
