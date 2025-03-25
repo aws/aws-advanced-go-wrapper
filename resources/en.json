@@ -31,5 +31,7 @@
 	"PluginManager.pipelineNone": "A pipeline was requested but the created pipeline evaluated to nil.",
 	"PluginManager.unknownPluginCode": "Unknown plugin code: '%v'.",
 	"PluginManagerImpl.releaseResources": "Releasing resources from PluginManagerImpl.",
-	"PluginServiceImpl.releaseResources": "Releasing resources from PluginServiceImpl."
+	"PluginServiceImpl.releaseResources": "Releasing resources from PluginServiceImpl.",
+	"SlidingExpirationCache.exitingCacheCleanupRoutine": "Sliding expiration cache '%v' cleanup routine has been cancelled.",
+	"SlidingExpirationCache.startingCacheCleanupRoutine": "Sliding expiration cache '%v', has been initialized, cleanup routine has started."
 }

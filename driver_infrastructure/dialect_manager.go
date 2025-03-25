@@ -23,6 +23,7 @@ import (
 	"database/sql/driver"
 	"log"
 	"strings"
+	"time"
 )
 
 var knownDialectsByCode map[string]DatabaseDialect = map[string]DatabaseDialect{
@@ -34,6 +35,8 @@ var knownDialectsByCode map[string]DatabaseDialect = map[string]DatabaseDialect{
 	AURORA_PG_DIALECT:    &AuroraPgDatabaseDialect{},
 }
 
+var ENDPOINT_CACHE_EXPIRATION = time.Hour * 24
+
 type DialectProvider interface {
 	GetDialect(dsn string, props map[string]string) (DatabaseDialect, error)
 	GetDialectForUpdate(conn driver.Conn, originalHost string, newHost string) DatabaseDialect
@@ -43,19 +46,22 @@ type DialectManager struct {
 	canUpdate             bool
 	dialect               DatabaseDialect
 	dialectCode           string
-	knownEndpointDialects map[string]string // TODO: update to cache map when implemented.
+	knownEndpointDialects utils.CacheMap[string]
 }
 
 func (d *DialectManager) GetDialect(dsn string, props map[string]string) (DatabaseDialect, error) {
-	dialectCode := d.knownEndpointDialects[dsn]
-	var userDialect DatabaseDialect
-	if dialectCode != "" {
-		userDialect = knownDialectsByCode[dialectCode]
-		if userDialect != nil {
-			d.dialectCode = dialectCode
-			d.dialect = userDialect
-			d.logCurrentDialect()
-			return userDialect, nil
+	// TODO: requires dsn parsing to determine what the initial dialect should be. Currently bases off of inaccurate
+	// checks for phrases in the dsn.
+	dialectCode, ok := d.knownEndpointDialects.Get(dsn)
+	if ok {
+		if dialectCode != "" {
+			userDialect := knownDialectsByCode[dialectCode]
+			if userDialect != nil {
+				d.dialectCode = dialectCode
+				d.dialect = userDialect
+				d.logCurrentDialect()
+				return userDialect, nil
+			}
 		}
 	}
 
@@ -125,8 +131,8 @@ func (d *DialectManager) GetDialectForUpdate(conn driver.Conn, originalHost stri
 			d.dialectCode = candidateCode
 			d.dialect = dialectCandidate
 
-			d.knownEndpointDialects[originalHost] = d.dialectCode
-			d.knownEndpointDialects[newHost] = d.dialectCode
+			d.knownEndpointDialects.Put(originalHost, d.dialectCode, ENDPOINT_CACHE_EXPIRATION)
+			d.knownEndpointDialects.Put(newHost, d.dialectCode, ENDPOINT_CACHE_EXPIRATION)
 
 			d.logCurrentDialect()
 			return d.dialect
@@ -134,8 +140,8 @@ func (d *DialectManager) GetDialectForUpdate(conn driver.Conn, originalHost stri
 	}
 
 	d.canUpdate = false
-	d.knownEndpointDialects[originalHost] = d.dialectCode
-	d.knownEndpointDialects[newHost] = d.dialectCode
+	d.knownEndpointDialects.Put(originalHost, d.dialectCode, ENDPOINT_CACHE_EXPIRATION)
+	d.knownEndpointDialects.Put(newHost, d.dialectCode, ENDPOINT_CACHE_EXPIRATION)
 
 	d.logCurrentDialect()
 	return d.dialect
