@@ -18,14 +18,32 @@ package driver_infrastructure
 
 import (
 	"awssql/error_util"
+	"database/sql"
+	"database/sql/driver"
+	"github.com/jackc/pgx/v5/stdlib"
+	"reflect"
 )
 
 type PgxDriverDialect struct {
 	errorHandler error_util.ErrorHandler
 }
 
+const (
+	PGX_DRIVER_CLASS_NAME           = "stdlib.Driver"
+	PGX_DRIVER_REGISTRATION_NAME    = "pgx"
+	PGX_V5_DRIVER_REGISTRATION_NAME = "pgx/v5"
+)
+
 func NewPgxDriverDialect() *PgxDriverDialect {
 	return &PgxDriverDialect{errorHandler: &PgxErrorHandler{}}
+}
+
+func (p PgxDriverDialect) IsDialect(driver driver.Driver) bool {
+	return PGX_DRIVER_CLASS_NAME == reflect.TypeOf(driver).String() || "*"+PGX_DRIVER_CLASS_NAME == reflect.TypeOf(driver).String()
+}
+
+func (p PgxDriverDialect) GetAllowedOnConnectionMethodNames() []string {
+	return append(REQUIRED_METHODS, ROWS_COLUMN_TYPE_LENGTH)
 }
 
 func (p PgxDriverDialect) GetDsnFromProperties(properties map[string]string) string {
@@ -39,4 +57,17 @@ func (p PgxDriverDialect) IsNetworkError(err error) bool {
 
 func (p PgxDriverDialect) IsLoginError(err error) bool {
 	return p.errorHandler.IsLoginError(err)
+}
+
+func (p PgxDriverDialect) IsDriverRegistered(drivers map[string]driver.Driver) bool {
+	for driverName, _ := range drivers {
+		if driverName == PGX_DRIVER_REGISTRATION_NAME || driverName == PGX_V5_DRIVER_REGISTRATION_NAME {
+			return true
+		}
+	}
+	return false
+}
+
+func (p PgxDriverDialect) RegisterDriver() {
+	sql.Register(PGX_DRIVER_REGISTRATION_NAME, &stdlib.Driver{})
 }

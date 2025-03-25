@@ -129,3 +129,17 @@ var AUTO_SORT_PLUGIN_ORDER = AwsWrapperProperty{
 	"true",
 	WRAPPER_TYPE_BOOL,
 }
+
+var TARGET_DRIVER_DIALECT = AwsWrapperProperty{
+	"targetDriverDialect",
+	"A unique identifier for the target driver dialect.",
+	"",
+	WRAPPER_TYPE_STRING,
+}
+
+var TARGET_DRIVER_AUTO_REGISTER = AwsWrapperProperty{
+	"targetDriverAutoRegister",
+	"Allows the AWS Advanced Go Wrapper to auto-register a target driver.",
+	"true",
+	WRAPPER_TYPE_BOOL,
+}

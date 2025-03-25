@@ -17,6 +17,7 @@
 package driver
 
 import (
+	"awssql/driver_infrastructure"
 	"awssql/error_util"
 	"awssql/property_util"
 	"awssql/utils"
@@ -24,43 +25,53 @@ import (
 	_ "unsafe"
 )
 
-const (
-	MYSQL_DRIVER_REGISTRATION_NAME  = "mysql"
-	PGX_DRIVER_REGISTRATION_NAME    = "pgx"
-	PGX_V5_DRIVER_REGISTRATION_NAME = "pgx/v5"
-)
-
 //go:linkname drivers database/sql.drivers
 var drivers map[string]driver.Driver
 
 // NOTE: driversMu sync.RWMutex is not linked because it is not marked in its definition. See https://go.dev/doc/go1.23#linker
 
-func GetTargetDriver(props map[string]string) driver.Driver {
-	if property_util.DRIVER_PROTOCOL.Get(props) == utils.MYSQL_DRIVER_PROTOCOL {
-		mysqlDriver, ok := drivers[MYSQL_DRIVER_REGISTRATION_NAME]
-		if !ok {
-			panic(error_util.GetMessage("TargetDriverHelper.missingTargetDriver", "mysql"))
+func GetTargetDriver(dsn string, props map[string]string) (driver.Driver, error) {
+	targetDriver := getTargetDriverInternal(props)
+
+	if targetDriver == nil {
+		ddm := driver_infrastructure.DriverDialectManager{}
+		ok, err := ddm.RegisterDriver(props, drivers)
+		if ok {
+			targetDriver = getTargetDriverInternal(props)
+		} else if err != nil {
+			return nil, err
 		}
-		return mysqlDriver
-	} else if property_util.DRIVER_PROTOCOL.Get(props) == utils.PGX_DRIVER_PROTOCOL {
-		pgxDriver, ok := drivers[PGX_DRIVER_REGISTRATION_NAME]
-		if !ok {
-			pgxDriver, ok := drivers[PGX_V5_DRIVER_REGISTRATION_NAME]
-			if !ok {
-				panic(error_util.GetMessage("TargetDriverHelper.missingTargetDriver", "pgx or pgx/v5"))
-			}
-			return pgxDriver
-		}
-		return pgxDriver
 	}
-	panic(error_util.GetMessage("TargetDriverHelper.invalidProtocol", property_util.DRIVER_PROTOCOL.Get(props)))
+
+	if targetDriver == nil {
+		var driverNamesConcat string
+		for driverName := range drivers {
+			driverNamesConcat += driverName + ","
+		}
+		driverNamesConcat = driverNamesConcat[:len(driverNamesConcat)-1]
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("TargetDriverHelper.missingDriver", dsn, driverNamesConcat))
+	}
+	return targetDriver, nil
 }
 
-func GetDatabaseEngine(props map[string]string) DatabaseEngine {
+func getTargetDriverInternal(props map[string]string) driver.Driver {
+	var targetDriver driver.Driver
 	if property_util.DRIVER_PROTOCOL.Get(props) == utils.MYSQL_DRIVER_PROTOCOL {
-		return MYSQL
+		targetDriver = drivers[driver_infrastructure.MYSQL_DRIVER_REGISTRATION_NAME]
 	} else if property_util.DRIVER_PROTOCOL.Get(props) == utils.PGX_DRIVER_PROTOCOL {
-		return PG
+		targetDriver = drivers[driver_infrastructure.PGX_DRIVER_REGISTRATION_NAME]
+		if targetDriver == nil {
+			targetDriver = drivers[driver_infrastructure.PGX_V5_DRIVER_REGISTRATION_NAME]
+		}
 	}
-	panic(error_util.GetMessage("TargetDriverHelper.invalidProtocol", property_util.DRIVER_PROTOCOL.Get(props)))
+	return targetDriver
+}
+
+func GetDatabaseEngine(props map[string]string) (DatabaseEngine, error) {
+	if property_util.DRIVER_PROTOCOL.Get(props) == utils.MYSQL_DRIVER_PROTOCOL {
+		return MYSQL, nil
+	} else if property_util.DRIVER_PROTOCOL.Get(props) == utils.PGX_DRIVER_PROTOCOL {
+		return PG, nil
+	}
+	return "", error_util.NewGenericAwsWrapperError(error_util.GetMessage("TargetDriverHelper.invalidProtocol", property_util.DRIVER_PROTOCOL.Get(props)))
 }

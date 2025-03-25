@@ -44,8 +44,11 @@ type PluginServiceImpl struct {
 	isInTransaction           bool
 }
 
-func NewPluginServiceImpl(pluginManager *driver_infrastructure.PluginManager, props map[string]string) *PluginServiceImpl {
-	return &PluginServiceImpl{pluginManager: pluginManager, props: props}
+func NewPluginServiceImpl(
+	pluginManager *driver_infrastructure.PluginManager,
+	driverDialect driver_infrastructure.DriverDialect,
+	props map[string]string) *PluginServiceImpl {
+	return &PluginServiceImpl{pluginManager: pluginManager, driverDialect: driverDialect, props: props}
 }
 
 func (p *PluginServiceImpl) IsStaticHostListProvider() bool {
@@ -159,8 +162,7 @@ func (p *PluginServiceImpl) ForceConnect(hostInfo host_info_util.HostInfo, props
 }
 
 func (p *PluginServiceImpl) GetTargetDriverDialect() driver_infrastructure.DriverDialect {
-	//TODO implement me
-	panic("implement me")
+	return p.driverDialect
 }
 
 func (p *PluginServiceImpl) IdentifyConnection(conn driver.Conn) (host_info_util.HostInfo, error) {

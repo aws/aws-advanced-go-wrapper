@@ -60,6 +60,9 @@ func (builder *ConnectionPluginChainBuilder) GetPlugins(
 	pluginCodesSlice := strings.Split(pluginCodes, ",")
 	lastWeight := 0
 	for _, pluginCode := range pluginCodesSlice {
+		if pluginCode == "" {
+			continue
+		}
 		factoryFunc, ok := pluginFactoryFuncByCode[pluginCode]
 		if !ok {
 			return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("ConnectionPluginManager.unknownPluginCode", pluginCode))
