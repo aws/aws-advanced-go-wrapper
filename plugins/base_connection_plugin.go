@@ -21,6 +21,7 @@ import (
 	"awssql/error_util"
 	"awssql/host_info_util"
 	"database/sql/driver"
+	"fmt"
 )
 
 type BaseConnectionPlugin struct {
@@ -68,7 +69,7 @@ func (b BaseConnectionPlugin) AcceptsStrategy(role host_info_util.HostRole, stra
 }
 
 func (b BaseConnectionPlugin) GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error) {
-	return host_info_util.HostInfo{}, error_util.NewUnsupportedMethodError("GetHostInfoByStrategy is not supported by this plugin.")
+	return host_info_util.HostInfo{}, error_util.NewUnsupportedMethodError("GetHostInfoByStrategy", fmt.Sprintf("%T", b))
 }
 
 func (b BaseConnectionPlugin) NotifyConnectionChanged(changes map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {

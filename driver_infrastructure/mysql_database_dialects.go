@@ -59,7 +59,7 @@ func (m *MySQLDatabaseDialect) GetSetCatalogQuery(catalog string) (string, error
 }
 
 func (m *MySQLDatabaseDialect) GetSetSchemaQuery(schema string) (string, error) {
-	return "", error_util.NewUnsupportedMethodError(error_util.GetMessage("Conn.unsupportedMethodError", "setSchema"))
+	return "", error_util.NewUnsupportedMethodError("setSchema", fmt.Sprintf("%T", m))
 }
 
 func (m *MySQLDatabaseDialect) GetSetTransactionIsolationQuery(level TransactionIsolationLevel) (string, error) {
