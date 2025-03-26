@@ -25,10 +25,13 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	"reflect"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"reflect"
+	"time"
 )
+
+var mysqlTestDsn = "someUser:somePassword@tcp(mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:3306)/myDatabase?foo=bar&pop=snap"
+var pgTestDsn = "postgres://someUser:somePassword@mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:5432/pgx_test?sslmode=disable&foo=bar"
 
 type TestPlugin struct {
 	calls      *[]string
@@ -45,7 +48,7 @@ func (t TestPlugin) GetSubscribedMethods() []string {
 	case 2:
 		return []string{"callA", "callB"}
 	case 3:
-		return []string{"callA", "forceConnect", "connect"}
+		return []string{"callA", plugin_helpers.FORCE_CONNECT_METHOD, plugin_helpers.CONNECT_METHOD}
 	default:
 		return []string{"*"}
 	}
@@ -171,6 +174,10 @@ func CreateTestPlugin(calls *[]string, id int, connection driver.Conn, err error
 
 type MockHostListProvider struct{}
 
+func (m *MockHostListProvider) CreateHost(hostName string, role host_info_util.HostRole, lag float64, cpu float64, lastUpdateTime time.Time) *host_info_util.HostInfo {
+	return nil
+}
+
 func (m *MockHostListProvider) ForceRefresh(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
 	return nil, nil
 }
@@ -221,28 +228,30 @@ type MockConn struct {
 	beginResult   driver.Tx
 	prepareResult driver.Stmt
 	throwError    bool
+	closeCounter  int
 }
 
-func (m MockConn) Close() error {
+func (m *MockConn) Close() error {
+	m.closeCounter++
 	return nil
 }
 
-func (m MockConn) Prepare(query string) (driver.Stmt, error) {
+func (m *MockConn) Prepare(query string) (driver.Stmt, error) {
 	return m.prepareResult, nil
 }
 
-func (m MockConn) Begin() (driver.Tx, error) {
+func (m *MockConn) Begin() (driver.Tx, error) {
 	return m.beginResult, nil
 }
 
-func (m MockConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
+func (m *MockConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
 	if m.queryResult != nil || !m.throwError {
 		return m.queryResult, nil
 	}
 	return nil, errors.New("test error")
 }
 
-func (m MockConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
+func (m *MockConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
 	return m.execResult, nil
 }
 

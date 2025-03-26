@@ -27,11 +27,13 @@ type DatabaseDialect interface {
 	GetServerVersionQuery() string
 	GetDialectUpdateCandidates() []string
 	IsDialect(conn driver.Conn) bool
-	GetHostListProvider(props map[string]string, initialDsn string, hostListProviderService HostListProviderService) HostListProvider
+	GetHostListProvider(props map[string]string, initialDsn string, hostListProviderService HostListProviderService, pluginService PluginService) HostListProvider
 }
 
 type TopologyAwareDialect interface {
-	GetTopology(conn driver.Conn, provider *RdsHostListProvider) ([]*host_info_util.HostInfo, error)
+	GetTopology(conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error)
 	GetHostRole(conn driver.Conn) host_info_util.HostRole
 	GetHostName(conn driver.Conn) string
+	GetWriterHostName(conn driver.Conn) (string, error)
+	DatabaseDialect
 }

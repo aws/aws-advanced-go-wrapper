@@ -97,7 +97,7 @@ func TestSetCurrentConnection(t *testing.T) {
 
 	_, oldConnectionImplementsQueryer := target.GetCurrentConnection().(driver.QueryerContext)
 
-	newConnection := driver.Conn(MockConn{})
+	newConnection := driver.Conn(&MockConn{})
 	_, newConnectionImplementsQueryer := (newConnection).(driver.QueryerContext)
 	newHostInfo, err := hostInfoBuilder.SetHost("new-host").SetPort(1000).SetRole(host_info_util.WRITER).SetAvailability(host_info_util.AVAILABLE).Build()
 	assert.Nil(t, err)
@@ -122,7 +122,7 @@ func TestSetHostListAdd(t *testing.T) {
 
 	target.SetHostListProvider(&MockHostListProvider{})
 
-	err = target.RefreshHostList(MockConn{})
+	err = target.RefreshHostList(&MockConn{})
 
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(target.GetHosts()))
@@ -150,7 +150,7 @@ func TestSetHostListDelete(t *testing.T) {
 
 	assert.Equal(t, 2, len(target.GetHosts()))
 
-	err = target.RefreshHostList(MockConn{})
+	err = target.RefreshHostList(&MockConn{})
 
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(target.GetHosts()))
@@ -178,7 +178,7 @@ func TestSetHostListChange(t *testing.T) {
 	assert.Equal(t, "hostA", target.GetHosts()[0].Host)
 	assert.Equal(t, host_info_util.READER, target.GetHosts()[0].Role)
 
-	err = target.RefreshHostList(MockConn{})
+	err = target.RefreshHostList(&MockConn{})
 
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(target.GetHosts()))

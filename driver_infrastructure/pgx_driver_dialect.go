@@ -18,12 +18,14 @@ package driver_infrastructure
 
 import (
 	"awssql/error_util"
+	"awssql/host_info_util"
 	"awssql/property_util"
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5/stdlib"
@@ -68,27 +70,31 @@ func (p PgxDriverDialect) IsLoginError(err error) bool {
 }
 
 func (p PgxDriverDialect) IsDriverRegistered(drivers map[string]driver.Driver) bool {
-	for driverName := range drivers {
-		if driverName == PGX_DRIVER_REGISTRATION_NAME || driverName == PGX_V5_DRIVER_REGISTRATION_NAME {
-			return true
-		}
-	}
-	return false
+	_, existsV4 := drivers[PGX_DRIVER_REGISTRATION_NAME]
+	_, existsV5 := drivers[PGX_V5_DRIVER_REGISTRATION_NAME]
+	return existsV4 || existsV5
 }
 
 func (p PgxDriverDialect) RegisterDriver() {
 	sql.Register(PGX_DRIVER_REGISTRATION_NAME, &stdlib.Driver{})
 }
 
-func (p PgxDriverDialect) PrepareDsn(properties map[string]string) string {
+func (p PgxDriverDialect) PrepareDsn(properties map[string]string, hostInfo *host_info_util.HostInfo) string {
 	var builder strings.Builder
 	copyProps := property_util.RemoveMonitoringProperties(properties)
 	for k, v := range copyProps {
 		if slices.Contains(pgxPersistingProperties, k) || !property_util.ALL_WRAPPER_PROPERTIES[k] {
+			value := v
 			if builder.Len() != 0 {
 				builder.WriteString(" ")
 			}
-			builder.WriteString(fmt.Sprintf("%s=%s", k, v))
+			if k == property_util.PORT.Name && !hostInfo.IsNil() && hostInfo.Port != host_info_util.HOST_NO_PORT {
+				value = strconv.Itoa(hostInfo.Port)
+			}
+			if k == property_util.HOST.Name && !hostInfo.IsNil() {
+				value = hostInfo.Host
+			}
+			builder.WriteString(fmt.Sprintf("%s=%s", k, value))
 		}
 	}
 	return builder.String()

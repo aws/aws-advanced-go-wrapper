@@ -37,7 +37,7 @@ func TestPrepareDsnWithoutUser(t *testing.T) {
 		"monitoring-user":           "monitor-user",
 	}
 
-	dsn := driverDialect.PrepareDsn(properties)
+	dsn := driverDialect.PrepareDsn(properties, nil)
 	assert.Equal(t, "tcp(host:3306)/dbName", dsn)
 }
 
@@ -53,7 +53,7 @@ func TestPrepareDsnWithoutNet(t *testing.T) {
 		property_util.PLUGINS.Name:  "test",
 	}
 
-	dsn := driverDialect.PrepareDsn(properties)
+	dsn := driverDialect.PrepareDsn(properties, nil)
 	assert.Equal(t, "user:password@(host:3306)/dbName", dsn)
 }
 
@@ -70,7 +70,7 @@ func TestPrepareDsnWithEscapedDatabase(t *testing.T) {
 		property_util.PLUGINS.Name:  "test",
 	}
 
-	dsn := driverDialect.PrepareDsn(properties)
+	dsn := driverDialect.PrepareDsn(properties, nil)
 	assert.Equal(t, "user:password@tcp(host:3306)/dbName%2Fname", dsn)
 }
 
@@ -85,7 +85,7 @@ func TestPrepareDsnWithoutPasswordOrPort(t *testing.T) {
 		property_util.PLUGINS.Name:  "test",
 	}
 
-	dsn := driverDialect.PrepareDsn(properties)
+	dsn := driverDialect.PrepareDsn(properties, nil)
 	assert.Equal(t, "user@tcp(host)/dbName", dsn)
 }
 
@@ -100,6 +100,6 @@ func TestPrepareDsnWithoutHost(t *testing.T) {
 		property_util.PLUGINS.Name:  "test",
 	}
 
-	dsn := driverDialect.PrepareDsn(properties)
+	dsn := driverDialect.PrepareDsn(properties, nil)
 	assert.Equal(t, "user:password@tcp/dbName", dsn)
 }

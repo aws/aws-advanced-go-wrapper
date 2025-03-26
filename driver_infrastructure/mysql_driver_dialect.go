@@ -18,12 +18,14 @@ package driver_infrastructure
 
 import (
 	"awssql/error_util"
+	"awssql/host_info_util"
 	"awssql/property_util"
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
 	"net/url"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
@@ -47,7 +49,7 @@ func (m MySQLDriverDialect) IsDialect(driver driver.Driver) bool {
 }
 
 func (m MySQLDriverDialect) GetAllowedOnConnectionMethodNames() []string {
-	return append(REQUIRED_METHODS, ROWS_HAS_NEXT_RESULT_SET, ROWS_NEXT_RESULT_SET, ROWS_COLUMN_TYPE_SCAN_TYPE, ROWS_CLUMN_TYPE_NULLABLE)
+	return append(REQUIRED_METHODS, ROWS_HAS_NEXT_RESULT_SET, ROWS_NEXT_RESULT_SET, ROWS_COLUMN_TYPE_SCAN_TYPE, ROWS_COLUMN_TYPE_NULLABLE)
 }
 
 func (m MySQLDriverDialect) IsNetworkError(err error) bool {
@@ -59,19 +61,15 @@ func (m MySQLDriverDialect) IsLoginError(err error) bool {
 }
 
 func (m MySQLDriverDialect) IsDriverRegistered(drivers map[string]driver.Driver) bool {
-	for driverName := range drivers {
-		if driverName == MYSQL_DRIVER_REGISTRATION_NAME {
-			return true
-		}
-	}
-	return false
+	_, exists := drivers[MYSQL_DRIVER_REGISTRATION_NAME]
+	return exists
 }
 
 func (m MySQLDriverDialect) RegisterDriver() {
 	sql.Register(MYSQL_DRIVER_REGISTRATION_NAME, &mysql.MySQLDriver{})
 }
 
-func (m MySQLDriverDialect) PrepareDsn(properties map[string]string) string {
+func (m MySQLDriverDialect) PrepareDsn(properties map[string]string, hostInfo *host_info_util.HostInfo) string {
 	var builder strings.Builder
 
 	username := properties[property_util.USER.Name]
@@ -93,8 +91,14 @@ func (m MySQLDriverDialect) PrepareDsn(properties map[string]string) string {
 	}
 
 	if address != "" {
-		if port != "" {
+		if !hostInfo.IsNil() && hostInfo.Port != host_info_util.HOST_NO_PORT {
+			port = ":" + strconv.Itoa(hostInfo.Port)
+		} else if port != "" {
 			port = ":" + port
+		}
+
+		if !hostInfo.IsNil() {
+			address = hostInfo.Host
 		}
 		builder.WriteString(fmt.Sprintf("(%s%s)", address, port))
 	}

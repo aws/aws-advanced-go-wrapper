@@ -40,7 +40,7 @@ func TestPrepareDsn(t *testing.T) {
 		"monitoring-user":           "monitor-user",
 	}
 
-	dsn := driverDialect.PrepareDsn(properties)
+	dsn := driverDialect.PrepareDsn(properties, nil)
 	res, _ := regexp.MatchString("^\\w+=\\w+( \\w+=\\w+)*$", dsn)
 	assert.True(t, res)
 	assert.True(t, strings.Contains(dsn, fmt.Sprintf("%s=user", property_util.USER.Name)))

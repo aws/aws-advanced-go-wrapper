@@ -62,7 +62,8 @@ func (m *MySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 func (m *MySQLDatabaseDialect) GetHostListProvider(
 	props map[string]string,
 	initialDsn string,
-	hostListProviderService HostListProviderService) HostListProvider {
+	hostListProviderService HostListProviderService,
+	pluginService PluginService) HostListProvider {
 	return HostListProvider(NewDsnHostListProvider(props, initialDsn, hostListProviderService))
 }
 
@@ -102,8 +103,12 @@ func (m *AuroraMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	return row != nil
 }
 
-func (m *AuroraMySQLDatabaseDialect) GetHostListProvider(props map[string]string, initialDsn string, hostListProviderService HostListProviderService) HostListProvider {
-	return HostListProvider(NewRdsHostListProvider(hostListProviderService, m, props, initialDsn))
+func (m *AuroraMySQLDatabaseDialect) GetHostListProvider(
+	props map[string]string,
+	initialDsn string,
+	hostListProviderService HostListProviderService,
+	pluginService PluginService) HostListProvider {
+	return HostListProvider(NewMonitoringRdsHostListProvider(hostListProviderService, m, props, initialDsn, pluginService))
 }
 
 func (m *AuroraMySQLDatabaseDialect) GetHostName(conn driver.Conn) string {
@@ -113,6 +118,20 @@ func (m *AuroraMySQLDatabaseDialect) GetHostName(conn driver.Conn) string {
 		return res[0]
 	}
 	return ""
+}
+
+func (m *AuroraMySQLDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, error) {
+	hostIdQuery := "SELECT server_id " +
+		"FROM information_schema.replica_host_status " +
+		"WHERE SESSION_ID = 'MASTER_SESSION_ID' AND SERVER_ID = @@aurora_server_id"
+	res := utils.GetFirstRowFromQueryAsString(conn, hostIdQuery)
+	if res == nil {
+		return "", error_util.NewGenericAwsWrapperError("Could not determine writer host name.")
+	}
+	if len(res) > 0 {
+		return res[0], nil
+	}
+	return "", nil
 }
 
 func (m *AuroraMySQLDatabaseDialect) GetHostRole(conn driver.Conn) host_info_util.HostRole {
@@ -131,7 +150,7 @@ func (m *AuroraMySQLDatabaseDialect) GetHostRole(conn driver.Conn) host_info_uti
 	return host_info_util.UNKNOWN
 }
 
-func (m *AuroraMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider *RdsHostListProvider) ([]*host_info_util.HostInfo, error) {
+func (m *AuroraMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
 	topologyQuery := "SELECT server_id, CASE WHEN SESSION_ID = 'MASTER_SESSION_ID' THEN TRUE ELSE FALSE END as is_writer, " +
 		"cpu, REPLICA_LAG_IN_MILLISECONDS as 'lag', LAST_UPDATE_TIMESTAMP as last_update_timestamp " +
 		"FROM information_schema.replica_host_status " +
@@ -148,6 +167,9 @@ func (m *AuroraMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider *Rds
 	if err != nil {
 		// Query failed.
 		return nil, err
+	}
+	if rows != nil {
+		defer rows.Close()
 	}
 
 	hosts := []*host_info_util.HostInfo{}
@@ -182,9 +204,8 @@ func (m *AuroraMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider *Rds
 		if isWriterAsInt == 1 {
 			role = host_info_util.WRITER
 		}
-		hosts = append(hosts, provider.createHost(string(hostNameAsInt), role, lag, cpu, lastUpdateTime))
+		hosts = append(hosts, provider.CreateHost(string(hostNameAsInt), role, lag, cpu, lastUpdateTime))
 		err = rows.Next(row)
 	}
-	rows.Close()
 	return hosts, nil
 }

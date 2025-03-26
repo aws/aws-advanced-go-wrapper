@@ -35,13 +35,13 @@ func beforePgTests() *driver_infrastructure.RdsHostListProvider {
 	driver_infrastructure.ClearAllRdsHostListProviderCaches()
 	var mockPgProps = map[string]string{"clusterId": "pg_cluster"}
 	var mockPgDsn = "postgres://someUser:somePassword@localhost:5432/pgx_test?sslmode=disable&foo=bar"
-	return driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, mockPgProps, mockPgDsn)
+	return driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, mockPgProps, mockPgDsn, nil, nil)
 }
 func beforeMySqlTests() *driver_infrastructure.RdsHostListProvider {
 	driver_infrastructure.ClearAllRdsHostListProviderCaches()
 	mockMySQLProps := map[string]string{"clusterId": "mysql_cluster"}
 	mockMySQLDsn := "someUser:somePassword@tcp(mydatabase.com:3306)/myDatabase?foo=bar&pop=snap"
-	return driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, &driver_infrastructure.AuroraMySQLDatabaseDialect{}, mockMySQLProps, mockMySQLDsn)
+	return driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, &driver_infrastructure.AuroraMySQLDatabaseDialect{}, mockMySQLProps, mockMySQLDsn, nil, nil)
 }
 
 func TestGetClusterId(t *testing.T) {
@@ -241,7 +241,7 @@ func TestSuggestedClusterIdForRds(t *testing.T) {
 	driver_infrastructure.ClearAllRdsHostListProviderCaches()
 
 	dsn := "postgresql://user:password@name.cluster-xyz.us-east-2.rds.amazonaws.com:5432/database"
-	provider1 := driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, emptyProps, dsn)
+	provider1 := driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, emptyProps, dsn, nil, nil)
 	mockConn := MockConn{}
 	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"},
 		[]driver.Value{"instance-a-1", true, 1.0, 2.0, 0})
@@ -251,7 +251,7 @@ func TestSuggestedClusterIdForRds(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "instance-a-1.xyz.us-east-2.rds.amazonaws.com", hosts[0].Host)
 
-	provider2 := driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, emptyProps, dsn)
+	provider2 := driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, emptyProps, dsn, nil, nil)
 	assert.Equal(t, provider1.GetClusterId(), provider2.GetClusterId())
 	assert.True(t, provider1.IsPrimaryClusterId)
 	assert.True(t, provider2.IsPrimaryClusterId)
@@ -266,7 +266,7 @@ func TestNoSuggestedClusterId(t *testing.T) {
 	driver_infrastructure.ClearAllRdsHostListProviderCaches()
 
 	dsn1 := "postgresql://user:password@name1.cluster-xyz.us-east-2.rds.amazonaws.com:5432/database"
-	provider1 := driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, emptyProps, dsn1)
+	provider1 := driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, emptyProps, dsn1, nil, nil)
 	mockConn := MockConn{}
 	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"},
 		[]driver.Value{"instance-a-1", true, 1.0, 2.0, 0})
@@ -277,7 +277,7 @@ func TestNoSuggestedClusterId(t *testing.T) {
 	assert.Equal(t, "instance-a-1.xyz.us-east-2.rds.amazonaws.com", hosts[0].Host)
 
 	dsn2 := "postgresql://user:password@name2.cluster-xyz.us-east-2.rds.amazonaws.com:5432/database"
-	provider2 := driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, emptyProps, dsn2)
+	provider2 := driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, emptyProps, dsn2, nil, nil)
 	mockConn = MockConn{}
 	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"},
 		[]driver.Value{"instance-b-1", true, 1.0, 2.0, 0})

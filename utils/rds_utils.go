@@ -104,6 +104,11 @@ func IsIPV6(host string) bool {
 	return host != "" && (IP_V6_REGEXP.MatchString(host) || IP_V6_COMPRESSED_REGEXP.MatchString(host))
 }
 
+func IsRdsClusterDns(host string) bool {
+	dnsGroup := getDnsGroup(GetPreparedHost(host))
+	return strings.EqualFold(dnsGroup, "cluster-") || strings.EqualFold(dnsGroup, "cluster-ro-")
+}
+
 func IsWriterClusterDns(host string) bool {
 	dnsGroup := getDnsGroup(GetPreparedHost(host))
 	return strings.EqualFold(dnsGroup, "cluster-")

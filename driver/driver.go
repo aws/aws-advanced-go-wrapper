@@ -75,6 +75,10 @@ func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 	return NewAwsWrapperConn(wrapperContainer, dbEngine), nil
 }
 
+func (d *AwsWrapperDriver) ReleaseResources() {
+	driver_infrastructure.MonitoringRdsHostListProviderReleaseResources()
+}
+
 func init() {
 	sql.Register(
 		"awssql",
@@ -468,7 +472,7 @@ func (a *AwsWrapperMySQLRows) ColumnTypeNullable(index int) (bool, bool) {
 			boolean1, boolean2 := rowInterface.ColumnTypeNullable(index)
 			return nil, boolean1, boolean2, nil
 		}
-		_, result, ok, _ := ExecuteWithPlugins(a.pluginManager, driver_infrastructure.ROWS_CLUMN_TYPE_NULLABLE, rowFunc)
+		_, result, ok, _ := ExecuteWithPlugins(a.pluginManager, driver_infrastructure.ROWS_COLUMN_TYPE_NULLABLE, rowFunc)
 		nullable, boolOk := result.(bool)
 		if boolOk {
 			return nullable, ok

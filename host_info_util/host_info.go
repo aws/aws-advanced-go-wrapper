@@ -45,13 +45,13 @@ const (
 
 type HostInfo struct {
 	Host           string
+	HostId         string
 	Port           int
 	Availability   HostAvailability
 	Role           HostRole
 	Aliases        map[string]bool
 	AllAliases     map[string]bool
 	Weight         int
-	HostId         int
 	LastUpdateTime time.Time
 }
 
@@ -88,7 +88,7 @@ func (hostInfo *HostInfo) IsPortSpecified() bool {
 	return hostInfo.Port != HOST_NO_PORT
 }
 
-func (hostInfo *HostInfo) Equals(host HostInfo) bool {
+func (hostInfo *HostInfo) Equals(host *HostInfo) bool {
 	return hostInfo.Host == host.Host &&
 		hostInfo.Port == host.Port &&
 		hostInfo.Availability == host.Availability &&
@@ -100,13 +100,13 @@ func (hostInfo *HostInfo) IsNil() bool {
 	if hostInfo == nil {
 		return true
 	}
-	return (hostInfo.Host == "" &&
+	return hostInfo.Host == "" &&
 		hostInfo.Port == 0 &&
 		hostInfo.Aliases == nil &&
 		hostInfo.AllAliases == nil &&
-		hostInfo.HostId == 0 &&
+		hostInfo.HostId == "" &&
 		hostInfo.Weight == 0 &&
-		hostInfo.LastUpdateTime == time.Time{})
+		hostInfo.LastUpdateTime == time.Time{}
 }
 
 func (hostInfo *HostInfo) String() string {
@@ -114,13 +114,27 @@ func (hostInfo *HostInfo) String() string {
 		hostInfo.Host, hostInfo.Port, hostInfo.Role, hostInfo.Availability, hostInfo.Weight, hostInfo.LastUpdateTime)
 }
 
+func (hostInfo *HostInfo) MakeCopyWithRole(role HostRole) *HostInfo {
+	return &HostInfo{
+		Host:           hostInfo.Host,
+		HostId:         hostInfo.HostId,
+		Port:           hostInfo.Port,
+		Availability:   hostInfo.Availability,
+		Role:           role,
+		Aliases:        hostInfo.Aliases,
+		AllAliases:     hostInfo.AllAliases,
+		Weight:         hostInfo.Weight,
+		LastUpdateTime: hostInfo.LastUpdateTime,
+	}
+}
+
 type HostInfoBuilder struct {
 	host           string
+	hostId         string
 	port           int
 	availability   HostAvailability
 	role           HostRole
 	weight         int
-	hostId         int
 	lastUpdateTime time.Time
 }
 
@@ -158,7 +172,7 @@ func (hostInfoBuilder *HostInfoBuilder) SetWeight(weight int) *HostInfoBuilder {
 	return hostInfoBuilder
 }
 
-func (hostInfoBuilder *HostInfoBuilder) SetHostId(hostId int) *HostInfoBuilder {
+func (hostInfoBuilder *HostInfoBuilder) SetHostId(hostId string) *HostInfoBuilder {
 	hostInfoBuilder.hostId = hostId
 	return hostInfoBuilder
 }

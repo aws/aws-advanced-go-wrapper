@@ -31,8 +31,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var mysqlTestDsn = "someUser:somePassword@tcp(mydatabase.com:3306)/myDatabase?foo=bar&pop=snap"
-var pgTestDsn = "postgres://someUser:somePassword@localhost:5432/pgx_test?sslmode=disable&foo=bar"
 var mockHostInfo, _ = host_info_util.NewHostInfoBuilder().SetHost("test").SetPort(1234).SetRole(host_info_util.WRITER).Build()
 
 func TestAwsWrapperError(t *testing.T) {
@@ -71,7 +69,7 @@ func TestIsDialectPg(t *testing.T) {
 	if implementsQueryer {
 		t.Errorf("Should return false, connection does not implement QueryContext.")
 	}
-	testConnWithQuery := &MockConn{nil, nil, nil, nil, true}
+	testConnWithQuery := &MockConn{nil, nil, nil, nil, true, 0}
 	passesQuery := pgDialect.IsDialect(testConnWithQuery)
 	if passesQuery {
 		t.Errorf("Should return false, QueryContext throws an error.")
@@ -122,7 +120,7 @@ func TestIsDialectPg(t *testing.T) {
 
 func TestIsDialectMySQL(t *testing.T) {
 	mySqlDialect := driver_infrastructure.MySQLDatabaseDialect{}
-	testConnWithQuery := &MockConn{nil, nil, nil, nil, true}
+	testConnWithQuery := &MockConn{nil, nil, nil, nil, true, 0}
 
 	testConnWithQuery.updateQueryRow([]string{"variable_name"}, []driver.Value{"version_comment"})
 	returnsRow := mySqlDialect.IsDialect(testConnWithQuery)
@@ -204,7 +202,7 @@ func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
 		t.Errorf("An AWS Wrapper Conn with an underlying connection that does not support QueryContext should not return a result.")
 	}
 
-	mockUnderlyingConn := &MockConn{nil, nil, nil, nil, false}
+	mockUnderlyingConn := &MockConn{nil, nil, nil, nil, false, 0}
 	mockUnderlyingConn.updateQueryRow([]string{"column"}, []driver.Value{"test"})
 	mockAwsWrapperConn := awsDriver.NewAwsWrapperConn(mockContainer, driver_infrastructure.MYSQL)
 	err = mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
@@ -250,7 +248,7 @@ func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
 		t.Errorf("An AWS Wrapper Conn with an underlying connection that does not support QueryContext should not return a result.")
 	}
 
-	mockUnderlyingConn := &MockConn{nil, nil, nil, nil, false}
+	mockUnderlyingConn := &MockConn{nil, nil, nil, nil, false, 0}
 	err = mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
 	assert.Nil(t, err)
 
@@ -288,7 +286,7 @@ func TestWrapperUtilsExecWithPlugins(t *testing.T) {
 	_ = mockPluginManager.Init(nil, plugins)
 	mockContainer := container.Container{PluginManager: mockPluginManager, PluginService: mockPluginService}
 
-	mockUnderlyingConn := &MockConn{nil, MockResult{}, nil, nil, false}
+	mockUnderlyingConn := &MockConn{nil, MockResult{}, nil, nil, false, 0}
 	err := mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
 	assert.Nil(t, err)
 	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockContainer, driver_infrastructure.PG)
@@ -320,7 +318,7 @@ func TestWrapperUtilsBeginWithPlugins(t *testing.T) {
 	_ = mockPluginManager.Init(nil, plugins)
 	mockContainer := container.Container{PluginManager: mockPluginManager, PluginService: mockPluginService}
 
-	mockUnderlyingConn := &MockConn{nil, nil, MockTx{}, nil, false}
+	mockUnderlyingConn := &MockConn{nil, nil, MockTx{}, nil, false, 0}
 	err := mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
 	assert.Nil(t, err)
 	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockContainer, driver_infrastructure.PG)
@@ -352,7 +350,7 @@ func TestWrapperUtilsPrepareWithPlugins(t *testing.T) {
 	_ = mockPluginManager.Init(nil, plugins)
 	mockContainer := container.Container{PluginManager: mockPluginManager, PluginService: mockPluginService}
 
-	mockUnderlyingConn := &MockConn{nil, nil, nil, MockStmt{}, false}
+	mockUnderlyingConn := &MockConn{nil, nil, nil, MockStmt{}, false, 0}
 	err := mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
 	assert.Nil(t, err)
 	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockContainer, driver_infrastructure.PG)

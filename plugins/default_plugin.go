@@ -72,10 +72,11 @@ func (d *DefaultPlugin) connectInternal(
 	connProvider driver_infrastructure.ConnectionProvider,
 	isInitialConnection bool) (driver.Conn, error) {
 	conn, err := connProvider.Connect(hostInfo, props, d.PluginService)
-	d.PluginService.SetAvailability(hostInfo.AllAliases, host_info_util.AVAILABLE)
-
-	if isInitialConnection && err == nil {
-		d.PluginService.UpdateDialect(conn)
+	if err == nil {
+		d.PluginService.SetAvailability(hostInfo.AllAliases, host_info_util.AVAILABLE)
+		if isInitialConnection {
+			d.PluginService.UpdateDialect(conn)
+		}
 	}
 	return conn, err
 }

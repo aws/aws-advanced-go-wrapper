@@ -46,10 +46,12 @@ type PluginService interface {
 	GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error)
 	GetHostRole(driver.Conn) host_info_util.HostRole
 	SetAvailability(hostAliases map[string]bool, availability host_info_util.HostAvailability)
-	InTransaction() bool
+	IsInTransaction() bool
+	SetInTransaction(inTransaction bool)
 	GetHostListProvider() HostListProvider
 	RefreshHostList(conn driver.Conn) error
 	ForceRefreshHostList(conn driver.Conn) error
+	ForceRefreshHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) (bool, error)
 	Connect(hostInfo *host_info_util.HostInfo, props map[string]string) (driver.Conn, error)
 	ForceConnect(hostInfo *host_info_util.HostInfo, props map[string]string) (driver.Conn, error)
 	GetDialect() DatabaseDialect

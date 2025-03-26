@@ -335,10 +335,10 @@ func TestMonitorCheckConnectionStatusQueryer(t *testing.T) {
 	pluginService := &plugin_helpers.PluginServiceImpl{}
 	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0)
 
-	monitor.MonitoringConn = MockConn{throwError: false}
+	monitor.MonitoringConn = &MockConn{throwError: false}
 	assert.True(t, monitor.CheckConnectionStatus())
 
-	monitor.MonitoringConn = MockConn{throwError: true}
+	monitor.MonitoringConn = &MockConn{throwError: true}
 	assert.False(t, monitor.CheckConnectionStatus())
 }
 
