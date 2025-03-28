@@ -72,6 +72,19 @@ func GetVerifiedWrapperPropertyValue[T any](props map[string]string, property Aw
 	return result
 }
 
+var ALL_WRAPPER_PROPERTIES = map[string]bool{
+	USER.Name:                   true,
+	PASSWORD.Name:               true,
+	HOST.Name:                   true,
+	PORT.Name:                   true,
+	DATABASE.Name:               true,
+	DRIVER_PROTOCOL.Name:        true,
+	NET.Name:                    true,
+	SINGLE_WRITER_DSN.Name:      true,
+	PLUGINS.Name:                true,
+	AUTO_SORT_PLUGIN_ORDER.Name: true,
+}
+
 var USER = AwsWrapperProperty{
 	Name:                "user",
 	description:         "The user name that the driver will use to connect to database.",
@@ -105,6 +118,12 @@ var DATABASE = AwsWrapperProperty{
 var DRIVER_PROTOCOL = AwsWrapperProperty{
 	Name:                "protocol",
 	description:         "The underlying driver protocol AWS Go driver will connect using.",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var NET = AwsWrapperProperty{
+	Name:                "net",
+	description:         "The named network to connect with.",
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 

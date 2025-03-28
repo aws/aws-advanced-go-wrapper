@@ -18,10 +18,14 @@ package driver_infrastructure
 
 import (
 	"awssql/error_util"
+	"awssql/property_util"
 	"database/sql"
 	"database/sql/driver"
+	"fmt"
 	"github.com/go-sql-driver/mysql"
+	"net/url"
 	"reflect"
+	"strings"
 )
 
 type MySQLDriverDialect struct {
@@ -45,11 +49,6 @@ func (m MySQLDriverDialect) GetAllowedOnConnectionMethodNames() []string {
 	return append(REQUIRED_METHODS, ROWS_HAS_NEXT_RESULT_SET, ROWS_NEXT_RESULT_SET, ROWS_COLUMN_TYPE_SCAN_TYPE, ROWS_CLUMN_TYPE_NULLABLE)
 }
 
-func (m MySQLDriverDialect) GetDsnFromProperties(properties map[string]string) string {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (m MySQLDriverDialect) IsNetworkError(err error) bool {
 	return m.errorHandler.IsNetworkError(err)
 }
@@ -69,4 +68,54 @@ func (m MySQLDriverDialect) IsDriverRegistered(drivers map[string]driver.Driver)
 
 func (m MySQLDriverDialect) RegisterDriver() {
 	sql.Register(MYSQL_DRIVER_REGISTRATION_NAME, &mysql.MySQLDriver{})
+}
+
+func (m MySQLDriverDialect) PrepareDsn(properties map[string]string) string {
+	var builder strings.Builder
+
+	username := properties[property_util.USER.Name]
+	password := properties[property_util.PASSWORD.Name]
+	address := properties[property_util.HOST.Name]
+	database := properties[property_util.DATABASE.Name]
+	net := properties[property_util.NET.Name]
+	port := properties[property_util.PORT.Name]
+
+	if username != "" {
+		if password != "" {
+			password = ":" + password
+		}
+		builder.WriteString(fmt.Sprintf("%s%s@", username, password))
+	}
+
+	if net != "" {
+		builder.WriteString(net)
+	}
+
+	if address != "" {
+		if port != "" {
+			port = ":" + port
+		}
+		builder.WriteString(fmt.Sprintf("(%s%s)", address, port))
+	}
+
+	builder.WriteString("/")
+
+	if database != "" {
+		builder.WriteString(url.PathEscape(database))
+	}
+
+	var params strings.Builder
+	for k, v := range properties {
+		if !property_util.ALL_WRAPPER_PROPERTIES[k] {
+			if params.Len() != 0 {
+				params.WriteString("&")
+			}
+			params.WriteString(fmt.Sprintf("%s=%s", k, v))
+		}
+	}
+
+	if params.Len() != 0 {
+		builder.WriteString(fmt.Sprintf("?%s", params.String()))
+	}
+	return builder.String()
 }
