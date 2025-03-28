@@ -47,17 +47,17 @@ type PluginServiceImpl struct {
 func NewPluginServiceImpl(pluginManager *driver_infrastructure.PluginManager,
 	driverDialect driver_infrastructure.DriverDialect,
 	props map[string]string,
-	dsn string) *PluginServiceImpl {
+	dsn string) (*PluginServiceImpl, error) {
 	pluginService := &PluginServiceImpl{pluginManager: pluginManager, driverDialect: driverDialect, props: props}
 	dialectProvider := driver_infrastructure.DialectManager{}
 	dialect, err := dialectProvider.GetDialect(dsn, props)
-	if err == nil {
-		hostListProvider := dialect.GetHostListProvider(props, dsn, pluginService)
-		pluginService.dialectProvider = &dialectProvider
-		pluginService.dialect = dialect
-		pluginService.hostListProvider = *hostListProvider
+	if err != nil {
+		return nil, err
 	}
-	return pluginService
+	pluginService.dialectProvider = &dialectProvider
+	pluginService.dialect = dialect
+	pluginService.hostListProvider = *dialect.GetHostListProvider(props, dsn, pluginService)
+	return pluginService, nil
 }
 
 func (p *PluginServiceImpl) IsStaticHostListProvider() bool {

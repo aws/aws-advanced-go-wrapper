@@ -25,16 +25,18 @@ import (
 )
 
 func LogTopology(hosts []host_info_util.HostInfo, msgPrefix string) {
-	msg := "<null>"
+	var sb strings.Builder
 
 	if len(hosts) != 0 {
-		hostsAsString := []string{"\n"}
+		sb.WriteString("\n")
 		for _, host := range hosts {
-			hostsAsString = append(hostsAsString, host.String())
+			sb.WriteString(host.String())
+			sb.WriteString("\n")
 		}
-		msg = strings.Join(hostsAsString, "\n ")
+	} else {
+		sb.WriteString("<nil>")
 	}
-	log.Println(msgPrefix, "Topology: ", msg)
+	log.Println(msgPrefix, "Topology: ", sb.String())
 }
 
 func FindHostInTopology(hosts []host_info_util.HostInfo, hostName string) host_info_util.HostInfo {

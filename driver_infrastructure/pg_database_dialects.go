@@ -207,7 +207,7 @@ func (m *AuroraPgDatabaseDialect) GetTopology(conn driver.Conn, provider *RdsHos
 	return hosts
 }
 
-func (m *AuroraPgDatabaseDialect) GetHostName(conn driver.Conn) (instanceId string) {
+func (m *AuroraPgDatabaseDialect) GetHostName(conn driver.Conn) string {
 	hostIdQuery := "SELECT aurora_db_instance_identifier()"
 	res := utils.GetFirstRowFromQuery(conn, hostIdQuery)
 	if len(res) > 0 {

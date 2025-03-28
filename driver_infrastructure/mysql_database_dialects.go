@@ -145,7 +145,7 @@ func (m *AuroraMySQLDatabaseDialect) GetHostListProvider(props map[string]string
 	return &provider
 }
 
-func (m *AuroraMySQLDatabaseDialect) GetHostName(conn driver.Conn) (hostName string) {
+func (m *AuroraMySQLDatabaseDialect) GetHostName(conn driver.Conn) string {
 	hostIdQuery := "SELECT @@aurora_server_id"
 	res := utils.GetFirstRowFromQueryAsString(conn, hostIdQuery)
 	if len(res) > 0 {
