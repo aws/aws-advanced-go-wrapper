@@ -35,8 +35,14 @@ func NewContainer(dsn string, targetDriver driver.Driver) (Container, error) {
 	}
 	defaultConnProvider := driver_infrastructure.ConnectionProvider(driver_infrastructure.NewDriverConnectionProvider(targetDriver))
 
+	targetDriverDialectManager := driver_infrastructure.DriverDialectManager{}
+	targetDriverDialect, err := targetDriverDialectManager.GetDialect(targetDriver, props)
+	if err != nil {
+		return Container{}, err
+	}
+
 	pluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(targetDriver, &defaultConnProvider, nil, props))
-	pluginServiceImpl := plugin_helpers.NewPluginServiceImpl(&pluginManager, props)
+	pluginServiceImpl := plugin_helpers.NewPluginServiceImpl(&pluginManager, targetDriverDialect, props)
 	pluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 	hostListProviderService := driver_infrastructure.HostListProviderService(pluginServiceImpl)
 

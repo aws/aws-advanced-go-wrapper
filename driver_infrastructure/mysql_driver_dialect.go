@@ -18,14 +18,31 @@ package driver_infrastructure
 
 import (
 	"awssql/error_util"
+	"database/sql"
+	"database/sql/driver"
+	"github.com/go-sql-driver/mysql"
+	"reflect"
 )
 
 type MySQLDriverDialect struct {
 	errorHandler error_util.ErrorHandler
 }
 
+const (
+	MYSQL_DRIVER_CLASS_NAME        = "mysql.MySQLDriver"
+	MYSQL_DRIVER_REGISTRATION_NAME = "mysql"
+)
+
 func NewMySQLDriverDialect() *MySQLDriverDialect {
 	return &MySQLDriverDialect{errorHandler: MySQLErrorHandler{}}
+}
+
+func (m MySQLDriverDialect) IsDialect(driver driver.Driver) bool {
+	return MYSQL_DRIVER_CLASS_NAME == reflect.TypeOf(driver).String() || "*"+MYSQL_DRIVER_CLASS_NAME == reflect.TypeOf(driver).String()
+}
+
+func (m MySQLDriverDialect) GetAllowedOnConnectionMethodNames() []string {
+	return append(REQUIRED_METHODS, ROWS_HAS_NEXT_RESULT_SET, ROWS_NEXT_RESULT_SET, ROWS_COLUMN_TYPE_SCAN_TYPE, ROWS_CLUMN_TYPE_NULLABLE)
 }
 
 func (m MySQLDriverDialect) GetDsnFromProperties(properties map[string]string) string {
@@ -39,4 +56,17 @@ func (m MySQLDriverDialect) IsNetworkError(err error) bool {
 
 func (m MySQLDriverDialect) IsLoginError(err error) bool {
 	return m.errorHandler.IsLoginError(err)
+}
+
+func (m MySQLDriverDialect) IsDriverRegistered(drivers map[string]driver.Driver) bool {
+	for driverName, _ := range drivers {
+		if driverName == MYSQL_DRIVER_REGISTRATION_NAME {
+			return true
+		}
+	}
+	return false
+}
+
+func (m MySQLDriverDialect) RegisterDriver() {
+	sql.Register(MYSQL_DRIVER_REGISTRATION_NAME, &mysql.MySQLDriver{})
 }
