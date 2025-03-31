@@ -18,8 +18,9 @@ package test
 
 import (
 	"awssql/utils"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 const (

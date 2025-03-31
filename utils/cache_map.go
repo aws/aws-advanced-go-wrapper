@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-var cleanupIntervalNanos time.Duration = 10 * time.Minute
+var CleanupIntervalNanos time.Duration = 10 * time.Minute
 
 type CacheMap[T any] struct {
 	cache            map[string]cacheValue[T]
@@ -34,20 +34,21 @@ type CacheMap[T any] struct {
 func NewCache[T any]() *CacheMap[T] {
 	return &CacheMap[T]{
 		cache:            make(map[string]cacheValue[T]),
-		cleanupTimeNanos: time.Now().Add(cleanupIntervalNanos),
+		cleanupTimeNanos: time.Now().Add(CleanupIntervalNanos),
 	}
 }
 
 func (c *CacheMap[T]) Put(key string, value T, expiration time.Duration) {
 	c.lock.Lock()
-	defer c.lock.Unlock()
-	defer c.CleanUp()
 
 	expirationTime := time.Now().Add(expiration)
 	c.cache[key] = cacheValue[T]{
 		item:           value,
 		expirationTime: expirationTime,
 	}
+
+	c.lock.Unlock()
+	defer c.CleanUp()
 }
 
 func (c *CacheMap[T]) Get(key string) (T, bool) {
@@ -64,22 +65,21 @@ func (c *CacheMap[T]) Get(key string) (T, bool) {
 }
 
 func (c *CacheMap[T]) PutIfAbsent(key string, value T, expiration time.Duration) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	defer c.CleanUp()
-
+	c.lock.RLock()
 	_, ok := c.cache[key]
+	c.lock.RUnlock()
+
 	if !ok {
 		c.Put(key, value, expiration)
 	}
+	defer c.CleanUp()
 }
 
 func (c *CacheMap[T]) Remove(key string) {
 	c.lock.Lock()
-	defer c.lock.Unlock()
-	defer c.CleanUp()
-
 	delete(c.cache, key)
+	c.lock.Unlock()
+	defer c.CleanUp()
 }
 
 func (c *CacheMap[T]) Clear() {
@@ -87,7 +87,7 @@ func (c *CacheMap[T]) Clear() {
 	defer c.lock.Unlock()
 
 	c.cache = make(map[string]cacheValue[T])
-	c.cleanupTimeNanos = time.Now().Add(cleanupIntervalNanos)
+	c.cleanupTimeNanos = time.Now().Add(CleanupIntervalNanos)
 }
 
 // Get a map copy of all entries in the cache, including expired entries.
@@ -119,7 +119,7 @@ func (c *CacheMap[T]) CleanUp() {
 				delete(c.cache, key)
 			}
 		}
-		c.cleanupTimeNanos = time.Now().Add(cleanupIntervalNanos)
+		c.cleanupTimeNanos = time.Now().Add(CleanupIntervalNanos)
 	}
 }
 

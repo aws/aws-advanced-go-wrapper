@@ -381,12 +381,17 @@ func (m MockConn) ExecContext(ctx context.Context, query string, args []driver.N
 }
 
 func (m *MockConn) updateQueryRow(columns []string, row []driver.Value) {
-	testRow := MockRows{columns: columns, row: row}
-	m.queryResult = testRow
+	testRow := MockRows{columns: columns, row: row, throwNextError: -1}
+	m.queryResult = &testRow
 }
 
 func (m *MockConn) updateThrowError(throwError bool) {
 	m.throwError = throwError
+}
+
+func (m *MockConn) updateQueryRowSingleUse(columns []string, row []driver.Value) {
+	testRow := MockRows{columns: columns, row: row, throwNextError: 1}
+	m.queryResult = &testRow
 }
 
 type MockStmt struct {
@@ -405,7 +410,7 @@ func (a MockStmt) NumInput() int {
 }
 
 func (a MockStmt) Query(args []driver.Value) (driver.Rows, error) {
-	return MockRows{[]string{"column"}, []driver.Value{"test"}}, nil
+	return &MockRows{[]string{"column"}, []driver.Value{"test"}, -1}, nil
 }
 
 type MockResult struct {
@@ -435,24 +440,32 @@ type MockDriverConn struct {
 }
 
 type MockRows struct {
-	columns []string
-	row     []driver.Value
+	columns        []string
+	row            []driver.Value
+	throwNextError int
 }
 
-func (t MockRows) Columns() []string {
+func (t *MockRows) Columns() []string {
 	return t.columns
 }
 
-func (t MockRows) Close() error {
+func (t *MockRows) Close() error {
 	return nil
 }
 
-func (t MockRows) Next(dest []driver.Value) error {
+func (t *MockRows) Next(dest []driver.Value) error {
 	if len(t.row) < 1 {
 		return errors.New("test error")
 	}
 	for i := range dest {
 		dest[i] = t.row[i]
+	}
+	if t.throwNextError == 1 {
+		t.throwNextError = 0
+	} else if t.throwNextError == 0 {
+		t.columns = nil
+		t.row = nil
+		return errors.New("test error")
 	}
 	return nil
 }

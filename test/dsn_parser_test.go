@@ -20,8 +20,9 @@ import (
 	"awssql/host_info_util"
 	"awssql/property_util"
 	"awssql/utils"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetHostsFromDsnWithPgxDsnUrl(t *testing.T) {

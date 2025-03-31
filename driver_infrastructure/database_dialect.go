@@ -17,6 +17,7 @@
 package driver_infrastructure
 
 import (
+	"awssql/host_info_util"
 	"database/sql/driver"
 )
 
@@ -32,4 +33,10 @@ type DatabaseDialect interface {
 	GetDialectUpdateCandidates() []string
 	IsDialect(conn driver.Conn) bool
 	GetHostListProvider(props map[string]string, initialDsn string, hostListProviderService HostListProviderService) *HostListProvider
+}
+
+type TopologyAwareDialect interface {
+	GetTopology(conn driver.Conn, provider *RdsHostListProvider) []host_info_util.HostInfo
+	GetHostRole(conn driver.Conn) host_info_util.HostRole
+	GetHostName(conn driver.Conn) string
 }

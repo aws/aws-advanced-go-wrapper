@@ -22,10 +22,11 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"github.com/go-sql-driver/mysql"
 	"net/url"
 	"reflect"
 	"strings"
+
+	"github.com/go-sql-driver/mysql"
 )
 
 type MySQLDriverDialect struct {
@@ -58,7 +59,7 @@ func (m MySQLDriverDialect) IsLoginError(err error) bool {
 }
 
 func (m MySQLDriverDialect) IsDriverRegistered(drivers map[string]driver.Driver) bool {
-	for driverName, _ := range drivers {
+	for driverName := range drivers {
 		if driverName == MYSQL_DRIVER_REGISTRATION_NAME {
 			return true
 		}

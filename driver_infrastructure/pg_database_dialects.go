@@ -18,9 +18,12 @@ package driver_infrastructure
 
 import (
 	"awssql/error_util"
+	"awssql/host_info_util"
 	"awssql/utils"
+	"context"
 	"database/sql/driver"
 	"fmt"
+	"time"
 )
 
 type PgDatabaseDialect struct {
@@ -132,10 +135,86 @@ func (m *AuroraPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	return hasExtensions != nil && hasExtensions[0] == true && hasTopology != nil
 }
 
-func (m *AuroraPgDatabaseDialect) GetHostListProvider(
-	props map[string]string,
-	initialDsn string,
-	hostListProviderService HostListProviderService) *HostListProvider {
-	// TODO: implement GetHostListProvider, see ticket: "dev: RdsHostListProvider".
-	panic("implement me")
+func (m *AuroraPgDatabaseDialect) GetHostListProvider(props map[string]string, initialDsn string, hostListProviderService HostListProviderService) *HostListProvider {
+	provider := HostListProvider(NewRdsHostListProvider(hostListProviderService, m, props, initialDsn))
+	return &provider
+}
+
+func (m *AuroraPgDatabaseDialect) GetHostRole(conn driver.Conn) host_info_util.HostRole {
+	isReaderQuery := "SELECT pg_is_in_recovery()"
+	res := utils.GetFirstRowFromQuery(conn, isReaderQuery)
+	if len(res) > 0 {
+		b, ok := (res[0]).(bool)
+		if ok {
+			if b {
+				return host_info_util.READER
+			}
+			return host_info_util.WRITER
+		}
+	}
+	return host_info_util.UNKNOWN
+}
+
+func (m *AuroraPgDatabaseDialect) GetTopology(conn driver.Conn, provider *RdsHostListProvider) []host_info_util.HostInfo {
+	topologyQuery := "SELECT server_id, CASE WHEN SESSION_ID = 'MASTER_SESSION_ID' THEN TRUE ELSE FALSE END AS is_writer, " +
+		"CPU, COALESCE(REPLICA_LAG_IN_MSEC, 0) AS lag, LAST_UPDATE_TIMESTAMP " +
+		"FROM aurora_replica_status() " +
+		// Filter out hosts that haven't been updated in the last 5 minutes.
+		"WHERE EXTRACT(EPOCH FROM(NOW() - LAST_UPDATE_TIMESTAMP)) <= 300 OR SESSION_ID = 'MASTER_SESSION_ID' " +
+		"OR LAST_UPDATE_TIMESTAMP IS NULL"
+
+	queryerCtx, ok := conn.(driver.QueryerContext)
+	if !ok {
+		// Unable to query, conn does not implement QueryerContext.
+		return nil
+	}
+
+	rows, err := queryerCtx.QueryContext(context.Background(), topologyQuery, nil)
+	if err != nil {
+		// Query failed.
+		return nil
+	}
+
+	hosts := []host_info_util.HostInfo{}
+	if rows == nil {
+		return hosts
+	}
+	row := make([]driver.Value, len(rows.Columns()))
+	err = rows.Next(row)
+
+	for err == nil && len(row) > 4 {
+		hostName, ok1 := row[0].(string)
+		isWriter, ok2 := row[1].(bool)
+		cpu, ok3 := row[2].(float64)
+		lag, ok4 := row[3].(float64)
+		lastUpdateTime, ok5 := row[4].(time.Time)
+		if !ok1 || !ok2 || !ok3 || !ok4 {
+			// Unable to use information from row to create a host.
+			continue
+		}
+		if !ok5 {
+			// Not able to get last update time, use current time.
+			lastUpdateTime = time.Now()
+		}
+		hostRole := host_info_util.READER
+		if isWriter {
+			hostRole = host_info_util.WRITER
+		}
+		hosts = append(hosts, provider.createHost(hostName, hostRole, lag, cpu, lastUpdateTime))
+		err = rows.Next(row)
+	}
+	rows.Close()
+	return hosts
+}
+
+func (m *AuroraPgDatabaseDialect) GetHostName(conn driver.Conn) string {
+	hostIdQuery := "SELECT aurora_db_instance_identifier()"
+	res := utils.GetFirstRowFromQuery(conn, hostIdQuery)
+	if len(res) > 0 {
+		instanceId, ok := (res[0]).(string)
+		if ok {
+			return instanceId
+		}
+	}
+	return ""
 }

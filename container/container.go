@@ -42,7 +42,10 @@ func NewContainer(dsn string, targetDriver driver.Driver) (Container, error) {
 	}
 
 	pluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(targetDriver, &defaultConnProvider, nil, props))
-	pluginServiceImpl := plugin_helpers.NewPluginServiceImpl(&pluginManager, targetDriverDialect, props)
+	pluginServiceImpl, err := plugin_helpers.NewPluginServiceImpl(&pluginManager, targetDriverDialect, props, dsn)
+	if err != nil {
+		return Container{}, err
+	}
 	pluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 	hostListProviderService := driver_infrastructure.HostListProviderService(pluginServiceImpl)
 

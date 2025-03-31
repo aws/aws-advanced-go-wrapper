@@ -44,11 +44,20 @@ type PluginServiceImpl struct {
 	isInTransaction           bool
 }
 
-func NewPluginServiceImpl(
-	pluginManager *driver_infrastructure.PluginManager,
+func NewPluginServiceImpl(pluginManager *driver_infrastructure.PluginManager,
 	driverDialect driver_infrastructure.DriverDialect,
-	props map[string]string) *PluginServiceImpl {
-	return &PluginServiceImpl{pluginManager: pluginManager, driverDialect: driverDialect, props: props}
+	props map[string]string,
+	dsn string) (*PluginServiceImpl, error) {
+	pluginService := &PluginServiceImpl{pluginManager: pluginManager, driverDialect: driverDialect, props: props}
+	dialectProvider := driver_infrastructure.DialectManager{}
+	dialect, err := dialectProvider.GetDialect(dsn, props)
+	if err != nil {
+		return nil, err
+	}
+	pluginService.dialectProvider = &dialectProvider
+	pluginService.dialect = dialect
+	pluginService.hostListProvider = *dialect.GetHostListProvider(props, dsn, pluginService)
+	return pluginService, nil
 }
 
 func (p *PluginServiceImpl) IsStaticHostListProvider() bool {
@@ -77,8 +86,8 @@ func (p *PluginServiceImpl) UpdateDialect(conn driver.Conn) {
 	// TODO: update HostListProvider based on new dialect.
 }
 
-func (p *PluginServiceImpl) GetCurrentConnection() driver.Conn {
-	return p.currentConnection
+func (p *PluginServiceImpl) GetCurrentConnection() *driver.Conn {
+	return &p.currentConnection
 }
 
 func (p *PluginServiceImpl) SetCurrentConnection(
@@ -171,11 +180,6 @@ func (p *PluginServiceImpl) IdentifyConnection(conn driver.Conn) (host_info_util
 }
 
 func (p *PluginServiceImpl) FillAliases(conn driver.Conn, hostInfo host_info_util.HostInfo) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (p *PluginServiceImpl) GetHostInfoBuilder() host_info_util.HostInfoBuilder {
 	//TODO implement me
 	panic("implement me")
 }

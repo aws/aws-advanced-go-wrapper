@@ -162,3 +162,31 @@ var TARGET_DRIVER_AUTO_REGISTER = AwsWrapperProperty{
 	"true",
 	WRAPPER_TYPE_BOOL,
 }
+
+var CLUSTER_TOPOLOGY_REFRESH_RATE_MS = AwsWrapperProperty{
+	"clusterTopologyRefreshRate",
+	"Cluster topology refresh rate in millis. " +
+		"The cached topology for the cluster will be invalidated after the specified time, " +
+		"after which it will be updated during the next interaction with the connection.",
+	"30000",
+	WRAPPER_TYPE_INT,
+}
+
+var CLUSTER_ID = AwsWrapperProperty{
+	"clusterId",
+	"A unique identifier for the cluster. " +
+		"Connections with the same cluster id share a cluster topology cache. " +
+		"If unspecified, a cluster id is automatically created for AWS RDS clusters.",
+	"",
+	WRAPPER_TYPE_STRING,
+}
+
+var CLUSTER_INSTANCE_HOST_PATTERN = AwsWrapperProperty{
+	"clusterInstanceHostPattern",
+	"The cluster instance DNS pattern that will be used to build a complete instance endpoint. " +
+		"A \"?\" character in this pattern should be used as a placeholder for cluster instance names. " +
+		"This pattern is required to be specified for IP address or custom domain connections to AWS RDS " +
+		"clusters. Otherwise, if unspecified, the pattern will be automatically created for AWS RDS clusters.",
+	"",
+	WRAPPER_TYPE_STRING,
+}
