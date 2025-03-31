@@ -26,7 +26,7 @@ import (
 	"time"
 )
 
-var knownDialectsByCode map[string]DatabaseDialect = map[string]DatabaseDialect{
+var knownDialectsByCode = map[string]DatabaseDialect{
 	MYSQL_DIALECT:        &MySQLDatabaseDialect{},
 	PG_DIALECT:           &PgDatabaseDialect{},
 	RDS_MYSQL_DIALECT:    &RdsMySQLDatabaseDialect{},

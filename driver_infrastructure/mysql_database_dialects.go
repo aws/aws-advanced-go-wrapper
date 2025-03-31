@@ -99,9 +99,8 @@ func (m *MySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 func (m *MySQLDatabaseDialect) GetHostListProvider(
 	props map[string]string,
 	initialDsn string,
-	hostListProviderService HostListProviderService) *HostListProvider {
-	provider := HostListProvider(NewDsnHostListProvider(props, initialDsn, hostListProviderService))
-	return &provider
+	hostListProviderService HostListProviderService) HostListProvider {
+	return HostListProvider(NewDsnHostListProvider(props, initialDsn, hostListProviderService))
 }
 
 type RdsMySQLDatabaseDialect struct {
@@ -140,9 +139,8 @@ func (m *AuroraMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	return row != nil
 }
 
-func (m *AuroraMySQLDatabaseDialect) GetHostListProvider(props map[string]string, initialDsn string, hostListProviderService HostListProviderService) *HostListProvider {
-	provider := HostListProvider(NewRdsHostListProvider(hostListProviderService, m, props, initialDsn))
-	return &provider
+func (m *AuroraMySQLDatabaseDialect) GetHostListProvider(props map[string]string, initialDsn string, hostListProviderService HostListProviderService) HostListProvider {
+	return HostListProvider(NewRdsHostListProvider(hostListProviderService, m, props, initialDsn))
 }
 
 func (m *AuroraMySQLDatabaseDialect) GetHostName(conn driver.Conn) string {

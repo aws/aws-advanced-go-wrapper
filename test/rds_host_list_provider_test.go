@@ -52,7 +52,7 @@ func TestGetClusterId(t *testing.T) {
 func TestRefreshTopologyPg(t *testing.T) {
 	// Test that Refresh returns the initial hosts from the dsn when topology query returns an empty host list.
 	mockConn := MockConn{}
-	hosts := mockPgRdsHostListProvider.Refresh(mockConn)
+	hosts := mockPgRdsHostListProvider.Refresh(&mockConn)
 	if len(hosts) == 0 {
 		t.Errorf("Refresh should return the initial hosts from the dsn if the topology query returns no hosts.")
 	}
@@ -63,7 +63,7 @@ func TestRefreshTopologyPg(t *testing.T) {
 	// Test that Refresh returns the results of the topology query.
 	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"}, []driver.Value{"new_host", true, 1.0, 2.0, 0})
 
-	hosts = mockPgRdsHostListProvider.Refresh(mockConn)
+	hosts = mockPgRdsHostListProvider.Refresh(&mockConn)
 	if len(hosts) == 0 {
 		t.Errorf("Refresh should return the results of the topology query.")
 	}
@@ -75,7 +75,7 @@ func TestRefreshTopologyPg(t *testing.T) {
 	mockConn = MockConn{}
 	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"}, []driver.Value{"topology_query_host", true, 1.0, 2.0, 0})
 
-	hosts = mockPgRdsHostListProvider.Refresh(mockConn)
+	hosts = mockPgRdsHostListProvider.Refresh(&mockConn)
 	if len(hosts) == 0 {
 		t.Errorf("Refresh should return the cached topology.")
 	}
@@ -84,7 +84,7 @@ func TestRefreshTopologyPg(t *testing.T) {
 	}
 
 	// ForceRefresh should run the topology query regardless of the values in the cache.
-	hosts = mockPgRdsHostListProvider.ForceRefresh(mockConn)
+	hosts = mockPgRdsHostListProvider.ForceRefresh(&mockConn)
 	if len(hosts) == 0 {
 		t.Errorf("ForceRefresh should return the results of the topology query.")
 	}
@@ -109,7 +109,7 @@ func TestRefreshTopologyMySQL(t *testing.T) {
 	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"},
 		[]driver.Value{[]uint8{110, 101, 119, 95, 104, 111, 115, 116}, trueAsInt, 1.0, 2.0, 0})
 
-	hosts = mockMySQLRdsHostListProvider.Refresh(mockConn)
+	hosts = mockMySQLRdsHostListProvider.Refresh(&mockConn)
 	if len(hosts) == 0 {
 		t.Errorf("Refresh should return the results of the topology query.")
 	}
@@ -123,7 +123,7 @@ func TestRefreshTopologyMySQL(t *testing.T) {
 		[]driver.Value{[]uint8{116, 111, 112, 111, 108, 111, 103, 121, 95, 113, 117, 101, 114, 121, 95, 104, 111, 115, 116},
 			trueAsInt, 1.0, 2.0, []uint8{50, 48, 48, 48, 45, 48, 49, 45, 48, 49, 32, 48, 48, 58, 48, 48, 58, 48, 48, 46, 48, 48}})
 
-	hosts = mockMySQLRdsHostListProvider.Refresh(mockConn)
+	hosts = mockMySQLRdsHostListProvider.Refresh(&mockConn)
 	if len(hosts) == 0 {
 		t.Errorf("Refresh should return the cached topology.")
 	}
@@ -132,7 +132,7 @@ func TestRefreshTopologyMySQL(t *testing.T) {
 	}
 
 	// ForceRefresh should run the topology query regardless of the values in the cache.
-	hosts = mockMySQLRdsHostListProvider.ForceRefresh(mockConn)
+	hosts = mockMySQLRdsHostListProvider.ForceRefresh(&mockConn)
 	if len(hosts) == 0 {
 		t.Errorf("ForceRefresh should return the results of the topology query.")
 	}
@@ -144,7 +144,7 @@ func TestRefreshTopologyMySQL(t *testing.T) {
 func TestPgGetHostRole(t *testing.T) {
 	mockConn := MockConn{}
 	mockConn.updateQueryRow([]string{"isReader"}, []driver.Value{false})
-	hostRole := mockPgRdsHostListProvider.GetHostRole(mockConn)
+	hostRole := mockPgRdsHostListProvider.GetHostRole(&mockConn)
 	if hostRole != host_info_util.WRITER {
 		t.Errorf("When isReaderQuery returns false, getHostRole should return the WRITER HostRole.")
 	}
@@ -153,7 +153,7 @@ func TestPgGetHostRole(t *testing.T) {
 func TestMySQLGetHostRole(t *testing.T) {
 	mockConn := MockConn{}
 	mockConn.updateQueryRow([]string{"isReader"}, []driver.Value{trueAsInt})
-	hostRole := mockMySQLRdsHostListProvider.GetHostRole(mockConn)
+	hostRole := mockMySQLRdsHostListProvider.GetHostRole(&mockConn)
 	if hostRole != host_info_util.READER {
 		t.Errorf("When isReaderQuery returns true, getHostRole should return the READER HostRole.")
 	}
@@ -163,18 +163,18 @@ func TestPgIdentifyConnection(t *testing.T) {
 	// Load the cache.
 	mockConn := MockConn{}
 	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"}, []driver.Value{"topology_query_host", true, 1.0, 2.0, 0})
-	mockPgRdsHostListProvider.Refresh(mockConn)
+	mockPgRdsHostListProvider.Refresh(&mockConn)
 
 	mockConn = MockConn{}
 	mockConn.updateQueryRow([]string{"hostId"}, []driver.Value{"topology_query_host"})
-	currentConnection := mockPgRdsHostListProvider.IdentifyConnection(mockConn)
+	currentConnection := mockPgRdsHostListProvider.IdentifyConnection(&mockConn)
 	if currentConnection.Host != "topology_query_host" {
 		t.Errorf("Connection is attached to a host in the cache, returns that host.")
 	}
 
 	mockConn = MockConn{}
 	mockConn.updateQueryRow([]string{"hostId"}, []driver.Value{"localhost"})
-	currentConnection = mockPgRdsHostListProvider.IdentifyConnection(mockConn)
+	currentConnection = mockPgRdsHostListProvider.IdentifyConnection(&mockConn)
 	if currentConnection.Host != "localhost" {
 		t.Errorf("Connection is attached to a host not in the cache, calls forceRefresh and finds host and returns it.")
 	}
@@ -186,18 +186,18 @@ func TestMySQLIdentifyConnection(t *testing.T) {
 	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"},
 		[]driver.Value{[]uint8{116, 111, 112, 111, 108, 111, 103, 121, 95, 113, 117, 101, 114, 121, 95, 104, 111, 115, 116},
 			trueAsInt, 1.0, 2.0, []uint8{50, 48, 48, 48, 45, 48, 49, 45, 48, 49, 32, 48, 48, 58, 48, 48, 58, 48, 48, 46, 48, 48}})
-	mockMySQLRdsHostListProvider.Refresh(mockConn)
+	mockMySQLRdsHostListProvider.Refresh(&mockConn)
 
 	mockConn = MockConn{}
 	mockConn.updateQueryRow([]string{"hostId"}, []driver.Value{[]uint8{116, 111, 112, 111, 108, 111, 103, 121, 95, 113, 117, 101, 114, 121, 95, 104, 111, 115, 116}})
-	currentConnection := mockMySQLRdsHostListProvider.IdentifyConnection(mockConn)
+	currentConnection := mockMySQLRdsHostListProvider.IdentifyConnection(&mockConn)
 	if currentConnection.Host != "topology_query_host" {
 		t.Errorf("Connection is attached to a host in the cache, returns that host.")
 	}
 
 	mockConn = MockConn{}
 	mockConn.updateQueryRow([]string{"hostId"}, []driver.Value{[]uint8{109, 121, 100, 97, 116, 97, 98, 97, 115, 101, 46, 99, 111, 109}})
-	currentConnection = mockMySQLRdsHostListProvider.IdentifyConnection(mockConn)
+	currentConnection = mockMySQLRdsHostListProvider.IdentifyConnection(&mockConn)
 	if currentConnection.Host != "mydatabase.com" {
 		t.Errorf("Connection is attached to a host not in the cache, calls forceRefresh and finds host and returns it.")
 	}
@@ -213,7 +213,7 @@ func TestSuggestedClusterIdForRds(t *testing.T) {
 		[]driver.Value{"instance-a-1.xyz.us-east-2.rds.amazonaws.com", true, 1.0, 2.0, 0})
 
 	assert.Equal(t, 0, driver_infrastructure.TopologyCache.Size())
-	hosts := provider1.Refresh(mockConn)
+	hosts := provider1.Refresh(&mockConn)
 	assert.Equal(t, "instance-a-1.xyz.us-east-2.rds.amazonaws.com.cluster-", hosts[0].Host)
 
 	provider2 := driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, emptyProps, dsn)
@@ -236,7 +236,7 @@ func TestNoSuggestedClusterId(t *testing.T) {
 		[]driver.Value{"instance-a-1.xyz.us-east-2.rds.amazonaws.com", true, 1.0, 2.0, 0})
 
 	assert.Equal(t, 0, driver_infrastructure.TopologyCache.Size())
-	hosts := provider1.Refresh(mockConn)
+	hosts := provider1.Refresh(&mockConn)
 	assert.Equal(t, "instance-a-1.xyz.us-east-2.rds.amazonaws.com.cluster-", hosts[0].Host)
 
 	dsn2 := "postgresql://user:password@name2.cluster-xyz.us-east-2.rds.amazonaws.com:5432/database"
@@ -245,7 +245,7 @@ func TestNoSuggestedClusterId(t *testing.T) {
 	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"},
 		[]driver.Value{"instance-b-1.xyz.us-east-2.rds.amazonaws.com", true, 1.0, 2.0, 0})
 
-	hosts = provider2.Refresh(mockConn)
+	hosts = provider2.Refresh(&mockConn)
 	assert.NotEqual(t, provider1.GetClusterId(), provider2.GetClusterId())
 	assert.True(t, provider1.IsPrimaryClusterId)
 	assert.True(t, provider2.IsPrimaryClusterId)
@@ -254,6 +254,14 @@ func TestNoSuggestedClusterId(t *testing.T) {
 }
 
 type MockRdsHostListProviderService struct {
+}
+
+func (m *MockRdsHostListProviderService) IsStaticHostListProvider() bool {
+	panic("unimplemented")
+}
+
+func (m *MockRdsHostListProviderService) CreateHostListProvider(props map[string]string, dsn string) driver_infrastructure.HostListProvider {
+	panic("unimplemented")
 }
 
 func (m *MockRdsHostListProviderService) GetDialect() driver_infrastructure.DatabaseDialect {
@@ -276,7 +284,7 @@ func (m *MockRdsHostListProviderService) SetInitialConnectionHostInfo(info host_
 	panic("unimplemented")
 }
 
-func (m *MockRdsHostListProviderService) GetCurrentConnection() *driver.Conn {
+func (m *MockRdsHostListProviderService) GetCurrentConnection() driver.Conn {
 	return nil
 }
 

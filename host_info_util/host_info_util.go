@@ -14,20 +14,18 @@
   limitations under the License.
 */
 
-package driver_infrastructure
+package host_info_util
 
-import (
-	"awssql/host_info_util"
-	"database/sql/driver"
-)
+func AreHostListsEqual(s1 []HostInfo, s2 []HostInfo) bool {
+	if len(s1) != len(s2) {
+		return false
+	}
 
-type HostListProviderService interface {
-	IsStaticHostListProvider() bool
-	CreateHostListProvider(props map[string]string, dsn string) HostListProvider
-	GetHostListProvider() HostListProvider
-	SetHostListProvider(hostListProvider HostListProvider)
-	SetInitialConnectionHostInfo(info host_info_util.HostInfo)
-	GetInitialConnectionHostInfo() host_info_util.HostInfo
-	GetCurrentConnection() driver.Conn
-	GetDialect() DatabaseDialect
+	for i := 0; i < len(s1); i++ {
+		if !s1[i].Equals(s2[i]) {
+			return false
+		}
+	}
+
+	return true
 }

@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-package driver
+package container
 
 import (
 	"awssql/driver_infrastructure"
@@ -67,11 +67,11 @@ func getTargetDriverInternal(props map[string]string) driver.Driver {
 	return targetDriver
 }
 
-func GetDatabaseEngine(props map[string]string) (DatabaseEngine, error) {
+func GetDatabaseEngine(props map[string]string) (driver_infrastructure.DatabaseEngine, error) {
 	if property_util.DRIVER_PROTOCOL.Get(props) == utils.MYSQL_DRIVER_PROTOCOL {
-		return MYSQL, nil
+		return driver_infrastructure.MYSQL, nil
 	} else if property_util.DRIVER_PROTOCOL.Get(props) == utils.PGX_DRIVER_PROTOCOL {
-		return PG, nil
+		return driver_infrastructure.PG, nil
 	}
 	return "", error_util.NewGenericAwsWrapperError(error_util.GetMessage("TargetDriverHelper.invalidProtocol", property_util.DRIVER_PROTOCOL.Get(props)))
 }

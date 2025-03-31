@@ -120,7 +120,7 @@ func (r *RdsHostListProvider) init() {
 func (r *RdsHostListProvider) ForceRefresh(conn driver.Conn) (hosts []host_info_util.HostInfo) {
 	r.init()
 	if conn == nil {
-		conn = *r.hostListProviderService.GetCurrentConnection()
+		conn = r.hostListProviderService.GetCurrentConnection()
 	}
 	hosts, _ = r.getTopology(conn, true)
 	utils.LogTopology(hosts, "From ForceRefresh")
@@ -166,7 +166,7 @@ func (r *RdsHostListProvider) IsStaticHostListProvider() bool {
 func (r *RdsHostListProvider) Refresh(conn driver.Conn) (hosts []host_info_util.HostInfo) {
 	r.init()
 	if conn == nil {
-		conn = *r.hostListProviderService.GetCurrentConnection()
+		conn = r.hostListProviderService.GetCurrentConnection()
 	}
 	hosts, isCachedData := r.getTopology(conn, false)
 	msgPrefix := "From SQL Query"

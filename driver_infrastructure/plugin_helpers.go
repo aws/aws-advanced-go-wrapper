@@ -27,7 +27,7 @@ type PluginExecFunc func(plugin ConnectionPlugin, targetFunc func() (any, any, b
 type PluginConnectFunc func(plugin ConnectionPlugin, targetFunc func() (any, error)) (any, error)
 
 type PluginService interface {
-	GetCurrentConnection() *driver.Conn
+	GetCurrentConnection() driver.Conn
 	SetCurrentConnection(conn driver.Conn, hostInfo host_info_util.HostInfo, skipNotificationForThisPlugin ConnectionPlugin) error
 	GetCurrentHostInfo() host_info_util.HostInfo
 	GetHosts() []host_info_util.HostInfo
@@ -54,8 +54,8 @@ type PluginService interface {
 }
 
 type PluginManager interface {
-	Init(pluginService *PluginService, props map[string]string, plugins []*ConnectionPlugin) error
-	InitHostProvider(initialUrl string, props map[string]string, hostListProviderService *HostListProviderService) error
+	Init(pluginService PluginService, plugins []ConnectionPlugin, connProviderManager ConnectionProviderManager) error
+	InitHostProvider(initialUrl string, props map[string]string, hostListProviderService HostListProviderService) error
 	Connect(hostInfo host_info_util.HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)
 	ForceConnect(hostInfo host_info_util.HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)
 	Execute(name string, methodFunc ExecuteFunc, methodArgs ...any) (
@@ -69,8 +69,8 @@ type PluginManager interface {
 		changes map[HostChangeOptions]bool, skipNotificationForThisPlugin ConnectionPlugin) map[OldConnectionSuggestedAction]bool
 	NotifySubscribedPlugins(methodName string, pluginFunc PluginExecFunc, skipNotificationForThisPlugin ConnectionPlugin) error
 	GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error)
-	GetDefaultConnectionProvider() *ConnectionProvider
-	GetEffectiveConnectionProvider() *ConnectionProvider
+	GetDefaultConnectionProvider() ConnectionProvider
+	GetEffectiveConnectionProvider() ConnectionProvider
 	GetConnectionProviderManager() ConnectionProviderManager
 }
 

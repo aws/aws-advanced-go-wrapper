@@ -34,17 +34,17 @@ func queryWithPlugins(
 	pluginManager driver_infrastructure.PluginManager,
 	methodName string,
 	queryFunc driver_infrastructure.ExecuteFunc,
-	engine DatabaseEngine) (driver.Rows, error) {
+	engine driver_infrastructure.DatabaseEngine) (driver.Rows, error) {
 	result, _, _, err := ExecuteWithPlugins(pluginManager, methodName, queryFunc)
 
 	if err == nil {
 		driverRows, ok := result.(driver.Rows)
 		if ok {
 			rows := AwsWrapperRows{driverRows, pluginManager}
-			if engine == MYSQL {
+			if engine == driver_infrastructure.MYSQL {
 				return &AwsWrapperMySQLRows{rows}, nil
 			}
-			if engine == PG {
+			if engine == driver_infrastructure.PG {
 				return &AwsWrapperPgRows{rows}, nil
 			}
 			return &rows, nil

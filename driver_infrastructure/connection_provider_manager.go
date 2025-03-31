@@ -16,33 +16,35 @@
 
 package driver_infrastructure
 
-import "awssql/host_info_util"
+import (
+	"awssql/host_info_util"
+)
 
 type ConnectionProviderManager struct {
-	defaultProvider   *ConnectionProvider
-	effectiveProvider *ConnectionProvider
+	DefaultProvider   ConnectionProvider
+	EffectiveProvider ConnectionProvider
 }
 
 func (connProviderManager *ConnectionProviderManager) GetConnectionProvider(
 	hostInfo host_info_util.HostInfo,
-	props map[string]string) *ConnectionProvider {
-	if connProviderManager.effectiveProvider != nil && (*connProviderManager.effectiveProvider).AcceptsUrl(hostInfo, props) {
-		return connProviderManager.effectiveProvider
+	props map[string]string) ConnectionProvider {
+	if connProviderManager.EffectiveProvider != nil && connProviderManager.EffectiveProvider.AcceptsUrl(hostInfo, props) {
+		return connProviderManager.EffectiveProvider
 	}
 
-	return connProviderManager.defaultProvider
+	return connProviderManager.DefaultProvider
 }
 
-func (connProviderManager *ConnectionProviderManager) GetDefaultProvider() *ConnectionProvider {
-	return connProviderManager.defaultProvider
+func (connProviderManager *ConnectionProviderManager) GetDefaultProvider() ConnectionProvider {
+	return connProviderManager.DefaultProvider
 }
 
 func (connProviderManager *ConnectionProviderManager) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
-	if connProviderManager.effectiveProvider != nil && (*connProviderManager.effectiveProvider).AcceptsStrategy(role, strategy) {
+	if connProviderManager.EffectiveProvider != nil && connProviderManager.EffectiveProvider.AcceptsStrategy(role, strategy) {
 		return true
 	}
 
-	return (*connProviderManager.defaultProvider).AcceptsStrategy(role, strategy)
+	return connProviderManager.DefaultProvider.AcceptsStrategy(role, strategy)
 }
 
 func (connProviderManager *ConnectionProviderManager) GetHostInfoByStrategy(
@@ -50,12 +52,12 @@ func (connProviderManager *ConnectionProviderManager) GetHostInfoByStrategy(
 	role host_info_util.HostRole,
 	strategy string,
 	props map[string]string) (host_info_util.HostInfo, error) {
-	if (*connProviderManager.effectiveProvider).AcceptsStrategy(role, strategy) {
-		host, err := (*connProviderManager.effectiveProvider).GetHostInfoByStrategy(hosts, role, strategy, props)
+	if connProviderManager.EffectiveProvider.AcceptsStrategy(role, strategy) {
+		host, err := connProviderManager.EffectiveProvider.GetHostInfoByStrategy(hosts, role, strategy, props)
 		if err == nil {
 			return host, err
 		}
 	}
 
-	return (*connProviderManager.defaultProvider).GetHostInfoByStrategy(hosts, role, strategy, props)
+	return connProviderManager.DefaultProvider.GetHostInfoByStrategy(hosts, role, strategy, props)
 }

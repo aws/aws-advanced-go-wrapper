@@ -20,20 +20,23 @@ import (
 	"awssql/driver_infrastructure"
 	"awssql/plugin_helpers"
 	"awssql/utils"
-	"database/sql/driver"
 )
 
 type Container struct {
-	PluginManager *driver_infrastructure.PluginManager
-	PluginService *driver_infrastructure.PluginService
+	PluginManager driver_infrastructure.PluginManager
+	PluginService driver_infrastructure.PluginService
+	Props         map[string]string
 }
 
-func NewContainer(dsn string, targetDriver driver.Driver) (Container, error) {
+func NewContainer(dsn string) (Container, error) {
 	props, parseErr := utils.ParseDsn(dsn)
 	if parseErr != nil {
 		return Container{}, parseErr
 	}
-	defaultConnProvider := driver_infrastructure.ConnectionProvider(driver_infrastructure.NewDriverConnectionProvider(targetDriver))
+	targetDriver, getTargetDriverErr := GetTargetDriver(dsn, props)
+	if getTargetDriverErr != nil {
+		return Container{}, parseErr
+	}
 
 	targetDriverDialectManager := driver_infrastructure.DriverDialectManager{}
 	targetDriverDialect, err := targetDriverDialectManager.GetDialect(targetDriver, props)
@@ -41,30 +44,39 @@ func NewContainer(dsn string, targetDriver driver.Driver) (Container, error) {
 		return Container{}, err
 	}
 
-	pluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(targetDriver, &defaultConnProvider, nil, props))
-	pluginServiceImpl, err := plugin_helpers.NewPluginServiceImpl(&pluginManager, targetDriverDialect, props, dsn)
+	defaultConnProvider := driver_infrastructure.NewDriverConnectionProvider(targetDriver)
+	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{DefaultProvider: defaultConnProvider}
+
+	pluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(targetDriver, props))
+	pluginServiceImpl, err := plugin_helpers.NewPluginServiceImpl(pluginManager, targetDriverDialect, props, dsn)
 	if err != nil {
 		return Container{}, err
 	}
 	pluginService := driver_infrastructure.PluginService(pluginServiceImpl)
-	hostListProviderService := driver_infrastructure.HostListProviderService(pluginServiceImpl)
 
 	pluginChainBuilder := ConnectionPluginChainBuilder{}
-	plugins, err := pluginChainBuilder.GetPlugins(&pluginService, &pluginManager, props)
+	plugins, err := pluginChainBuilder.GetPlugins(pluginService, pluginManager, props)
 	if err != nil {
 		return Container{}, err
 	}
-	err = pluginManager.Init(&pluginService, props, plugins)
+
+	err = pluginManager.Init(pluginService, plugins, connectionProviderManager)
 	if err != nil {
 		return Container{}, err
 	}
-	err = pluginManager.InitHostProvider(dsn, props, &hostListProviderService)
+
+	hostListProviderService := driver_infrastructure.HostListProviderService(pluginServiceImpl)
+	provider := hostListProviderService.CreateHostListProvider(props, dsn)
+	hostListProviderService.SetHostListProvider(provider)
+
+	err = pluginManager.InitHostProvider(dsn, props, hostListProviderService)
 	if err != nil {
 		return Container{}, err
 	}
 
 	return Container{
-		PluginManager: &pluginManager,
-		PluginService: &pluginService,
+		PluginManager: pluginManager,
+		PluginService: pluginService,
+		Props:         props,
 	}, nil
 }

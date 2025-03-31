@@ -26,8 +26,7 @@ import (
 
 //nolint:unused
 type PluginServiceImpl struct {
-	// TODO: dialect should be initialized using DialectManager's GetDialect.
-	pluginManager             *driver_infrastructure.PluginManager
+	pluginManager             driver_infrastructure.PluginManager
 	props                     map[string]string
 	currentConnection         driver.Conn
 	hostListProvider          driver_infrastructure.HostListProvider
@@ -44,28 +43,42 @@ type PluginServiceImpl struct {
 	isInTransaction           bool
 }
 
-func NewPluginServiceImpl(pluginManager *driver_infrastructure.PluginManager,
+func NewPluginServiceImpl(
+	pluginManager driver_infrastructure.PluginManager,
 	driverDialect driver_infrastructure.DriverDialect,
 	props map[string]string,
 	dsn string) (*PluginServiceImpl, error) {
-	pluginService := &PluginServiceImpl{pluginManager: pluginManager, driverDialect: driverDialect, props: props}
 	dialectProvider := driver_infrastructure.DialectManager{}
 	dialect, err := dialectProvider.GetDialect(dsn, props)
 	if err != nil {
 		return nil, err
 	}
-	pluginService.dialectProvider = &dialectProvider
-	pluginService.dialect = dialect
-	pluginService.hostListProvider = *dialect.GetHostListProvider(props, dsn, pluginService)
+	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{
+		DefaultProvider:   pluginManager.GetDefaultConnectionProvider(),
+		EffectiveProvider: pluginManager.GetEffectiveConnectionProvider()}
+	pluginService := &PluginServiceImpl{
+		pluginManager:             pluginManager,
+		driverDialect:             driverDialect,
+		props:                     props,
+		dialectProvider:           &dialectProvider,
+		dialect:                   dialect,
+		originalDsn:               dsn,
+		connectionProviderManager: connectionProviderManager,
+	}
+	pluginService.hostListProvider = dialect.GetHostListProvider(props, dsn, pluginService)
 	return pluginService, nil
 }
 
 func (p *PluginServiceImpl) IsStaticHostListProvider() bool {
-	return p.hostListProvider.IsStaticHostListProvider()
+	return p.GetHostListProvider().IsStaticHostListProvider()
 }
 
 func (p *PluginServiceImpl) SetHostListProvider(hostListProvider driver_infrastructure.HostListProvider) {
 	p.hostListProvider = hostListProvider
+}
+
+func (p *PluginServiceImpl) CreateHostListProvider(props map[string]string, dsn string) driver_infrastructure.HostListProvider {
+	return p.GetDialect().GetHostListProvider(props, dsn, p)
 }
 
 func (p *PluginServiceImpl) SetInitialConnectionHostInfo(hostInfo host_info_util.HostInfo) {
@@ -86,8 +99,8 @@ func (p *PluginServiceImpl) UpdateDialect(conn driver.Conn) {
 	// TODO: update HostListProvider based on new dialect.
 }
 
-func (p *PluginServiceImpl) GetCurrentConnection() *driver.Conn {
-	return &p.currentConnection
+func (p *PluginServiceImpl) GetCurrentConnection() driver.Conn {
+	return p.currentConnection
 }
 
 func (p *PluginServiceImpl) SetCurrentConnection(
@@ -95,7 +108,8 @@ func (p *PluginServiceImpl) SetCurrentConnection(
 	hostInfo host_info_util.HostInfo,
 	skipNotificationForThisPlugin driver_infrastructure.ConnectionPlugin) error {
 	//TODO implement me
-	panic("implement me")
+	p.currentConnection = conn
+	return nil
 }
 
 func (p *PluginServiceImpl) GetCurrentHostInfo() host_info_util.HostInfo {
@@ -112,14 +126,14 @@ func (p *PluginServiceImpl) GetInitialConnectionHostInfo() host_info_util.HostIn
 }
 
 func (p *PluginServiceImpl) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
-	return (*p.pluginManager).AcceptsStrategy(role, strategy)
+	return p.pluginManager.AcceptsStrategy(role, strategy)
 }
 
 func (p *PluginServiceImpl) GetHostInfoByStrategy(
 	role host_info_util.HostRole,
 	strategy string,
 	hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error) {
-	return (*p.pluginManager).GetHostInfoByStrategy(role, strategy, hosts)
+	return p.pluginManager.GetHostInfoByStrategy(role, strategy, hosts)
 }
 
 func (p *PluginServiceImpl) GetHostRole(conn driver.Conn) host_info_util.HostRole {
@@ -140,11 +154,31 @@ func (p *PluginServiceImpl) GetHostListProvider() driver_infrastructure.HostList
 }
 
 func (p *PluginServiceImpl) RefreshHostList(conn driver.Conn) error {
-	//TODO implement me
-	panic("implement me")
+	updatedHostList := p.GetHostListProvider().Refresh(conn)
+	return p.updateHostListIfNeeded(updatedHostList)
 }
 
 func (p *PluginServiceImpl) ForceRefreshHostList(conn driver.Conn) error {
+	updatedHostList := p.GetHostListProvider().ForceRefresh(conn)
+	return p.updateHostListIfNeeded(updatedHostList)
+}
+
+func (p *PluginServiceImpl) updateHostListIfNeeded(updatedHostList []host_info_util.HostInfo) error {
+	var err error
+	if !host_info_util.AreHostListsEqual(p.allHosts, updatedHostList) {
+		err = p.UpdateHostAvailability(updatedHostList)
+		if err != nil {
+			return err
+		}
+		err = p.setHostList(p.allHosts, updatedHostList)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (p *PluginServiceImpl) setHostList(oldHosts []host_info_util.HostInfo, newHosts []host_info_util.HostInfo) error {
 	//TODO implement me
 	panic("implement me")
 }
@@ -159,7 +193,7 @@ func (p *PluginServiceImpl) Connect(hostInfo host_info_util.HostInfo, props map[
 	if p.currentConnection != nil {
 		isInitialConnection = false
 	}
-	return (*p.pluginManager).Connect(hostInfo, props, isInitialConnection)
+	return p.pluginManager.Connect(hostInfo, props, isInitialConnection)
 }
 
 func (p *PluginServiceImpl) ForceConnect(hostInfo host_info_util.HostInfo, props map[string]string) (driver.Conn, error) {
@@ -167,7 +201,7 @@ func (p *PluginServiceImpl) ForceConnect(hostInfo host_info_util.HostInfo, props
 	if p.currentConnection != nil {
 		isInitialConnection = false
 	}
-	return (*p.pluginManager).ForceConnect(hostInfo, props, isInitialConnection)
+	return p.pluginManager.ForceConnect(hostInfo, props, isInitialConnection)
 }
 
 func (p *PluginServiceImpl) GetTargetDriverDialect() driver_infrastructure.DriverDialect {

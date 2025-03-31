@@ -24,15 +24,15 @@ import (
 )
 
 type DefaultPlugin struct {
-	PluginService       *driver_infrastructure.PluginService
-	DefaultConnProvider *driver_infrastructure.ConnectionProvider
+	PluginService       driver_infrastructure.PluginService
+	DefaultConnProvider driver_infrastructure.ConnectionProvider
 	ConnProviderManager driver_infrastructure.ConnectionProviderManager
 }
 
 func (d *DefaultPlugin) InitHostProvider(
 	initialUrl string,
 	props map[string]string,
-	hostListProviderService *driver_infrastructure.HostListProviderService,
+	hostListProviderService driver_infrastructure.HostListProviderService,
 	initHostProviderFunc func() error) error {
 	// Do nothing.
 	// It's guaranteed that this plugin is always the last in plugin chain so initHostProviderFunc can be omitted.
@@ -69,9 +69,9 @@ func (d *DefaultPlugin) ForceConnect(
 func (d *DefaultPlugin) connectInternal(
 	hostInfo host_info_util.HostInfo,
 	props map[string]string,
-	connProvider *driver_infrastructure.ConnectionProvider) (driver.Conn, error) {
-	conn, err := (*connProvider).Connect(hostInfo, props, d.PluginService)
-	(*d.PluginService).SetAvailability(hostInfo.AllAliases, host_info_util.AVAILABLE)
+	connProvider driver_infrastructure.ConnectionProvider) (driver.Conn, error) {
+	conn, err := connProvider.Connect(hostInfo, props, d.PluginService)
+	d.PluginService.SetAvailability(hostInfo.AllAliases, host_info_util.AVAILABLE)
 	return conn, err
 }
 
@@ -86,7 +86,7 @@ func (d *DefaultPlugin) GetHostInfoByStrategy(
 	if len(hosts) == 0 {
 		return host_info_util.HostInfo{}, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DefaultConnectionPlugin.noHostsAvailable"))
 	}
-	return d.ConnProviderManager.GetHostInfoByStrategy(hosts, role, strategy, (*d.PluginService).GetProperties())
+	return d.ConnProviderManager.GetHostInfoByStrategy(hosts, role, strategy, d.PluginService.GetProperties())
 }
 
 func (d *DefaultPlugin) NotifyConnectionChanged(changes map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {

@@ -90,9 +90,8 @@ func (p *PgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 func (m *PgDatabaseDialect) GetHostListProvider(
 	props map[string]string,
 	initialDsn string,
-	hostListProviderService HostListProviderService) *HostListProvider {
-	provider := HostListProvider(NewDsnHostListProvider(props, initialDsn, hostListProviderService))
-	return &provider
+	hostListProviderService HostListProviderService) HostListProvider {
+	return HostListProvider(NewDsnHostListProvider(props, initialDsn, hostListProviderService))
 }
 
 type RdsPgDatabaseDialect struct {
@@ -135,9 +134,8 @@ func (m *AuroraPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	return hasExtensions != nil && hasExtensions[0] == true && hasTopology != nil
 }
 
-func (m *AuroraPgDatabaseDialect) GetHostListProvider(props map[string]string, initialDsn string, hostListProviderService HostListProviderService) *HostListProvider {
-	provider := HostListProvider(NewRdsHostListProvider(hostListProviderService, m, props, initialDsn))
-	return &provider
+func (m *AuroraPgDatabaseDialect) GetHostListProvider(props map[string]string, initialDsn string, hostListProviderService HostListProviderService) HostListProvider {
+	return HostListProvider(NewRdsHostListProvider(hostListProviderService, m, props, initialDsn))
 }
 
 func (m *AuroraPgDatabaseDialect) GetHostRole(conn driver.Conn) host_info_util.HostRole {
