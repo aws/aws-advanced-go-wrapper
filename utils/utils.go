@@ -25,7 +25,7 @@ import (
 	"strings"
 )
 
-func LogTopology(hosts []host_info_util.HostInfo, msgPrefix string) {
+func LogTopology(hosts []*host_info_util.HostInfo, msgPrefix string) {
 	var sb strings.Builder
 
 	if len(hosts) != 0 {
@@ -40,13 +40,13 @@ func LogTopology(hosts []host_info_util.HostInfo, msgPrefix string) {
 	slog.Info(msgPrefix, "Topology: ", sb.String())
 }
 
-func FindHostInTopology(hosts []host_info_util.HostInfo, hostName string) host_info_util.HostInfo {
+func FindHostInTopology(hosts []*host_info_util.HostInfo, hostName string) *host_info_util.HostInfo {
 	for _, host := range hosts {
 		if host.Host == hostName {
 			return host
 		}
 	}
-	return host_info_util.HostInfo{}
+	return &host_info_util.HostInfo{}
 }
 
 // Directly executes query on conn, and returns the first row.

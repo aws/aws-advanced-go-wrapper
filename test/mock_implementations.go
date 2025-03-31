@@ -161,12 +161,12 @@ func (m MockDriverConnection) Begin() (driver.Tx, error) {
 	return nil, nil
 }
 
-func CreateTestPlugin(calls *[]string, id int, connection driver.Conn, err error, isBefore bool) *driver_infrastructure.ConnectionPlugin {
+func CreateTestPlugin(calls *[]string, id int, connection driver.Conn, err error, isBefore bool) driver_infrastructure.ConnectionPlugin {
 	if calls == nil {
 		calls = &[]string{}
 	}
 	testPlugin := driver_infrastructure.ConnectionPlugin(&TestPlugin{calls: calls, id: id, connection: connection, error: err, isBefore: isBefore})
-	return &testPlugin
+	return testPlugin
 }
 
 type MockHostListProvider struct{}
@@ -183,8 +183,8 @@ func (m *MockHostListProvider) GetHostRole(conn driver.Conn) host_info_util.Host
 	return host_info_util.UNKNOWN
 }
 
-func (m *MockHostListProvider) IdentifyConnection(conn driver.Conn) host_info_util.HostInfo {
-	return *host_info_util.NewHostInfoBuilder().SetHost("hostA").Build()
+func (m *MockHostListProvider) IdentifyConnection(conn driver.Conn) (host_info_util.HostInfo, error) {
+	return *host_info_util.NewHostInfoBuilder().SetHost("hostA").Build(), nil
 }
 
 func (m *MockHostListProvider) IsStaticHostListProvider() bool {
@@ -235,16 +235,16 @@ func (m MockConn) ExecContext(ctx context.Context, query string, args []driver.N
 	return m.execResult, nil
 }
 
-func (m MockConn) updateQueryRow(columns []string, row []driver.Value) {
+func (m *MockConn) updateQueryRow(columns []string, row []driver.Value) {
 	testRow := MockRows{columns: columns, row: row, throwNextError: -1}
 	m.queryResult = &testRow
 }
 
-func (m MockConn) updateThrowError(throwError bool) {
+func (m *MockConn) updateThrowError(throwError bool) {
 	m.throwError = throwError
 }
 
-func (m MockConn) updateQueryRowSingleUse(columns []string, row []driver.Value) {
+func (m *MockConn) updateQueryRowSingleUse(columns []string, row []driver.Value) {
 	testRow := MockRows{columns: columns, row: row, throwNextError: 1}
 	m.queryResult = &testRow
 }
@@ -323,4 +323,38 @@ func (t *MockRows) Next(dest []driver.Value) error {
 		return errors.New("test error")
 	}
 	return nil
+}
+
+type MockRdsHostListProviderService struct {
+}
+
+func (m *MockRdsHostListProviderService) IsStaticHostListProvider() bool {
+	panic("unimplemented")
+}
+
+func (m *MockRdsHostListProviderService) CreateHostListProvider(props map[string]string, dsn string) driver_infrastructure.HostListProvider {
+	panic("unimplemented")
+}
+
+func (m *MockRdsHostListProviderService) GetCurrentConnection() driver.Conn {
+	return nil
+}
+
+func (m *MockRdsHostListProviderService) GetDialect() driver_infrastructure.DatabaseDialect {
+	panic("unimplemented")
+}
+
+func (m *MockRdsHostListProviderService) GetHostListProvider() driver_infrastructure.HostListProvider {
+	panic("unimplemented")
+}
+
+func (m *MockRdsHostListProviderService) GetInitialConnectionHostInfo() host_info_util.HostInfo {
+	panic("unimplemented")
+}
+
+func (m *MockRdsHostListProviderService) SetHostListProvider(hostListProvider driver_infrastructure.HostListProvider) {
+	panic("unimplemented")
+}
+func (m *MockRdsHostListProviderService) SetInitialConnectionHostInfo(info *host_info_util.HostInfo) {
+	panic("unimplemented")
 }

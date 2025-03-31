@@ -36,7 +36,7 @@ type DatabaseDialect interface {
 }
 
 type TopologyAwareDialect interface {
-	GetTopology(conn driver.Conn, provider *RdsHostListProvider) []host_info_util.HostInfo
+	GetTopology(conn driver.Conn, provider *RdsHostListProvider) ([]*host_info_util.HostInfo, error)
 	GetHostRole(conn driver.Conn) host_info_util.HostRole
 	GetHostName(conn driver.Conn) string
 }

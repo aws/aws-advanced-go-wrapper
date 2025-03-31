@@ -54,8 +54,6 @@ func NewPluginServiceImpl(
 	driverDialect driver_infrastructure.DriverDialect,
 	props map[string]string,
 	dsn string) (*PluginServiceImpl, error) {
-	pluginService := &PluginServiceImpl{pluginManager: pluginManager, driverDialect: driverDialect, props: props,
-		currentHostInfo: &host_info_util.HostInfo{}, initialHostInfo: &host_info_util.HostInfo{}, AllHosts: []*host_info_util.HostInfo{}}
 	dialectProvider := driver_infrastructure.DialectManager{}
 	dialect, err := dialectProvider.GetDialect(dsn, props)
 	if err != nil {
@@ -68,6 +66,9 @@ func NewPluginServiceImpl(
 		pluginManager:             pluginManager,
 		driverDialect:             driverDialect,
 		props:                     props,
+		currentHostInfo:           &host_info_util.HostInfo{},
+		initialHostInfo:           &host_info_util.HostInfo{},
+		AllHosts:                  []*host_info_util.HostInfo{},
 		dialectProvider:           &dialectProvider,
 		dialect:                   dialect,
 		originalDsn:               dsn,
@@ -89,10 +90,6 @@ func (p *PluginServiceImpl) CreateHostListProvider(props map[string]string, dsn 
 	return p.GetDialect().GetHostListProvider(props, dsn, p)
 }
 
-func (p *PluginServiceImpl) SetInitialConnectionHostInfo(hostInfo host_info_util.HostInfo) {
-	p.initialHostInfo = hostInfo
-}
-
 func (p *PluginServiceImpl) GetDialect() driver_infrastructure.DatabaseDialect {
 	return p.dialect
 }
@@ -103,7 +100,7 @@ func (p *PluginServiceImpl) UpdateDialect(conn driver.Conn) {
 		return
 	}
 	p.dialect = newDialect
-	p.SetHostListProvider(*p.dialect.GetHostListProvider(p.props, p.originalDsn, driver_infrastructure.HostListProviderService(p)))
+	p.SetHostListProvider(p.dialect.GetHostListProvider(p.props, p.originalDsn, driver_infrastructure.HostListProviderService(p)))
 }
 
 func (p *PluginServiceImpl) GetCurrentConnection() driver.Conn {
@@ -113,7 +110,13 @@ func (p *PluginServiceImpl) GetCurrentConnection() driver.Conn {
 func (p *PluginServiceImpl) SetCurrentConnection(
 	conn driver.Conn,
 	hostInfo *host_info_util.HostInfo,
-	skipNotificationForThisPlugin driver_infrastructure.ConnectionPlugin) {
+	skipNotificationForThisPlugin driver_infrastructure.ConnectionPlugin) error {
+	if conn == nil {
+		return error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginServiceImpl.nilConn"))
+	}
+	if hostInfo == nil || hostInfo.IsNil() {
+		return error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginServiceImpl.nilHost"))
+	}
 	if p.currentConnection == nil {
 		// Setting up an initial connection.
 		p.currentConnection = conn
@@ -146,6 +149,7 @@ func (p *PluginServiceImpl) SetCurrentConnection(
 			}
 		}
 	}
+	return nil
 }
 
 func (p *PluginServiceImpl) compare(connA driver.Conn, hostInfoA *host_info_util.HostInfo, connB driver.Conn,
@@ -198,7 +202,7 @@ func (p *PluginServiceImpl) GetCurrentHostInfo() (host_info_util.HostInfo, error
 		if p.currentHostInfo.IsNil() {
 			return host_info_util.HostInfo{}, error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginServiceImpl.nilHost"))
 		}
-		log.Println(error_util.GetMessage("PluginServiceImpl.setCurrentHost", p.currentHostInfo.Host))
+		slog.Info(error_util.GetMessage("PluginServiceImpl.setCurrentHost", p.currentHostInfo.Host))
 	}
 	return *p.currentHostInfo, nil
 }
@@ -207,8 +211,8 @@ func (p *PluginServiceImpl) GetHosts() []*host_info_util.HostInfo {
 	return p.AllHosts
 }
 
-func (p *PluginServiceImpl) GetInitialConnectionHostInfo() host_info_util.HostInfo {
-	return *p.initialHostInfo
+func (p *PluginServiceImpl) GetInitialConnectionHostInfo() *host_info_util.HostInfo {
+	return p.initialHostInfo
 }
 
 func (p *PluginServiceImpl) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
@@ -263,7 +267,7 @@ func (p *PluginServiceImpl) SetAvailability(hostAliases map[string]bool, availab
 	}
 
 	if !hostsToChange {
-		log.Println(error_util.GetMessage("PluginServiceImpl.hostsChangelistEmpty"))
+		slog.Info(error_util.GetMessage("PluginServiceImpl.hostsChangelistEmpty"))
 	}
 
 	if len(changes) > 0 {
@@ -283,44 +287,29 @@ func (p *PluginServiceImpl) GetHostListProvider() driver_infrastructure.HostList
 	return p.hostListProvider
 }
 
-func (p *PluginServiceImpl) SetHostListProvider(hostListProvider driver_infrastructure.HostListProvider) {
-	p.hostListProvider = hostListProvider
-}
-
 func (p *PluginServiceImpl) RefreshHostList(conn driver.Conn) error {
 	updatedHostList, err := p.GetHostListProvider().Refresh(conn)
-	if err == nil && len(updatedHostList) > 0 && !host_info_util.AreHostListsEqual(p.AllHosts, updatedHostList) {
-		p.updateHostAvailability(updatedHostList)
-		p.setHostList(p.AllHosts, updatedHostList)
+	if err != nil {
+		return err
 	}
-	return err
-	updatedHostList := p.GetHostListProvider().Refresh(conn)
 	return p.updateHostListIfNeeded(updatedHostList)
 }
 
 func (p *PluginServiceImpl) ForceRefreshHostList(conn driver.Conn) error {
-	panic("implement me")
-    	updatedHostList, err := p.GetHostListProvider().ForceRefresh(conn)
-    	if err == nil && len(updatedHostList) > 0 && !host_info_util.AreHostListsEqual(p.AllHosts, updatedHostList) {
-    		p.updateHostAvailability(updatedHostList)
-    		p.setHostList(p.AllHosts, updatedHostList)
-    	}
-    	return err
-	updatedHostList := p.GetHostListProvider().ForceRefresh(conn)
+	updatedHostList, err := p.GetHostListProvider().ForceRefresh(conn)
+	if err != nil {
+		return err
+	}
 	return p.updateHostListIfNeeded(updatedHostList)
 }
 
-func (p *PluginServiceImpl) updateHostListIfNeeded(updatedHostList []host_info_util.HostInfo) error {
-	var err error
-	if !host_info_util.AreHostListsEqual(p.allHosts, updatedHostList) {
-		err = p.UpdateHostAvailability(updatedHostList)
-		if err != nil {
-			return err
-		}
-		err = p.setHostList(p.allHosts, updatedHostList)
-		if err != nil {
-			return err
-		}
+func (p *PluginServiceImpl) updateHostListIfNeeded(updatedHostList []*host_info_util.HostInfo) error {
+	if len(updatedHostList) == 0 {
+		return error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginServiceImpl.hostListEmpty"))
+	}
+	if !host_info_util.AreHostListsEqual(p.AllHosts, updatedHostList) {
+		p.updateHostAvailability(updatedHostList)
+		p.setHostList(p.AllHosts, updatedHostList)
 	}
 	return nil
 }
@@ -374,26 +363,18 @@ func (p *PluginServiceImpl) updateHostAvailability(hosts []*host_info_util.HostI
 }
 
 func (p *PluginServiceImpl) Connect(hostInfo host_info_util.HostInfo, props map[string]string) (driver.Conn, error) {
-	isInitialConnection := true
-	if p.currentConnection != nil {
-		isInitialConnection = false
-	}
-	return p.pluginManager.Connect(hostInfo, props, isInitialConnection)
+	return p.pluginManager.Connect(hostInfo, props, p.currentConnection == nil)
 }
 
 func (p *PluginServiceImpl) ForceConnect(hostInfo host_info_util.HostInfo, props map[string]string) (driver.Conn, error) {
-	isInitialConnection := true
-	if p.currentConnection != nil {
-		isInitialConnection = false
-	}
-	return p.pluginManager.ForceConnect(hostInfo, props, isInitialConnection)
+	return p.pluginManager.ForceConnect(hostInfo, props, p.currentConnection == nil)
 }
 
 func (p *PluginServiceImpl) GetTargetDriverDialect() driver_infrastructure.DriverDialect {
 	return p.driverDialect
 }
 
-func (p *PluginServiceImpl) IdentifyConnection(conn driver.Conn) host_info_util.HostInfo {
+func (p *PluginServiceImpl) IdentifyConnection(conn driver.Conn) (host_info_util.HostInfo, error) {
 	return p.hostListProvider.IdentifyConnection(conn)
 }
 
@@ -403,7 +384,7 @@ func (p *PluginServiceImpl) FillAliases(conn driver.Conn, hostInfo *host_info_ut
 	}
 
 	if len(hostInfo.Aliases) > 0 {
-		log.Println(error_util.GetMessage("PluginServiceImpl.nonEmptyAliases", hostInfo.AllAliases))
+		slog.Info(error_util.GetMessage("PluginServiceImpl.nonEmptyAliases", hostInfo.AllAliases))
 		return
 	}
 
@@ -421,11 +402,16 @@ func (p *PluginServiceImpl) FillAliases(conn driver.Conn, hostInfo *host_info_ut
 					hostInfo.AllAliases[valueAsString] = true
 				}
 			}
+		} else {
+			slog.Info(error_util.GetMessage("PluginServiceImpl.failedToRetrieveHostPort"))
 		}
+	} else {
+		slog.Info(error_util.GetMessage("Conn.doesNotImplementRequiredInterface", "driver.QueryerContext"))
+		return
 	}
 
-	host := p.IdentifyConnection(conn)
-	if !host.IsNil() {
+	host, err := p.IdentifyConnection(conn)
+	if err == nil && !host.IsNil() {
 		for alias := range host.AllAliases {
 			hostInfo.AllAliases[alias] = true
 		}
@@ -433,7 +419,7 @@ func (p *PluginServiceImpl) FillAliases(conn driver.Conn, hostInfo *host_info_ut
 }
 
 func (p *PluginServiceImpl) GetConnectionProvider() driver_infrastructure.ConnectionProvider {
-	return *p.pluginManager.GetDefaultConnectionProvider()
+	return p.pluginManager.GetDefaultConnectionProvider()
 }
 
 func (p *PluginServiceImpl) GetProperties() map[string]string {

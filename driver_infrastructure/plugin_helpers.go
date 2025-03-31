@@ -32,13 +32,14 @@ type HostListProviderService interface {
 	GetHostListProvider() HostListProvider
 	SetHostListProvider(hostListProvider HostListProvider)
 	SetInitialConnectionHostInfo(info *host_info_util.HostInfo)
-	GetInitialConnectionHostInfo() host_info_util.HostInfo
-	GetCurrentConnection() driver.Conn
 	GetDialect() DatabaseDialect
+	GetCurrentConnection() driver.Conn
 }
 
 type PluginService interface {
-	SetCurrentConnection(conn driver.Conn, hostInfo *host_info_util.HostInfo, skipNotificationForThisPlugin ConnectionPlugin)
+	GetCurrentConnection() driver.Conn
+	SetCurrentConnection(conn driver.Conn, hostInfo *host_info_util.HostInfo, skipNotificationForThisPlugin ConnectionPlugin) error
+	GetInitialConnectionHostInfo() *host_info_util.HostInfo
 	GetCurrentHostInfo() (host_info_util.HostInfo, error)
 	GetHosts() []*host_info_util.HostInfo
 	AcceptsStrategy(role host_info_util.HostRole, strategy string) bool
@@ -54,7 +55,7 @@ type PluginService interface {
 	GetDialect() DatabaseDialect
 	UpdateDialect(conn driver.Conn)
 	GetTargetDriverDialect() DriverDialect
-	IdentifyConnection(conn driver.Conn) host_info_util.HostInfo
+	IdentifyConnection(conn driver.Conn) (host_info_util.HostInfo, error)
 	FillAliases(conn driver.Conn, hostInfo *host_info_util.HostInfo)
 	GetConnectionProvider() ConnectionProvider
 	GetProperties() map[string]string

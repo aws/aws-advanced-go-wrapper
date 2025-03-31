@@ -51,8 +51,6 @@ type DialectManager struct {
 }
 
 func (d *DialectManager) GetDialect(dsn string, props map[string]string) (DatabaseDialect, error) {
-	// TODO: requires dsn parsing to determine what the initial dialect should be. Currently bases off of inaccurate
-	// checks for phrases in the dsn.
 	dialectCode, ok := d.knownEndpointDialects.Get(dsn)
 	if ok {
 		if dialectCode != "" {

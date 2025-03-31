@@ -72,8 +72,8 @@ func (c *DsnHostListProvider) GetHostRole(conn driver.Conn) host_info_util.HostR
 	panic(error_util.GetMessage("DsnHostListProvider.unsupportedGetHostRole"))
 }
 
-func (c *DsnHostListProvider) IdentifyConnection(conn driver.Conn) host_info_util.HostInfo {
-	panic(error_util.GetMessage("DsnHostListProvider.unsupportedIdentifyConnection"))
+func (c *DsnHostListProvider) IdentifyConnection(conn driver.Conn) (host_info_util.HostInfo, error) {
+	return host_info_util.HostInfo{}, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DsnHostListProvider.unsupportedIdentifyConnection"))
 }
 
 func (c *DsnHostListProvider) GetClusterId() string {

@@ -26,35 +26,38 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func beforePluginServiceTests() (*plugin_helpers.PluginServiceImpl, *MockPluginManager, *host_info_util.HostInfoBuilder) {
-	props := make(map[string]string)
+func beforePluginServiceTests() (*plugin_helpers.PluginServiceImpl, *MockPluginManager, *host_info_util.HostInfoBuilder, error) {
+	props := map[string]string{"protocol": "postgresql"}
 	mockTargetDriver := &MockTargetDriver{}
-	driverConnProvider := driver_infrastructure.NewDriverConnectionProvider(mockTargetDriver)
-	defaultConnProvider := driver_infrastructure.ConnectionProvider(driverConnProvider)
-	mockPluginManager := &MockPluginManager{plugin_helpers.NewPluginManagerImpl(mockTargetDriver, &defaultConnProvider, nil, props), nil}
-	target := plugin_helpers.NewPluginServiceImpl(mockPluginManager, &driver_infrastructure.PgxDriverDialect{}, props)
-	return target, mockPluginManager, host_info_util.NewHostInfoBuilder()
+	mockPluginManager := &MockPluginManager{plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props), nil}
+	target, err := plugin_helpers.NewPluginServiceImpl(mockPluginManager, &driver_infrastructure.PgxDriverDialect{}, props, pgTestDsn)
+	return target, mockPluginManager, host_info_util.NewHostInfoBuilder(), err
 }
 
 func TestGetCurrentHostInfo(t *testing.T) {
 	// If currentHostInfo is set returns it.
-	target, _, hostInfoBuilder := beforePluginServiceTests()
-	target.SetCurrentConnection(MockDriverConn{}, hostInfoBuilder.SetHost("currentHost").SetRole(host_info_util.READER).SetAvailability(host_info_util.AVAILABLE).Build(), nil)
+	target, _, hostInfoBuilder, err := beforePluginServiceTests()
+	assert.Nil(t, err)
+	err = target.SetCurrentConnection(MockDriverConn{}, hostInfoBuilder.SetHost("currentHost").SetRole(host_info_util.READER).
+		SetAvailability(host_info_util.AVAILABLE).Build(), nil)
+	assert.Nil(t, err)
 
 	hostInfo, err := target.GetCurrentHostInfo()
-	assert.Equal(t, err, nil)
+	assert.Nil(t, err)
 	assert.Equal(t, hostInfo.Host, "currentHost")
 
 	// Given an initialHostInfo but no currentHostInfo returns that.
-	target, _, _ = beforePluginServiceTests()
+	target, _, _, err = beforePluginServiceTests()
+	assert.Nil(t, err)
 	target.SetInitialConnectionHostInfo(hostInfoBuilder.SetHost("initialHost").SetRole(host_info_util.READER).SetAvailability(host_info_util.AVAILABLE).Build())
 
 	hostInfo, err = target.GetCurrentHostInfo()
-	assert.Equal(t, err, nil)
+	assert.Nil(t, err)
 	assert.Equal(t, hostInfo.Host, "initialHost")
 
 	// Given readers and writers only in AllHosts, returns the writer.
-	target, _, _ = beforePluginServiceTests()
+	target, _, _, err = beforePluginServiceTests()
+	assert.Nil(t, err)
 	target.AllHosts = []*host_info_util.HostInfo{
 		hostInfoBuilder.SetHost("reader").SetRole(host_info_util.READER).SetAvailability(host_info_util.AVAILABLE).Build(),
 		hostInfoBuilder.SetHost("writer").SetRole(host_info_util.WRITER).SetAvailability(host_info_util.AVAILABLE).Build()}
@@ -63,30 +66,35 @@ func TestGetCurrentHostInfo(t *testing.T) {
 	assert.Equal(t, hostInfo.Host, "writer")
 
 	// Given only readers in AllHosts, returns the first reader.
-	target, _, _ = beforePluginServiceTests()
+	target, _, _, err = beforePluginServiceTests()
+	assert.Nil(t, err)
 	target.AllHosts = []*host_info_util.HostInfo{hostInfoBuilder.SetHost("singleReader").SetRole(host_info_util.READER).SetAvailability(host_info_util.AVAILABLE).Build()}
 	hostInfo, err = target.GetCurrentHostInfo()
 	assert.Equal(t, err, nil)
 	assert.Equal(t, hostInfo.Host, "singleReader")
 
 	// No hosts given at all, should return an error.
-	target, _, _ = beforePluginServiceTests()
+	target, _, _, err = beforePluginServiceTests()
+	assert.Nil(t, err)
 	_, err = target.GetCurrentHostInfo()
 	assert.NotEqual(t, err, nil)
 }
 
 func TestSetCurrentConnection(t *testing.T) {
-	target, _, hostInfoBuilder := beforePluginServiceTests()
+	target, _, hostInfoBuilder, err := beforePluginServiceTests()
+	assert.Nil(t, err)
 
-	_, oldConnectionImplementsQueryer := (*target.GetCurrentConnection()).(driver.QueryerContext)
+	_, oldConnectionImplementsQueryer := target.GetCurrentConnection().(driver.QueryerContext)
 
 	newConnection := driver.Conn(MockConn{})
 	_, newConnectionImplementsQueryer := (newConnection).(driver.QueryerContext)
 	newHostInfo := hostInfoBuilder.SetHost("new-host").SetPort(1000).SetRole(host_info_util.WRITER).SetAvailability(host_info_util.AVAILABLE).Build()
-	target.SetCurrentConnection(newConnection, newHostInfo, nil)
+	err = target.SetCurrentConnection(newConnection, newHostInfo, nil)
+	assert.Nil(t, err)
+
 	currentHostInfo, _ := target.GetCurrentHostInfo()
 
-	_, currentConnectionImplementsQueryer := (*target.GetCurrentConnection()).(driver.QueryerContext)
+	_, currentConnectionImplementsQueryer := target.GetCurrentConnection().(driver.QueryerContext)
 
 	assert.NotEqual(t, oldConnectionImplementsQueryer, currentConnectionImplementsQueryer)
 	assert.Equal(t, newConnectionImplementsQueryer, currentConnectionImplementsQueryer)
@@ -97,11 +105,12 @@ func TestSetCurrentConnection(t *testing.T) {
 }
 
 func TestSetHostListAdd(t *testing.T) {
-	target, mockPluginManager, _ := beforePluginServiceTests()
+	target, mockPluginManager, _, err := beforePluginServiceTests()
+	assert.Nil(t, err)
 
 	target.SetHostListProvider(&MockHostListProvider{})
 
-	err := target.RefreshHostList(MockConn{})
+	err = target.RefreshHostList(MockConn{})
 
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(target.GetHosts()))
@@ -116,7 +125,8 @@ func TestSetHostListAdd(t *testing.T) {
 }
 
 func TestSetHostListDelete(t *testing.T) {
-	target, mockPluginManager, hostInfoBuilder := beforePluginServiceTests()
+	target, mockPluginManager, hostInfoBuilder, err := beforePluginServiceTests()
+	assert.Nil(t, err)
 
 	target.SetHostListProvider(&MockHostListProvider{})
 
@@ -124,7 +134,7 @@ func TestSetHostListDelete(t *testing.T) {
 
 	assert.Equal(t, 2, len(target.GetHosts()))
 
-	err := target.RefreshHostList(MockConn{})
+	err = target.RefreshHostList(MockConn{})
 
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(target.GetHosts()))
@@ -139,7 +149,8 @@ func TestSetHostListDelete(t *testing.T) {
 }
 
 func TestSetHostListChange(t *testing.T) {
-	target, mockPluginManager, hostInfoBuilder := beforePluginServiceTests()
+	target, mockPluginManager, hostInfoBuilder, err := beforePluginServiceTests()
+	assert.Nil(t, err)
 
 	target.SetHostListProvider(&MockHostListProvider{})
 
@@ -149,7 +160,7 @@ func TestSetHostListChange(t *testing.T) {
 	assert.Equal(t, "hostA", target.GetHosts()[0].Host)
 	assert.Equal(t, host_info_util.READER, target.GetHosts()[0].Role)
 
-	err := target.RefreshHostList(MockConn{})
+	err = target.RefreshHostList(MockConn{})
 
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(target.GetHosts()))
@@ -167,7 +178,8 @@ func TestSetHostListChange(t *testing.T) {
 }
 
 func TestHostAvailabilityWentUp(t *testing.T) {
-	target, mockPluginManager, hostInfoBuilder := beforePluginServiceTests()
+	target, mockPluginManager, hostInfoBuilder, err := beforePluginServiceTests()
+	assert.Nil(t, err)
 
 	target.AllHosts = []*host_info_util.HostInfo{hostInfoBuilder.SetHost("hostA").SetRole(host_info_util.READER).SetAvailability(host_info_util.UNAVAILABLE).Build()}
 	target.SetAvailability(map[string]bool{"hostA": true}, host_info_util.AVAILABLE)
@@ -186,7 +198,8 @@ func TestHostAvailabilityWentUp(t *testing.T) {
 }
 
 func TestHostAvailabilityWentDown(t *testing.T) {
-	target, mockPluginManager, hostInfoBuilder := beforePluginServiceTests()
+	target, mockPluginManager, hostInfoBuilder, err := beforePluginServiceTests()
+	assert.Nil(t, err)
 
 	target.AllHosts = []*host_info_util.HostInfo{hostInfoBuilder.SetHost("hostA").SetRole(host_info_util.READER).SetAvailability(host_info_util.AVAILABLE).Build()}
 	target.SetAvailability(map[string]bool{"hostA": true}, host_info_util.UNAVAILABLE)
@@ -205,7 +218,8 @@ func TestHostAvailabilityWentDown(t *testing.T) {
 }
 
 func TestHostAvailabilityWentUpByAlias(t *testing.T) {
-	target, mockPluginManager, hostInfoBuilder := beforePluginServiceTests()
+	target, mockPluginManager, hostInfoBuilder, err := beforePluginServiceTests()
+	assert.Nil(t, err)
 
 	hostA := hostInfoBuilder.SetHost("hostA").SetRole(host_info_util.READER).SetAvailability(host_info_util.UNAVAILABLE).Build()
 	hostA.AddAlias("ip-10-10-10-10")
@@ -234,7 +248,8 @@ func TestHostAvailabilityWentUpByAlias(t *testing.T) {
 }
 
 func TestHostAvailabilityWentUpMultipleHostsByAlias(t *testing.T) {
-	target, mockPluginManager, hostInfoBuilder := beforePluginServiceTests()
+	target, mockPluginManager, hostInfoBuilder, err := beforePluginServiceTests()
+	assert.Nil(t, err)
 
 	hostA := hostInfoBuilder.SetHost("hostA").SetRole(host_info_util.READER).SetAvailability(host_info_util.UNAVAILABLE).Build()
 	hostA.AddAlias("ip-10-10-10-10")
@@ -268,16 +283,18 @@ func TestHostAvailabilityWentUpMultipleHostsByAlias(t *testing.T) {
 }
 
 func TestIdentifyConnection(t *testing.T) {
-	target, _, _ := beforePluginServiceTests()
+	target, _, _, err := beforePluginServiceTests()
+	assert.Nil(t, err)
 	target.SetHostListProvider(&MockHostListProvider{})
 
-	hostInfo := target.IdentifyConnection(MockDriverConn{})
-
+	hostInfo, err := target.IdentifyConnection(MockDriverConn{})
+	assert.Nil(t, err)
 	assert.Equal(t, "hostA", hostInfo.Host)
 }
 
 func TestFillAliases(t *testing.T) {
-	target, _, hostInfoBuilder := beforePluginServiceTests()
+	target, _, hostInfoBuilder, err := beforePluginServiceTests()
+	assert.Nil(t, err)
 	target.SetHostListProvider(&MockHostListProvider{})
 
 	hostA := hostInfoBuilder.SetHost("hostA").SetRole(host_info_util.READER).SetAvailability(host_info_util.UNAVAILABLE).Build()
@@ -288,7 +305,8 @@ func TestFillAliases(t *testing.T) {
 }
 
 func TestFillAliasesNonEmptyAliases(t *testing.T) {
-	target, _, hostInfoBuilder := beforePluginServiceTests()
+	target, _, hostInfoBuilder, err := beforePluginServiceTests()
+	assert.Nil(t, err)
 
 	hostA := hostInfoBuilder.SetHost("hostA").SetRole(host_info_util.READER).SetAvailability(host_info_util.UNAVAILABLE).Build()
 	hostA.AddAlias("hostA.custom.domain.com")
