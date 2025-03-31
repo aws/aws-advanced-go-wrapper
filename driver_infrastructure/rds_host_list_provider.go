@@ -22,7 +22,7 @@ import (
 	"awssql/property_util"
 	"awssql/utils"
 	"database/sql/driver"
-	"log"
+	"log/slog"
 	"math"
 	"strings"
 	"sync"
@@ -86,7 +86,7 @@ func (r *RdsHostListProvider) init() {
 		rdsUrlType := utils.IdentifyRdsUrlType(r.clusterInstanceTemplate.Host)
 		if rdsUrlType == utils.RDS_PROXY || rdsUrlType == utils.RDS_CUSTOM_CLUSTER || !strings.Contains(r.clusterInstanceTemplate.Host, "?") {
 			// Host can not be used as instance pattern.
-			log.Println(error_util.GetMessage("RdsHostListProvider.givenTemplateInvalid"))
+			slog.Warn(error_util.GetMessage("RdsHostListProvider.givenTemplateInvalid"))
 			r.clusterInstanceTemplate = *defaultTemplate
 		}
 	} else {
@@ -222,7 +222,7 @@ func (r *RdsHostListProvider) getSuggestedClusterId(url string) (string, bool) {
 		}
 		for _, host := range hosts {
 			if host.GetHostAndPort() == url {
-				log.Println(error_util.GetMessage("RdsHostListProvider.suggestedClusterId", key, url))
+				slog.Info(error_util.GetMessage("RdsHostListProvider.suggestedClusterId", key, url))
 				return key, isPrimaryCluster
 			}
 		}

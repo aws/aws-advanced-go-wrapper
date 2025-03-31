@@ -19,7 +19,7 @@ package utils
 import (
 	"awssql/error_util"
 	"context"
-	"log"
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -56,7 +56,7 @@ func NewSlidingExpirationCache[T any](id string, funcs ...DisposalFunc) *Sliding
 	}
 
 	// Start the cache cleanup goroutine.
-	log.Println(error_util.GetMessage("SlidingExpirationCache.startingCacheCleanupRoutine", id))
+	slog.Info(error_util.GetMessage("SlidingExpirationCache.startingCacheCleanupRoutine", id))
 	go cache.cleanupExpiredItems(ctx)
 	return cache
 }
@@ -83,6 +83,25 @@ func (c *SlidingExpirationCache[T]) Get(key string, itemExpiration time.Duration
 
 	item.withExtendExpiration(itemExpiration)
 	return item.item, true
+}
+
+func (c *SlidingExpirationCache[T]) ComputeIfAbsent(key string, computeFunc func() T, itemExpiration time.Duration) T {
+	c.lock.RLock()
+	item, ok := c.cache[key]
+	c.lock.RUnlock()
+
+	if ok {
+		return item.item
+	}
+
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.cache[key] = &cacheItem[T]{cacheValue[T]{
+		item:           computeFunc(),
+		expirationTime: time.Now().Add(itemExpiration),
+	}}
+	c.cache[key].withExtendExpiration(itemExpiration)
+	return c.cache[key].item
 }
 
 func (c *SlidingExpirationCache[T]) PutIfAbsent(key string, value T, expiration time.Duration) {
@@ -155,7 +174,7 @@ func (c *SlidingExpirationCache[T]) cleanupExpiredItems(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println(error_util.GetMessage("SlidingExpirationCache.exitingCacheCleanupRoutine", c.cacheId))
+			slog.Info(error_util.GetMessage("SlidingExpirationCache.exitingCacheCleanupRoutine", c.cacheId))
 			return
 		default:
 			time.Sleep(CleanupIntervalNanos)
