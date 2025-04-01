@@ -216,6 +216,7 @@ func (c *AwsWrapperConn) BeginTx(ctx context.Context, opts driver.TxOptions) (dr
 
 func (c *AwsWrapperConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
 	queryFunc := func() (any, any, bool, error) {
+		c.pluginService.UpdateState(query)
 		queryerCtx, ok := c.pluginService.GetCurrentConnection().(driver.QueryerContext)
 		if !ok {
 			return nil, nil, false, errors.New(error_util.GetMessage("Conn.doesNotImplementRequiredInterface", "driver.QueryerContext"))
@@ -228,6 +229,7 @@ func (c *AwsWrapperConn) QueryContext(ctx context.Context, query string, args []
 
 func (c *AwsWrapperConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
 	execFunc := func() (any, any, bool, error) {
+		c.pluginService.UpdateState(query)
 		execerCtx, ok := c.pluginService.GetCurrentConnection().(driver.ExecerContext)
 		if !ok {
 			return nil, nil, false, errors.New(error_util.GetMessage("Conn.doesNotImplementRequiredInterface", "driver.ExecerContext"))
@@ -301,6 +303,7 @@ func (a *AwsWrapperStmt) Close() error {
 
 func (a *AwsWrapperStmt) Exec(args []driver.Value) (driver.Result, error) {
 	execFunc := func() (any, any, bool, error) {
+		a.conn.pluginService.UpdateState("", args)
 		result, err := a.underlyingStmt.Exec(args) //nolint:all
 		return result, nil, false, err
 	}
@@ -313,6 +316,7 @@ func (a *AwsWrapperStmt) ExecContext(ctx context.Context, args []driver.NamedVal
 		return nil, errors.New(error_util.GetMessage("AwsWrapperStmt.underlyingStmtDoesNotImplementRequiredInterface", "driver.StmtExecContext"))
 	}
 	execFunc := func() (any, any, bool, error) {
+		a.conn.pluginService.UpdateState("", args)
 		result, err := execerCtx.ExecContext(ctx, args)
 		return result, nil, false, err
 	}
@@ -331,6 +335,7 @@ func (a *AwsWrapperStmt) NumInput() int {
 
 func (a *AwsWrapperStmt) Query(args []driver.Value) (driver.Rows, error) {
 	queryFunc := func() (any, any, bool, error) {
+		a.conn.pluginService.UpdateState("", args)
 		result, err := a.underlyingStmt.Query(args) //nolint:all
 		return result, nil, false, err
 	}
@@ -343,6 +348,7 @@ func (a *AwsWrapperStmt) QueryContext(ctx context.Context, args []driver.NamedVa
 		return nil, errors.New(error_util.GetMessage("AwsWrapperStmt.underlyingStmtDoesNotImplementRequiredInterface", "driver.StmtQueryContext"))
 	}
 	queryFunc := func() (any, any, bool, error) {
+		a.conn.pluginService.UpdateState("", args)
 		result, err := queryerCtx.QueryContext(ctx, args)
 		return result, nil, false, err
 	}

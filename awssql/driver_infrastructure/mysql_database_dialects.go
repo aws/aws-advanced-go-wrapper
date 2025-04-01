@@ -21,6 +21,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -70,6 +71,104 @@ func (m *MySQLDatabaseDialect) GetHostListProvider(
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
 	return HostListProvider(NewDsnHostListProvider(props, initialDsn, hostListProviderService))
+}
+
+func (m *MySQLDatabaseDialect) GetSetAutoCommitQuery(autoCommit bool) (string, error) {
+	return fmt.Sprintf("set autocommit=%v", autoCommit), nil
+}
+
+func (m *MySQLDatabaseDialect) GetSetReadOnlyQuery(readOnly bool) (string, error) {
+	readOnlyStr := "only"
+	if !readOnly {
+		readOnlyStr = "write"
+	}
+	return fmt.Sprintf("set session transaction read %v", readOnlyStr), nil
+}
+
+func (m *MySQLDatabaseDialect) GetSetCatalogQuery(catalog string) (string, error) {
+	return fmt.Sprintf("use %v", catalog), nil
+}
+
+func (m *MySQLDatabaseDialect) GetSetSchemaQuery(schema string) (string, error) {
+	return "", error_util.NewGenericAwsWrapperError(error_util.GetMessage("AwsWrapper.unsupportedMethodError", "SetSchema", fmt.Sprintf("%T", m)))
+}
+
+func (m *MySQLDatabaseDialect) GetSetTransactionIsolationQuery(level TransactionIsolationLevel) (string, error) {
+	levelStr := ""
+	switch level {
+	case TRANSACTION_READ_UNCOMMITTED:
+		levelStr = "READ UNCOMMITTED"
+	case TRANSACTION_READ_COMMITTED:
+		levelStr = "READ COMMITTED"
+	case TRANSACTION_REPEATABLE_READ:
+		levelStr = "REPEATABLE READ"
+	case TRANSACTION_SERIALIZABLE:
+		levelStr = "SERIALIZABLE"
+	default:
+		return "", error_util.NewGenericAwsWrapperError(error_util.GetMessage("DatabaseDialect.invalidTransactionIsolationLevel", levelStr))
+	}
+	return fmt.Sprintf("set session transaction isolation level %v", levelStr), nil
+}
+
+func (m *MySQLDatabaseDialect) DoesStatementSetAutoCommit(statement string) (bool, bool) {
+	lowercaseStatement := strings.ToLower(statement)
+	if strings.HasPrefix(lowercaseStatement, "set autocommit") {
+		sections := strings.Split(lowercaseStatement, "=")
+		if len(sections) < 2 {
+			return false, false
+		}
+		result, err := strconv.ParseBool(strings.TrimSpace(sections[1]))
+		if err != nil {
+			return false, false
+		}
+		return result, true
+	}
+
+	return false, false
+}
+
+func (m *MySQLDatabaseDialect) DoesStatementSetCatalog(statement string) (string, bool) {
+	re := regexp.MustCompile(`^(?i)use\s+(\w+)`)
+	matches := re.FindStringSubmatch(statement)
+	if len(matches) < 2 {
+		return "", false
+	}
+	return matches[1], true
+}
+
+func (m *MySQLDatabaseDialect) DoesStatementSetReadOnly(statement string) (bool, bool) {
+	lowercaseStatement := strings.ToLower(statement)
+	if strings.HasPrefix(lowercaseStatement, "set session transaction read only") {
+		return true, true
+	}
+
+	if strings.HasPrefix(lowercaseStatement, "set session transaction read write") {
+		return false, true
+	}
+
+	return false, false
+}
+
+func (m *MySQLDatabaseDialect) DoesStatementSetSchema(statement string) (string, bool) {
+	return "", false
+}
+
+func (m *MySQLDatabaseDialect) DoesStatementSetTransactionIsolation(statement string) (TransactionIsolationLevel, bool) {
+	lowercaseStatement := strings.ToLower(statement)
+	if strings.Contains(lowercaseStatement, "set session transaction isolation level read uncommitted") {
+		return TRANSACTION_READ_UNCOMMITTED, true
+	}
+	if strings.Contains(lowercaseStatement, "set session transaction isolation level read committed") {
+		return TRANSACTION_READ_COMMITTED, true
+	}
+	if strings.Contains(lowercaseStatement, "set session transaction isolation level repeatable read") {
+		return TRANSACTION_REPEATABLE_READ, true
+	}
+	if strings.Contains(lowercaseStatement, "set session transaction isolation level serializable") {
+		return TRANSACTION_SERIALIZABLE, true
+	}
+
+	return TRANSACTION_READ_UNCOMMITTED, false
 }
 
 type RdsMySQLDatabaseDialect struct {

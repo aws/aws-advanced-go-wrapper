@@ -707,6 +707,23 @@ func (mr *MockPluginServiceMockRecorder) UpdateDialect(conn interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDialect", reflect.TypeOf((*MockPluginService)(nil).UpdateDialect), conn)
 }
 
+// UpdateState mocks base method.
+func (m *MockPluginService) UpdateState(sql string, methodArgs ...any) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{sql}
+	for _, a := range methodArgs {
+		varargs = append(varargs, a)
+	}
+	m.ctrl.Call(m, "UpdateState", varargs...)
+}
+
+// UpdateState indicates an expected call of UpdateState.
+func (mr *MockPluginServiceMockRecorder) UpdateState(sql interface{}, methodArgs ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{sql}, methodArgs...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateState", reflect.TypeOf((*MockPluginService)(nil).UpdateState), varargs...)
+}
+
 // MockPluginManager is a mock of PluginManager interface.
 type MockPluginManager struct {
 	ctrl     *gomock.Controller

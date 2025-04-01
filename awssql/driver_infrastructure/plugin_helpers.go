@@ -79,6 +79,7 @@ type PluginService interface {
 	GetTelemetryContext() context.Context
 	GetTelemetryFactory() telemetry.TelemetryFactory
 	SetTelemetryContext(ctx context.Context)
+	UpdateState(sql string, methodArgs ...any)
 }
 
 type PluginServiceProvider func(

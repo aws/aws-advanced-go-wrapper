@@ -67,9 +67,9 @@ body:
       required: false
 
   - type: input
-    id: driver-version
+    id: wrapper-version
     attributes:
-      label: The AWS Advanced Go Driver version used
+      label: The AWS Advanced Go Wrapper version used
     validations:
       required: true
   - type: input

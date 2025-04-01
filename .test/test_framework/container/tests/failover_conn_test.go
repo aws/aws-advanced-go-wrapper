@@ -396,3 +396,107 @@ func TestFailoverEfmDisableInstance(t *testing.T) {
 	slog.Debug("Re-enabling proxy connectivity.")
 	test_utils.EnableProxyConnectivity(proxyInfo, true)
 }
+
+func TestFailoverWriterMaintainSessionState(t *testing.T) {
+	auroraTestUtility, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
+	assert.Nil(t, err)
+	dsn := test_utils.GetDsn(environment, map[string]string{
+		"host":    environment.Info().DatabaseInfo.ClusterEndpoint,
+		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
+		"plugins": "failover",
+	})
+	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
+
+	conn, err := wrapperDriver.Open(dsn)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	// Check that we are connected to the writer.
+	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
+	assert.Nil(t, err)
+	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+
+	SetupSessionState(t, environment.Info().Request.Engine, conn)
+
+	// Failover and check that it has failed over.
+	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(instanceId, "", "")
+	assert.Nil(t, triggerFailoverError)
+	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
+	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
+	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryError.Error())
+
+	// Assert that we are connected to the new writer after failover.
+	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
+	assert.Nil(t, err)
+	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
+	assert.Nil(t, err)
+	assert.Equal(t, currWriterId, newInstanceId)
+	assert.NotEqual(t, instanceId, newInstanceId)
+
+	VerifySessionStateMaintained(t, environment.Info().Request.Engine, conn)
+
+	test_utils.BasicCleanup(t.Name())
+}
+
+func SetupSessionState(t *testing.T, engine test_utils.DatabaseEngine, conn driver.Conn) {
+	var statements []string
+	if engine == test_utils.MYSQL {
+		statements = append(statements, "create database if not exists test_session_state ")
+		statements = append(statements, "set session transaction read only")
+		statements = append(statements, "set session transaction isolation level read committed")
+		statements = append(statements, "set autocommit=0")
+		statements = append(statements, "use test_session_state")
+	} else {
+		statements = append(statements, "set session characteristics as transaction read only")
+		statements = append(statements, "set session characteristics as transaction isolation level read uncommitted")
+		statements = append(statements, "set search_path to myschema,public")
+	}
+
+	for _, statement := range statements {
+		_, err := test_utils.ExecuteQuery(engine, conn, statement, 15)
+		assert.Nil(t, err)
+	}
+}
+
+func VerifySessionStateMaintained(t *testing.T, engine test_utils.DatabaseEngine, conn driver.Conn) {
+	var sql string
+	if engine == test_utils.MYSQL {
+		sql = "select @@session.transaction_read_only"
+		result, err := test_utils.GetFirstItemFromQueryAsInt(conn, sql)
+		assert.Nil(t, err)
+		assert.Equal(t, 1, result)
+
+		sql = "select @@session.transaction_isolation"
+		level, err := test_utils.GetFirstItemFromQueryAsString(engine, conn, sql)
+		assert.Nil(t, err)
+		assert.Equal(t, "READ-COMMITTED", level)
+
+		sql = "select @@autocommit"
+		autoCommit, err := test_utils.GetFirstItemFromQueryAsInt(conn, sql)
+		assert.Nil(t, err)
+		assert.Equal(t, 0, autoCommit)
+
+		sql = "select database()"
+		catalog, err := test_utils.GetFirstItemFromQueryAsString(engine, conn, sql)
+		assert.Nil(t, err)
+		assert.Equal(t, "test_session_state", catalog)
+	} else {
+		sql = "show transaction_read_only"
+		readOnly, err := test_utils.GetFirstItemFromQueryAsString(engine, conn, sql)
+		assert.Nil(t, err)
+		assert.Equal(t, "on", readOnly)
+
+		sql = "show transaction isolation level"
+		level, err := test_utils.GetFirstItemFromQueryAsString(engine, conn, sql)
+		assert.Nil(t, err)
+		assert.Equal(t, "read uncommitted", level)
+
+		sql = "show search_path"
+		path, err := test_utils.GetFirstItemFromQueryAsString(engine, conn, sql)
+		assert.Nil(t, err)
+		assert.Equal(t, "myschema, public", path)
+	}
+}

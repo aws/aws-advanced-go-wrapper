@@ -199,16 +199,16 @@ func ExecuteInstanceQueryWithSleep(engine DatabaseEngine, deployment DatabaseEng
 	return instanceId, nil
 }
 
-func ExecuteQuery(engine DatabaseEngine, conn driver.Conn, sql string, timeoutValueSeconds int) (driver.Rows, error) {
+func ExecuteQuery(engine DatabaseEngine, conn driver.Conn, sql string, timeoutValueSeconds int) (driver.Result, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeoutValueSeconds))
 	defer cancel()
 
-	queryerCtx, ok := conn.(driver.QueryerContext)
+	execerCtx, ok := conn.(driver.ExecerContext)
 	if !ok {
-		return nil, errors.New("conn does not implement QueryerContext")
+		return nil, errors.New("conn does not implement ExecerContext")
 	}
 
-	return queryerCtx.QueryContext(ctx, sql, nil)
+	return execerCtx.ExecContext(ctx, sql, nil)
 }
 
 func ExecuteQueryDB(engine DatabaseEngine, db *sql.DB, sql string, timeoutValueSeconds int) (*sql.Rows, error) {

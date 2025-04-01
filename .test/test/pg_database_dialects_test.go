@@ -19,6 +19,7 @@ package test
 import (
 	"database/sql/driver"
 	"fmt"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"testing"
 	"time"
 
@@ -994,4 +995,237 @@ func TestRdsMultiAzDbClusterPgDialect_GetTopology(t *testing.T) {
 	assert.Equal(t, host_info_util.WRITER, hosts[0].Role)
 	assert.Equal(t, expectedReaderHostName, hosts[1].Host)
 	assert.Equal(t, host_info_util.READER, hosts[1].Role)
+}
+
+func TestPgDoesSetReadOnly(t *testing.T) {
+	setPgReadOnlyTestFunc(t, " select 1 ", [][]bool{{false, false}})
+	setPgReadOnlyTestFunc(t, " select /* COMMENT */ 1 ", [][]bool{{false, false}})
+	setPgReadOnlyTestFunc(t, " /* COMMENT */ select /* COMMENT */ 1 ", [][]bool{{false, false}})
+	setPgReadOnlyTestFunc(t, " SET SESSION characteristics as transaction READ ONLY", [][]bool{{true, true}})
+	setPgReadOnlyTestFunc(t, " set session characteristics as transaction read /* COMMENT */ only ", [][]bool{{true, true}})
+	setPgReadOnlyTestFunc(t, " /* COMMENT */ set session characteristics as transaction read /* COMMENT */ only ", [][]bool{{true, true}})
+	setPgReadOnlyTestFunc(t, " set session characteristics as transaction read write ", [][]bool{{false, true}})
+	setPgReadOnlyTestFunc(t, " /* COMMENT */ set session characteristics as transaction /* COMMENT */ read write ", [][]bool{{false, true}})
+	setPgReadOnlyTestFunc(t, " set session characteristics as transaction /* COMMENT */ read write ", [][]bool{{false, true}})
+	setPgReadOnlyTestFunc(
+		t,
+		" set session characteristics as transaction read only; "+
+			"set session characteristics as transaction read write",
+		[][]bool{
+			{true, true},
+			{false, true},
+		},
+	)
+	setPgReadOnlyTestFunc(t, " set session characteristics as transaction read only; select 1", [][]bool{{true, true}, {false, false}})
+	setPgReadOnlyTestFunc(
+		t,
+		" set session characteristics as  /* COMMENT */transaction read only/* COMMENT */;"+
+			" select 1",
+		[][]bool{
+			{true, true},
+			{false, false},
+		},
+	)
+	setPgReadOnlyTestFunc(t, " select 1; set session characteristics as transaction read only; ", [][]bool{{false, false}, {true, true}})
+	setPgReadOnlyTestFunc(
+		t,
+		" set session characteristics as transaction read write;"+
+			" set session characteristics as transaction read only; ",
+		[][]bool{
+			{false, true},
+			{true, true},
+		},
+	)
+	setPgReadOnlyTestFunc(
+		t,
+		" set session characteristics as transaction read only;"+
+			" set session characteristics as TRANSACTION READ WRITE; ",
+		[][]bool{
+			{true, true},
+			{false, true},
+		},
+	)
+	setPgReadOnlyTestFunc(t, " select 1; set session characteristics as transaction read only; ", [][]bool{{false, false}, {true, true}})
+	setPgReadOnlyTestFunc(t, " set session characteristics as transaction read write; select 1", [][]bool{{false, true}, {false, false}})
+	setPgReadOnlyTestFunc(t, " select 1; set session characteristics as transaction read write; select 1", [][]bool{{false, false}, {false, true}, {false, false}})
+}
+
+func setPgReadOnlyTestFunc(t *testing.T, query string, expectedValues [][]bool) {
+	statements := utils.GetSeparateSqlStatements(query)
+	dialect := &driver_infrastructure.PgDatabaseDialect{}
+	assert.Equal(t, len(expectedValues), len(statements))
+
+	for i, statement := range statements {
+		readOnly, ok := dialect.DoesStatementSetReadOnly(statement)
+		assert.Equal(t, expectedValues[i][0], readOnly)
+		assert.Equal(t, expectedValues[i][1], ok)
+	}
+}
+
+func TestPgDoesSetSchema(t *testing.T) {
+	setPgSchemaTestFunc(t, " select 1 ", [][]any{{"", false}})
+	setPgSchemaTestFunc(t, " SELECT /* COMMENT */ 1 ", [][]any{{"", false}})
+	setPgSchemaTestFunc(t, " /* COMMENT */ select /* COMMENT */ 1 ", [][]any{{"", false}})
+	setPgSchemaTestFunc(t, " SET search_path to path ", [][]any{{"path", true}})
+	setPgSchemaTestFunc(t, " set search_path/* COMMENT */ to path ", [][]any{{"path", true}})
+	setPgSchemaTestFunc(t, " set search_path to path1 ; set search_path to path2 ", [][]any{{"path1", true}, {"path2", true}})
+	setPgSchemaTestFunc(t, " set search_path to \"path1\" ; ", [][]any{{"path1", true}})
+	setPgSchemaTestFunc(t, " set search_path to \"path 1\" ;", [][]any{{"path 1", true}})
+	setPgSchemaTestFunc(t, " set search_path to path1, path2 ;  ", [][]any{{"path1, path2", true}})
+	setPgSchemaTestFunc(t, " set search_path = path1 ;  ", [][]any{{"path1", true}})
+	setPgSchemaTestFunc(t, " set search_path = PATH ;  ", [][]any{{"PATH", true}})
+	setPgSchemaTestFunc(t, " set search_path to PATH ;  ", [][]any{{"PATH", true}})
+	setPgSchemaTestFunc(t, " set search_path to pathToLocation ;  ", [][]any{{"pathToLocation", true}})
+	setPgSchemaTestFunc(t, " set search_path TO pathToLocation ;  ", [][]any{{"pathToLocation", true}})
+	setPgSchemaTestFunc(t, " set search_path = pathToLocation ;  ", [][]any{{"pathToLocation", true}})
+	setPgSchemaTestFunc(t, " set search_path =\"pathToLocation\" ;  ", [][]any{{"pathToLocation", true}})
+	setPgSchemaTestFunc(t, " set search_path=\"pathToLocation\" ;  ", [][]any{{"pathToLocation", true}})
+	setPgSchemaTestFunc(t, " set search_path= \"path to Location\" ;  ", [][]any{{"path to Location", true}})
+}
+
+func setPgSchemaTestFunc(t *testing.T, query string, expectedValues [][]any) {
+	statements := utils.GetSeparateSqlStatements(query)
+	dialect := &driver_infrastructure.PgDatabaseDialect{}
+	assert.Equal(t, len(expectedValues), len(statements))
+
+	for i, statement := range statements {
+		schema, ok := dialect.DoesStatementSetSchema(statement)
+		assert.Equal(t, expectedValues[i][0], schema)
+		assert.Equal(t, expectedValues[i][1], ok)
+	}
+}
+
+func TestPgDoesSetTxIsolation(t *testing.T) {
+	setPgTxIsolationTestFunc(t, " select 1 ", [][]any{{driver_infrastructure.TRANSACTION_READ_UNCOMMITTED, false}})
+	setPgTxIsolationTestFunc(t, " select /* COMMENT */ 1 ", [][]any{{driver_infrastructure.TRANSACTION_READ_UNCOMMITTED, false}})
+	setPgTxIsolationTestFunc(t, " /* COMMENT */ select /* COMMENT */ 1 ", [][]any{{driver_infrastructure.TRANSACTION_READ_UNCOMMITTED, false}})
+	setPgTxIsolationTestFunc(
+		t,
+		" set session characteristics as transaction isolation level read uncommitted ",
+		[][]any{{driver_infrastructure.TRANSACTION_READ_UNCOMMITTED, true}},
+	)
+	setPgTxIsolationTestFunc(
+		t,
+		" SET SESSION characteristics as transaction isolation level read committed ",
+		[][]any{{driver_infrastructure.TRANSACTION_READ_COMMITTED, true}},
+	)
+	setPgTxIsolationTestFunc(
+		t,
+		" set session characteristics as transaction isolation level repeatable read ",
+		[][]any{{driver_infrastructure.TRANSACTION_REPEATABLE_READ, true}},
+	)
+	setPgTxIsolationTestFunc(
+		t,
+		" set session characteristics as transaction isolation level serializable ",
+		[][]any{{driver_infrastructure.TRANSACTION_SERIALIZABLE, true}},
+	)
+	setPgTxIsolationTestFunc(
+		t,
+		" set session characteristics as transaction isolation level serializable; "+
+			" set session characteristics as transaction isolation level repeatable read ",
+		[][]any{{driver_infrastructure.TRANSACTION_SERIALIZABLE, true}, {driver_infrastructure.TRANSACTION_REPEATABLE_READ, true}},
+	)
+	setPgTxIsolationTestFunc(
+		t,
+		" set session characteristics AS TRANSACTION /* COMMENT */isolation level read uncommitted; "+
+			"select 1;"+
+			" set session characteristics as transaction /* COMMENT */ isolation level READ COMMITTED; ",
+		[][]any{
+			{driver_infrastructure.TRANSACTION_READ_UNCOMMITTED, true},
+			{driver_infrastructure.TRANSACTION_READ_UNCOMMITTED, false},
+			{driver_infrastructure.TRANSACTION_READ_COMMITTED, true},
+		},
+	)
+}
+
+func setPgTxIsolationTestFunc(t *testing.T, query string, expectedValues [][]any) {
+	statements := utils.GetSeparateSqlStatements(query)
+	dialect := &driver_infrastructure.PgDatabaseDialect{}
+	assert.Equal(t, len(expectedValues), len(statements))
+
+	for i, statement := range statements {
+		level, ok := dialect.DoesStatementSetTransactionIsolation(statement)
+		assert.Equal(t, expectedValues[i][0], level)
+		assert.Equal(t, expectedValues[i][1], ok)
+	}
+}
+
+func TestPgDoesSetAutoCommit(t *testing.T) {
+	dialect := &driver_infrastructure.PgDatabaseDialect{}
+	autoCommit, ok := dialect.DoesStatementSetAutoCommit("anything")
+	assert.False(t, autoCommit)
+	assert.False(t, ok)
+}
+
+func TestPgDoesSetCatalog(t *testing.T) {
+	dialect := &driver_infrastructure.PgDatabaseDialect{}
+	catalog, ok := dialect.DoesStatementSetCatalog("anything")
+	assert.Empty(t, catalog)
+	assert.False(t, ok)
+}
+
+func TestPgGetSetAutoCommitQuery(t *testing.T) {
+	dialect := &driver_infrastructure.PgDatabaseDialect{}
+	query, err := dialect.GetSetAutoCommitQuery(true)
+	assert.Empty(t, query)
+	assert.Error(t, err)
+	query, err = dialect.GetSetAutoCommitQuery(false)
+	assert.Empty(t, query)
+	assert.Error(t, err)
+}
+
+func TestPgGetSetReadOnlyQuery(t *testing.T) {
+	dialect := &driver_infrastructure.PgDatabaseDialect{}
+	query, err := dialect.GetSetReadOnlyQuery(true)
+	assert.Nil(t, err)
+	assert.Equal(t, "set session characteristics as transaction read only", query)
+	query, err = dialect.GetSetReadOnlyQuery(false)
+	assert.Nil(t, err)
+	assert.Equal(t, "set session characteristics as transaction read write", query)
+}
+
+func TestPgGetSetCatalogQuery(t *testing.T) {
+	dialect := &driver_infrastructure.PgDatabaseDialect{}
+	query, err := dialect.GetSetCatalogQuery("catalog")
+	assert.Empty(t, query)
+	assert.Error(t, err)
+}
+
+func TestPgGetSetSchemaQuery(t *testing.T) {
+	dialect := &driver_infrastructure.PgDatabaseDialect{}
+
+	query, err := dialect.GetSetSchemaQuery("path")
+	assert.Nil(t, err)
+	assert.Equal(t, "set search_path to path", query)
+
+	query, err = dialect.GetSetSchemaQuery("path1 path2")
+	assert.Nil(t, err)
+	assert.Equal(t, "set search_path to \"path1 path2\"", query)
+
+	query, err = dialect.GetSetSchemaQuery("\"path1 path2\"")
+	assert.Nil(t, err)
+	assert.Equal(t, "set search_path to \"path1 path2\"", query)
+
+	query, err = dialect.GetSetSchemaQuery("\"path1\"")
+	assert.Nil(t, err)
+	assert.Equal(t, "set search_path to \"path1\"", query)
+}
+
+func TestPgGetSetTransactionIsolationQuery(t *testing.T) {
+	dialect := &driver_infrastructure.PgDatabaseDialect{}
+	query, err := dialect.GetSetTransactionIsolationQuery(driver_infrastructure.TRANSACTION_READ_COMMITTED)
+	assert.Nil(t, err)
+	assert.Equal(t, "set session characteristics as transaction isolation level READ COMMITTED", query)
+
+	query, err = dialect.GetSetTransactionIsolationQuery(driver_infrastructure.TRANSACTION_READ_UNCOMMITTED)
+	assert.Nil(t, err)
+	assert.Equal(t, "set session characteristics as transaction isolation level READ UNCOMMITTED", query)
+
+	query, err = dialect.GetSetTransactionIsolationQuery(driver_infrastructure.TRANSACTION_REPEATABLE_READ)
+	assert.Nil(t, err)
+	assert.Equal(t, "set session characteristics as transaction isolation level REPEATABLE READ", query)
+
+	query, err = dialect.GetSetTransactionIsolationQuery(driver_infrastructure.TRANSACTION_SERIALIZABLE)
+	assert.Nil(t, err)
+	assert.Equal(t, "set session characteristics as transaction isolation level SERIALIZABLE", query)
 }
