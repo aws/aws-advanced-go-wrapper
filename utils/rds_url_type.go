@@ -17,17 +17,18 @@
 package utils
 
 type RdsUrlType struct {
+	Id           int
 	IsRds        bool
 	IsRdsCluster bool
 }
 
 var (
-	IP_ADDRESS                          RdsUrlType = RdsUrlType{false, false}
-	RDS_WRITER_CLUSTER                  RdsUrlType = RdsUrlType{true, true}
-	RDS_READER_CLUSTER                  RdsUrlType = RdsUrlType{true, true}
-	RDS_CUSTOM_CLUSTER                  RdsUrlType = RdsUrlType{true, true}
-	RDS_PROXY                           RdsUrlType = RdsUrlType{true, false}
-	RDS_INSTANCE                        RdsUrlType = RdsUrlType{true, false}
-	RDS_AURORA_LIMITLESS_DB_SHARD_GROUP RdsUrlType = RdsUrlType{true, false}
-	OTHER                               RdsUrlType = RdsUrlType{false, false}
+	IP_ADDRESS                          RdsUrlType = RdsUrlType{0, false, false}
+	RDS_WRITER_CLUSTER                  RdsUrlType = RdsUrlType{1, true, true}
+	RDS_READER_CLUSTER                  RdsUrlType = RdsUrlType{2, true, true}
+	RDS_CUSTOM_CLUSTER                  RdsUrlType = RdsUrlType{3, true, true}
+	RDS_PROXY                           RdsUrlType = RdsUrlType{4, true, false}
+	RDS_INSTANCE                        RdsUrlType = RdsUrlType{5, true, false}
+	RDS_AURORA_LIMITLESS_DB_SHARD_GROUP RdsUrlType = RdsUrlType{6, true, false}
+	OTHER                               RdsUrlType = RdsUrlType{7, false, false}
 )

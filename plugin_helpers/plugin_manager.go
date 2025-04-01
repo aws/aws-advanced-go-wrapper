@@ -21,7 +21,7 @@ import (
 	"awssql/error_util"
 	"awssql/host_info_util"
 	"database/sql/driver"
-	"log"
+	"log/slog"
 	"slices"
 )
 
@@ -319,7 +319,7 @@ func (pluginManager *PluginManagerImpl) GetConnectionProviderManager() driver_in
 }
 
 func (pluginManager *PluginManagerImpl) ReleaseResources() {
-	log.Println(error_util.GetMessage("PluginManagerImpl.releaseResources"))
+	slog.Info(error_util.GetMessage("PluginManagerImpl.releaseResources"))
 
 	// This step allows all plugins a chance to perform any last tasks before shutting down.
 	for i := 0; i < len(pluginManager.plugins); i++ {

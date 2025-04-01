@@ -21,7 +21,7 @@ import (
 	"awssql/error_util"
 	"awssql/host_info_util"
 	"database/sql/driver"
-	"log"
+	"log/slog"
 )
 
 //nolint:unused
@@ -236,7 +236,7 @@ func (p *PluginServiceImpl) IsLoginError(err error) bool {
 }
 
 func (p *PluginServiceImpl) ReleaseResources() {
-	log.Println(error_util.GetMessage("PluginServiceImpl.releaseResources"))
+	slog.Info(error_util.GetMessage("PluginServiceImpl.releaseResources"))
 
 	if p.currentConnection != nil {
 		p.currentConnection.Close() // Ignore any error.

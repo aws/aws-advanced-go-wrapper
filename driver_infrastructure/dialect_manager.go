@@ -21,7 +21,8 @@ import (
 	"awssql/property_util"
 	"awssql/utils"
 	"database/sql/driver"
-	"log"
+	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 )
@@ -148,8 +149,8 @@ func (d *DialectManager) GetDialectForUpdate(conn driver.Conn, originalHost stri
 }
 
 func (d *DialectManager) logCurrentDialect() {
-	log.Printf("Current dialect: %s, %s, canUpdate: %t.\n",
+	slog.Info(fmt.Sprintf("Current dialect: %s, %s, canUpdate: %t.\n",
 		d.dialectCode,
 		d.dialect,
-		d.canUpdate)
+		d.canUpdate))
 }
