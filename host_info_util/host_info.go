@@ -99,6 +99,9 @@ func (hostInfo *HostInfo) Equals(host HostInfo) bool {
 }
 
 func (hostInfo *HostInfo) IsNil() bool {
+	if hostInfo == nil {
+		return true
+	}
 	return (hostInfo.Host == "" &&
 		hostInfo.Port == 0 &&
 		hostInfo.Aliases == nil &&

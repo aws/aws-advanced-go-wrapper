@@ -26,9 +26,9 @@ func TestGetHostGivenUnavailableHost(t *testing.T) {
 	for i := 0; i < 50; i++ {
 		props := map[string]string{}
 
-		unavailableHost := host_info_util.HostInfo{Host: "someUnavailableHost", Role: host_info_util.READER, Availability: host_info_util.UNAVAILABLE}
-		availableHost := host_info_util.HostInfo{Host: "someAvailableHost", Role: host_info_util.READER, Availability: host_info_util.AVAILABLE}
-		hosts := []host_info_util.HostInfo{unavailableHost, availableHost}
+		unavailableHost := &host_info_util.HostInfo{Host: "someUnavailableHost", Role: host_info_util.READER, Availability: host_info_util.UNAVAILABLE}
+		availableHost := &host_info_util.HostInfo{Host: "someAvailableHost", Role: host_info_util.READER, Availability: host_info_util.AVAILABLE}
+		hosts := []*host_info_util.HostInfo{unavailableHost, availableHost}
 
 		hostSelector := driver_infrastructure.RandomHostSelector{}
 
@@ -37,7 +37,7 @@ func TestGetHostGivenUnavailableHost(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected error getting host: %v on iteration %v", err, i)
 		}
-		if actualHost.Equals(availableHost) == false {
+		if actualHost.Equals(*availableHost) == false {
 			t.Fatalf("Expected host %v but got %v on iteration %v", availableHost, actualHost, i)
 		}
 	}
@@ -47,7 +47,7 @@ func TestGetHostGivenMultipleUnavailableHosts(t *testing.T) {
 	for i := 0; i < 50; i++ {
 		props := map[string]string{}
 
-		hosts := []host_info_util.HostInfo{
+		hosts := []*host_info_util.HostInfo{
 			{Host: "someUnavailableHost", Role: host_info_util.READER, Availability: host_info_util.UNAVAILABLE},
 			{Host: "someUnavailableHost", Role: host_info_util.READER, Availability: host_info_util.UNAVAILABLE},
 			{Host: "someAvailableHost", Role: host_info_util.READER, Availability: host_info_util.AVAILABLE},

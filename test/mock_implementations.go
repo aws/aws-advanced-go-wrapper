@@ -112,11 +112,10 @@ func (t TestPlugin) AcceptsStrategy(role host_info_util.HostRole, strategy strin
 func (t TestPlugin) GetHostInfoByStrategy(
 	role host_info_util.HostRole,
 	strategy string,
-	hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error) {
+	hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:before GetHostInfoByStrategy", reflect.TypeOf(t), t.id))
-	result := host_info_util.HostInfo{}
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:after GetHostInfoByStrategy", reflect.TypeOf(t), t.id))
-	return result, nil
+	return nil, nil
 }
 
 func (t TestPlugin) NotifyConnectionChanged(changes map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {
@@ -183,8 +182,8 @@ func (m *MockHostListProvider) GetHostRole(conn driver.Conn) host_info_util.Host
 	return host_info_util.UNKNOWN
 }
 
-func (m *MockHostListProvider) IdentifyConnection(conn driver.Conn) (host_info_util.HostInfo, error) {
-	return *host_info_util.NewHostInfoBuilder().SetHost("hostA").Build(), nil
+func (m *MockHostListProvider) IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error) {
+	return host_info_util.NewHostInfoBuilder().SetHost("hostA").Build(), nil
 }
 
 func (m *MockHostListProvider) IsStaticHostListProvider() bool {

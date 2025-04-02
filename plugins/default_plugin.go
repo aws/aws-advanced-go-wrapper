@@ -82,9 +82,9 @@ func (d *DefaultPlugin) AcceptsStrategy(role host_info_util.HostRole, strategy s
 func (d *DefaultPlugin) GetHostInfoByStrategy(
 	role host_info_util.HostRole,
 	strategy string,
-	hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error) {
+	hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
 	if len(hosts) == 0 {
-		return host_info_util.HostInfo{}, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DefaultConnectionPlugin.noHostsAvailable"))
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DefaultConnectionPlugin.noHostsAvailable"))
 	}
 	return d.ConnProviderManager.GetHostInfoByStrategy(hosts, role, strategy, d.PluginService.GetProperties())
 }

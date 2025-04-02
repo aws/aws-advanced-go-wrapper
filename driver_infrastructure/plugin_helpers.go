@@ -40,10 +40,10 @@ type PluginService interface {
 	GetCurrentConnection() driver.Conn
 	SetCurrentConnection(conn driver.Conn, hostInfo *host_info_util.HostInfo, skipNotificationForThisPlugin ConnectionPlugin) error
 	GetInitialConnectionHostInfo() *host_info_util.HostInfo
-	GetCurrentHostInfo() (host_info_util.HostInfo, error)
+	GetCurrentHostInfo() (*host_info_util.HostInfo, error)
 	GetHosts() []*host_info_util.HostInfo
 	AcceptsStrategy(role host_info_util.HostRole, strategy string) bool
-	GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error)
+	GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error)
 	GetHostRole(driver.Conn) host_info_util.HostRole
 	SetAvailability(hostAliases map[string]bool, availability host_info_util.HostAvailability)
 	InTransaction() bool
@@ -55,7 +55,7 @@ type PluginService interface {
 	GetDialect() DatabaseDialect
 	UpdateDialect(conn driver.Conn)
 	GetTargetDriverDialect() DriverDialect
-	IdentifyConnection(conn driver.Conn) (host_info_util.HostInfo, error)
+	IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error)
 	FillAliases(conn driver.Conn, hostInfo *host_info_util.HostInfo)
 	GetConnectionProvider() ConnectionProvider
 	GetProperties() map[string]string
@@ -78,7 +78,7 @@ type PluginManager interface {
 	NotifyConnectionChanged(
 		changes map[HostChangeOptions]bool, skipNotificationForThisPlugin ConnectionPlugin) map[OldConnectionSuggestedAction]bool
 	NotifySubscribedPlugins(methodName string, pluginFunc PluginExecFunc, skipNotificationForThisPlugin ConnectionPlugin) error
-	GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error)
+	GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error)
 	GetDefaultConnectionProvider() ConnectionProvider
 	GetEffectiveConnectionProvider() ConnectionProvider
 	GetConnectionProviderManager() ConnectionProviderManager

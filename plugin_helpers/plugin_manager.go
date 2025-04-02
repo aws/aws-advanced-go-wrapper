@@ -288,7 +288,7 @@ func (pluginManager *PluginManagerImpl) NotifySubscribedPlugins(
 func (pluginManager *PluginManagerImpl) GetHostInfoByStrategy(
 	role host_info_util.HostRole,
 	strategy string,
-	hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error) {
+	hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
 	for i := 0; i < len(pluginManager.plugins); i++ {
 		currentPlugin := pluginManager.plugins[i]
 		isSubscribed := slices.Contains(currentPlugin.GetSubscribedMethods(), strategy)
@@ -302,7 +302,7 @@ func (pluginManager *PluginManagerImpl) GetHostInfoByStrategy(
 		}
 	}
 
-	return host_info_util.HostInfo{}, error_util.NewUnsupportedStrategyError(
+	return nil, error_util.NewUnsupportedStrategyError(
 		error_util.GetMessage("The wrapper does not support the requested host selection strategy: " + strategy))
 }
 

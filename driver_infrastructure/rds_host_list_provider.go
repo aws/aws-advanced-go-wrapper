@@ -76,7 +76,6 @@ func (r *RdsHostListProvider) init() {
 	r.initialHostList = hostListFromDsn
 	r.initialHostInfo = r.initialHostList[0]
 
-	r.clusterInstanceTemplate = &host_info_util.HostInfo{}
 	clusterInstancePattern := property_util.GetVerifiedWrapperPropertyValue[string](r.properties, property_util.CLUSTER_INSTANCE_HOST_PATTERN)
 	defaultTemplate := (host_info_util.NewHostInfoBuilder()).SetHost(utils.GetRdsInstanceHostPattern(r.initialHostInfo.Host)).
 		SetPort(r.initialHostInfo.Port).SetHostId(r.initialHostInfo.HostId).Build()
@@ -140,7 +139,7 @@ func (r *RdsHostListProvider) GetHostRole(conn driver.Conn) host_info_util.HostR
 	return r.databaseDialect.GetHostRole(conn)
 }
 
-func (r *RdsHostListProvider) IdentifyConnection(conn driver.Conn) (host_info_util.HostInfo, error) {
+func (r *RdsHostListProvider) IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error) {
 	instanceName := r.databaseDialect.GetHostName(conn)
 	if instanceName != "" {
 		topology, err := r.Refresh(conn)
@@ -150,23 +149,23 @@ func (r *RdsHostListProvider) IdentifyConnection(conn driver.Conn) (host_info_ut
 			forcedRefresh = true
 		}
 		if err != nil {
-			return host_info_util.HostInfo{}, err
+			return nil, err
 		}
 		if len(topology) == 0 {
-			return host_info_util.HostInfo{}, error_util.NewGenericAwsWrapperError(error_util.GetMessage("RdsHostListProvider.unableToGatherTopology"))
+			return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("RdsHostListProvider.unableToGatherTopology"))
 		}
 		foundHost := utils.FindHostInTopology(topology, instanceName)
 
 		if foundHost.Host == "" && !forcedRefresh {
 			topology, err = r.ForceRefresh(conn)
 			if err != nil {
-				return host_info_util.HostInfo{}, err
+				return nil, err
 			}
 			foundHost = utils.FindHostInTopology(topology, instanceName)
 		}
-		return *foundHost, nil
+		return foundHost, nil
 	}
-	return host_info_util.HostInfo{}, error_util.NewGenericAwsWrapperError(error_util.GetMessage("RdsHostListProvider.unableToGetHostName"))
+	return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("RdsHostListProvider.unableToGetHostName"))
 }
 
 func (r *RdsHostListProvider) IsStaticHostListProvider() bool {

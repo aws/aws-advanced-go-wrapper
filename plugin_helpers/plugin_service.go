@@ -66,9 +66,6 @@ func NewPluginServiceImpl(
 		pluginManager:             pluginManager,
 		driverDialect:             driverDialect,
 		props:                     props,
-		currentHostInfo:           &host_info_util.HostInfo{},
-		initialHostInfo:           &host_info_util.HostInfo{},
-		AllHosts:                  []*host_info_util.HostInfo{},
 		dialectProvider:           &dialectProvider,
 		dialect:                   dialect,
 		originalDsn:               dsn,
@@ -186,12 +183,12 @@ func (p *PluginServiceImpl) compareHostInfos(hostInfoA *host_info_util.HostInfo,
 	return changes
 }
 
-func (p *PluginServiceImpl) GetCurrentHostInfo() (host_info_util.HostInfo, error) {
+func (p *PluginServiceImpl) GetCurrentHostInfo() (*host_info_util.HostInfo, error) {
 	if p.currentHostInfo.IsNil() {
 		p.currentHostInfo = p.initialHostInfo
 		if p.currentHostInfo.IsNil() {
 			if len(p.AllHosts) == 0 {
-				return host_info_util.HostInfo{}, error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginServiceImpl.hostListEmpty"))
+				return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginServiceImpl.hostListEmpty"))
 			}
 
 			p.currentHostInfo = utils.GetWriter(p.AllHosts)
@@ -200,11 +197,11 @@ func (p *PluginServiceImpl) GetCurrentHostInfo() (host_info_util.HostInfo, error
 			}
 		}
 		if p.currentHostInfo.IsNil() {
-			return host_info_util.HostInfo{}, error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginServiceImpl.nilHost"))
+			return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginServiceImpl.nilHost"))
 		}
 		slog.Info(error_util.GetMessage("PluginServiceImpl.setCurrentHost", p.currentHostInfo.Host))
 	}
-	return *p.currentHostInfo, nil
+	return p.currentHostInfo, nil
 }
 
 func (p *PluginServiceImpl) GetHosts() []*host_info_util.HostInfo {
@@ -222,7 +219,7 @@ func (p *PluginServiceImpl) AcceptsStrategy(role host_info_util.HostRole, strate
 func (p *PluginServiceImpl) GetHostInfoByStrategy(
 	role host_info_util.HostRole,
 	strategy string,
-	hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error) {
+	hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
 	return p.pluginManager.GetHostInfoByStrategy(role, strategy, hosts)
 }
 
@@ -374,7 +371,7 @@ func (p *PluginServiceImpl) GetTargetDriverDialect() driver_infrastructure.Drive
 	return p.driverDialect
 }
 
-func (p *PluginServiceImpl) IdentifyConnection(conn driver.Conn) (host_info_util.HostInfo, error) {
+func (p *PluginServiceImpl) IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error) {
 	return p.hostListProvider.IdentifyConnection(conn)
 }
 

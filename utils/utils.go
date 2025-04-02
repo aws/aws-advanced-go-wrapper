@@ -46,7 +46,7 @@ func FindHostInTopology(hosts []*host_info_util.HostInfo, hostName string) *host
 			return host
 		}
 	}
-	return &host_info_util.HostInfo{}
+	return nil
 }
 
 // Directly executes query on conn, and returns the first row.
@@ -140,7 +140,7 @@ func GetWriter(hosts []*host_info_util.HostInfo) *host_info_util.HostInfo {
 			return host
 		}
 	}
-	return &host_info_util.HostInfo{}
+	return nil
 }
 
 func IsConnectionLost(conn driver.Conn) (isConnected bool) {

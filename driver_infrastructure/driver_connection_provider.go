@@ -44,13 +44,13 @@ func (d DriverConnectionProvider) AcceptsStrategy(role host_info_util.HostRole, 
 }
 
 func (d DriverConnectionProvider) GetHostInfoByStrategy(
-	hosts []host_info_util.HostInfo,
+	hosts []*host_info_util.HostInfo,
 	role host_info_util.HostRole,
 	strategy string,
-	props map[string]string) (host_info_util.HostInfo, error) {
+	props map[string]string) (*host_info_util.HostInfo, error) {
 	acceptedStrategy, ok := d.acceptedStrategies[strategy]
 	if !ok {
-		return host_info_util.HostInfo{}, error_util.NewUnsupportedStrategyError(
+		return nil, error_util.NewUnsupportedStrategyError(
 			error_util.GetMessage("ConnectionProvider.unsupportedHostSelectorStrategy", strategy, reflect.TypeOf(d).String()))
 	}
 
