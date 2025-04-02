@@ -94,22 +94,22 @@ type PluginManagerImpl struct {
 
 func NewPluginManagerImpl(
 	targetDriver driver.Driver,
-	props map[string]string) *PluginManagerImpl {
+	props map[string]string,
+	connProviderManager driver_infrastructure.ConnectionProviderManager) *PluginManagerImpl {
 	pluginFuncMap := make(map[string]PluginChain)
 	return &PluginManagerImpl{
-		targetDriver:  targetDriver,
-		props:         props,
-		pluginFuncMap: pluginFuncMap,
+		targetDriver:        targetDriver,
+		props:               props,
+		pluginFuncMap:       pluginFuncMap,
+		connProviderManager: connProviderManager,
 	}
 }
 
 func (pluginManager *PluginManagerImpl) Init(
 	pluginService driver_infrastructure.PluginService,
-	plugins []driver_infrastructure.ConnectionPlugin,
-	connProviderManager driver_infrastructure.ConnectionProviderManager) error {
+	plugins []driver_infrastructure.ConnectionPlugin) error {
 	pluginManager.pluginService = pluginService
 	pluginManager.plugins = plugins
-	pluginManager.connProviderManager = connProviderManager
 	return nil
 }
 

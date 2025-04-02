@@ -44,7 +44,6 @@ type PluginServiceImpl struct {
 	connectionProviderManager driver_infrastructure.ConnectionProviderManager
 	originalDsn               string
 	AllHosts                  []*host_info_util.HostInfo
-	initialHost               string
 	initialHostInfo           *host_info_util.HostInfo
 	isInTransaction           bool
 }
@@ -92,7 +91,7 @@ func (p *PluginServiceImpl) GetDialect() driver_infrastructure.DatabaseDialect {
 }
 
 func (p *PluginServiceImpl) UpdateDialect(conn driver.Conn) {
-	newDialect := p.dialectProvider.GetDialectForUpdate(conn, p.initialHost, p.currentHostInfo.Host)
+	newDialect := p.dialectProvider.GetDialectForUpdate(conn, p.initialHostInfo.Host, p.currentHostInfo.Host)
 	if p.dialect == newDialect {
 		return
 	}
@@ -118,6 +117,10 @@ func (p *PluginServiceImpl) SetCurrentConnection(
 		// Setting up an initial connection.
 		p.currentConnection = conn
 		p.currentHostInfo = hostInfo
+
+		if p.initialHostInfo == nil {
+			p.initialHostInfo = hostInfo
+		}
 
 		// TODO: update session state service with changes.
 

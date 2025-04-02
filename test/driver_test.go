@@ -187,13 +187,13 @@ func TestIsDialectMySQL(t *testing.T) {
 
 func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
 	props := map[string]string{"protocol": "mysql"}
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props))
+	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}))
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, driver_infrastructure.MySQLDriverDialect{}, props, mysqlTestDsn)
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
-	_ = mockPluginManager.Init(nil, plugins, driver_infrastructure.ConnectionProviderManager{})
+	_ = mockPluginManager.Init(nil, plugins)
 	mockContainer := container.Container{PluginManager: mockPluginManager, PluginService: mockPluginService}
 	baseAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockContainer, driver_infrastructure.MYSQL)
 	res, err := baseAwsWrapperConn.QueryContext(context.Background(), "", nil)
@@ -232,13 +232,13 @@ func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
 
 func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
 	props := map[string]string{"protocol": "postgres"}
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props))
+	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}))
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
-	_ = mockPluginManager.Init(nil, plugins, driver_infrastructure.ConnectionProviderManager{})
+	_ = mockPluginManager.Init(nil, plugins)
 	mockContainer := container.Container{PluginManager: mockPluginManager, PluginService: mockPluginService}
 
 	baseAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockContainer, driver_infrastructure.PG)
@@ -279,13 +279,13 @@ func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
 
 func TestWrapperUtilsExecWithPlugins(t *testing.T) {
 	props := map[string]string{"protocol": "postgres"}
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props))
+	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}))
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
-	_ = mockPluginManager.Init(nil, plugins, driver_infrastructure.ConnectionProviderManager{})
+	_ = mockPluginManager.Init(nil, plugins)
 	mockContainer := container.Container{PluginManager: mockPluginManager, PluginService: mockPluginService}
 
 	mockUnderlyingConn := &MockConn{nil, MockResult{}, nil, nil, false}
@@ -311,13 +311,13 @@ func TestWrapperUtilsExecWithPlugins(t *testing.T) {
 
 func TestWrapperUtilsBeginWithPlugins(t *testing.T) {
 	props := map[string]string{"protocol": "postgres"}
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props))
+	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}))
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
-	_ = mockPluginManager.Init(nil, plugins, driver_infrastructure.ConnectionProviderManager{})
+	_ = mockPluginManager.Init(nil, plugins)
 	mockContainer := container.Container{PluginManager: mockPluginManager, PluginService: mockPluginService}
 
 	mockUnderlyingConn := &MockConn{nil, nil, MockTx{}, nil, false}
@@ -343,13 +343,13 @@ func TestWrapperUtilsBeginWithPlugins(t *testing.T) {
 
 func TestWrapperUtilsPrepareWithPlugins(t *testing.T) {
 	props := map[string]string{"protocol": "postgres"}
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props))
+	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}))
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
-	_ = mockPluginManager.Init(nil, plugins, driver_infrastructure.ConnectionProviderManager{})
+	_ = mockPluginManager.Init(nil, plugins)
 	mockContainer := container.Container{PluginManager: mockPluginManager, PluginService: mockPluginService}
 
 	mockUnderlyingConn := &MockConn{nil, nil, nil, MockStmt{}, false}

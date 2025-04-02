@@ -64,7 +64,7 @@ type PluginService interface {
 }
 
 type PluginManager interface {
-	Init(pluginService PluginService, plugins []ConnectionPlugin, connProviderManager ConnectionProviderManager) error
+	Init(pluginService PluginService, plugins []ConnectionPlugin) error
 	InitHostProvider(initialUrl string, props map[string]string, hostListProviderService HostListProviderService) error
 	Connect(hostInfo host_info_util.HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)
 	ForceConnect(hostInfo host_info_util.HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)

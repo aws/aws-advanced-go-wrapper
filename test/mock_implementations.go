@@ -347,13 +347,11 @@ func (m *MockRdsHostListProviderService) GetHostListProvider() driver_infrastruc
 	panic("unimplemented")
 }
 
-func (m *MockRdsHostListProviderService) GetInitialConnectionHostInfo() host_info_util.HostInfo {
-	panic("unimplemented")
+func (m *MockRdsHostListProviderService) GetInitialConnectionHostInfo() *host_info_util.HostInfo {
+	return nil
 }
 
 func (m *MockRdsHostListProviderService) SetHostListProvider(hostListProvider driver_infrastructure.HostListProvider) {
-	panic("unimplemented")
 }
 func (m *MockRdsHostListProviderService) SetInitialConnectionHostInfo(info *host_info_util.HostInfo) {
-	panic("unimplemented")
 }

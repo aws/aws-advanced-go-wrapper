@@ -75,6 +75,7 @@ func (r *RdsHostListProvider) init() {
 	}
 	r.initialHostList = hostListFromDsn
 	r.initialHostInfo = r.initialHostList[0]
+	r.hostListProviderService.SetInitialConnectionHostInfo(r.initialHostInfo)
 
 	clusterInstancePattern := property_util.GetVerifiedWrapperPropertyValue[string](r.properties, property_util.CLUSTER_INSTANCE_HOST_PATTERN)
 	defaultTemplate := (host_info_util.NewHostInfoBuilder()).SetHost(utils.GetRdsInstanceHostPattern(r.initialHostInfo.Host)).

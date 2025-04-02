@@ -32,7 +32,7 @@ func TestExecuteFunctionCallA(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
 	props := make(map[string]string)
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
-	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props)
+	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager)
 	pluginService := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
 	var calls []string
 
@@ -41,7 +41,7 @@ func TestExecuteFunctionCallA(t *testing.T) {
 		CreateTestPlugin(&calls, 2, nil, nil, false),
 		CreateTestPlugin(&calls, 3, nil, nil, false),
 	}
-	err := target.Init(pluginService, plugins, connectionProviderManager)
+	err := target.Init(pluginService, plugins)
 	if err != nil {
 		return
 	}
@@ -73,7 +73,7 @@ func TestExecuteFunctionCallB(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
 	props := make(map[string]string)
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
-	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props)
+	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager)
 	pluginServiceImpl := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
 	var calls []string
 
@@ -82,7 +82,7 @@ func TestExecuteFunctionCallB(t *testing.T) {
 		CreateTestPlugin(&calls, 2, nil, nil, false),
 		CreateTestPlugin(&calls, 3, nil, nil, false),
 	}
-	err := target.Init(pluginServiceImpl, plugins, connectionProviderManager)
+	err := target.Init(pluginServiceImpl, plugins)
 	if err != nil {
 		return
 	}
@@ -112,7 +112,7 @@ func TestExecuteFunctionCallC(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
 	props := make(map[string]string)
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
-	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props)
+	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager)
 	pluginServiceImpl := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
 	var calls []string
 
@@ -121,7 +121,7 @@ func TestExecuteFunctionCallC(t *testing.T) {
 		CreateTestPlugin(&calls, 2, nil, nil, false),
 		CreateTestPlugin(&calls, 3, nil, nil, false),
 	}
-	err := target.Init(pluginServiceImpl, plugins, connectionProviderManager)
+	err := target.Init(pluginServiceImpl, plugins)
 	if err != nil {
 		return
 	}
@@ -149,7 +149,7 @@ func TestConnect(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
 	props := make(map[string]string)
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
-	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props)
+	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager)
 	pluginServiceImpl := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
 	var calls []string
 	expectedConn := MockDriverConnection{id: 123}
@@ -159,7 +159,7 @@ func TestConnect(t *testing.T) {
 		CreateTestPlugin(&calls, 2, nil, nil, false),
 		CreateTestPlugin(&calls, 3, expectedConn, nil, false),
 	}
-	err := target.Init(pluginServiceImpl, plugins, connectionProviderManager)
+	err := target.Init(pluginServiceImpl, plugins)
 	if err != nil {
 		return
 	}
@@ -180,7 +180,7 @@ func TestForceConnect(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
 	props := make(map[string]string)
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
-	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props)
+	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager)
 	pluginServiceImpl := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
 	var calls []string
 	expectedConn := MockDriverConnection{id: 123}
@@ -190,7 +190,7 @@ func TestForceConnect(t *testing.T) {
 		CreateTestPlugin(&calls, 2, nil, nil, false),
 		CreateTestPlugin(&calls, 3, expectedConn, nil, false),
 	}
-	err := target.Init(pluginServiceImpl, plugins, connectionProviderManager)
+	err := target.Init(pluginServiceImpl, plugins)
 	if err != nil {
 		return
 	}
@@ -212,7 +212,7 @@ func TestConnectWithErrorBefore(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
 	props := make(map[string]string)
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
-	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props)
+	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager)
 	pluginServiceImpl := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
 	var calls []string
 	expectedConn := MockDriverConnection{id: 123}
@@ -224,7 +224,7 @@ func TestConnectWithErrorBefore(t *testing.T) {
 		CreateTestPlugin(&calls, 3, expectedConn, nil, false),
 	}
 
-	err := target.Init(pluginServiceImpl, plugins, connectionProviderManager)
+	err := target.Init(pluginServiceImpl, plugins)
 	if err != nil {
 		return
 	}
@@ -245,7 +245,7 @@ func TestConnectWithErrorAfter(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
 	props := make(map[string]string)
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
-	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props)
+	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager)
 	pluginServiceImpl := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
 	var calls []string
 	expectedConn := MockDriverConnection{id: 123}
@@ -256,7 +256,7 @@ func TestConnectWithErrorAfter(t *testing.T) {
 		CreateTestPlugin(&calls, 1, nil, expectedError, false),
 		CreateTestPlugin(&calls, 3, expectedConn, nil, true),
 	}
-	err := target.Init(pluginServiceImpl, plugins, connectionProviderManager)
+	err := target.Init(pluginServiceImpl, plugins)
 	if err != nil {
 		return
 	}
@@ -289,19 +289,19 @@ func TestTwoConnectionsDoNotBlockOneAnother(t *testing.T) {
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
 	pluginServiceImpl := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
 
-	pluginManager1 := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props)
-	pluginManager2 := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props)
+	pluginManager1 := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager)
+	pluginManager2 := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager)
 
 	var calls []string
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(&calls, 1, nil, nil, false),
 	}
 
-	err := pluginManager1.Init(pluginServiceImpl, plugins, connectionProviderManager)
+	err := pluginManager1.Init(pluginServiceImpl, plugins)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = pluginManager2.Init(pluginServiceImpl, plugins, connectionProviderManager)
+	err = pluginManager2.Init(pluginServiceImpl, plugins)
 	if err != nil {
 		t.Fatal(err)
 	}

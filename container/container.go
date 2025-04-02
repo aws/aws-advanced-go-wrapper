@@ -47,7 +47,7 @@ func NewContainer(dsn string) (Container, error) {
 	defaultConnProvider := driver_infrastructure.NewDriverConnectionProvider(targetDriver)
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{DefaultProvider: defaultConnProvider}
 
-	pluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(targetDriver, props))
+	pluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(targetDriver, props, connectionProviderManager))
 	pluginServiceImpl, err := plugin_helpers.NewPluginServiceImpl(pluginManager, targetDriverDialect, props, dsn)
 	if err != nil {
 		return Container{}, err
@@ -60,7 +60,7 @@ func NewContainer(dsn string) (Container, error) {
 		return Container{}, err
 	}
 
-	err = pluginManager.Init(pluginService, plugins, connectionProviderManager)
+	err = pluginManager.Init(pluginService, plugins)
 	if err != nil {
 		return Container{}, err
 	}
