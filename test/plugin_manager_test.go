@@ -21,161 +21,18 @@ import (
 	"awssql/driver_infrastructure"
 	"awssql/host_info_util"
 	"awssql/plugin_helpers"
-	"database/sql/driver"
 	"errors"
-	"fmt"
-	"reflect"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 )
 
-type TestPlugin struct {
-	calls      *[]string
-	id         int
-	connection driver.Conn
-	error      error
-	isBefore   bool
-}
-
-func (t TestPlugin) GetSubscribedMethods() []string {
-	switch t.id {
-	case 1:
-		return []string{"*"}
-	case 2:
-		return []string{"callA", "callB"}
-	case 3:
-		return []string{"callA", "forceConnect", "connect"}
-	default:
-		return []string{"*"}
-	}
-}
-
-func (t TestPlugin) Execute(methodName string, executeFunc driver_infrastructure.ExecuteFunc, methodArgs ...any) (any, any, bool, error) {
-	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:before", reflect.TypeOf(t), t.id))
-	if t.isBefore && t.error != nil {
-		return nil, nil, false, t.error
-	}
-	result, _, _, err := executeFunc()
-	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:after", reflect.TypeOf(t), t.id))
-	if !t.isBefore && t.error != nil {
-		return nil, nil, false, t.error
-	}
-	return result, nil, true, err
-}
-
-func (t TestPlugin) Connect(
-	hostInfo host_info_util.HostInfo,
-	properties map[string]string,
-	isInitialConnection bool,
-	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:before connect", reflect.TypeOf(t), t.id))
-	if t.isBefore && t.error != nil {
-		return nil, t.error
-	}
-	if t.connection != nil {
-		*t.calls = append(*t.calls, fmt.Sprintf("%s%v:connection", reflect.TypeOf(t), t.id))
-		return t.connection, nil
-	}
-	result, err := connectFunc()
-	if !t.isBefore && t.error != nil {
-		return nil, t.error
-	}
-	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:after connect", reflect.TypeOf(t), t.id))
-	conn, ok := result.(driver.Conn)
-	if ok {
-		return conn, err
-	}
-	return nil, err
-}
-
-func (t TestPlugin) ForceConnect(
-	hostInfo host_info_util.HostInfo,
-	properties map[string]string,
-	isInitialConnection bool,
-	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:before forceConnect", reflect.TypeOf(t), t.id))
-	if t.connection != nil {
-		*t.calls = append(*t.calls, fmt.Sprintf("%s%v:forced connection", reflect.TypeOf(t), t.id))
-		return t.connection, nil
-	}
-	result, err := connectFunc()
-	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:after forceConnect", reflect.TypeOf(t), t.id))
-	conn, ok := result.(driver.Conn)
-	if ok {
-		return conn, err
-	}
-	return nil, err
-}
-
-func (t TestPlugin) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
-	return false
-}
-
-func (t TestPlugin) GetHostInfoByStrategy(
-	role host_info_util.HostRole,
-	strategy string,
-	hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error) {
-	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:before GetHostInfoByStrategy", reflect.TypeOf(t), t.id))
-	result := host_info_util.HostInfo{}
-	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:after GetHostInfoByStrategy", reflect.TypeOf(t), t.id))
-	return result, nil
-}
-
-func (t TestPlugin) NotifyConnectionChanged(changes map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {
-	return driver_infrastructure.NO_OPINION
-}
-
-func (t TestPlugin) NotifyHostListChanged(changes map[string]map[driver_infrastructure.HostChangeOptions]bool) {
-	// Do nothing
-}
-
-func (t TestPlugin) InitHostProvider(
-	initialUrl string,
-	props map[string]string,
-	hostListProviderService driver_infrastructure.HostListProviderService,
-	initHostProviderFunc func() error) error {
-	return nil
-}
-
-type MockTargetDriver struct{}
-
-func (m MockTargetDriver) Open(name string) (driver.Conn, error) {
-	return nil, nil
-}
-
-type MockDriverConnection struct {
-	id int
-}
-
-func (m MockDriverConnection) Prepare(query string) (driver.Stmt, error) {
-	// Do nothing.
-	return nil, nil
-}
-
-func (m MockDriverConnection) Close() error {
-	// Do nothing.
-	return nil
-}
-
-func (m MockDriverConnection) Begin() (driver.Tx, error) {
-	// Do nothing.
-	return nil, nil
-}
-
-func CreateTestPlugin(calls *[]string, id int, connection driver.Conn, err error, isBefore bool) driver_infrastructure.ConnectionPlugin {
-	if calls == nil {
-		calls = &[]string{}
-	}
-	return driver_infrastructure.ConnectionPlugin(&TestPlugin{calls: calls, id: id, connection: connection, error: err, isBefore: isBefore})
-}
-
 func TestExecuteFunctionCallA(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
 	props := make(map[string]string)
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
-	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props)
+	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager)
 	pluginService := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
 	var calls []string
 
@@ -184,7 +41,7 @@ func TestExecuteFunctionCallA(t *testing.T) {
 		CreateTestPlugin(&calls, 2, nil, nil, false),
 		CreateTestPlugin(&calls, 3, nil, nil, false),
 	}
-	err := target.Init(pluginService, plugins, connectionProviderManager)
+	err := target.Init(pluginService, plugins)
 	if err != nil {
 		return
 	}
@@ -216,7 +73,7 @@ func TestExecuteFunctionCallB(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
 	props := make(map[string]string)
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
-	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props)
+	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager)
 	pluginServiceImpl := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
 	var calls []string
 
@@ -225,7 +82,7 @@ func TestExecuteFunctionCallB(t *testing.T) {
 		CreateTestPlugin(&calls, 2, nil, nil, false),
 		CreateTestPlugin(&calls, 3, nil, nil, false),
 	}
-	err := target.Init(pluginServiceImpl, plugins, connectionProviderManager)
+	err := target.Init(pluginServiceImpl, plugins)
 	if err != nil {
 		return
 	}
@@ -255,7 +112,7 @@ func TestExecuteFunctionCallC(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
 	props := make(map[string]string)
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
-	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props)
+	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager)
 	pluginServiceImpl := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
 	var calls []string
 
@@ -264,7 +121,7 @@ func TestExecuteFunctionCallC(t *testing.T) {
 		CreateTestPlugin(&calls, 2, nil, nil, false),
 		CreateTestPlugin(&calls, 3, nil, nil, false),
 	}
-	err := target.Init(pluginServiceImpl, plugins, connectionProviderManager)
+	err := target.Init(pluginServiceImpl, plugins)
 	if err != nil {
 		return
 	}
@@ -292,7 +149,7 @@ func TestConnect(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
 	props := make(map[string]string)
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
-	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props)
+	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager)
 	pluginServiceImpl := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
 	var calls []string
 	expectedConn := MockDriverConnection{id: 123}
@@ -302,7 +159,7 @@ func TestConnect(t *testing.T) {
 		CreateTestPlugin(&calls, 2, nil, nil, false),
 		CreateTestPlugin(&calls, 3, expectedConn, nil, false),
 	}
-	err := target.Init(pluginServiceImpl, plugins, connectionProviderManager)
+	err := target.Init(pluginServiceImpl, plugins)
 	if err != nil {
 		return
 	}
@@ -323,7 +180,7 @@ func TestForceConnect(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
 	props := make(map[string]string)
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
-	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props)
+	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager)
 	pluginServiceImpl := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
 	var calls []string
 	expectedConn := MockDriverConnection{id: 123}
@@ -333,7 +190,7 @@ func TestForceConnect(t *testing.T) {
 		CreateTestPlugin(&calls, 2, nil, nil, false),
 		CreateTestPlugin(&calls, 3, expectedConn, nil, false),
 	}
-	err := target.Init(pluginServiceImpl, plugins, connectionProviderManager)
+	err := target.Init(pluginServiceImpl, plugins)
 	if err != nil {
 		return
 	}
@@ -355,7 +212,7 @@ func TestConnectWithErrorBefore(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
 	props := make(map[string]string)
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
-	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props)
+	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager)
 	pluginServiceImpl := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
 	var calls []string
 	expectedConn := MockDriverConnection{id: 123}
@@ -367,7 +224,7 @@ func TestConnectWithErrorBefore(t *testing.T) {
 		CreateTestPlugin(&calls, 3, expectedConn, nil, false),
 	}
 
-	err := target.Init(pluginServiceImpl, plugins, connectionProviderManager)
+	err := target.Init(pluginServiceImpl, plugins)
 	if err != nil {
 		return
 	}
@@ -388,7 +245,7 @@ func TestConnectWithErrorAfter(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
 	props := make(map[string]string)
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
-	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props)
+	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager)
 	pluginServiceImpl := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
 	var calls []string
 	expectedConn := MockDriverConnection{id: 123}
@@ -399,7 +256,7 @@ func TestConnectWithErrorAfter(t *testing.T) {
 		CreateTestPlugin(&calls, 1, nil, expectedError, false),
 		CreateTestPlugin(&calls, 3, expectedConn, nil, true),
 	}
-	err := target.Init(pluginServiceImpl, plugins, connectionProviderManager)
+	err := target.Init(pluginServiceImpl, plugins)
 	if err != nil {
 		return
 	}
@@ -432,19 +289,19 @@ func TestTwoConnectionsDoNotBlockOneAnother(t *testing.T) {
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
 	pluginServiceImpl := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
 
-	pluginManager1 := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props)
-	pluginManager2 := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props)
+	pluginManager1 := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager)
+	pluginManager2 := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager)
 
 	var calls []string
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(&calls, 1, nil, nil, false),
 	}
 
-	err := pluginManager1.Init(pluginServiceImpl, plugins, connectionProviderManager)
+	err := pluginManager1.Init(pluginServiceImpl, plugins)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = pluginManager2.Init(pluginServiceImpl, plugins, connectionProviderManager)
+	err = pluginManager2.Init(pluginServiceImpl, plugins)
 	if err != nil {
 		t.Fatal(err)
 	}

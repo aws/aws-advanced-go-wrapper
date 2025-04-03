@@ -94,22 +94,22 @@ type PluginManagerImpl struct {
 
 func NewPluginManagerImpl(
 	targetDriver driver.Driver,
-	props map[string]string) *PluginManagerImpl {
+	props map[string]string,
+	connProviderManager driver_infrastructure.ConnectionProviderManager) *PluginManagerImpl {
 	pluginFuncMap := make(map[string]PluginChain)
 	return &PluginManagerImpl{
-		targetDriver:  targetDriver,
-		props:         props,
-		pluginFuncMap: pluginFuncMap,
+		targetDriver:        targetDriver,
+		props:               props,
+		pluginFuncMap:       pluginFuncMap,
+		connProviderManager: connProviderManager,
 	}
 }
 
 func (pluginManager *PluginManagerImpl) Init(
 	pluginService driver_infrastructure.PluginService,
-	plugins []driver_infrastructure.ConnectionPlugin,
-	connProviderManager driver_infrastructure.ConnectionProviderManager) error {
+	plugins []driver_infrastructure.ConnectionPlugin) error {
 	pluginManager.pluginService = pluginService
 	pluginManager.plugins = plugins
-	pluginManager.connProviderManager = connProviderManager
 	return nil
 }
 
@@ -288,7 +288,7 @@ func (pluginManager *PluginManagerImpl) NotifySubscribedPlugins(
 func (pluginManager *PluginManagerImpl) GetHostInfoByStrategy(
 	role host_info_util.HostRole,
 	strategy string,
-	hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error) {
+	hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
 	for i := 0; i < len(pluginManager.plugins); i++ {
 		currentPlugin := pluginManager.plugins[i]
 		isSubscribed := slices.Contains(currentPlugin.GetSubscribedMethods(), strategy)
@@ -302,7 +302,7 @@ func (pluginManager *PluginManagerImpl) GetHostInfoByStrategy(
 		}
 	}
 
-	return host_info_util.HostInfo{}, error_util.NewUnsupportedStrategyError(
+	return nil, error_util.NewUnsupportedStrategyError(
 		error_util.GetMessage("The wrapper does not support the requested host selection strategy: " + strategy))
 }
 

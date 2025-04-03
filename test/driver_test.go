@@ -25,13 +25,15 @@ import (
 	"awssql/plugin_helpers"
 	"context"
 	"database/sql/driver"
-	"errors"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var mysqlTestDsn = "someUser:somePassword@tcp(mydatabase.com:3306)/myDatabase?foo=bar&pop=snap"
 var pgTestDsn = "postgres://someUser:somePassword@localhost:5432/pgx_test?sslmode=disable&foo=bar"
+var mockHostInfo = host_info_util.NewHostInfoBuilder().SetHost("test").SetPort(1234).SetRole(host_info_util.WRITER).Build()
 
 func TestAwsWrapperError(t *testing.T) {
 	testError := error_util.NewUnavailableHostError("test")
@@ -185,27 +187,28 @@ func TestIsDialectMySQL(t *testing.T) {
 
 func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
 	props := map[string]string{"protocol": "mysql"}
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props))
+	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}))
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, driver_infrastructure.MySQLDriverDialect{}, props, mysqlTestDsn)
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
-	_ = mockPluginManager.Init(nil, plugins, driver_infrastructure.ConnectionProviderManager{})
+	_ = mockPluginManager.Init(nil, plugins)
 	mockContainer := container.Container{PluginManager: mockPluginManager, PluginService: mockPluginService}
 	baseAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockContainer, driver_infrastructure.MYSQL)
 	res, err := baseAwsWrapperConn.QueryContext(context.Background(), "", nil)
 	if res != nil ||
 		!strings.Contains(
 			err.Error(),
-			"The underlying driver connection does not implement the required interface 'driver.QueryerContext'.") {
+			"does not implement the required interface") {
 		t.Errorf("An AWS Wrapper Conn with an underlying connection that does not support QueryContext should not return a result.")
 	}
 
 	mockUnderlyingConn := &MockConn{nil, nil, nil, nil, false}
 	mockUnderlyingConn.updateQueryRow([]string{"column"}, []driver.Value{"test"})
-	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockContainer, driver_infrastructure.MYSQL)
-	_ = mockPluginService.SetCurrentConnection(mockUnderlyingConn, host_info_util.HostInfo{}, nil)
+	mockAwsWrapperConn := awsDriver.NewAwsWrapperConn(mockContainer, driver_infrastructure.MYSQL)
+	err = mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
+	assert.Nil(t, err)
 	res, err = mockAwsWrapperConn.QueryContext(context.Background(), "", nil)
 	if err != nil || res.Columns()[0] != "column" {
 		t.Errorf("An AWS Wrapper Conn with an underlying connection that does support QueryContext should return a result.")
@@ -229,13 +232,13 @@ func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
 
 func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
 	props := map[string]string{"protocol": "postgres"}
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props))
+	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}))
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
-	_ = mockPluginManager.Init(nil, plugins, driver_infrastructure.ConnectionProviderManager{})
+	_ = mockPluginManager.Init(nil, plugins)
 	mockContainer := container.Container{PluginManager: mockPluginManager, PluginService: mockPluginService}
 
 	baseAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockContainer, driver_infrastructure.PG)
@@ -243,12 +246,13 @@ func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
 	if res != nil ||
 		!strings.Contains(
 			err.Error(),
-			"The underlying driver connection does not implement the required interface 'driver.QueryerContext'.") {
+			"does not implement the required interface") {
 		t.Errorf("An AWS Wrapper Conn with an underlying connection that does not support QueryContext should not return a result.")
 	}
 
 	mockUnderlyingConn := &MockConn{nil, nil, nil, nil, false}
-	_ = mockPluginService.SetCurrentConnection(mockUnderlyingConn, host_info_util.HostInfo{}, nil)
+	err = mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
+	assert.Nil(t, err)
 
 	mockUnderlyingConn.updateQueryRow([]string{"column"}, []driver.Value{"test"})
 	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockContainer, driver_infrastructure.PG)
@@ -275,17 +279,18 @@ func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
 
 func TestWrapperUtilsExecWithPlugins(t *testing.T) {
 	props := map[string]string{"protocol": "postgres"}
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props))
+	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}))
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
-	_ = mockPluginManager.Init(nil, plugins, driver_infrastructure.ConnectionProviderManager{})
+	_ = mockPluginManager.Init(nil, plugins)
 	mockContainer := container.Container{PluginManager: mockPluginManager, PluginService: mockPluginService}
 
 	mockUnderlyingConn := &MockConn{nil, MockResult{}, nil, nil, false}
-	_ = mockPluginService.SetCurrentConnection(mockUnderlyingConn, host_info_util.HostInfo{}, nil)
+	err := mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
+	assert.Nil(t, err)
 	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockContainer, driver_infrastructure.PG)
 
 	res, err := mockAwsWrapperConn.ExecContext(context.Background(), "", nil)
@@ -306,17 +311,18 @@ func TestWrapperUtilsExecWithPlugins(t *testing.T) {
 
 func TestWrapperUtilsBeginWithPlugins(t *testing.T) {
 	props := map[string]string{"protocol": "postgres"}
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props))
+	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}))
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
-	_ = mockPluginManager.Init(nil, plugins, driver_infrastructure.ConnectionProviderManager{})
+	_ = mockPluginManager.Init(nil, plugins)
 	mockContainer := container.Container{PluginManager: mockPluginManager, PluginService: mockPluginService}
 
 	mockUnderlyingConn := &MockConn{nil, nil, MockTx{}, nil, false}
-	_ = mockPluginService.SetCurrentConnection(mockUnderlyingConn, host_info_util.HostInfo{}, nil)
+	err := mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
+	assert.Nil(t, err)
 	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockContainer, driver_infrastructure.PG)
 
 	tx, err := mockAwsWrapperConn.Begin()
@@ -337,17 +343,18 @@ func TestWrapperUtilsBeginWithPlugins(t *testing.T) {
 
 func TestWrapperUtilsPrepareWithPlugins(t *testing.T) {
 	props := map[string]string{"protocol": "postgres"}
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props))
+	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}))
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
-	_ = mockPluginManager.Init(nil, plugins, driver_infrastructure.ConnectionProviderManager{})
+	_ = mockPluginManager.Init(nil, plugins)
 	mockContainer := container.Container{PluginManager: mockPluginManager, PluginService: mockPluginService}
 
 	mockUnderlyingConn := &MockConn{nil, nil, nil, MockStmt{}, false}
-	_ = mockPluginService.SetCurrentConnection(mockUnderlyingConn, host_info_util.HostInfo{}, nil)
+	err := mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
+	assert.Nil(t, err)
 	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockContainer, driver_infrastructure.PG)
 
 	res, err := mockAwsWrapperConn.Prepare("")
@@ -372,125 +379,4 @@ func TestWrapperUtilsPrepareWithPlugins(t *testing.T) {
 			"The underlying driver statement does not implement the required interface 'driver.StmtExecContext'.") {
 		t.Errorf("The returned stmt should attempt optional interfaces that are supported by both pgx and mysql drivers.")
 	}
-}
-
-type MockConn struct {
-	queryResult   driver.Rows
-	execResult    driver.Result
-	beginResult   driver.Tx
-	prepareResult driver.Stmt
-	throwError    bool
-}
-
-func (m *MockConn) Close() error {
-	return nil
-}
-
-func (m *MockConn) Prepare(query string) (driver.Stmt, error) {
-	return m.prepareResult, nil
-}
-
-func (m *MockConn) Begin() (driver.Tx, error) {
-	return m.beginResult, nil
-}
-
-func (m *MockConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
-	if m.queryResult != nil || m.throwError == false {
-		return m.queryResult, nil
-	}
-	return nil, errors.New("test error")
-}
-
-func (m *MockConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
-	return m.execResult, nil
-}
-
-func (m *MockConn) updateQueryRow(columns []string, row []driver.Value) {
-	testRow := MockRows{columns: columns, row: row, throwNextError: -1}
-	m.queryResult = &testRow
-}
-
-func (m *MockConn) updateThrowError(throwError bool) {
-	m.throwError = throwError
-}
-
-func (m *MockConn) updateQueryRowSingleUse(columns []string, row []driver.Value) {
-	testRow := MockRows{columns: columns, row: row, throwNextError: 1}
-	m.queryResult = &testRow
-}
-
-type MockStmt struct {
-}
-
-func (a MockStmt) Close() error {
-	return errors.New("MockStmt error")
-}
-
-func (a MockStmt) Exec(args []driver.Value) (driver.Result, error) {
-	return MockResult{}, errors.New("MockStmt error")
-}
-
-func (a MockStmt) NumInput() int {
-	return 1
-}
-
-func (a MockStmt) Query(args []driver.Value) (driver.Rows, error) {
-	return &MockRows{[]string{"column"}, []driver.Value{"test"}, -1}, nil
-}
-
-type MockResult struct {
-}
-
-func (m MockResult) LastInsertId() (int64, error) {
-	return 1, errors.New("MockResult error")
-}
-
-func (m MockResult) RowsAffected() (int64, error) {
-	return 1, errors.New("MockResult error")
-}
-
-type MockTx struct {
-}
-
-func (a MockTx) Commit() error {
-	return errors.New("MockTx error")
-}
-
-func (a MockTx) Rollback() error {
-	return errors.New("MockTx error")
-}
-
-type MockDriverConn struct {
-	driver.Conn
-}
-
-type MockRows struct {
-	columns        []string
-	row            []driver.Value
-	throwNextError int
-}
-
-func (t *MockRows) Columns() []string {
-	return t.columns
-}
-
-func (t *MockRows) Close() error {
-	return nil
-}
-
-func (t *MockRows) Next(dest []driver.Value) error {
-	if len(t.row) < 1 {
-		return errors.New("test error")
-	}
-	for i := range dest {
-		dest[i] = t.row[i]
-	}
-	if t.throwNextError == 1 {
-		t.throwNextError = 0
-	} else if t.throwNextError == 0 {
-		t.columns = nil
-		t.row = nil
-		return errors.New("test error")
-	}
-	return nil
 }

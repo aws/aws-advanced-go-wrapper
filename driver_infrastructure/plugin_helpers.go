@@ -26,27 +26,37 @@ type ExecuteFunc func() (any, any, bool, error)
 type PluginExecFunc func(plugin ConnectionPlugin, targetFunc func() (any, any, bool, error)) (any, any, bool, error)
 type PluginConnectFunc func(plugin ConnectionPlugin, targetFunc func() (any, error)) (any, error)
 
+type HostListProviderService interface {
+	IsStaticHostListProvider() bool
+	CreateHostListProvider(props map[string]string, dsn string) HostListProvider
+	GetHostListProvider() HostListProvider
+	SetHostListProvider(hostListProvider HostListProvider)
+	SetInitialConnectionHostInfo(info *host_info_util.HostInfo)
+	GetDialect() DatabaseDialect
+	GetCurrentConnection() driver.Conn
+}
+
 type PluginService interface {
 	GetCurrentConnection() driver.Conn
-	SetCurrentConnection(conn driver.Conn, hostInfo host_info_util.HostInfo, skipNotificationForThisPlugin ConnectionPlugin) error
-	GetCurrentHostInfo() host_info_util.HostInfo
-	GetHosts() []host_info_util.HostInfo
-	GetInitialConnectionHostInfo() host_info_util.HostInfo
+	SetCurrentConnection(conn driver.Conn, hostInfo *host_info_util.HostInfo, skipNotificationForThisPlugin ConnectionPlugin) error
+	GetInitialConnectionHostInfo() *host_info_util.HostInfo
+	GetCurrentHostInfo() (*host_info_util.HostInfo, error)
+	GetHosts() []*host_info_util.HostInfo
 	AcceptsStrategy(role host_info_util.HostRole, strategy string) bool
-	GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error)
+	GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error)
 	GetHostRole(driver.Conn) host_info_util.HostRole
 	SetAvailability(hostAliases map[string]bool, availability host_info_util.HostAvailability)
 	InTransaction() bool
 	GetHostListProvider() HostListProvider
 	RefreshHostList(conn driver.Conn) error
-	ForceRefreshHostList(conn driver.Conn) error // TODO: double check signatures, there are multiple
+	ForceRefreshHostList(conn driver.Conn) error
 	Connect(hostInfo host_info_util.HostInfo, props map[string]string) (driver.Conn, error)
 	ForceConnect(hostInfo host_info_util.HostInfo, props map[string]string) (driver.Conn, error)
 	GetDialect() DatabaseDialect
 	UpdateDialect(conn driver.Conn)
 	GetTargetDriverDialect() DriverDialect
-	IdentifyConnection(conn driver.Conn) (host_info_util.HostInfo, error)
-	FillAliases(conn driver.Conn, hostInfo host_info_util.HostInfo) error
+	IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error)
+	FillAliases(conn driver.Conn, hostInfo *host_info_util.HostInfo)
 	GetConnectionProvider() ConnectionProvider
 	GetProperties() map[string]string
 	IsNetworkError(err error) bool
@@ -54,7 +64,7 @@ type PluginService interface {
 }
 
 type PluginManager interface {
-	Init(pluginService PluginService, plugins []ConnectionPlugin, connProviderManager ConnectionProviderManager) error
+	Init(pluginService PluginService, plugins []ConnectionPlugin) error
 	InitHostProvider(initialUrl string, props map[string]string, hostListProviderService HostListProviderService) error
 	Connect(hostInfo host_info_util.HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)
 	ForceConnect(hostInfo host_info_util.HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)
@@ -68,7 +78,7 @@ type PluginManager interface {
 	NotifyConnectionChanged(
 		changes map[HostChangeOptions]bool, skipNotificationForThisPlugin ConnectionPlugin) map[OldConnectionSuggestedAction]bool
 	NotifySubscribedPlugins(methodName string, pluginFunc PluginExecFunc, skipNotificationForThisPlugin ConnectionPlugin) error
-	GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error)
+	GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error)
 	GetDefaultConnectionProvider() ConnectionProvider
 	GetEffectiveConnectionProvider() ConnectionProvider
 	GetConnectionProviderManager() ConnectionProviderManager

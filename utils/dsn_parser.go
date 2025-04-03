@@ -42,7 +42,7 @@ var (
 		`(?:\?(?P<params>[^\?]*))?$`) // [?param1=value1&paramN=valueN]
 )
 
-func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []host_info_util.HostInfo, err error) {
+func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []*host_info_util.HostInfo, err error) {
 	// check if valid dsn... if not return empty hostlist
 	properties, err := ParseDsn(dsn)
 	if err != nil {
@@ -80,12 +80,12 @@ func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []host_in
 		builder := host_info_util.NewHostInfoBuilder()
 		builder.SetHost(hostString).SetPort(port).SetRole(hostRole)
 		hostInfo := builder.Build()
-		hostInfoList = append(hostInfoList, *hostInfo)
+		hostInfoList = append(hostInfoList, hostInfo)
 	}
 	return
 }
 
-func ParseHostPortPair(dsn string) (host_info_util.HostInfo, error) {
+func ParseHostPortPair(dsn string) (*host_info_util.HostInfo, error) {
 	hosts, err := GetHostsFromDsn(dsn, true)
 	return hosts[0], err
 }

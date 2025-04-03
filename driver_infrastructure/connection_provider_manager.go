@@ -48,10 +48,10 @@ func (connProviderManager *ConnectionProviderManager) AcceptsStrategy(role host_
 }
 
 func (connProviderManager *ConnectionProviderManager) GetHostInfoByStrategy(
-	hosts []host_info_util.HostInfo,
+	hosts []*host_info_util.HostInfo,
 	role host_info_util.HostRole,
 	strategy string,
-	props map[string]string) (host_info_util.HostInfo, error) {
+	props map[string]string) (*host_info_util.HostInfo, error) {
 	if connProviderManager.EffectiveProvider.AcceptsStrategy(role, strategy) {
 		host, err := connProviderManager.EffectiveProvider.GetHostInfoByStrategy(hosts, role, strategy, props)
 		if err == nil {

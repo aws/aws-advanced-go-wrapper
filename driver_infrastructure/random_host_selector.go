@@ -25,13 +25,13 @@ import (
 
 type RandomHostSelector struct{}
 
-func (r *RandomHostSelector) GetHost(hosts []host_info_util.HostInfo, role host_info_util.HostRole, props map[string]string) (host_info_util.HostInfo, error) {
-	eligibleHosts := utils.FilterSlice(hosts, func(hostInfo host_info_util.HostInfo) bool {
+func (r *RandomHostSelector) GetHost(hosts []*host_info_util.HostInfo, role host_info_util.HostRole, props map[string]string) (*host_info_util.HostInfo, error) {
+	eligibleHosts := utils.FilterSlice(hosts, func(hostInfo *host_info_util.HostInfo) bool {
 		return role == hostInfo.Role && hostInfo.Availability == host_info_util.AVAILABLE
 	})
 
 	if len(eligibleHosts) == 0 {
-		return host_info_util.HostInfo{}, error_util.NewGenericAwsWrapperError(error_util.GetMessage("HostSelector.noHostsMatchingRole", role))
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("HostSelector.noHostsMatchingRole", role))
 	}
 
 	randomIndex := rand.Intn(len(eligibleHosts))

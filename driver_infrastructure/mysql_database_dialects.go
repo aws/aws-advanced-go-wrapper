@@ -168,7 +168,7 @@ func (m *AuroraMySQLDatabaseDialect) GetHostRole(conn driver.Conn) host_info_uti
 	return host_info_util.UNKNOWN
 }
 
-func (m *AuroraMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider *RdsHostListProvider) []host_info_util.HostInfo {
+func (m *AuroraMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider *RdsHostListProvider) ([]*host_info_util.HostInfo, error) {
 	topologyQuery := "SELECT server_id, CASE WHEN SESSION_ID = 'MASTER_SESSION_ID' THEN TRUE ELSE FALSE END as is_writer, " +
 		"cpu, REPLICA_LAG_IN_MILLISECONDS as 'lag', LAST_UPDATE_TIMESTAMP as last_update_timestamp " +
 		"FROM information_schema.replica_host_status " +
@@ -178,16 +178,20 @@ func (m *AuroraMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider *Rds
 	queryerCtx, ok := conn.(driver.QueryerContext)
 	if !ok {
 		// Unable to query, conn does not implement QueryerContext.
-		return nil
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("Conn.doesNotImplementRequiredInterface", "driver.QueryerContext"))
 	}
 
 	rows, err := queryerCtx.QueryContext(context.Background(), topologyQuery, nil)
 	if err != nil {
 		// Query failed.
-		return nil
+		return nil, err
 	}
 
-	hosts := []host_info_util.HostInfo{}
+	hosts := []*host_info_util.HostInfo{}
+	if rows == nil {
+		// Query returned an empty host list, no processing required.
+		return hosts, nil
+	}
 	row := make([]driver.Value, len(rows.Columns()))
 	err = rows.Next(row)
 
@@ -219,5 +223,5 @@ func (m *AuroraMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider *Rds
 		err = rows.Next(row)
 	}
 	rows.Close()
-	return hosts
+	return hosts, nil
 }

@@ -68,8 +68,8 @@ func (b BaseConnectionPlugin) AcceptsStrategy(role host_info_util.HostRole, stra
 	return false
 }
 
-func (b BaseConnectionPlugin) GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []host_info_util.HostInfo) (host_info_util.HostInfo, error) {
-	return host_info_util.HostInfo{}, error_util.NewUnsupportedMethodError("GetHostInfoByStrategy", fmt.Sprintf("%T", b))
+func (b BaseConnectionPlugin) GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
+	return nil, error_util.NewUnsupportedMethodError("GetHostInfoByStrategy", fmt.Sprintf("%T", b))
 }
 
 func (b BaseConnectionPlugin) NotifyConnectionChanged(changes map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {

@@ -47,6 +47,7 @@ func TestImplementations(t *testing.T) {
 	var _ driver_infrastructure.HostListProvider = (*driver_infrastructure.RdsHostListProvider)(nil)
 	var _ driver_infrastructure.ConnectionProvider = (*driver_infrastructure.DriverConnectionProvider)(nil)
 	var _ driver_infrastructure.ConnectionPlugin = (*plugins.DefaultPlugin)(nil)
+	var _ driver_infrastructure.ConnectionPlugin = (*plugins.BaseConnectionPlugin)(nil)
 	var _ error_util.ErrorHandler = (*driver_infrastructure.MySQLErrorHandler)(nil)
 	var _ error_util.ErrorHandler = (*driver_infrastructure.MySQLDriverDialect)(nil)
 	var _ error_util.ErrorHandler = (*driver_infrastructure.PgxErrorHandler)(nil)

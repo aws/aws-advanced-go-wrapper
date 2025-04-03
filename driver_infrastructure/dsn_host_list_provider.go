@@ -29,50 +29,51 @@ type DsnHostListProvider struct {
 	dsn                            string
 	hostListProviderService        HostListProviderService
 	isInitialized                  bool
-	hostList                       []host_info_util.HostInfo
+	hostList                       []*host_info_util.HostInfo
 }
 
 func NewDsnHostListProvider(props map[string]string, dsn string, hostListProviderService HostListProviderService) *DsnHostListProvider {
 	isSingleWriterConnectionString := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.SINGLE_WRITER_DSN)
-	return &DsnHostListProvider{isSingleWriterConnectionString, dsn, hostListProviderService, false, []host_info_util.HostInfo{}}
+	return &DsnHostListProvider{isSingleWriterConnectionString, dsn, hostListProviderService, false, []*host_info_util.HostInfo{}}
 }
 
-func (c *DsnHostListProvider) init() {
+func (c *DsnHostListProvider) init() error {
 	if c.isInitialized {
-		return
+		return nil
 	}
 
 	hosts, _ := utils.GetHostsFromDsn(c.dsn, c.isSingleWriterConnectionString)
 	c.hostList = append(c.hostList, hosts...)
 
 	if len(c.hostList) == 0 {
-		panic(error_util.GetMessage("DsnHostListProvider.parsedListEmpty"))
+		return error_util.NewGenericAwsWrapperError(error_util.GetMessage("DsnHostListProvider.parsedListEmpty"))
 	}
 
 	c.hostListProviderService.SetInitialConnectionHostInfo(c.hostList[0])
 	c.isInitialized = true
+	return nil
 }
 
 func (c *DsnHostListProvider) IsStaticHostListProvider() bool {
 	return true
 }
 
-func (c *DsnHostListProvider) Refresh(conn driver.Conn) []host_info_util.HostInfo {
-	c.init()
-	return c.hostList
+func (c *DsnHostListProvider) Refresh(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
+	err := c.init()
+	return c.hostList, err
 }
 
-func (c *DsnHostListProvider) ForceRefresh(conn driver.Conn) []host_info_util.HostInfo {
-	c.init()
-	return c.hostList
+func (c *DsnHostListProvider) ForceRefresh(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
+	err := c.init()
+	return c.hostList, err
 }
 
 func (c *DsnHostListProvider) GetHostRole(conn driver.Conn) host_info_util.HostRole {
 	panic(error_util.GetMessage("DsnHostListProvider.unsupportedGetHostRole"))
 }
 
-func (c *DsnHostListProvider) IdentifyConnection(conn driver.Conn) host_info_util.HostInfo {
-	panic(error_util.GetMessage("DsnHostListProvider.unsupportedIdentifyConnection"))
+func (c *DsnHostListProvider) IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error) {
+	return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DsnHostListProvider.unsupportedIdentifyConnection"))
 }
 
 func (c *DsnHostListProvider) GetClusterId() string {

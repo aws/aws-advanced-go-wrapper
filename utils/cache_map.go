@@ -46,7 +46,6 @@ func (c *CacheMap[T]) Put(key string, value T, expiration time.Duration) {
 		item:           value,
 		expirationTime: expirationTime,
 	}
-
 	c.lock.Unlock()
 	defer c.CleanUp()
 }

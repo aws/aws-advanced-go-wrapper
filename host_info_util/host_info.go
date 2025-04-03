@@ -55,8 +55,7 @@ type HostInfo struct {
 	LastUpdateTime time.Time
 }
 
-//nolint:unused
-func (hostInfo *HostInfo) addAlias(alias string) {
+func (hostInfo *HostInfo) AddAlias(alias string) {
 	hostInfo.Aliases[alias] = true
 	hostInfo.AllAliases[alias] = true
 }
@@ -97,6 +96,19 @@ func (hostInfo *HostInfo) Equals(host HostInfo) bool {
 		hostInfo.Availability == host.Availability &&
 		hostInfo.Role == host.Role &&
 		hostInfo.Weight == host.Weight
+}
+
+func (hostInfo *HostInfo) IsNil() bool {
+	if hostInfo == nil {
+		return true
+	}
+	return (hostInfo.Host == "" &&
+		hostInfo.Port == 0 &&
+		hostInfo.Aliases == nil &&
+		hostInfo.AllAliases == nil &&
+		hostInfo.HostId == 0 &&
+		hostInfo.Weight == 0 &&
+		hostInfo.LastUpdateTime == time.Time{})
 }
 
 func (hostInfo *HostInfo) String() string {
