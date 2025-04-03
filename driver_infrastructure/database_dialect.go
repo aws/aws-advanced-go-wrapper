@@ -25,11 +25,6 @@ type DatabaseDialect interface {
 	GetDefaultPort() int
 	GetHostAliasQuery() string
 	GetServerVersionQuery() string
-	GetSetReadOnlyQuery(readOnly bool) string
-	GetSetTransactionIsolationQuery(level TransactionIsolationLevel) (string, error)
-	GetSetAutoCommitQuery(autoCommit bool) (string, error)
-	GetSetSchemaQuery(schema string) (string, error)
-	GetSetCatalogQuery(catalog string) (string, error)
 	GetDialectUpdateCandidates() []string
 	IsDialect(conn driver.Conn) bool
 	GetHostListProvider(props map[string]string, initialDsn string, hostListProviderService HostListProviderService) HostListProvider

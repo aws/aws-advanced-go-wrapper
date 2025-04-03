@@ -22,7 +22,6 @@ import (
 	"awssql/utils"
 	"context"
 	"database/sql/driver"
-	"fmt"
 	"strings"
 	"time"
 )
@@ -34,10 +33,6 @@ func (m *MySQLDatabaseDialect) GetDialectUpdateCandidates() []string {
 	return []string{AURORA_MYSQL_DIALECT, RDS_MYSQL_DIALECT}
 }
 
-func (m *MySQLDatabaseDialect) GetSetAutoCommitQuery(autoCommit bool) (string, error) {
-	return fmt.Sprintf("SET AUTOCOMMIT=%t", autoCommit), nil
-}
-
 func (m *MySQLDatabaseDialect) GetDefaultPort() int {
 	return 3306
 }
@@ -46,40 +41,8 @@ func (m *MySQLDatabaseDialect) GetHostAliasQuery() string {
 	return "SELECT CONCAT(@@hostname, ':', @@port)"
 }
 
-func (m *MySQLDatabaseDialect) GetSetReadOnlyQuery(readOnly bool) string {
-	if readOnly {
-		return "SET SESSION TRANSACTION READ ONLY"
-	}
-	return "SET SESSION TRANSACTION READ WRITE"
-}
-
 func (m *MySQLDatabaseDialect) GetServerVersionQuery() string {
 	return "SHOW VARIABLES LIKE 'version_comment'"
-}
-
-func (m *MySQLDatabaseDialect) GetSetCatalogQuery(catalog string) (string, error) {
-	return fmt.Sprintf("USE %s", catalog), nil
-}
-
-func (m *MySQLDatabaseDialect) GetSetSchemaQuery(schema string) (string, error) {
-	return "", error_util.NewUnsupportedMethodError("setSchema", fmt.Sprintf("%T", m))
-}
-
-func (m *MySQLDatabaseDialect) GetSetTransactionIsolationQuery(level TransactionIsolationLevel) (string, error) {
-	var transactionIsolationLevel string
-	switch level {
-	case TRANSACTION_READ_UNCOMMITTED:
-		transactionIsolationLevel = "READ UNCOMMITTED"
-	case TRANSACTION_READ_COMMITTED:
-		transactionIsolationLevel = "READ COMMITTED"
-	case TRANSACTION_REPEATABLE_READ:
-		transactionIsolationLevel = "REPEATABLE READ"
-	case TRANSACTION_SERIALIZABLE:
-		transactionIsolationLevel = "SERIALIZABLE"
-	default:
-		return "", error_util.NewGenericAwsWrapperError(error_util.GetMessage("Conn.invalidTransactionIsolationLevel", level))
-	}
-	return fmt.Sprintf("SET SESSION TRANSACTION ISOLATION LEVEL %s", transactionIsolationLevel), nil
 }
 
 func (m *MySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {

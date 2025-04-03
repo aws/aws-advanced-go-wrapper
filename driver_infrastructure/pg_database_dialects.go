@@ -22,7 +22,6 @@ import (
 	"awssql/utils"
 	"context"
 	"database/sql/driver"
-	"fmt"
 	"time"
 )
 
@@ -43,42 +42,6 @@ func (p *PgDatabaseDialect) GetHostAliasQuery() string {
 
 func (p *PgDatabaseDialect) GetServerVersionQuery() string {
 	return "SELECT 'version', VERSION()"
-}
-
-func (p *PgDatabaseDialect) GetSetAutoCommitQuery(autoCommit bool) (string, error) {
-	return "", error_util.NewUnsupportedMethodError("setAutoCommit", fmt.Sprintf("%T", p))
-}
-
-func (p *PgDatabaseDialect) GetSetCatalogQuery(catalog string) (string, error) {
-	return "", error_util.NewUnsupportedMethodError("setCatalog", fmt.Sprintf("%T", p))
-}
-
-func (p *PgDatabaseDialect) GetSetReadOnlyQuery(readOnly bool) string {
-	if readOnly {
-		return "SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY"
-	}
-	return "SET SESSION CHARACTERISTICS AS TRANSACTION READ WRITE"
-}
-
-func (p *PgDatabaseDialect) GetSetSchemaQuery(schema string) (string, error) {
-	return fmt.Sprintf("SET search_path TO %s", schema), nil
-}
-
-func (p *PgDatabaseDialect) GetSetTransactionIsolationQuery(level TransactionIsolationLevel) (string, error) {
-	var transactionIsolationLevel string
-	switch level {
-	case TRANSACTION_READ_UNCOMMITTED:
-		transactionIsolationLevel = "READ UNCOMMITTED"
-	case TRANSACTION_READ_COMMITTED:
-		transactionIsolationLevel = "READ COMMITTED"
-	case TRANSACTION_REPEATABLE_READ:
-		transactionIsolationLevel = "REPEATABLE READ"
-	case TRANSACTION_SERIALIZABLE:
-		transactionIsolationLevel = "SERIALIZABLE"
-	default:
-		return "", error_util.NewGenericAwsWrapperError(error_util.GetMessage("Conn.invalidTransactionIsolationLevel", level))
-	}
-	return fmt.Sprintf("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL %s", transactionIsolationLevel), nil
 }
 
 func (p *PgDatabaseDialect) IsDialect(conn driver.Conn) bool {
