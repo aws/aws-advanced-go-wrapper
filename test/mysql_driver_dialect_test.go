@@ -19,8 +19,9 @@ package test
 import (
 	"awssql/driver_infrastructure"
 	"awssql/property_util"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPrepareDsnWithoutUser(t *testing.T) {
@@ -33,6 +34,7 @@ func TestPrepareDsnWithoutUser(t *testing.T) {
 		property_util.DATABASE.Name: "dbName",
 		property_util.NET.Name:      "tcp",
 		property_util.PLUGINS.Name:  "test",
+		"monitoring-user":           "monitor-user",
 	}
 
 	dsn := driverDialect.PrepareDsn(properties)

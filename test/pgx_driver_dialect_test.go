@@ -20,10 +20,11 @@ import (
 	"awssql/driver_infrastructure"
 	"awssql/property_util"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPrepareDsn(t *testing.T) {
@@ -36,6 +37,7 @@ func TestPrepareDsn(t *testing.T) {
 		property_util.HOST.Name:     "host",
 		property_util.DATABASE.Name: "dbName",
 		property_util.PLUGINS.Name:  "test",
+		"monitoring-user":           "monitor-user",
 	}
 
 	dsn := driverDialect.PrepareDsn(properties)
@@ -47,4 +49,5 @@ func TestPrepareDsn(t *testing.T) {
 	assert.True(t, strings.Contains(dsn, fmt.Sprintf("%s=host", property_util.HOST.Name)))
 	assert.True(t, strings.Contains(dsn, fmt.Sprintf("%s=dbName", property_util.DATABASE.Name)))
 	assert.False(t, strings.Contains(dsn, fmt.Sprintf("%s=test", property_util.PLUGINS.Name)))
+	assert.False(t, strings.Contains(dsn, "monitor-user"))
 }

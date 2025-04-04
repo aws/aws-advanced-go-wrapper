@@ -66,8 +66,7 @@ func (hostInfo *HostInfo) removeAlias(alias string) {
 	delete(hostInfo.AllAliases, alias)
 }
 
-//nolint:unused
-func (hostInfo *HostInfo) resetAliases() {
+func (hostInfo *HostInfo) ResetAliases() {
 	hostInfo.Aliases = make(map[string]bool)
 	hostInfo.AllAliases = make(map[string]bool)
 

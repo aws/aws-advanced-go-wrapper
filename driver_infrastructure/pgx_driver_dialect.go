@@ -82,7 +82,8 @@ func (p PgxDriverDialect) RegisterDriver() {
 
 func (p PgxDriverDialect) PrepareDsn(properties map[string]string) string {
 	var builder strings.Builder
-	for k, v := range properties {
+	copyProps := property_util.RemoveMonitoringProperties(properties)
+	for k, v := range copyProps {
 		if slices.Contains(pgxPersistingProperties, k) || !property_util.ALL_WRAPPER_PROPERTIES[k] {
 			if builder.Len() != 0 {
 				builder.WriteString(" ")

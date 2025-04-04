@@ -22,6 +22,7 @@ import (
 	"awssql/error_util"
 	"awssql/plugin_helpers"
 	"awssql/plugins"
+	"awssql/plugins/efm"
 	"database/sql/driver"
 	"testing"
 )
@@ -48,6 +49,10 @@ func TestImplementations(t *testing.T) {
 	var _ driver_infrastructure.ConnectionProvider = (*driver_infrastructure.DriverConnectionProvider)(nil)
 	var _ driver_infrastructure.ConnectionPlugin = (*plugins.DefaultPlugin)(nil)
 	var _ driver_infrastructure.ConnectionPlugin = (*plugins.BaseConnectionPlugin)(nil)
+	var _ driver_infrastructure.ConnectionPlugin = (*efm.HostMonitorConnectionPlugin)(nil)
+	var _ driver_infrastructure.ConnectionPluginFactory = (*efm.HostMonitoringPluginFactory)(nil)
+	var _ efm.MonitorService = (*efm.MonitorServiceImpl)(nil)
+	var _ efm.Monitor = (*efm.MonitorImpl)(nil)
 	var _ error_util.ErrorHandler = (*driver_infrastructure.MySQLErrorHandler)(nil)
 	var _ error_util.ErrorHandler = (*driver_infrastructure.MySQLDriverDialect)(nil)
 	var _ error_util.ErrorHandler = (*driver_infrastructure.PgxErrorHandler)(nil)

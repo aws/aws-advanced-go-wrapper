@@ -20,6 +20,7 @@ import (
 	"awssql/driver_infrastructure"
 	"awssql/error_util"
 	"awssql/plugins"
+	"awssql/plugins/efm"
 	"awssql/plugins/iam"
 	"awssql/property_util"
 	"fmt"
@@ -38,10 +39,12 @@ type PluginFactoryFuncWeight struct {
 }
 
 var pluginFactoryFuncByCode = map[string]PluginFactoryFunc{
+	"efm": efm.NewHostMonitoringPluginFactory,
 	"iam": iam.NewIamAuthPluginFactory,
 }
 
 var pluginWeightByCode = map[string]int{
+	"efm": 800,
 	"iam": 1000,
 }
 
@@ -98,7 +101,9 @@ func (builder *ConnectionPluginChainBuilder) GetPlugins(
 		if err != nil {
 			return nil, err
 		}
-		resultPlugins = append(resultPlugins, plugin)
+		if plugin != nil {
+			resultPlugins = append(resultPlugins, plugin)
+		}
 	}
 
 	defaultPlugin := driver_infrastructure.ConnectionPlugin(&plugins.DefaultPlugin{

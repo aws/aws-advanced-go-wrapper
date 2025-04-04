@@ -19,9 +19,11 @@ package property_util
 import (
 	"awssql/error_util"
 	"strconv"
+	"strings"
 )
 
-const DEFAULT_PLUGINS = ""
+const DEFAULT_PLUGINS = "efm"
+const MONITORING_PROPERTY_PREFIX = "monitoring-"
 
 type WrapperPropertyType int
 
@@ -92,6 +94,11 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	IAM_EXPIRATION.Name:                   true,
 	IAM_REGION.Name:                       true,
 	IAM_DEFAULT_PORT.Name:                 true,
+	FAILURE_DETECTION_ENABLED.Name:        true,
+	FAILURE_DETECTION_TIME_MS.Name:        true,
+	FAILURE_DETECTION_INTERVAL_MS.Name:    true,
+	FAILURE_DETECTION_COUNT.Name:          true,
+	MONITOR_DISPOSAL_TIME_MS.Name:         true,
 }
 
 var USER = AwsWrapperProperty{
@@ -137,67 +144,100 @@ var NET = AwsWrapperProperty{
 }
 
 var SINGLE_WRITER_DSN = AwsWrapperProperty{
-	"singleWriterDsn",
-	"Set to true if you are providing a dsn with multiple comma-delimited hosts and your cluster has only one writer. The writer must be the first host in the dsn.",
-	"false",
-	WRAPPER_TYPE_BOOL,
+	Name: "singleWriterDsn",
+	description: "Set to true if you are providing a dsn with multiple comma-delimited hosts and your cluster has only one writer. " +
+		"The writer must be the first host in the dsn.",
+	defaultValue:        "false",
+	wrapperPropertyType: WRAPPER_TYPE_BOOL,
 }
 
 var PLUGINS = AwsWrapperProperty{
-	"plugins",
-	"Comma separated list of connection plugin codes.",
-	DEFAULT_PLUGINS,
-	WRAPPER_TYPE_STRING,
+	Name:                "plugins",
+	description:         "Comma separated list of connection plugin codes.",
+	defaultValue:        DEFAULT_PLUGINS,
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
 var AUTO_SORT_PLUGIN_ORDER = AwsWrapperProperty{
-	"autoSortPluginOrder",
-	"This flag is enabled by default, meaning that the plugins order will be automatically adjusted. Disable it at your own " +
+	Name: "autoSortPluginOrder",
+	description: "This flag is enabled by default, meaning that the plugins order will be automatically adjusted. Disable it at your own " +
 		"risk or if you really need plugins to be executed in a particular order.",
-	"true",
-	WRAPPER_TYPE_BOOL,
+	defaultValue:        "true",
+	wrapperPropertyType: WRAPPER_TYPE_BOOL,
 }
 
 var TARGET_DRIVER_DIALECT = AwsWrapperProperty{
-	"targetDriverDialect",
-	"A unique identifier for the target driver dialect.",
-	"",
-	WRAPPER_TYPE_STRING,
+	Name:                "targetDriverDialect",
+	description:         "A unique identifier for the target driver dialect.",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
 var TARGET_DRIVER_AUTO_REGISTER = AwsWrapperProperty{
-	"targetDriverAutoRegister",
-	"Allows the AWS Advanced Go Wrapper to auto-register a target driver.",
-	"true",
-	WRAPPER_TYPE_BOOL,
+	Name:                "targetDriverAutoRegister",
+	description:         "Allows the AWS Advanced Go Wrapper to auto-register a target driver.",
+	defaultValue:        "true",
+	wrapperPropertyType: WRAPPER_TYPE_BOOL,
 }
 
 var CLUSTER_TOPOLOGY_REFRESH_RATE_MS = AwsWrapperProperty{
-	"clusterTopologyRefreshRate",
-	"Cluster topology refresh rate in millis. " +
+	Name: "clusterTopologyRefreshRateMs",
+	description: "Cluster topology refresh rate in millis. " +
 		"The cached topology for the cluster will be invalidated after the specified time, " +
 		"after which it will be updated during the next interaction with the connection.",
-	"30000",
-	WRAPPER_TYPE_INT,
+	defaultValue:        "30000",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
 }
 
 var CLUSTER_ID = AwsWrapperProperty{
-	"clusterId",
-	"A unique identifier for the cluster. " +
+	Name: "clusterId",
+	description: "A unique identifier for the cluster. " +
 		"Connections with the same cluster id share a cluster topology cache. " +
 		"If unspecified, a cluster id is automatically created for AWS RDS clusters.",
-	"",
-	WRAPPER_TYPE_STRING,
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
 var CLUSTER_INSTANCE_HOST_PATTERN = AwsWrapperProperty{
-	"clusterInstanceHostPattern",
-	"The cluster instance DNS pattern that will be used to build a complete instance endpoint. " +
+	Name: "clusterInstanceHostPattern",
+	description: "The cluster instance DNS pattern that will be used to build a complete instance endpoint. " +
 		"A \"?\" character in this pattern should be used as a placeholder for cluster instance names. " +
 		"This pattern is required to be specified for IP address or custom domain connections to AWS RDS " +
 		"clusters. Otherwise, if unspecified, the pattern will be automatically created for AWS RDS clusters.",
-	"",
-	WRAPPER_TYPE_STRING,
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var FAILURE_DETECTION_ENABLED = AwsWrapperProperty{
+	Name:                "failureDetectionEnabled",
+	description:         "Enable failure detection logic (aka host monitoring thread).",
+	defaultValue:        "true",
+	wrapperPropertyType: WRAPPER_TYPE_BOOL,
+}
+
+var FAILURE_DETECTION_TIME_MS = AwsWrapperProperty{
+	Name:                "failureDetectionTimeMs",
+	description:         "Interval in millis between sending SQL to the server and the first probe to database host.",
+	defaultValue:        "30000",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var FAILURE_DETECTION_INTERVAL_MS = AwsWrapperProperty{
+	Name:                "failureDetectionIntervalMs",
+	description:         "Interval in millis between probes to database host.",
+	defaultValue:        "5000",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var FAILURE_DETECTION_COUNT = AwsWrapperProperty{
+	Name:                "failureDetectionCount",
+	description:         "Number of failed connection checks before considering database host unhealthy.",
+	defaultValue:        "3",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var MONITOR_DISPOSAL_TIME_MS = AwsWrapperProperty{
+	Name:                "monitorDisposalTimeMs",
+	description:         "Interval in milliseconds for a monitor to be considered inactive and to be disposed.",
+	defaultValue:        "600000", // 10 minutes.
+	wrapperPropertyType: WRAPPER_TYPE_INT,
 }
 
 var IAM_HOST = AwsWrapperProperty{
@@ -226,4 +266,17 @@ var IAM_EXPIRATION = AwsWrapperProperty{
 	description:         "IAM token cache expiration in seconds.",
 	defaultValue:        "870",
 	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+func RemoveMonitoringProperties(props map[string]string) map[string]string {
+	copyProps := map[string]string{}
+
+	for key, value := range props {
+		// Monitoring properties are not included in copy.
+		if !strings.HasPrefix(key, MONITORING_PROPERTY_PREFIX) {
+			copyProps[key] = value
+		}
+	}
+
+	return copyProps
 }

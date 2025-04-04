@@ -106,7 +106,8 @@ func (m MySQLDriverDialect) PrepareDsn(properties map[string]string) string {
 	}
 
 	var params strings.Builder
-	for k, v := range properties {
+	copyProps := property_util.RemoveMonitoringProperties(properties)
+	for k, v := range copyProps {
 		if !property_util.ALL_WRAPPER_PROPERTIES[k] {
 			if params.Len() != 0 {
 				params.WriteString("&")
