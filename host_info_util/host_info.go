@@ -79,14 +79,13 @@ func (hostInfo *HostInfo) GetUrl() string {
 }
 
 func (hostInfo *HostInfo) GetHostAndPort() string {
-	if hostInfo.isPortSpecified() {
+	if hostInfo.IsPortSpecified() {
 		return hostInfo.Host + ":" + strconv.Itoa(hostInfo.Port)
 	}
 	return hostInfo.Host
 }
 
-//nolint:unused
-func (hostInfo *HostInfo) isPortSpecified() bool {
+func (hostInfo *HostInfo) IsPortSpecified() bool {
 	return hostInfo.Port != HOST_NO_PORT
 }
 

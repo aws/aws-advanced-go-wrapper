@@ -178,6 +178,20 @@ func getDomainGroup(host string) string {
 	return cachedDnsRegexp.FindStringSubmatch(host)[cachedDnsRegexp.SubexpIndex(DOMAIN_GROUP)]
 }
 
+func GetRdsRegion(host string) string {
+	preparedHost := GetPreparedHost(host)
+	if preparedHost == "" {
+		return ""
+	}
+
+	cachedDnsRegexp, ok := findAndCacheRegexp(preparedHost)
+	if !ok {
+		return ""
+	}
+
+	return cachedDnsRegexp.FindStringSubmatch(host)[cachedDnsRegexp.SubexpIndex(REGION_GROUP)]
+}
+
 func findAndCacheRegexp(host string) (regexp.Regexp, bool) {
 	val, ok := cachedDnsRegexp.Load(host)
 	if ok && val != nil {
