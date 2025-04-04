@@ -25,5 +25,5 @@ type ConnectionProvider interface {
 	AcceptsUrl(hostInfo host_info_util.HostInfo, props map[string]string) bool
 	AcceptsStrategy(role host_info_util.HostRole, strategy string) bool
 	GetHostInfoByStrategy(hosts []*host_info_util.HostInfo, role host_info_util.HostRole, strategy string, props map[string]string) (*host_info_util.HostInfo, error)
-	Connect(hostInfo host_info_util.HostInfo, props map[string]string, pluginService PluginService) (driver.Conn, error)
+	Connect(hostInfo *host_info_util.HostInfo, props map[string]string, pluginService PluginService) (driver.Conn, error)
 }

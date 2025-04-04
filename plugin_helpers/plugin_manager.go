@@ -140,7 +140,7 @@ func (pluginManager *PluginManagerImpl) InitHostProvider(
 }
 
 func (pluginManager *PluginManagerImpl) Connect(
-	hostInfo host_info_util.HostInfo,
+	hostInfo *host_info_util.HostInfo,
 	props map[string]string,
 	isInitialConnection bool) (driver.Conn, error) {
 	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (any, error)) (any, error) {
@@ -158,7 +158,7 @@ func (pluginManager *PluginManagerImpl) Connect(
 }
 
 func (pluginManager *PluginManagerImpl) ForceConnect(
-	hostInfo host_info_util.HostInfo,
+	hostInfo *host_info_util.HostInfo,
 	props map[string]string,
 	isInitialConnection bool) (driver.Conn, error) {
 	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (any, error)) (any, error) {

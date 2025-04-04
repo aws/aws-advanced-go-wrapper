@@ -57,7 +57,7 @@ func (d DriverConnectionProvider) GetHostInfoByStrategy(
 	return acceptedStrategy.GetHost(hosts, role, props)
 }
 
-func (d DriverConnectionProvider) Connect(hostInfo host_info_util.HostInfo, props map[string]string, pluginService PluginService) (driver.Conn, error) {
+func (d DriverConnectionProvider) Connect(hostInfo *host_info_util.HostInfo, props map[string]string, pluginService PluginService) (driver.Conn, error) {
 	targetDriverDialect := pluginService.GetTargetDriverDialect()
 	dsn := targetDriverDialect.PrepareDsn(props)
 	conn, err := d.targetDriver.Open(dsn)

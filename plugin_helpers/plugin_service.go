@@ -362,11 +362,11 @@ func (p *PluginServiceImpl) updateHostAvailability(hosts []*host_info_util.HostI
 	}
 }
 
-func (p *PluginServiceImpl) Connect(hostInfo host_info_util.HostInfo, props map[string]string) (driver.Conn, error) {
+func (p *PluginServiceImpl) Connect(hostInfo *host_info_util.HostInfo, props map[string]string) (driver.Conn, error) {
 	return p.pluginManager.Connect(hostInfo, props, p.currentConnection == nil)
 }
 
-func (p *PluginServiceImpl) ForceConnect(hostInfo host_info_util.HostInfo, props map[string]string) (driver.Conn, error) {
+func (p *PluginServiceImpl) ForceConnect(hostInfo *host_info_util.HostInfo, props map[string]string) (driver.Conn, error) {
 	return p.pluginManager.ForceConnect(hostInfo, props, p.currentConnection == nil)
 }
 
@@ -394,12 +394,12 @@ func (p *PluginServiceImpl) FillAliases(conn driver.Conn, hostInfo *host_info_ut
 	queryer, ok := conn.(driver.QueryerContext)
 	if ok {
 		rows, err := queryer.QueryContext(context.Background(), p.dialect.GetHostAliasQuery(), nil)
-		if err == nil && len(rows.Columns()) > 1 {
+		if err == nil && len(rows.Columns()) > 0 {
 			driverValues := make([]driver.Value, len(rows.Columns()))
 			for rows.Next(driverValues) == nil {
-				valueAsString, ok := utils.ConvertDriverValueToString(driverValues[1])
+				valueAsString, ok := utils.ConvertDriverValueToString(driverValues[0])
 				if ok {
-					hostInfo.AllAliases[valueAsString] = true
+					hostInfo.AddAlias(valueAsString)
 				}
 			}
 		} else {

@@ -155,16 +155,18 @@ func (r *RdsHostListProvider) IdentifyConnection(conn driver.Conn) (*host_info_u
 		if len(topology) == 0 {
 			return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("RdsHostListProvider.unableToGatherTopology"))
 		}
-		foundHost := utils.FindHostInTopology(topology, instanceName)
+		foundHost := utils.FindHostInTopology(topology, instanceName, r.getHostEndpoint(instanceName))
 
-		if foundHost.Host == "" && !forcedRefresh {
+		if foundHost.IsNil() && !forcedRefresh {
 			topology, err = r.ForceRefresh(conn)
 			if err != nil {
 				return nil, err
 			}
-			foundHost = utils.FindHostInTopology(topology, instanceName)
+			foundHost = utils.FindHostInTopology(topology, instanceName, r.getHostEndpoint(instanceName))
 		}
-		return foundHost, nil
+		if !foundHost.IsNil() {
+			return foundHost, nil
+		}
 	}
 	return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("RdsHostListProvider.unableToGetHostName"))
 }

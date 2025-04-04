@@ -62,7 +62,7 @@ func (t TestPlugin) Execute(methodName string, executeFunc driver_infrastructure
 }
 
 func (t TestPlugin) Connect(
-	hostInfo host_info_util.HostInfo,
+	hostInfo *host_info_util.HostInfo,
 	properties map[string]string,
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
@@ -87,7 +87,7 @@ func (t TestPlugin) Connect(
 }
 
 func (t TestPlugin) ForceConnect(
-	hostInfo host_info_util.HostInfo,
+	hostInfo *host_info_util.HostInfo,
 	properties map[string]string,
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
