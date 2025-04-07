@@ -1,12 +1,13 @@
 module awssql
 
 go 1.23.1
+
 require (
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/nicksnyder/go-i18n/v2 v2.5.1
 	github.com/stretchr/testify v1.8.1
-	golang.org/x/text v0.21.0
+	golang.org/x/text v0.24.0
 )
 
 require (
@@ -20,7 +21,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
-	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
-	golang.org/x/sync v0.12.0 // indirect
+	golang.org/x/sync v0.13.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
