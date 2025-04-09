@@ -50,7 +50,7 @@ func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 	conn := pluginService.GetCurrentConnection()
 	var connErr error
 	if conn == nil {
-		conn, connErr = wrapperContainer.PluginManager.Connect(*pluginService.GetInitialConnectionHostInfo(), pluginService.GetProperties(), true)
+		conn, connErr = wrapperContainer.PluginManager.Connect(pluginService.GetInitialConnectionHostInfo(), pluginService.GetProperties(), true)
 		if connErr != nil {
 			return nil, connErr
 		}

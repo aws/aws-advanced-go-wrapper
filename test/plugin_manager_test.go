@@ -19,7 +19,6 @@ package test
 import (
 	awsDriver "awssql/driver"
 	"awssql/driver_infrastructure"
-	"awssql/host_info_util"
 	"awssql/plugin_helpers"
 	"errors"
 	"sync"
@@ -164,7 +163,7 @@ func TestConnect(t *testing.T) {
 		return
 	}
 
-	_, _ = target.Connect(host_info_util.HostInfo{}, props, true)
+	_, _ = target.Connect(nil, props, true)
 	if len(calls) != 4 {
 		t.Fatalf(`Should have 4 calls, got "%v"`, len(calls))
 	}
@@ -195,7 +194,7 @@ func TestForceConnect(t *testing.T) {
 		return
 	}
 
-	_, _ = target.ForceConnect(host_info_util.HostInfo{}, props, true)
+	_, _ = target.ForceConnect(nil, props, true)
 	if len(calls) != 4 {
 		t.Fatalf(`Should have 4 calls, got "%v"`, len(calls))
 	}
@@ -229,7 +228,7 @@ func TestConnectWithErrorBefore(t *testing.T) {
 		return
 	}
 
-	_, _ = target.Connect(host_info_util.HostInfo{}, props, true)
+	_, _ = target.Connect(nil, props, true)
 	if len(calls) != 3 {
 		t.Fatalf(`Should have 3 calls, got "%v"`, len(calls))
 	}
@@ -261,7 +260,7 @@ func TestConnectWithErrorAfter(t *testing.T) {
 		return
 	}
 
-	_, _ = target.Connect(host_info_util.HostInfo{}, props, true)
+	_, _ = target.Connect(nil, props, true)
 	if len(calls) != 5 {
 		t.Fatalf(`Should have 5 calls, got "%v"`, len(calls))
 	}

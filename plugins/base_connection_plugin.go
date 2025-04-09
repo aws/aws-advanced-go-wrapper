@@ -39,7 +39,7 @@ func (b BaseConnectionPlugin) Execute(
 }
 
 func (b BaseConnectionPlugin) Connect(
-	hostInfo host_info_util.HostInfo,
+	hostInfo *host_info_util.HostInfo,
 	props map[string]string,
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
@@ -52,7 +52,7 @@ func (b BaseConnectionPlugin) Connect(
 }
 
 func (b BaseConnectionPlugin) ForceConnect(
-	hostInfo host_info_util.HostInfo,
+	hostInfo *host_info_util.HostInfo,
 	props map[string]string,
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {

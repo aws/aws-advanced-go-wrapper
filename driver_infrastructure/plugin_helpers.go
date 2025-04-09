@@ -50,8 +50,8 @@ type PluginService interface {
 	GetHostListProvider() HostListProvider
 	RefreshHostList(conn driver.Conn) error
 	ForceRefreshHostList(conn driver.Conn) error
-	Connect(hostInfo host_info_util.HostInfo, props map[string]string) (driver.Conn, error)
-	ForceConnect(hostInfo host_info_util.HostInfo, props map[string]string) (driver.Conn, error)
+	Connect(hostInfo *host_info_util.HostInfo, props map[string]string) (driver.Conn, error)
+	ForceConnect(hostInfo *host_info_util.HostInfo, props map[string]string) (driver.Conn, error)
 	GetDialect() DatabaseDialect
 	UpdateDialect(conn driver.Conn)
 	GetTargetDriverDialect() DriverDialect
@@ -66,8 +66,8 @@ type PluginService interface {
 type PluginManager interface {
 	Init(pluginService PluginService, plugins []ConnectionPlugin) error
 	InitHostProvider(initialUrl string, props map[string]string, hostListProviderService HostListProviderService) error
-	Connect(hostInfo host_info_util.HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)
-	ForceConnect(hostInfo host_info_util.HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)
+	Connect(hostInfo *host_info_util.HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)
+	ForceConnect(hostInfo *host_info_util.HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)
 	Execute(name string, methodFunc ExecuteFunc, methodArgs ...any) (
 		wrappedReturnValue any,
 		wrappedReturnValue2 any,
