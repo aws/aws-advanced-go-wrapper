@@ -20,12 +20,12 @@ import (
 	"awssql/host_info_util"
 	"context"
 	"database/sql/driver"
-	"log/slog"
+	"fmt"
 	"slices"
 	"strings"
 )
 
-func LogTopology(hosts []*host_info_util.HostInfo, msgPrefix string) {
+func LogTopology(hosts []*host_info_util.HostInfo, msgPrefix string) string {
 	var sb strings.Builder
 
 	if len(hosts) != 0 {
@@ -37,7 +37,8 @@ func LogTopology(hosts []*host_info_util.HostInfo, msgPrefix string) {
 	} else {
 		sb.WriteString("<nil>")
 	}
-	slog.Info(msgPrefix, "Topology: ", sb.String())
+
+	return fmt.Sprintf("%s\n %s%s", msgPrefix, "Topology: ", sb.String())
 }
 
 func FindHostInTopology(hosts []*host_info_util.HostInfo, hostNames ...string) *host_info_util.HostInfo {

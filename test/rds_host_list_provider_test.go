@@ -244,12 +244,12 @@ func TestSuggestedClusterIdForRds(t *testing.T) {
 	provider1 := driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, emptyProps, dsn)
 	mockConn := MockConn{}
 	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"},
-		[]driver.Value{"instance-a-1.xyz.us-east-2.rds.amazonaws.com", true, 1.0, 2.0, 0})
+		[]driver.Value{"instance-a-1", true, 1.0, 2.0, 0})
 
 	assert.Equal(t, 0, driver_infrastructure.TopologyCache.Size())
 	hosts, err := provider1.Refresh(&mockConn)
 	assert.Nil(t, err)
-	assert.Equal(t, "instance-a-1.xyz.us-east-2.rds.amazonaws.com.cluster-", hosts[0].Host)
+	assert.Equal(t, "instance-a-1.xyz.us-east-2.rds.amazonaws.com", hosts[0].Host)
 
 	provider2 := driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, emptyProps, dsn)
 	assert.Equal(t, provider1.GetClusterId(), provider2.GetClusterId())
@@ -258,7 +258,7 @@ func TestSuggestedClusterIdForRds(t *testing.T) {
 
 	hosts, err = provider2.Refresh(MockDriverConn{})
 	assert.Nil(t, err)
-	assert.Equal(t, "instance-a-1.xyz.us-east-2.rds.amazonaws.com.cluster-", hosts[0].Host)
+	assert.Equal(t, "instance-a-1.xyz.us-east-2.rds.amazonaws.com", hosts[0].Host)
 	assert.Equal(t, 1, driver_infrastructure.TopologyCache.Size())
 }
 
@@ -269,24 +269,24 @@ func TestNoSuggestedClusterId(t *testing.T) {
 	provider1 := driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, emptyProps, dsn1)
 	mockConn := MockConn{}
 	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"},
-		[]driver.Value{"instance-a-1.xyz.us-east-2.rds.amazonaws.com", true, 1.0, 2.0, 0})
+		[]driver.Value{"instance-a-1", true, 1.0, 2.0, 0})
 
 	assert.Equal(t, 0, driver_infrastructure.TopologyCache.Size())
 	hosts, err := provider1.Refresh(&mockConn)
 	assert.Nil(t, err)
-	assert.Equal(t, "instance-a-1.xyz.us-east-2.rds.amazonaws.com.cluster-", hosts[0].Host)
+	assert.Equal(t, "instance-a-1.xyz.us-east-2.rds.amazonaws.com", hosts[0].Host)
 
 	dsn2 := "postgresql://user:password@name2.cluster-xyz.us-east-2.rds.amazonaws.com:5432/database"
 	provider2 := driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, emptyProps, dsn2)
 	mockConn = MockConn{}
 	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"},
-		[]driver.Value{"instance-b-1.xyz.us-east-2.rds.amazonaws.com", true, 1.0, 2.0, 0})
+		[]driver.Value{"instance-b-1", true, 1.0, 2.0, 0})
 
 	hosts, err = provider2.Refresh(&mockConn)
 	assert.Nil(t, err)
 	assert.NotEqual(t, provider1.GetClusterId(), provider2.GetClusterId())
 	assert.True(t, provider1.IsPrimaryClusterId)
 	assert.True(t, provider2.IsPrimaryClusterId)
-	assert.Equal(t, "instance-b-1.xyz.us-east-2.rds.amazonaws.com.cluster-", hosts[0].Host)
+	assert.Equal(t, "instance-b-1.xyz.us-east-2.rds.amazonaws.com", hosts[0].Host)
 	assert.Equal(t, 2, driver_infrastructure.TopologyCache.Size())
 }

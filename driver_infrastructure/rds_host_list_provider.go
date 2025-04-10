@@ -127,7 +127,7 @@ func (r *RdsHostListProvider) ForceRefresh(conn driver.Conn) ([]*host_info_util.
 	if err != nil {
 		return nil, err
 	}
-	utils.LogTopology(hosts, "From ForceRefresh")
+	slog.Info(utils.LogTopology(hosts, "From ForceRefresh"))
 	return hosts, nil
 }
 
@@ -188,7 +188,7 @@ func (r *RdsHostListProvider) Refresh(conn driver.Conn) ([]*host_info_util.HostI
 	if isCachedData {
 		msgPrefix = "From cache"
 	}
-	utils.LogTopology(hosts, msgPrefix)
+	slog.Info(utils.LogTopology(hosts, msgPrefix))
 	return hosts, nil
 }
 
@@ -292,6 +292,7 @@ func (r *RdsHostListProvider) createHost(host string, hostRole host_info_util.Ho
 	} else {
 		port = r.initialHostInfo.Port
 	}
+
 	host = r.getHostEndpoint(host)
 
 	builder.SetHost(host).SetPort(port).SetRole(hostRole).SetAvailability(host_info_util.AVAILABLE).SetWeight(weight).SetLastUpdateTime(lastUpdateTime)
