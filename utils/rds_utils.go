@@ -166,6 +166,18 @@ func getDnsGroup(host string) string {
 	return cachedDnsGroup.(string)
 }
 
+func getDomainGroup(host string) string {
+	if host == "" {
+		return ""
+	}
+
+	cachedDnsRegexp, ok := findAndCacheRegexp(host)
+	if !ok {
+		return ""
+	}
+	return cachedDnsRegexp.FindStringSubmatch(host)[cachedDnsRegexp.SubexpIndex(DOMAIN_GROUP)]
+}
+
 func findAndCacheRegexp(host string) (regexp.Regexp, bool) {
 	val, ok := cachedDnsRegexp.Load(host)
 	if ok && val != nil {
@@ -202,7 +214,7 @@ func GetPreparedHost(host string) string {
 }
 
 func GetRdsInstanceHostPattern(host string) string {
-	group := getDnsGroup(GetPreparedHost(host))
+	group := getDomainGroup(GetPreparedHost(host))
 	if group == "" {
 		return "?"
 	}

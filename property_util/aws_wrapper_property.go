@@ -73,16 +73,21 @@ func GetVerifiedWrapperPropertyValue[T any](props map[string]string, property Aw
 }
 
 var ALL_WRAPPER_PROPERTIES = map[string]bool{
-	USER.Name:                   true,
-	PASSWORD.Name:               true,
-	HOST.Name:                   true,
-	PORT.Name:                   true,
-	DATABASE.Name:               true,
-	DRIVER_PROTOCOL.Name:        true,
-	NET.Name:                    true,
-	SINGLE_WRITER_DSN.Name:      true,
-	PLUGINS.Name:                true,
-	AUTO_SORT_PLUGIN_ORDER.Name: true,
+	USER.Name:                             true,
+	PASSWORD.Name:                         true,
+	HOST.Name:                             true,
+	PORT.Name:                             true,
+	DATABASE.Name:                         true,
+	DRIVER_PROTOCOL.Name:                  true,
+	NET.Name:                              true,
+	SINGLE_WRITER_DSN.Name:                true,
+	PLUGINS.Name:                          true,
+	AUTO_SORT_PLUGIN_ORDER.Name:           true,
+	TARGET_DRIVER_DIALECT.Name:            true,
+	TARGET_DRIVER_AUTO_REGISTER.Name:      true,
+	CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name: true,
+	CLUSTER_ID.Name:                       true,
+	CLUSTER_INSTANCE_HOST_PATTERN.Name:    true,
 }
 
 var USER = AwsWrapperProperty{
