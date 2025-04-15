@@ -36,6 +36,7 @@ var knownDialectsByCode = map[string]DatabaseDialect{
 	AURORA_PG_DIALECT:    &AuroraPgDatabaseDialect{},
 }
 
+var knownEndpointDialectsCache *utils.CacheMap[string] = utils.NewCache[string]()
 var ENDPOINT_CACHE_EXPIRATION = time.Hour * 24
 
 type DialectProvider interface {
@@ -44,23 +45,20 @@ type DialectProvider interface {
 }
 
 type DialectManager struct {
-	canUpdate             bool
-	dialect               DatabaseDialect
-	dialectCode           string
-	knownEndpointDialects utils.CacheMap[string]
+	canUpdate   bool
+	dialect     DatabaseDialect
+	dialectCode string
 }
 
 func (d *DialectManager) GetDialect(dsn string, props map[string]string) (DatabaseDialect, error) {
-	dialectCode, ok := d.knownEndpointDialects.Get(dsn)
-	if ok {
-		if dialectCode != "" {
-			userDialect := knownDialectsByCode[dialectCode]
-			if userDialect != nil {
-				d.dialectCode = dialectCode
-				d.dialect = userDialect
-				d.logCurrentDialect()
-				return userDialect, nil
-			}
+	dialectCode, ok := knownEndpointDialectsCache.Get(dsn)
+	if ok && dialectCode != "" {
+		userDialect := knownDialectsByCode[dialectCode]
+		if userDialect != nil {
+			d.dialectCode = dialectCode
+			d.dialect = userDialect
+			d.logCurrentDialect()
+			return userDialect, nil
 		}
 	}
 
@@ -74,9 +72,10 @@ func (d *DialectManager) GetDialect(dsn string, props map[string]string) (Databa
 	rdsUrlType := utils.IdentifyRdsUrlType(hostString)
 	if strings.Contains(driverProtocol, "mysql") {
 		if rdsUrlType.IsRdsCluster {
-			d.canUpdate = true
+			d.canUpdate = false
 			d.dialectCode = AURORA_MYSQL_DIALECT
 			d.dialect = knownDialectsByCode[AURORA_MYSQL_DIALECT]
+			knownEndpointDialectsCache.Put(dsn, AURORA_MYSQL_DIALECT, ENDPOINT_CACHE_EXPIRATION)
 			d.logCurrentDialect()
 			return d.dialect, nil
 		}
@@ -98,6 +97,7 @@ func (d *DialectManager) GetDialect(dsn string, props map[string]string) (Databa
 			d.canUpdate = false
 			d.dialectCode = AURORA_PG_DIALECT
 			d.dialect = knownDialectsByCode[AURORA_PG_DIALECT]
+			knownEndpointDialectsCache.Put(dsn, AURORA_PG_DIALECT, ENDPOINT_CACHE_EXPIRATION)
 			d.logCurrentDialect()
 			return d.dialect, nil
 		}
@@ -130,8 +130,8 @@ func (d *DialectManager) GetDialectForUpdate(conn driver.Conn, originalHost stri
 			d.dialectCode = candidateCode
 			d.dialect = dialectCandidate
 
-			d.knownEndpointDialects.Put(originalHost, d.dialectCode, ENDPOINT_CACHE_EXPIRATION)
-			d.knownEndpointDialects.Put(newHost, d.dialectCode, ENDPOINT_CACHE_EXPIRATION)
+			knownEndpointDialectsCache.Put(originalHost, d.dialectCode, ENDPOINT_CACHE_EXPIRATION)
+			knownEndpointDialectsCache.Put(newHost, d.dialectCode, ENDPOINT_CACHE_EXPIRATION)
 
 			d.logCurrentDialect()
 			return d.dialect
@@ -139,16 +139,15 @@ func (d *DialectManager) GetDialectForUpdate(conn driver.Conn, originalHost stri
 	}
 
 	d.canUpdate = false
-	d.knownEndpointDialects.Put(originalHost, d.dialectCode, ENDPOINT_CACHE_EXPIRATION)
-	d.knownEndpointDialects.Put(newHost, d.dialectCode, ENDPOINT_CACHE_EXPIRATION)
+	knownEndpointDialectsCache.Put(originalHost, d.dialectCode, ENDPOINT_CACHE_EXPIRATION)
+	knownEndpointDialectsCache.Put(newHost, d.dialectCode, ENDPOINT_CACHE_EXPIRATION)
 
 	d.logCurrentDialect()
 	return d.dialect
 }
 
 func (d *DialectManager) logCurrentDialect() {
-	slog.Info(fmt.Sprintf("Current dialect: %s, %s, canUpdate: %t.\n",
+	slog.Info(fmt.Sprintf("Current dialect: %s, canUpdate: %t.\n",
 		d.dialectCode,
-		d.dialect,
 		d.canUpdate))
 }

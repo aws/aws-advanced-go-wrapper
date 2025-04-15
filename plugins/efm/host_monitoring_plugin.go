@@ -63,16 +63,15 @@ func (b *HostMonitorConnectionPlugin) Connect(
 	props map[string]string,
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-	result, err := connectFunc()
-	conn, ok := result.(driver.Conn)
-	if ok {
-		if utils.IdentifyRdsUrlType(hostInfo.Host).IsRds {
-			hostInfo.ResetAliases()
-			b.pluginService.FillAliases(conn, hostInfo)
-		}
-		return conn, err
+	conn, err := connectFunc()
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+	if utils.IdentifyRdsUrlType(hostInfo.Host).IsRds {
+		hostInfo.ResetAliases()
+		b.pluginService.FillAliases(conn, hostInfo)
+	}
+	return conn, err
 }
 
 func (b *HostMonitorConnectionPlugin) NotifyConnectionChanged(changes map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {

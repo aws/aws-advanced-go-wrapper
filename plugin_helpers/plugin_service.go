@@ -31,7 +31,6 @@ import (
 var hostAvailabilityExpiringCache *utils.CacheMap[host_info_util.HostAvailability] = utils.NewCache[host_info_util.HostAvailability]()
 var DEFAULT_HOST_AVAILABILITY_CACHE_EXPIRE_NANO time.Duration = 5 * time.Minute
 
-//nolint:unused
 type PluginServiceImpl struct {
 	pluginManager             driver_infrastructure.PluginManager
 	props                     map[string]string
@@ -91,7 +90,15 @@ func (p *PluginServiceImpl) GetDialect() driver_infrastructure.DatabaseDialect {
 }
 
 func (p *PluginServiceImpl) UpdateDialect(conn driver.Conn) {
-	newDialect := p.dialectProvider.GetDialectForUpdate(conn, p.initialHostInfo.Host, p.currentHostInfo.Host)
+	if p.initialHostInfo.IsNil() {
+		slog.Warn(error_util.GetMessage("PluginServiceImpl.initialHostNotSet"))
+		return
+	}
+	currentHost := p.currentHostInfo
+	if currentHost.IsNil() {
+		currentHost = p.initialHostInfo
+	}
+	newDialect := p.dialectProvider.GetDialectForUpdate(conn, p.initialHostInfo.Host, currentHost.Host)
 	if p.dialect == newDialect {
 		return
 	}
@@ -122,8 +129,6 @@ func (p *PluginServiceImpl) SetCurrentConnection(
 			p.initialHostInfo = hostInfo
 		}
 
-		// TODO: update session state service with changes.
-
 		changes := map[driver_infrastructure.HostChangeOptions]bool{
 			driver_infrastructure.INITIAL_CONNECTION: true,
 		}
@@ -136,8 +141,6 @@ func (p *PluginServiceImpl) SetCurrentConnection(
 			p.currentConnection = conn
 			p.currentHostInfo = hostInfo
 			p.setInTransaction(false)
-
-			// TODO: update session state service with changes.
 
 			pluginOpinions := p.pluginManager.NotifyConnectionChanged(changes, skipNotificationForThisPlugin)
 			_, connectionObjectHasChanged := changes[driver_infrastructure.CONNECTION_OBJECT_CHANGED]
@@ -439,7 +442,7 @@ func (p *PluginServiceImpl) IsLoginError(err error) bool {
 }
 
 func (p *PluginServiceImpl) ReleaseResources() {
-	slog.Info(error_util.GetMessage("PluginServiceImpl.releaseResources"))
+	slog.Debug(error_util.GetMessage("PluginServiceImpl.releaseResources"))
 	if p.currentConnection != nil {
 		p.currentConnection.Close() // Ignore any error.
 		p.currentConnection = nil
@@ -451,5 +454,12 @@ func (p *PluginServiceImpl) ReleaseResources() {
 		if ok {
 			canReleaseResources.ReleaseResources()
 		}
+	}
+}
+
+// This cleans up all long standing caches. To be called at the end of program, not each time a Conn is closed.
+func ClearCaches() {
+	if hostAvailabilityExpiringCache != nil {
+		hostAvailabilityExpiringCache.Clear()
 	}
 }

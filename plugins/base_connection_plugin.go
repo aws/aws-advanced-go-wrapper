@@ -43,12 +43,7 @@ func (b BaseConnectionPlugin) Connect(
 	props map[string]string,
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-	result, err := connectFunc()
-	conn, ok := result.(driver.Conn)
-	if ok {
-		return conn, err
-	}
-	return nil, err
+	return connectFunc()
 }
 
 func (b BaseConnectionPlugin) ForceConnect(
@@ -56,12 +51,7 @@ func (b BaseConnectionPlugin) ForceConnect(
 	props map[string]string,
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-	result, err := connectFunc()
-	conn, ok := result.(driver.Conn)
-	if ok {
-		return conn, err
-	}
-	return nil, err
+	return connectFunc()
 }
 
 func (b BaseConnectionPlugin) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {

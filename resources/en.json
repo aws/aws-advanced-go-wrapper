@@ -62,6 +62,7 @@
 	"PluginManagerImpl.releaseResources": "Releasing resources from PluginManagerImpl.",
 	"PluginServiceImpl.releaseResources": "Releasing resources from PluginServiceImpl.",
 	"PluginServiceImpl.nilHost": "Current host evaluates to nil.",
+	"PluginServiceImpl.initialHostNotSet": "Unable to update dialect, initial HostInfo has not been set.",
 	"PluginServiceImpl.nilConn": "Unable to set current connection, given connection evaluates to nil.",
 	"PluginServiceImpl.setCurrentHost": "Set current host to '%v'.",
 	"PluginServiceImpl.hostListEmpty": "Host list is empty.",
