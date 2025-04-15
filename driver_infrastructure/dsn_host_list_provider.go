@@ -22,6 +22,7 @@ import (
 	"awssql/property_util"
 	"awssql/utils"
 	"database/sql/driver"
+	"log/slog"
 )
 
 type DsnHostListProvider struct {
@@ -33,7 +34,11 @@ type DsnHostListProvider struct {
 }
 
 func NewDsnHostListProvider(props map[string]string, dsn string, hostListProviderService HostListProviderService) *DsnHostListProvider {
-	isSingleWriterConnectionString := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.SINGLE_WRITER_DSN)
+	isSingleWriterConnectionString, err := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.SINGLE_WRITER_DSN)
+	if err != nil {
+		// Should never be called.
+		return nil
+	}
 	return &DsnHostListProvider{isSingleWriterConnectionString, dsn, hostListProviderService, false, []*host_info_util.HostInfo{}}
 }
 
@@ -69,13 +74,15 @@ func (c *DsnHostListProvider) ForceRefresh(conn driver.Conn) ([]*host_info_util.
 }
 
 func (c *DsnHostListProvider) GetHostRole(conn driver.Conn) host_info_util.HostRole {
-	panic(error_util.GetMessage("DsnHostListProvider.unsupportedGetHostRole"))
+	slog.Warn(error_util.GetMessage("DsnHostListProvider.unsupportedGetHostRole"))
+	return host_info_util.UNKNOWN
 }
 
 func (c *DsnHostListProvider) IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error) {
 	return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DsnHostListProvider.unsupportedIdentifyConnection"))
 }
 
-func (c *DsnHostListProvider) GetClusterId() string {
-	panic(error_util.GetMessage("DsnHostListProvider.unsupportedGetClusterId"))
+func (c *DsnHostListProvider) GetClusterId() (clusterId string) {
+	slog.Warn(error_util.GetMessage("DsnHostListProvider.unsupportedGetClusterId"))
+	return
 }

@@ -71,14 +71,16 @@ func (chain *PluginChain) ConnectAddToHead(plugin driver_infrastructure.Connecti
 
 func (chain *PluginChain) Execute(pluginFunc driver_infrastructure.PluginExecFunc) (any, any, bool, error) {
 	if chain.execChain == nil {
-		panic(error_util.GetMessage("PluginManager.pipelineNone"))
+		slog.Warn(error_util.GetMessage("PluginManager.pipelineNone"))
+		return nil, nil, false, error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginManager.pipelineNone"))
 	}
 	return chain.execChain(pluginFunc, chain.execFunc)
 }
 
 func (chain *PluginChain) Connect(pluginFunc driver_infrastructure.PluginConnectFunc) (any, error) {
 	if chain.connectChain == nil {
-		panic(error_util.GetMessage("PluginManager.pipelineNone"))
+		slog.Warn(error_util.GetMessage("PluginManager.pipelineNone"))
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginManager.pipelineNone"))
 	}
 	return chain.connectChain(pluginFunc, chain.connectFunc)
 }

@@ -168,10 +168,10 @@ func (hostInfoBuilder *HostInfoBuilder) SetLastUpdateTime(lastUpdateTime time.Ti
 	return hostInfoBuilder
 }
 
-func (hostInfoBuilder *HostInfoBuilder) Build() (hostInfo *HostInfo) {
-	err := hostInfoBuilder.checkHostIsSet()
+func (hostInfoBuilder *HostInfoBuilder) Build() (hostInfo *HostInfo, err error) {
+	err = hostInfoBuilder.checkHostIsSet()
 	if err != nil {
-		panic(err)
+		return
 	}
 
 	hostInfo = &HostInfo{

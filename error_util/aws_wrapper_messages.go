@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/nicksnyder/go-i18n/v2/i18n"
@@ -54,7 +55,9 @@ func getLocalizer() (*i18n.Localizer, error) {
 func GetMessage(messageId string, messageArgs ...interface{}) string {
 	localizer, err := getLocalizer()
 	if err != nil {
-		panic(err)
+		// TODO: confirm with team this approach. Remove log warning? Format the returned string to include the messageArgs?
+		slog.Warn(fmt.Sprintf("Unable to obtain message %s to display. Error: %s.", messageId, err.Error()))
+		return fmt.Sprintf("Message: %s.", messageId)
 	}
 
 	localizeConfigWelcome := i18n.LocalizeConfig{

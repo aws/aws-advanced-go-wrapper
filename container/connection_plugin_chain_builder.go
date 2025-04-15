@@ -59,7 +59,11 @@ func (builder *ConnectionPluginChainBuilder) GetPlugins(
 	var pluginFactoryFuncWeights []PluginFactoryFuncWeight
 	usingDefault := false
 
-	pluginCodes := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PLUGINS)
+	pluginCodes, err := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PLUGINS)
+	if err != nil {
+		// Should never be called.
+		return nil, err
+	}
 	if pluginCodes == property_util.DEFAULT_PLUGINS {
 		usingDefault = true
 	}
@@ -86,9 +90,9 @@ func (builder *ConnectionPluginChainBuilder) GetPlugins(
 		pluginFactoryFuncWeights = append(pluginFactoryFuncWeights, PluginFactoryFuncWeight{factoryFunc, lastWeight})
 	}
 
-	autoSort := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.AUTO_SORT_PLUGIN_ORDER)
+	autoSort, err := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.AUTO_SORT_PLUGIN_ORDER)
 	pluginsSorted := false
-	if !usingDefault && len(pluginFactoryFuncWeights) > 1 && autoSort {
+	if !usingDefault && len(pluginFactoryFuncWeights) > 1 && (err != nil || autoSort) {
 		sort.Slice(pluginFactoryFuncWeights, func(i, j int) bool {
 			return pluginFactoryFuncWeights[i].weight < pluginFactoryFuncWeights[j].weight
 		})
