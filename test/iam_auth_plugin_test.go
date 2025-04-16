@@ -146,7 +146,7 @@ func TestIamAuthPluginConnectUsesCachedToken(t *testing.T) {
 	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
 
 	cacheExpirationDuration := time.Duration(180) * time.Second
-	cachedToken := iam.NewTokenInfo("someCachedToken", time.Now().Add(cacheExpirationDuration))
+	cachedToken := "someCachedToken"
 	cacheKey := iam.GetCacheKey(
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.USER),
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IAM_HOST),
@@ -164,7 +164,7 @@ func TestIamAuthPluginConnectUsesCachedToken(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestIamAuthPluginConnectFoundExpiredCachedToken(t *testing.T) {
+func TestIamAuthPluginConnectCacheExpiredToken(t *testing.T) {
 	hostInfo := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	mockConnFunc := func() (any, error) { return &MockConn{nil, nil, nil, nil, true}, nil }
 
@@ -178,8 +178,8 @@ func TestIamAuthPluginConnectFoundExpiredCachedToken(t *testing.T) {
 
 	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
 
-	cacheExpirationDuration := time.Duration(180) * time.Second
-	cachedToken := iam.NewTokenInfo("someCachedToken", time.Now().Add(-cacheExpirationDuration))
+	expiredCacheExpirationDuration := -(time.Duration(180) * time.Second)
+	cachedToken := "someCachedToken"
 	cacheKey := iam.GetCacheKey(
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.USER),
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IAM_HOST),
@@ -187,7 +187,57 @@ func TestIamAuthPluginConnectFoundExpiredCachedToken(t *testing.T) {
 		region_util.US_EAST_1,
 	)
 
-	iam.TokenCache.Put(cacheKey, cachedToken, cacheExpirationDuration)
+	iam.TokenCache.Put(cacheKey, cachedToken, expiredCacheExpirationDuration)
+
+	iamAuthPlugin := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
+
+	_, err := iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
+
+	assert.Equal(t, 1, mockIamTokenUtility.(*MockIamTokenUtility).GenerateAuthenticationTokenCallCounter)
+	assert.Nil(t, err)
+	assert.Equal(t,
+		mockIamTokenUtility.(*MockIamTokenUtility).GetMockTokenValue(),
+		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PASSWORD))
+	assert.Equal(t, "someUser", mockIamTokenUtility.(*MockIamTokenUtility).CapturedUsername)
+	assert.Equal(t, "someIamHost", mockIamTokenUtility.(*MockIamTokenUtility).CapturedHost)
+	assert.Equal(t, 9999, mockIamTokenUtility.(*MockIamTokenUtility).CapturedPort)
+	assert.Equal(t, region_util.US_EAST_1, mockIamTokenUtility.(*MockIamTokenUtility).CapturedRegion)
+}
+
+func TestIamAuthPluginConnectTtlExpiredCachedToken(t *testing.T) {
+	hostInfo := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	mockLoginError := &mysql.MySQLError{SQLState: [5]byte(([]byte(driver_infrastructure.SqlStateAccessError))[:5])}
+	mockConnFuncCallCounter := 0
+	mockConnFunc := func() (any, error) {
+		if mockConnFuncCallCounter == 0 {
+			mockConnFuncCallCounter++
+			return nil, mockLoginError
+		} else {
+			mockConnFuncCallCounter++
+			return &MockConn{nil, nil, nil, nil, true}, nil
+		}
+	}
+
+	props := map[string]string{
+		property_util.USER.Name:             "someUser",
+		property_util.DRIVER_PROTOCOL.Name:  "mysql",
+		property_util.IAM_HOST.Name:         "someIamHost",
+		property_util.IAM_REGION.Name:       string(region_util.US_EAST_1),
+		property_util.IAM_DEFAULT_PORT.Name: "9999",
+	}
+
+	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
+
+	expiredCacheExpirationDuration := time.Duration(180) * time.Second
+	cachedToken := "someCachedToken"
+	cacheKey := iam.GetCacheKey(
+		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.USER),
+		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IAM_HOST),
+		property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.IAM_DEFAULT_PORT),
+		region_util.US_EAST_1,
+	)
+
+	iam.TokenCache.Put(cacheKey, cachedToken, expiredCacheExpirationDuration)
 
 	iamAuthPlugin := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
 

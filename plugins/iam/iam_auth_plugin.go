@@ -41,7 +41,7 @@ func NewIamAuthPluginFactory() driver_infrastructure.ConnectionPluginFactory {
 	return IamAuthPluginFactory{}
 }
 
-var TokenCache = utils.NewCache[TokenInfo]()
+var TokenCache = utils.NewCache[string]()
 
 type IamAuthPlugin struct {
 	plugins.BaseConnectionPlugin
@@ -100,10 +100,11 @@ func (iamAuthPlugin *IamAuthPlugin) connectInternal(
 		region,
 	)
 
-	tokenInfo, cachedTokenInfoFound := TokenCache.Get(cacheKey)
-	if cachedTokenInfoFound && !tokenInfo.IsExpired() {
-		slog.Debug(error_util.GetMessage("IamAuthPlugin.useCachedToken", tokenInfo.GetToken()))
-		props[property_util.PASSWORD.Name] = tokenInfo.GetToken()
+	token, cachedTokenFound := TokenCache.Get(cacheKey)
+	isCachedToken := cachedTokenFound && token != ""
+	if isCachedToken {
+		slog.Debug(error_util.GetMessage("IamAuthPlugin.useCachedToken", token))
+		props[property_util.PASSWORD.Name] = token
 	} else {
 		err := iamAuthPlugin.fetchAndSetToken(hostInfo, host, port, region, cacheKey, props)
 		if err != nil {
@@ -119,7 +120,7 @@ func (iamAuthPlugin *IamAuthPlugin) connectInternal(
 		}
 	} else {
 		slog.Debug(error_util.GetMessage("IamAuthPlugin.connectionError", err))
-		if iamAuthPlugin.pluginService.IsLoginError(err) {
+		if !iamAuthPlugin.pluginService.IsLoginError(err) || !isCachedToken {
 			return nil, err
 		}
 	}
@@ -147,7 +148,6 @@ func (iamAuthPlugin *IamAuthPlugin) fetchAndSetToken(
 	cacheKey string,
 	props map[string]string) error {
 	tokenExpirationSec := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.IAM_EXPIRATION)
-	tokenExpiration := time.Now().Add(time.Duration(tokenExpirationSec) * time.Second)
 	awsCredentialsProvider, err := driver_infrastructure.GetAwsCredentialsProvider(*hostInfo, props)
 	if err != nil {
 		slog.Error(error_util.GetMessage("IamAuthPlugin.errorGettingAwsCredentialsProvider", err))
@@ -165,6 +165,6 @@ func (iamAuthPlugin *IamAuthPlugin) fetchAndSetToken(
 	}
 	slog.Debug(error_util.GetMessage("IamAuthPlugin.generatedNewToken", token))
 	props[property_util.PASSWORD.Name] = token
-	TokenCache.Put(cacheKey, NewTokenInfo(token, tokenExpiration), time.Duration(tokenExpirationSec)*time.Second)
+	TokenCache.Put(cacheKey, token, time.Duration(tokenExpirationSec)*time.Second)
 	return nil
 }

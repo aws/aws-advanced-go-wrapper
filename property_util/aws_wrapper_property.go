@@ -201,29 +201,29 @@ var CLUSTER_INSTANCE_HOST_PATTERN = AwsWrapperProperty{
 }
 
 var IAM_HOST = AwsWrapperProperty{
-	"iamHost",
-	"Overrides the host that is used to generate the IAM token.",
-	"",
-	WRAPPER_TYPE_STRING,
+	Name:                "iamHost",
+	description:         "Overrides the host that is used to generate the IAM token.",
+	defaultValue:        "",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
 var IAM_DEFAULT_PORT = AwsWrapperProperty{
-	"iamDefaultPort",
-	"Overrides default port that is used to generate the IAM token.",
-	"-1",
-	WRAPPER_TYPE_INT,
+	Name:                "iamDefaultPort",
+	description:         "Overrides default port that is used to generate the IAM token.",
+	defaultValue:        "-1",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
 }
 
 var IAM_REGION = AwsWrapperProperty{
-	"iamRegion",
-	"Overrides AWS region that is used to generate the IAM token.",
-	"",
-	WRAPPER_TYPE_STRING,
+	Name:                "iamRegion",
+	description:         "Overrides AWS region that is used to generate the IAM token.",
+	defaultValue:        "",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
 var IAM_EXPIRATION = AwsWrapperProperty{
-	"iamExpiration",
-	"IAM token cache expiration in seconds.",
-	"870",
-	WRAPPER_TYPE_INT,
+	Name:                "iamExpiration",
+	description:         "IAM token cache expiration in seconds.",
+	defaultValue:        "870",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
 }
