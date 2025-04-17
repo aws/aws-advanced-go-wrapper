@@ -218,3 +218,10 @@ func TestIsLimitlessDbShardGroupDns(t *testing.T) {
 	assert.False(t, utils.IsLimitlessDbShardGroupDns(oldChinaRegionCustomDomain))
 	assert.True(t, utils.IsLimitlessDbShardGroupDns(oldChinaRegionLimitlessDbShardGroup))
 }
+
+func TestGetRdsRegion(t *testing.T) {
+	assert.Equal(t, "us-east-2", utils.GetRdsRegion(usEastRegionCluster))
+	assert.Equal(t, "cn-northwest-1", utils.GetRdsRegion(chinaRegionClusterReadOnly))
+	assert.Equal(t, "us-isob-east-1", utils.GetRdsRegion(usIsobEastRegionCluster))
+	assert.Equal(t, "us-iso-east-1", utils.GetRdsRegion(usIsoEastRegionCluster))
+}

@@ -20,10 +20,12 @@ import (
 	"awssql/driver_infrastructure"
 	"awssql/host_info_util"
 	"awssql/plugin_helpers"
+	"awssql/region_util"
 	"context"
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"reflect"
 )
 
@@ -354,4 +356,31 @@ func (m *MockRdsHostListProviderService) GetInitialConnectionHostInfo() *host_in
 func (m *MockRdsHostListProviderService) SetHostListProvider(hostListProvider driver_infrastructure.HostListProvider) {
 }
 func (m *MockRdsHostListProviderService) SetInitialConnectionHostInfo(info *host_info_util.HostInfo) {
+}
+
+type MockIamTokenUtility struct {
+	CapturedUsername                       string
+	CapturedHost                           string
+	CapturedPort                           int
+	CapturedRegion                         region_util.Region
+	GenerateAuthenticationTokenCallCounter int
+}
+
+func (m *MockIamTokenUtility) GenerateAuthenticationToken(
+	username string,
+	host string,
+	port int,
+	region region_util.Region,
+	awsCredentialsProvider aws.CredentialsProvider,
+) (string, error) {
+	m.GenerateAuthenticationTokenCallCounter++
+	m.CapturedUsername = username
+	m.CapturedHost = host
+	m.CapturedPort = port
+	m.CapturedRegion = region
+	return m.GetMockTokenValue(), nil
+}
+
+func (m *MockIamTokenUtility) GetMockTokenValue() string {
+	return "someToken"
 }

@@ -88,6 +88,10 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name: true,
 	CLUSTER_ID.Name:                       true,
 	CLUSTER_INSTANCE_HOST_PATTERN.Name:    true,
+	IAM_HOST.Name:                         true,
+	IAM_EXPIRATION.Name:                   true,
+	IAM_REGION.Name:                       true,
+	IAM_DEFAULT_PORT.Name:                 true,
 }
 
 var USER = AwsWrapperProperty{
@@ -194,4 +198,32 @@ var CLUSTER_INSTANCE_HOST_PATTERN = AwsWrapperProperty{
 		"clusters. Otherwise, if unspecified, the pattern will be automatically created for AWS RDS clusters.",
 	"",
 	WRAPPER_TYPE_STRING,
+}
+
+var IAM_HOST = AwsWrapperProperty{
+	Name:                "iamHost",
+	description:         "Overrides the host that is used to generate the IAM token.",
+	defaultValue:        "",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var IAM_DEFAULT_PORT = AwsWrapperProperty{
+	Name:                "iamDefaultPort",
+	description:         "Overrides default port that is used to generate the IAM token.",
+	defaultValue:        "-1",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var IAM_REGION = AwsWrapperProperty{
+	Name:                "iamRegion",
+	description:         "Overrides AWS region that is used to generate the IAM token.",
+	defaultValue:        "",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var IAM_EXPIRATION = AwsWrapperProperty{
+	Name:                "iamExpiration",
+	description:         "IAM token cache expiration in seconds.",
+	defaultValue:        "870",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
 }

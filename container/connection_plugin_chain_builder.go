@@ -20,6 +20,7 @@ import (
 	"awssql/driver_infrastructure"
 	"awssql/error_util"
 	"awssql/plugins"
+	"awssql/plugins/iam"
 	"awssql/property_util"
 	"fmt"
 	"log/slog"
@@ -36,8 +37,13 @@ type PluginFactoryFuncWeight struct {
 	weight            int
 }
 
-var pluginFactoryFuncByCode = map[string]PluginFactoryFunc{}
-var pluginWeightByCode = map[string]int{}
+var pluginFactoryFuncByCode = map[string]PluginFactoryFunc{
+	"iam": iam.NewIamAuthPluginFactory,
+}
+
+var pluginWeightByCode = map[string]int{
+	"iam": 1000,
+}
 
 type ConnectionPluginChainBuilder struct {
 }
