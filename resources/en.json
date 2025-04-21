@@ -1,7 +1,7 @@
 {
 	"AwsWrapper.unsupportedMethodError": "Method '%v' not supported by %s.",
 	"AwsWrapperExecuteWithPlugins.unableToCastResult": "Returned result does not match expected type '%v'.",
-	"AwsWrapperProperty.unexpectedType": "Value of property '%v' was not the expected type. Received: '%v'.",
+	"AwsWrapperProperty.unexpectedType": "Value of property '%v' was not the expected type. Received: '%v'. Returning zero value.",
 	"AwsWrapperRows.underlyingRowsDoNotImplementRequiredInterface": "The underlying rows do not implement the required interface '%v'.",
 	"AwsWrapperStmt.underlyingStmtDoesNotImplementRequiredInterface": "The underlying driver statement does not implement the required interface '%v'.",
 	"Conn.doesNotImplementRequiredInterface": "The given connection does not implement the required interface '%v'.",

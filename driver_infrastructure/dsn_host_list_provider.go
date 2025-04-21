@@ -34,11 +34,7 @@ type DsnHostListProvider struct {
 }
 
 func NewDsnHostListProvider(props map[string]string, dsn string, hostListProviderService HostListProviderService) *DsnHostListProvider {
-	isSingleWriterConnectionString, err := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.SINGLE_WRITER_DSN)
-	if err != nil {
-		// Should never be called.
-		return nil
-	}
+	isSingleWriterConnectionString := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.SINGLE_WRITER_DSN)
 	return &DsnHostListProvider{isSingleWriterConnectionString, dsn, hostListProviderService, false, []*host_info_util.HostInfo{}}
 }
 

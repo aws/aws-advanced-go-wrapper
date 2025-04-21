@@ -54,9 +54,10 @@ func (prop *AwsWrapperProperty) Set(props map[string]string, val string) {
 	props[prop.Name] = val
 }
 
-func GetVerifiedWrapperPropertyValue[T any](props map[string]string, property AwsWrapperProperty) (result T, err error) {
+func GetVerifiedWrapperPropertyValue[T any](props map[string]string, property AwsWrapperProperty) T {
 	propValue := property.Get(props)
 	var parsedValue any
+	var err error
 	switch property.wrapperPropertyType {
 	case WRAPPER_TYPE_INT:
 		parsedValue, err = strconv.Atoi(propValue)
@@ -77,10 +78,10 @@ func GetVerifiedWrapperPropertyValue[T any](props map[string]string, property Aw
 	result, ok := parsedValue.(T)
 	if !ok {
 		// This should never be called.
-		return result, error_util.NewGenericAwsWrapperError(error_util.GetMessage("AwsWrapperProperty.unexpectedType", property.Name, propValue))
+		slog.Warn(error_util.GetMessage("AwsWrapperProperty.unexpectedType", property.Name, propValue))
 	}
 
-	return result, nil
+	return result
 }
 
 var ALL_WRAPPER_PROPERTIES = map[string]bool{

@@ -24,9 +24,10 @@ import (
 	"awssql/plugins/iam"
 	"awssql/property_util"
 	"awssql/region_util"
-	"github.com/go-sql-driver/mysql"
 	"testing"
 	"time"
+
+	"github.com/go-sql-driver/mysql"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -42,7 +43,8 @@ func beforeIamAuthPluginTests(props map[string]string) (driver_infrastructure.Pl
 }
 
 func TestIamAuthPluginConnect(t *testing.T) {
-	hostInfo := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	assert.Nil(t, err)
 	mockConnFunc := func() (any, error) { return &MockConn{nil, nil, nil, nil, true}, nil }
 
 	props := map[string]string{
@@ -53,7 +55,7 @@ func TestIamAuthPluginConnect(t *testing.T) {
 
 	iamAuthPlugin := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
 
-	_, err := iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
+	_, err = iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
 
 	assert.Nil(t, err)
 	assert.Equal(t,
@@ -66,7 +68,8 @@ func TestIamAuthPluginConnect(t *testing.T) {
 }
 
 func TestIamAuthPluginConnectWithIamProps(t *testing.T) {
-	hostInfo := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	assert.Nil(t, err)
 	mockConnFunc := func() (any, error) { return &MockConn{nil, nil, nil, nil, true}, nil }
 
 	props := map[string]string{
@@ -80,7 +83,7 @@ func TestIamAuthPluginConnectWithIamProps(t *testing.T) {
 
 	iamAuthPlugin := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
 
-	_, err := iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
+	_, err = iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
 
 	assert.Nil(t, err)
 	assert.Equal(t,
@@ -93,7 +96,8 @@ func TestIamAuthPluginConnectWithIamProps(t *testing.T) {
 }
 
 func TestIamAuthPluginConnectInvalidRegionError(t *testing.T) {
-	hostInfo := host_info_util.NewHostInfoBuilder().SetHost("mydatabasewithnoregion.com").SetPort(1234).Build()
+	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("mydatabasewithnoregion.com").SetPort(1234).Build()
+	assert.Nil(t, err)
 	mockConnFunc := func() (any, error) { return &MockConn{nil, nil, nil, nil, true}, nil }
 
 	props := map[string]string{
@@ -105,14 +109,15 @@ func TestIamAuthPluginConnectInvalidRegionError(t *testing.T) {
 
 	iamAuthPlugin := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
 
-	_, err := iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
+	_, err = iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
 
 	assert.NotNil(t, err)
 	assert.Equal(t, error_util.GetMessage("IamAuthPlugin.unableToDetermineRegion", property_util.IAM_REGION.Name), err.Error())
 }
 
 func TestIamAuthPluginConnectPopulatesEmptyTokenCache(t *testing.T) {
-	hostInfo := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	assert.Nil(t, err)
 	mockConnFunc := func() (any, error) { return &MockConn{nil, nil, nil, nil, true}, nil }
 
 	props := map[string]string{
@@ -125,14 +130,15 @@ func TestIamAuthPluginConnectPopulatesEmptyTokenCache(t *testing.T) {
 
 	assert.Equal(t, 0, iam.TokenCache.Size())
 
-	_, err := iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
+	_, err = iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
 
 	assert.Equal(t, 1, iam.TokenCache.Size())
 	assert.Nil(t, err)
 }
 
 func TestIamAuthPluginConnectUsesCachedToken(t *testing.T) {
-	hostInfo := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	assert.Nil(t, err)
 	mockConnFunc := func() (any, error) { return &MockConn{nil, nil, nil, nil, true}, nil }
 
 	props := map[string]string{
@@ -158,14 +164,15 @@ func TestIamAuthPluginConnectUsesCachedToken(t *testing.T) {
 
 	iamAuthPlugin := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
 
-	_, err := iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
+	_, err = iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
 
 	assert.Equal(t, 0, mockIamTokenUtility.(*MockIamTokenUtility).GenerateAuthenticationTokenCallCounter)
 	assert.Nil(t, err)
 }
 
 func TestIamAuthPluginConnectCacheExpiredToken(t *testing.T) {
-	hostInfo := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	assert.Nil(t, err)
 	mockConnFunc := func() (any, error) { return &MockConn{nil, nil, nil, nil, true}, nil }
 
 	props := map[string]string{
@@ -191,7 +198,7 @@ func TestIamAuthPluginConnectCacheExpiredToken(t *testing.T) {
 
 	iamAuthPlugin := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
 
-	_, err := iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
+	_, err = iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
 
 	assert.Equal(t, 1, mockIamTokenUtility.(*MockIamTokenUtility).GenerateAuthenticationTokenCallCounter)
 	assert.Nil(t, err)
@@ -205,7 +212,8 @@ func TestIamAuthPluginConnectCacheExpiredToken(t *testing.T) {
 }
 
 func TestIamAuthPluginConnectTtlExpiredCachedToken(t *testing.T) {
-	hostInfo := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	assert.Nil(t, err)
 	mockLoginError := &mysql.MySQLError{SQLState: [5]byte(([]byte(driver_infrastructure.SqlStateAccessError))[:5])}
 	mockConnFuncCallCounter := 0
 	mockConnFunc := func() (any, error) {
@@ -241,7 +249,7 @@ func TestIamAuthPluginConnectTtlExpiredCachedToken(t *testing.T) {
 
 	iamAuthPlugin := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
 
-	_, err := iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
+	_, err = iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
 
 	assert.Equal(t, 1, mockIamTokenUtility.(*MockIamTokenUtility).GenerateAuthenticationTokenCallCounter)
 	assert.Nil(t, err)
@@ -255,7 +263,8 @@ func TestIamAuthPluginConnectTtlExpiredCachedToken(t *testing.T) {
 }
 
 func TestIamAuthPluginConnectLoginError(t *testing.T) {
-	hostInfo := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	assert.Nil(t, err)
 	mockLoginError := &mysql.MySQLError{SQLState: [5]byte(([]byte(driver_infrastructure.SqlStateAccessError))[:5])}
 	mockConnFunc := func() (any, error) { return nil, mockLoginError }
 

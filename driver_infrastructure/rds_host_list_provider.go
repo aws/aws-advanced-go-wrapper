@@ -68,11 +68,7 @@ func (r *RdsHostListProvider) init() {
 	if r.isInitialized {
 		return
 	}
-	refreshRateInt, err := property_util.GetVerifiedWrapperPropertyValue[int](r.properties, property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS)
-	if err != nil {
-		// Should never be called.
-		return
-	}
+	refreshRateInt := property_util.GetVerifiedWrapperPropertyValue[int](r.properties, property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS)
 	r.refreshRateNanos = time.Millisecond * time.Duration(refreshRateInt)
 	hostListFromDsn, err := utils.GetHostsFromDsn(r.originalDsn, false)
 	if err != nil || len(hostListFromDsn) == 0 {
@@ -82,14 +78,14 @@ func (r *RdsHostListProvider) init() {
 	r.initialHostInfo = r.initialHostList[0]
 	r.hostListProviderService.SetInitialConnectionHostInfo(r.initialHostInfo)
 
-	clusterInstancePattern, err := property_util.GetVerifiedWrapperPropertyValue[string](r.properties, property_util.CLUSTER_INSTANCE_HOST_PATTERN)
+	clusterInstancePattern := property_util.GetVerifiedWrapperPropertyValue[string](r.properties, property_util.CLUSTER_INSTANCE_HOST_PATTERN)
 	defaultTemplate, errBuildingDefaultTemplate := (host_info_util.NewHostInfoBuilder()).SetHost(utils.GetRdsInstanceHostPattern(r.initialHostInfo.Host)).
 		SetPort(r.initialHostInfo.Port).SetHostId(r.initialHostInfo.HostId).Build()
 	if errBuildingDefaultTemplate != nil {
 		// Should never be called. Host is explicitly set when building default template.
 		return
 	}
-	if err == nil && clusterInstancePattern != "" {
+	if clusterInstancePattern != "" {
 		r.clusterInstanceTemplate, err = utils.ParseHostPortPair(clusterInstancePattern)
 	}
 	if err == nil && !r.clusterInstanceTemplate.IsNil() {
@@ -106,9 +102,9 @@ func (r *RdsHostListProvider) init() {
 	r.clusterId = uuid.New().String()
 	r.IsPrimaryClusterId = false
 	rdsUrlType := utils.IdentifyRdsUrlType(r.initialHostInfo.Host)
-	clusterIdSetting, err := property_util.GetVerifiedWrapperPropertyValue[string](r.properties, property_util.CLUSTER_ID)
+	clusterIdSetting := property_util.GetVerifiedWrapperPropertyValue[string](r.properties, property_util.CLUSTER_ID)
 
-	if err == nil && clusterIdSetting != "" {
+	if clusterIdSetting != "" {
 		r.clusterId = clusterIdSetting
 	} else if rdsUrlType == utils.RDS_PROXY {
 		r.clusterId = r.initialHostInfo.GetUrl()
