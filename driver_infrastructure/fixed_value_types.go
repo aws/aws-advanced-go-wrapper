@@ -59,41 +59,6 @@ const (
 	PG_DIALECT           string = "pg"
 )
 
-const (
-	CONN_PREPARE                        = "Conn.Prepare"
-	CONN_PREPARE_CONTEXT                = "Conn.PrepareContext"
-	CONN_CLOSE                          = "Conn.Close"
-	CONN_BEGIN                          = "Conn.Begin"
-	CONN_BEGIN_TX                       = "Conn.BeginTx"
-	CONN_QUERY_CONTEXT                  = "Conn.QueryContext"
-	CONN_EXEC_CONTEXT                   = "Conn.ExecContext"
-	CONN_PING                           = "Conn.Ping"
-	CONN_IS_VALID                       = "Conn.IsValid"
-	CONN_RESET_SESSION                  = "Conn.ResetSession"
-	CONN_CHECK_NAMED_VALUE              = "Conn.CheckNamedValue"
-	STMT_CLOSE                          = "Stmt.Close"
-	STMT_EXEC                           = "Stmt.Exec"
-	STMT_EXEC_CONTEXT                   = "Stmt.ExecContext"
-	STMT_NUM_INPUT                      = "Stmt.NumInput"
-	STMT_QUERY                          = "Stmt.Query"
-	STMT_QUERY_CONTEXT                  = "Stmt.QueryContext"
-	STMT_CHECK_NAMED_VALUE              = "Stmt.CheckNamedValue"
-	RESULT_LAST_INSERT_ID               = "Result.LastInsertId"
-	RESULT_ROWS_AFFECTED                = "Result.RowsAffected"
-	TX_COMMIT                           = "Tx.Commit"
-	TX_ROLLBACK                         = "Tx.Rollback"
-	ROWS_CLOSE                          = "Rows.Close"
-	ROWS_COLUMNS                        = "Rows.Columns"
-	ROWS_NEXT                           = "Rows.Next"
-	ROWS_COLUMN_TYPE_PRECISION_SCALE    = "Rows.ColumnTypePrecisionScale"
-	ROWS_COLUMN_TYPE_DATABASE_TYPE_NAME = "Rows.ColumnTypeDatabaseTypeName"
-	ROWS_COLUMN_TYPE_LENGTH             = "Rows.ColumnTypeLength"
-	ROWS_HAS_NEXT_RESULT_SET            = "Rows.HasNextResultSet"
-	ROWS_NEXT_RESULT_SET                = "Rows.NextResultSet"
-	ROWS_COLUMN_TYPE_SCAN_TYPE          = "Rows.ColumnTypeScanType"
-	ROWS_CLUMN_TYPE_NULLABLE            = "Rows.ColumnTypeNullable"
-)
-
 type DatabaseEngine string
 
 const (

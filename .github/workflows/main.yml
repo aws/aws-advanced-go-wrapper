@@ -20,7 +20,7 @@ jobs:
       - name: 'Run golangci-lint - linting'
         uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.60
+          version: v1.64.8
       - name: 'Install dependencies'
         run: go get .
       - name: 'Test with Go'

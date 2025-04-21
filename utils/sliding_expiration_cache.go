@@ -24,7 +24,7 @@ import (
 	"time"
 )
 
-type DisposalFunc func(any) bool
+type DisposalFunc[T any] func(T) bool
 
 type SlidingExpirationCache[T any] struct {
 	cacheId              string
@@ -32,12 +32,12 @@ type SlidingExpirationCache[T any] struct {
 	cleanupIntervalNanos time.Duration
 	cleanupTimeNanos     time.Time
 	lock                 sync.RWMutex
-	itemDisposalFunc     DisposalFunc
-	shouldDisposeFunc    DisposalFunc
+	itemDisposalFunc     DisposalFunc[T]
+	shouldDisposeFunc    DisposalFunc[T]
 	cancelCleanup        context.CancelFunc
 }
 
-func NewSlidingExpirationCache[T any](id string, funcs ...DisposalFunc) *SlidingExpirationCache[T] {
+func NewSlidingExpirationCache[T any](id string, funcs ...DisposalFunc[T]) *SlidingExpirationCache[T] {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	cache := &SlidingExpirationCache[T]{
@@ -158,6 +158,9 @@ func (c *SlidingExpirationCache[T]) GetAllEntries() map[string]T {
 }
 
 func (c *SlidingExpirationCache[T]) Size() int {
+	if c == nil {
+		return 0
+	}
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return len(c.cache)
@@ -179,7 +182,7 @@ func (c *SlidingExpirationCache[T]) cleanupExpiredItems(ctx context.Context) {
 		default:
 			time.Sleep(CleanupIntervalNanos)
 
-			var itemList []any
+			var itemList []T
 			c.lock.Lock()
 			for key, item := range c.cache {
 				if item.shouldCleanup(c.shouldDisposeFunc) {
@@ -207,7 +210,7 @@ func (c *cacheItem[T]) withExtendExpiration(itemExpirationNano time.Duration) {
 	c.expirationTime = time.Now().Add(itemExpirationNano)
 }
 
-func (c *cacheItem[T]) shouldCleanup(shouldDisposeFunc DisposalFunc) bool {
+func (c *cacheItem[T]) shouldCleanup(shouldDisposeFunc DisposalFunc[T]) bool {
 	if shouldDisposeFunc != nil {
 		return time.Now().After(c.expirationTime) && shouldDisposeFunc(c.item)
 	}

@@ -181,7 +181,7 @@ func (c *AwsWrapperConn) IsValid() bool {
 		if ok {
 			return nil, nil, validator.IsValid(), nil
 		}
-		return nil, nil, false, nil
+		return nil, nil, true, nil
 	}
 	_, _, result, _ := ExecuteWithPlugins(c.pluginManager, driver_infrastructure.CONN_IS_VALID, isValidFunc)
 	return result

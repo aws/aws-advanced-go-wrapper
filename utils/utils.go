@@ -146,7 +146,7 @@ func GetWriter(hosts []*host_info_util.HostInfo) *host_info_util.HostInfo {
 	return nil
 }
 
-func IsConnectionLost(conn driver.Conn) (isConnected bool) {
+func IsConnectionLost(conn driver.Conn) bool {
 	connectionPinger, ok := conn.(driver.Pinger)
 	if ok {
 		err := connectionPinger.Ping(context.Background())

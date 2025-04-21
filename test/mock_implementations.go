@@ -25,8 +25,9 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"reflect"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
 )
 
 type TestPlugin struct {
@@ -144,22 +145,28 @@ func (m MockTargetDriver) Open(name string) (driver.Conn, error) {
 }
 
 type MockDriverConnection struct {
-	id int
+	id       int
+	IsClosed bool
 }
 
-func (m MockDriverConnection) Prepare(query string) (driver.Stmt, error) {
+func (m *MockDriverConnection) Prepare(query string) (driver.Stmt, error) {
 	// Do nothing.
 	return nil, nil
 }
 
-func (m MockDriverConnection) Close() error {
+func (m *MockDriverConnection) Close() error {
+	m.IsClosed = true
 	// Do nothing.
 	return nil
 }
 
-func (m MockDriverConnection) Begin() (driver.Tx, error) {
+func (m *MockDriverConnection) Begin() (driver.Tx, error) {
 	// Do nothing.
 	return nil, nil
+}
+
+func (m *MockDriverConnection) IsValid() bool {
+	return true
 }
 
 func CreateTestPlugin(calls *[]string, id int, connection driver.Conn, err error, isBefore bool) driver_infrastructure.ConnectionPlugin {
@@ -198,11 +205,20 @@ func (m *MockHostListProvider) Refresh(conn driver.Conn) ([]*host_info_util.Host
 
 type MockPluginManager struct {
 	*plugin_helpers.PluginManagerImpl
-	Changes map[string]map[driver_infrastructure.HostChangeOptions]bool
+	Changes           map[string]map[driver_infrastructure.HostChangeOptions]bool
+	ForceConnectProps map[string]string
 }
 
 func (pluginManager *MockPluginManager) NotifyHostListChanged(changes map[string]map[driver_infrastructure.HostChangeOptions]bool) {
 	pluginManager.Changes = changes
+}
+
+func (pluginManager *MockPluginManager) ForceConnect(
+	hostInfo *host_info_util.HostInfo,
+	props map[string]string,
+	isInitialConnection bool) (driver.Conn, error) {
+	pluginManager.ForceConnectProps = props
+	return &MockDriverConnection{}, nil
 }
 
 type MockConn struct {
