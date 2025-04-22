@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
+	"runtime"
 	"sync"
 
 	"github.com/nicksnyder/go-i18n/v2/i18n"
@@ -37,16 +39,17 @@ func getLocalizer() (*i18n.Localizer, error) {
 		return globalLocalizer, nil
 	}
 
+	_, filename, _, _ := runtime.Caller(0)
+	dir := filepath.Dir(filename)
+	path := filepath.Join(dir, "../resources/en.json")
 	bundle := i18n.NewBundle(language.English)
 	bundle.RegisterUnmarshalFunc("json", json.Unmarshal)
-	// TODO; clean up handling of importing file.
-	_, err := bundle.LoadMessageFile("../resources/en.json")
+
+	_, err := bundle.LoadMessageFile(path)
 	if err != nil {
-		_, err := bundle.LoadMessageFile("resources/en.json")
-		if err != nil {
-			return nil, errors.New("could not load messages file")
-		}
+		return nil, errors.New("could not load messages file")
 	}
+
 	globalLocalizer = i18n.NewLocalizer(bundle, language.English.String())
 	return globalLocalizer, nil
 }

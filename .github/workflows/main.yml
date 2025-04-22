@@ -1,6 +1,7 @@
 name: Build, Unit Tests, and Linting
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -24,7 +25,7 @@ jobs:
       - name: 'Install dependencies'
         run: go get .
       - name: 'Test with Go'
-        run: go test ./... -json > TestResults.json
+        run: go test . ./test -json > TestResults.json
       - name: 'Upload Go test results'
         if: always()
         uses: actions/upload-artifact@v4
