@@ -19,7 +19,6 @@ package container
 import (
 	"awssql/driver_infrastructure"
 	"awssql/plugin_helpers"
-	"awssql/plugins/efm"
 	"awssql/utils"
 )
 
@@ -80,11 +79,4 @@ func NewContainer(dsn string) (Container, error) {
 		PluginService: pluginService,
 		Props:         props,
 	}, nil
-}
-
-// This cleans up all long standing caches. To be called at the end of program not each time a Conn is closed.
-func ClearAllCaches() {
-	if efm.EFM_MONITORS != nil {
-		efm.EFM_MONITORS.Clear()
-	}
 }

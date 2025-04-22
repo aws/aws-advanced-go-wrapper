@@ -77,16 +77,12 @@ func (t TestPlugin) Connect(
 		*t.calls = append(*t.calls, fmt.Sprintf("%s%v:connection", reflect.TypeOf(t), t.id))
 		return t.connection, nil
 	}
-	result, err := connectFunc()
+	conn, err := connectFunc()
 	if !t.isBefore && t.error != nil {
 		return nil, t.error
 	}
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:after connect", reflect.TypeOf(t), t.id))
-	conn, ok := result.(driver.Conn)
-	if ok {
-		return conn, err
-	}
-	return nil, err
+	return conn, err
 }
 
 func (t TestPlugin) ForceConnect(
@@ -99,13 +95,9 @@ func (t TestPlugin) ForceConnect(
 		*t.calls = append(*t.calls, fmt.Sprintf("%s%v:forced connection", reflect.TypeOf(t), t.id))
 		return t.connection, nil
 	}
-	result, err := connectFunc()
+	conn, err := connectFunc()
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:after forceConnect", reflect.TypeOf(t), t.id))
-	conn, ok := result.(driver.Conn)
-	if ok {
-		return conn, err
-	}
-	return nil, err
+	return conn, err
 }
 
 func (t TestPlugin) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {

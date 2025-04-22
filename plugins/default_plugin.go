@@ -54,7 +54,7 @@ func (d *DefaultPlugin) Connect(
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	// It's guaranteed that this plugin is always the last in plugin chain so connectFunc can be ignored.
 	connProvider := d.ConnProviderManager.GetConnectionProvider(*hostInfo, props)
-	return d.connectInternal(hostInfo, props, connProvider)
+	return d.connectInternal(hostInfo, props, connProvider, isInitialConnection)
 }
 
 func (d *DefaultPlugin) ForceConnect(
@@ -63,15 +63,20 @@ func (d *DefaultPlugin) ForceConnect(
 	isInitialConnection bool,
 	forceConnectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	// It's guaranteed that this plugin is always the last in plugin chain so connectFunc can be ignored.
-	return d.connectInternal(hostInfo, props, d.DefaultConnProvider)
+	return d.connectInternal(hostInfo, props, d.DefaultConnProvider, isInitialConnection)
 }
 
 func (d *DefaultPlugin) connectInternal(
 	hostInfo *host_info_util.HostInfo,
 	props map[string]string,
-	connProvider driver_infrastructure.ConnectionProvider) (driver.Conn, error) {
+	connProvider driver_infrastructure.ConnectionProvider,
+	isInitialConnection bool) (driver.Conn, error) {
 	conn, err := connProvider.Connect(hostInfo, props, d.PluginService)
 	d.PluginService.SetAvailability(hostInfo.AllAliases, host_info_util.AVAILABLE)
+
+	if isInitialConnection && err == nil {
+		d.PluginService.UpdateDialect(conn)
+	}
 	return conn, err
 }
 

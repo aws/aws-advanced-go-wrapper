@@ -21,10 +21,10 @@ import (
 	"database/sql/driver"
 )
 
-type ConnectFunc func() (any, error)
+type ConnectFunc func() (driver.Conn, error)
 type ExecuteFunc func() (any, any, bool, error)
 type PluginExecFunc func(plugin ConnectionPlugin, targetFunc func() (any, any, bool, error)) (any, any, bool, error)
-type PluginConnectFunc func(plugin ConnectionPlugin, targetFunc func() (any, error)) (any, error)
+type PluginConnectFunc func(plugin ConnectionPlugin, targetFunc func() (driver.Conn, error)) (driver.Conn, error)
 
 type HostListProviderService interface {
 	IsStaticHostListProvider() bool
@@ -86,4 +86,20 @@ type PluginManager interface {
 
 type CanReleaseResources interface {
 	ReleaseResources()
+}
+
+// This cleans up all long standing caches. To be called at the end of program, not each time a Conn is closed.
+func ClearCaches() {
+	if knownEndpointDialectsCache != nil {
+		knownEndpointDialectsCache.Clear()
+	}
+	if primaryClusterIdCache != nil {
+		primaryClusterIdCache.Clear()
+	}
+	if suggestedPrimaryClusterCache != nil {
+		suggestedPrimaryClusterCache.Clear()
+	}
+	if TopologyCache != nil {
+		TopologyCache.Clear()
+	}
 }

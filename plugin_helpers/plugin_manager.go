@@ -38,9 +38,9 @@ const (
 
 type PluginChain struct {
 	execFunc     func() (any, any, bool, error)
-	connectFunc  func() (any, error)
+	connectFunc  func() (driver.Conn, error)
 	execChain    func(pluginFunc driver_infrastructure.PluginExecFunc, execFunc func() (any, any, bool, error)) (any, any, bool, error)
-	connectChain func(pluginFunc driver_infrastructure.PluginConnectFunc, execFunc func() (any, error)) (any, error)
+	connectChain func(pluginFunc driver_infrastructure.PluginConnectFunc, connectFunc func() (driver.Conn, error)) (driver.Conn, error)
 }
 
 func (chain *PluginChain) ExecAddToHead(plugin driver_infrastructure.ConnectionPlugin) {
@@ -58,13 +58,13 @@ func (chain *PluginChain) ExecAddToHead(plugin driver_infrastructure.ConnectionP
 
 func (chain *PluginChain) ConnectAddToHead(plugin driver_infrastructure.ConnectionPlugin) {
 	if chain.connectChain == nil {
-		chain.connectChain = func(pluginFunc driver_infrastructure.PluginConnectFunc, connectFunc func() (any, error)) (any, error) {
+		chain.connectChain = func(pluginFunc driver_infrastructure.PluginConnectFunc, connectFunc func() (driver.Conn, error)) (driver.Conn, error) {
 			return pluginFunc(plugin, connectFunc)
 		}
 	} else {
 		pipelineSoFar := chain.connectChain
-		chain.connectChain = func(pluginFunc driver_infrastructure.PluginConnectFunc, connectFunc func() (any, error)) (any, error) {
-			return pluginFunc(plugin, func() (any, error) { return pipelineSoFar(pluginFunc, connectFunc) })
+		chain.connectChain = func(pluginFunc driver_infrastructure.PluginConnectFunc, connectFunc func() (driver.Conn, error)) (driver.Conn, error) {
+			return pluginFunc(plugin, func() (driver.Conn, error) { return pipelineSoFar(pluginFunc, connectFunc) })
 		}
 	}
 }
@@ -77,7 +77,7 @@ func (chain *PluginChain) Execute(pluginFunc driver_infrastructure.PluginExecFun
 	return chain.execChain(pluginFunc, chain.execFunc)
 }
 
-func (chain *PluginChain) Connect(pluginFunc driver_infrastructure.PluginConnectFunc) (any, error) {
+func (chain *PluginChain) Connect(pluginFunc driver_infrastructure.PluginConnectFunc) (driver.Conn, error) {
 	if chain.connectChain == nil {
 		slog.Warn(error_util.GetMessage("PluginManager.pipelineNone"))
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginManager.pipelineNone"))
@@ -133,7 +133,7 @@ func (pluginManager *PluginManagerImpl) InitHostProvider(
 	targetFunc := func() (any, any, bool, error) {
 		return nil, nil, false, error_util.ShouldNotBeCalledError
 	}
-	_, _, _, err := pluginManager.ExecuteWithSubscribedPlugins(INIT_HOST_PROVIDER_METHOD, pluginFunc, targetFunc)
+	_, _, _, err := pluginManager.executeWithSubscribedPlugins(INIT_HOST_PROVIDER_METHOD, pluginFunc, targetFunc)
 	if err != nil {
 		return err
 	} else {
@@ -145,36 +145,26 @@ func (pluginManager *PluginManagerImpl) Connect(
 	hostInfo *host_info_util.HostInfo,
 	props map[string]string,
 	isInitialConnection bool) (driver.Conn, error) {
-	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (any, error)) (any, error) {
+	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (driver.Conn, error)) (driver.Conn, error) {
 		return plugin.Connect(hostInfo, props, isInitialConnection, targetFunc)
 	}
-	targetFunc := func() (any, error) {
+	targetFunc := func() (driver.Conn, error) {
 		return nil, error_util.ShouldNotBeCalledError
 	}
-	result, err := pluginManager.ConnectWithSubscribedPlugins(CONNECT_METHOD, pluginFunc, targetFunc)
-	conn, ok := result.(driver.Conn)
-	if ok {
-		return conn, err
-	}
-	return nil, err
+	return pluginManager.connectWithSubscribedPlugins(CONNECT_METHOD, pluginFunc, targetFunc)
 }
 
 func (pluginManager *PluginManagerImpl) ForceConnect(
 	hostInfo *host_info_util.HostInfo,
 	props map[string]string,
 	isInitialConnection bool) (driver.Conn, error) {
-	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (any, error)) (any, error) {
+	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (driver.Conn, error)) (driver.Conn, error) {
 		return plugin.ForceConnect(hostInfo, props, isInitialConnection, targetFunc)
 	}
-	targetFunc := func() (any, error) {
+	targetFunc := func() (driver.Conn, error) {
 		return nil, error_util.ShouldNotBeCalledError
 	}
-	result, err := pluginManager.ConnectWithSubscribedPlugins(FORCE_CONNECT_METHOD, pluginFunc, targetFunc)
-	conn, ok := result.(driver.Conn)
-	if ok {
-		return conn, err
-	}
-	return nil, err
+	return pluginManager.connectWithSubscribedPlugins(FORCE_CONNECT_METHOD, pluginFunc, targetFunc)
 }
 
 func (pluginManager *PluginManagerImpl) Execute(
@@ -184,37 +174,37 @@ func (pluginManager *PluginManagerImpl) Execute(
 	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (any, any, bool, error)) (any, any, bool, error) {
 		return plugin.Execute(methodName, targetFunc, methodArgs...)
 	}
-	return pluginManager.ExecuteWithSubscribedPlugins(methodName, pluginFunc, executeFunc)
+	return pluginManager.executeWithSubscribedPlugins(methodName, pluginFunc, executeFunc)
 }
 
-func (pluginManager *PluginManagerImpl) ExecuteWithSubscribedPlugins(
+func (pluginManager *PluginManagerImpl) executeWithSubscribedPlugins(
 	methodName string,
 	pluginFunc driver_infrastructure.PluginExecFunc,
 	targetFunc driver_infrastructure.ExecuteFunc) (any, any, bool, error) {
 	chain, ok := pluginManager.pluginFuncMap[methodName]
 	if !ok {
-		chain = pluginManager.MakePluginChain(methodName, targetFunc, nil)
+		chain = pluginManager.makePluginChain(methodName, targetFunc, nil)
 		pluginManager.pluginFuncMap[methodName] = chain
 	}
 	return chain.Execute(pluginFunc)
 }
 
-func (pluginManager *PluginManagerImpl) ConnectWithSubscribedPlugins(
+func (pluginManager *PluginManagerImpl) connectWithSubscribedPlugins(
 	methodName string,
 	pluginFunc driver_infrastructure.PluginConnectFunc,
-	targetFunc driver_infrastructure.ConnectFunc) (any, error) {
+	targetFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	chain, ok := pluginManager.pluginFuncMap[methodName]
 	if !ok {
-		chain = pluginManager.MakePluginChain(methodName, nil, targetFunc)
+		chain = pluginManager.makePluginChain(methodName, nil, targetFunc)
 		pluginManager.pluginFuncMap[methodName] = chain
 	}
 	return chain.Connect(pluginFunc)
 }
 
-func (pluginManager *PluginManagerImpl) MakePluginChain(
+func (pluginManager *PluginManagerImpl) makePluginChain(
 	name string,
 	execFunc func() (any, any, bool, error),
-	connectFunc func() (any, error)) PluginChain {
+	connectFunc func() (driver.Conn, error)) PluginChain {
 	chain := PluginChain{execFunc: execFunc, connectFunc: connectFunc}
 	for i := len(pluginManager.plugins) - 1; i >= 0; i-- {
 		currentPlugin := pluginManager.plugins[i]
@@ -321,7 +311,7 @@ func (pluginManager *PluginManagerImpl) GetConnectionProviderManager() driver_in
 }
 
 func (pluginManager *PluginManagerImpl) ReleaseResources() {
-	slog.Info(error_util.GetMessage("PluginManagerImpl.releaseResources"))
+	slog.Debug(error_util.GetMessage("PluginManagerImpl.releaseResources"))
 
 	// This step allows all plugins a chance to perform any last tasks before shutting down.
 	for i := 0; i < len(pluginManager.plugins); i++ {

@@ -20,6 +20,8 @@ import (
 	"awssql/container"
 	"awssql/driver_infrastructure"
 	"awssql/error_util"
+	"awssql/plugin_helpers"
+	"awssql/plugins/efm"
 	"context"
 	"database/sql"
 	"database/sql/driver"
@@ -77,6 +79,13 @@ func init() {
 	sql.Register(
 		"awssql",
 		&AwsWrapperDriver{})
+}
+
+// This cleans up all long standing caches. To be called at the end of program, not each time a Conn is closed.
+func ClearCaches() {
+	driver_infrastructure.ClearCaches()
+	plugin_helpers.ClearCaches()
+	efm.ClearCaches()
 }
 
 type AwsWrapperConn struct {

@@ -112,12 +112,9 @@ func (iamAuthPlugin *IamAuthPlugin) connectInternal(
 		}
 	}
 
-	result, err := connectFunc()
+	conn, err := connectFunc()
 	if err == nil {
-		conn, ok := result.(driver.Conn)
-		if ok {
-			return conn, err
-		}
+		return conn, nil
 	} else {
 		slog.Debug(error_util.GetMessage("IamAuthPlugin.connectionError", err))
 		if !iamAuthPlugin.pluginService.IsLoginError(err) || !isCachedToken {
@@ -132,12 +129,7 @@ func (iamAuthPlugin *IamAuthPlugin) connectInternal(
 		return nil, err
 	}
 
-	result2, err := connectFunc()
-	conn, ok := result2.(driver.Conn)
-	if ok {
-		return conn, err
-	}
-	return nil, err
+	return connectFunc()
 }
 
 func (iamAuthPlugin *IamAuthPlugin) fetchAndSetToken(

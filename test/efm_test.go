@@ -17,13 +17,13 @@
 package test
 
 import (
-	"awssql/container"
 	"awssql/driver_infrastructure"
 	"awssql/host_info_util"
 	"awssql/plugin_helpers"
 	"awssql/plugins/efm"
 	"awssql/property_util"
 	"awssql/utils"
+	"database/sql/driver"
 	"fmt"
 	"strings"
 	"testing"
@@ -168,7 +168,7 @@ func mockHostMonitoringPlugin(props map[string]string) (*efm.HostMonitorConnecti
 	monitoringPlugin, _ := plugin.(*efm.HostMonitorConnectionPlugin)
 
 	// Reset caches and query counter.
-	container.ClearAllCaches()
+	efm.ClearCaches()
 	queryCounter = 0
 	return monitoringPlugin, err
 }
@@ -185,7 +185,7 @@ func TestHostMonitoringPluginConnect(t *testing.T) {
 	assert.Nil(t, err)
 	rdsHostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("instance-a-1.xyz.us-east-2.rds.amazonaws.com").Build()
 	assert.Nil(t, err)
-	connectFunc := func() (any, error) {
+	connectFunc := func() (driver.Conn, error) {
 		return &MockDriverConnection{}, nil
 	}
 
@@ -276,7 +276,7 @@ func TestHostMonitoringPluginExecuteThrowsError(t *testing.T) {
 	pluginService := &plugin_helpers.PluginServiceImpl{}
 	plugin, _ := factory.GetInstance(pluginService, map[string]string{"a": "1"})
 	// Reset caches and query counter.
-	container.ClearAllCaches()
+	efm.ClearCaches()
 	queryCounter = 0
 
 	assert.Zero(t, efm.EFM_MONITORS.Size())

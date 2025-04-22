@@ -58,6 +58,12 @@ func NewMonitorServiceImpl(pluginService driver_infrastructure.PluginService) *M
 	return &MonitorServiceImpl{pluginService: pluginService}
 }
 
+func ClearCaches() {
+	if EFM_MONITORS != nil {
+		EFM_MONITORS.Clear()
+	}
+}
+
 func (m *MonitorServiceImpl) StartMonitoring(conn driver.Conn, hostInfo *host_info_util.HostInfo, props map[string]string,
 	failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionCount int) (*MonitorConnectionContext, error) {
 	if conn == nil {
