@@ -79,7 +79,10 @@ func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []*host_i
 
 		builder := host_info_util.NewHostInfoBuilder()
 		builder.SetHost(hostString).SetPort(port).SetRole(hostRole)
-		hostInfo := builder.Build()
+		hostInfo, err := builder.Build()
+		if err != nil {
+			return hostInfoList, err
+		}
 		hostInfoList = append(hostInfoList, hostInfo)
 	}
 	return

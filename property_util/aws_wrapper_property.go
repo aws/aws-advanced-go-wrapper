@@ -18,6 +18,8 @@ package property_util
 
 import (
 	"awssql/error_util"
+	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 )
@@ -55,20 +57,28 @@ func (prop *AwsWrapperProperty) Set(props map[string]string, val string) {
 func GetVerifiedWrapperPropertyValue[T any](props map[string]string, property AwsWrapperProperty) T {
 	propValue := property.Get(props)
 	var parsedValue any
+	var err error
 	switch property.wrapperPropertyType {
 	case WRAPPER_TYPE_INT:
-		parsedValue, _ = strconv.Atoi(propValue)
-	case WRAPPER_TYPE_STRING:
-		parsedValue = propValue
+		parsedValue, err = strconv.Atoi(propValue)
+		if err != nil {
+			slog.Warn(fmt.Sprintf("Using default value '%s' for property '%s' after encountering an error: '%s'.", property.defaultValue, property.Name, err.Error()))
+			parsedValue, _ = strconv.Atoi(property.defaultValue)
+		}
 	case WRAPPER_TYPE_BOOL:
-		parsedValue, _ = strconv.ParseBool(propValue)
-	default:
-		panic(error_util.GetMessage("AwsWrapperProperty.invalidPropertyType", property.Name, property.wrapperPropertyType))
+		parsedValue, err = strconv.ParseBool(propValue)
+		if err != nil {
+			slog.Warn(fmt.Sprintf("Using default value '%s' for property '%s' after encountering an error: '%s'.", property.defaultValue, property.Name, err.Error()))
+			parsedValue, _ = strconv.ParseBool(property.defaultValue)
+		}
+	default: // Default type is: WRAPPER_TYPE_STRING.
+		parsedValue = propValue
 	}
 
 	result, ok := parsedValue.(T)
 	if !ok {
-		panic(error_util.GetMessage("AwsWrapperProperty.unexpectedType", property.Name, propValue))
+		// This should never be called.
+		slog.Warn(error_util.GetMessage("AwsWrapperProperty.unexpectedType", property.Name, propValue))
 	}
 
 	return result

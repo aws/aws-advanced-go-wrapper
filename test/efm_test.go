@@ -183,7 +183,8 @@ func incrementQueryCounter() (any, any, bool, error) {
 func TestHostMonitoringPluginConnect(t *testing.T) {
 	plugin, err := mockHostMonitoringPlugin(nil)
 	assert.Nil(t, err)
-	rdsHostInfo := host_info_util.NewHostInfoBuilder().SetHost("instance-a-1.xyz.us-east-2.rds.amazonaws.com").Build()
+	rdsHostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("instance-a-1.xyz.us-east-2.rds.amazonaws.com").Build()
+	assert.Nil(t, err)
 	connectFunc := func() (any, error) {
 		return &MockDriverConnection{}, nil
 	}

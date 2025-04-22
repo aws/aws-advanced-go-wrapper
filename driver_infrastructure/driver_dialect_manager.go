@@ -65,7 +65,8 @@ func (ddm DriverDialectManager) GetDialect(driver driver.Driver, props map[strin
 }
 
 func (ddm DriverDialectManager) RegisterDriver(props map[string]string, drivers map[string]driver.Driver) (bool, error) {
-	if !property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.TARGET_DRIVER_AUTO_REGISTER) {
+	driverAutoRegister := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.TARGET_DRIVER_AUTO_REGISTER)
+	if !driverAutoRegister {
 		return false, nil
 	}
 

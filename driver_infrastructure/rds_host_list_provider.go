@@ -68,7 +68,8 @@ func (r *RdsHostListProvider) init() {
 	if r.isInitialized {
 		return
 	}
-	r.refreshRateNanos = time.Millisecond * time.Duration(property_util.GetVerifiedWrapperPropertyValue[int](r.properties, property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS))
+	refreshRateInt := property_util.GetVerifiedWrapperPropertyValue[int](r.properties, property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS)
+	r.refreshRateNanos = time.Millisecond * time.Duration(refreshRateInt)
 	hostListFromDsn, err := utils.GetHostsFromDsn(r.originalDsn, false)
 	if err != nil || len(hostListFromDsn) == 0 {
 		return
@@ -78,8 +79,12 @@ func (r *RdsHostListProvider) init() {
 	r.hostListProviderService.SetInitialConnectionHostInfo(r.initialHostInfo)
 
 	clusterInstancePattern := property_util.GetVerifiedWrapperPropertyValue[string](r.properties, property_util.CLUSTER_INSTANCE_HOST_PATTERN)
-	defaultTemplate := (host_info_util.NewHostInfoBuilder()).SetHost(utils.GetRdsInstanceHostPattern(r.initialHostInfo.Host)).
+	defaultTemplate, errBuildingDefaultTemplate := (host_info_util.NewHostInfoBuilder()).SetHost(utils.GetRdsInstanceHostPattern(r.initialHostInfo.Host)).
 		SetPort(r.initialHostInfo.Port).SetHostId(r.initialHostInfo.HostId).Build()
+	if errBuildingDefaultTemplate != nil {
+		// Should never be called. Host is explicitly set when building default template.
+		return
+	}
 	if clusterInstancePattern != "" {
 		r.clusterInstanceTemplate, err = utils.ParseHostPortPair(clusterInstancePattern)
 	}
@@ -297,7 +302,8 @@ func (r *RdsHostListProvider) createHost(host string, hostRole host_info_util.Ho
 
 	builder.SetHost(host).SetPort(port).SetRole(hostRole).SetAvailability(host_info_util.AVAILABLE).SetWeight(weight).SetLastUpdateTime(lastUpdateTime)
 
-	return builder.Build()
+	hostInfo, _ := builder.Build()
+	return hostInfo
 }
 
 func (r *RdsHostListProvider) getHostEndpoint(hostName string) string {

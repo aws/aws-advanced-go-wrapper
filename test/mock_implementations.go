@@ -192,7 +192,8 @@ func (m *MockHostListProvider) GetHostRole(conn driver.Conn) host_info_util.Host
 }
 
 func (m *MockHostListProvider) IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error) {
-	return host_info_util.NewHostInfoBuilder().SetHost("hostA").Build(), nil
+	hostInfo, _ := host_info_util.NewHostInfoBuilder().SetHost("hostA").Build()
+	return hostInfo, nil
 }
 
 func (m *MockHostListProvider) IsStaticHostListProvider() bool {
@@ -200,7 +201,8 @@ func (m *MockHostListProvider) IsStaticHostListProvider() bool {
 }
 
 func (m *MockHostListProvider) Refresh(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
-	return []*host_info_util.HostInfo{host_info_util.NewHostInfoBuilder().SetHost("hostA").Build()}, nil
+	hostInfo, _ := host_info_util.NewHostInfoBuilder().SetHost("hostA").Build()
+	return []*host_info_util.HostInfo{hostInfo}, nil
 }
 
 type MockPluginManager struct {
@@ -346,11 +348,11 @@ type MockRdsHostListProviderService struct {
 }
 
 func (m *MockRdsHostListProviderService) IsStaticHostListProvider() bool {
-	panic("unimplemented")
+	return false
 }
 
 func (m *MockRdsHostListProviderService) CreateHostListProvider(props map[string]string, dsn string) driver_infrastructure.HostListProvider {
-	panic("unimplemented")
+	return nil
 }
 
 func (m *MockRdsHostListProviderService) GetCurrentConnection() driver.Conn {
@@ -358,11 +360,11 @@ func (m *MockRdsHostListProviderService) GetCurrentConnection() driver.Conn {
 }
 
 func (m *MockRdsHostListProviderService) GetDialect() driver_infrastructure.DatabaseDialect {
-	panic("unimplemented")
+	return nil
 }
 
 func (m *MockRdsHostListProviderService) GetHostListProvider() driver_infrastructure.HostListProvider {
-	panic("unimplemented")
+	return nil
 }
 
 func (m *MockRdsHostListProviderService) GetInitialConnectionHostInfo() *host_info_util.HostInfo {

@@ -51,10 +51,10 @@ func getLocalizer() (*i18n.Localizer, error) {
 	return globalLocalizer, nil
 }
 
-func GetMessage(messageId string, messageArgs ...interface{}) string {
+func GetMessage(messageId string, messageArgs ...any) string {
 	localizer, err := getLocalizer()
 	if err != nil {
-		panic(err)
+		return fmt.Sprintf("Unable to display message %s with arguments %v. Error: %s.", messageId, messageArgs, err.Error())
 	}
 
 	localizeConfigWelcome := i18n.LocalizeConfig{
