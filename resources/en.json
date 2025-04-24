@@ -126,5 +126,6 @@
 	"TargetDriverHelper.invalidProtocol": "Invalid database protocol was found: %v",
 	"TargetDriverHelper.missingDriver": "Cannot find the target driver for %v. Please ensure the target driver is imported and registered. Here is the list of registered drivers found: %v",
 	"Utils.rollbackError": "Error occurred when attempting rollback: '%s'.",
-	"Utils.topology": "%s \n%s"
+	"Utils.topology": "%s \n%s",
+	"WeightedRandomHostSelector.UnableToGetHost": "Weighted Random strategy was unable to select a host."
 }

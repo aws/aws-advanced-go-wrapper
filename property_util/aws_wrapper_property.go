@@ -344,6 +344,13 @@ var SECRETS_MANAGER_ENDPOINT = AwsWrapperProperty{
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
+var WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS = AwsWrapperProperty{
+	Name:                "weightedRandomHostWeightPair",
+	description:         "Comma separated list of database host-weight pairs in the format of `<host>:<weight>`.",
+	defaultValue:        "",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
 func RemoveMonitoringProperties(props map[string]string) map[string]string {
 	copyProps := map[string]string{}
 
