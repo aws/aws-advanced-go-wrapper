@@ -31,15 +31,28 @@ import (
 	"github.com/google/uuid"
 )
 
-func NewRdsHostListProvider(hostListProviderService HostListProviderService, databaseDialect TopologyAwareDialect, properties map[string]string,
-	originalDsn string) *RdsHostListProvider {
-	return &RdsHostListProvider{
+func NewRdsHostListProvider(
+	hostListProviderService HostListProviderService,
+	databaseDialect TopologyAwareDialect,
+	properties map[string]string,
+	originalDsn string,
+	queryForTopologyFunc func(conn driver.Conn) ([]*host_info_util.HostInfo, error),
+	clusterIdChangedFunc func(oldClusterId string)) *RdsHostListProvider {
+	r := &RdsHostListProvider{
 		hostListProviderService: hostListProviderService,
 		databaseDialect:         databaseDialect,
 		properties:              properties,
 		originalDsn:             originalDsn,
 		isInitialized:           false,
 	}
+	if queryForTopologyFunc == nil {
+		queryForTopologyFunc = func(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
+			return r.databaseDialect.GetTopology(conn, r)
+		}
+	}
+	r.queryForTopologyFunc = queryForTopologyFunc
+	r.clusterIdChangedFunc = clusterIdChangedFunc
+	return r
 }
 
 var primaryClusterIdCache = utils.NewCache[bool]()
@@ -60,6 +73,8 @@ type RdsHostListProvider struct {
 	clusterInstanceTemplate *host_info_util.HostInfo
 	refreshRateNanos        time.Duration
 	lock                    sync.Mutex
+	queryForTopologyFunc    func(driver.Conn) ([]*host_info_util.HostInfo, error)
+	clusterIdChangedFunc    func(oldClusterId string)
 }
 
 func (r *RdsHostListProvider) init() {
@@ -201,8 +216,10 @@ func (r *RdsHostListProvider) getTopology(conn driver.Conn, forceUpdate bool) ([
 	r.lock.Lock()
 	suggestedPrimaryId, ok := suggestedPrimaryClusterCache.Get(r.clusterId)
 	if ok && suggestedPrimaryId != "" && r.clusterId != suggestedPrimaryId {
+		oldClusterId := r.clusterId
 		r.clusterId = suggestedPrimaryId
 		r.IsPrimaryClusterId = true
+		r.clusterIdChangedFunc(oldClusterId)
 	}
 	r.lock.Unlock()
 
@@ -214,7 +231,7 @@ func (r *RdsHostListProvider) getTopology(conn driver.Conn, forceUpdate bool) ([
 
 	if (!ok || forceUpdate || len(hosts) == 0) && conn != nil {
 		// Need to fetch the topology.
-		hosts, err := r.databaseDialect.GetTopology(conn, r)
+		hosts, err := r.queryForTopologyFunc(conn)
 		if err != nil {
 			// Topology fetch failed, pass on error.
 			return nil, false, err
@@ -287,7 +304,7 @@ func (r *RdsHostListProvider) suggestPrimaryCluster(primaryClusterHosts []*host_
 	}
 }
 
-func (r *RdsHostListProvider) createHost(host string, hostRole host_info_util.HostRole, lag float64, cpu float64, lastUpdateTime time.Time) *host_info_util.HostInfo {
+func (r *RdsHostListProvider) CreateHost(host string, hostRole host_info_util.HostRole, lag float64, cpu float64, lastUpdateTime time.Time) *host_info_util.HostInfo {
 	builder := host_info_util.NewHostInfoBuilder()
 
 	weight := int(math.Round(lag)*100 + math.Round(cpu))
@@ -295,7 +312,11 @@ func (r *RdsHostListProvider) createHost(host string, hostRole host_info_util.Ho
 	if r.clusterInstanceTemplate.Port != host_info_util.HOST_NO_PORT {
 		port = r.clusterInstanceTemplate.Port
 	} else {
-		port = r.initialHostInfo.Port
+		if r.initialHostInfo.Port != host_info_util.HOST_NO_PORT {
+			port = r.initialHostInfo.Port
+		} else {
+			port = r.hostListProviderService.GetDialect().GetDefaultPort()
+		}
 	}
 
 	host = r.getHostEndpoint(host)

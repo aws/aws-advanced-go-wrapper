@@ -19,6 +19,7 @@ package driver_infrastructure
 import (
 	"awssql/host_info_util"
 	"database/sql/driver"
+	"time"
 )
 
 type HostListProvider interface {
@@ -28,4 +29,5 @@ type HostListProvider interface {
 	IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error)
 	GetClusterId() string
 	IsStaticHostListProvider() bool
+	CreateHost(hostName string, role host_info_util.HostRole, lag float64, cpu float64, lastUpdateTime time.Time) *host_info_util.HostInfo
 }

@@ -69,7 +69,6 @@ func NewPluginServiceImpl(
 		originalDsn:               dsn,
 		connectionProviderManager: connectionProviderManager,
 	}
-	pluginService.hostListProvider = dialect.GetHostListProvider(props, dsn, pluginService)
 	return pluginService, nil
 }
 
@@ -82,11 +81,15 @@ func (p *PluginServiceImpl) SetHostListProvider(hostListProvider driver_infrastr
 }
 
 func (p *PluginServiceImpl) CreateHostListProvider(props map[string]string, dsn string) driver_infrastructure.HostListProvider {
-	return p.GetDialect().GetHostListProvider(props, dsn, p)
+	return p.GetDialect().GetHostListProvider(props, dsn, driver_infrastructure.HostListProviderService(p), p)
 }
 
 func (p *PluginServiceImpl) GetDialect() driver_infrastructure.DatabaseDialect {
 	return p.dialect
+}
+
+func (p *PluginServiceImpl) SetDialect(dialect driver_infrastructure.DatabaseDialect) {
+	p.dialect = dialect
 }
 
 func (p *PluginServiceImpl) UpdateDialect(conn driver.Conn) {
@@ -103,7 +106,7 @@ func (p *PluginServiceImpl) UpdateDialect(conn driver.Conn) {
 		return
 	}
 	p.dialect = newDialect
-	p.SetHostListProvider(p.dialect.GetHostListProvider(p.props, p.originalDsn, driver_infrastructure.HostListProviderService(p)))
+	p.SetHostListProvider(p.CreateHostListProvider(p.props, p.originalDsn))
 }
 
 func (p *PluginServiceImpl) GetCurrentConnection() driver.Conn {
@@ -140,7 +143,7 @@ func (p *PluginServiceImpl) SetCurrentConnection(
 
 			p.currentConnection = conn
 			p.currentHostInfo = hostInfo
-			p.setInTransaction(false)
+			p.SetInTransaction(false)
 
 			pluginOpinions := p.pluginManager.NotifyConnectionChanged(changes, skipNotificationForThisPlugin)
 			_, connectionObjectHasChanged := changes[driver_infrastructure.CONNECTION_OBJECT_CHANGED]
@@ -197,7 +200,7 @@ func (p *PluginServiceImpl) GetCurrentHostInfo() (*host_info_util.HostInfo, erro
 				return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginServiceImpl.hostListEmpty"))
 			}
 
-			p.currentHostInfo = utils.GetWriter(p.AllHosts)
+			p.currentHostInfo = host_info_util.GetWriter(p.AllHosts)
 			if p.currentHostInfo.IsNil() {
 				p.currentHostInfo = p.AllHosts[0]
 			}
@@ -278,11 +281,11 @@ func (p *PluginServiceImpl) SetAvailability(hostAliases map[string]bool, availab
 	}
 }
 
-func (p *PluginServiceImpl) InTransaction() bool {
+func (p *PluginServiceImpl) IsInTransaction() bool {
 	return p.isInTransaction
 }
 
-func (p *PluginServiceImpl) setInTransaction(inTransaction bool) {
+func (p *PluginServiceImpl) SetInTransaction(inTransaction bool) {
 	p.isInTransaction = inTransaction
 }
 
@@ -371,6 +374,27 @@ func (p *PluginServiceImpl) Connect(hostInfo *host_info_util.HostInfo, props map
 
 func (p *PluginServiceImpl) ForceConnect(hostInfo *host_info_util.HostInfo, props map[string]string) (driver.Conn, error) {
 	return p.pluginManager.ForceConnect(hostInfo, props, p.currentConnection == nil)
+}
+
+func (p *PluginServiceImpl) ForceRefreshHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) (bool, error) {
+	hostListProvider := p.GetHostListProvider()
+	blockingHostListProvider, ok := hostListProvider.(driver_infrastructure.BlockingHostListProvider)
+	if !ok {
+		return false, error_util.NewFailoverFailedError(error_util.GetMessage("PluginServiceImpl.requiredBlockingHostListProvider", hostListProvider))
+	}
+
+	updatedHostList, err := blockingHostListProvider.ForceRefreshHostListWithTimeout(shouldVerifyWriter, timeoutMs)
+	if err != nil {
+		slog.Warn(err.Error())
+		return false, err
+	}
+	if len(updatedHostList) != 0 {
+		p.updateHostAvailability(updatedHostList)
+		p.setHostList(p.AllHosts, updatedHostList)
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func (p *PluginServiceImpl) GetTargetDriverDialect() driver_infrastructure.DriverDialect {

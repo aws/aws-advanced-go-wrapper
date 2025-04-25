@@ -16,12 +16,15 @@
 
 package driver_infrastructure
 
-import "database/sql/driver"
+import (
+	"awssql/host_info_util"
+	"database/sql/driver"
+)
 
 type DriverDialect interface {
 	IsDialect(driver driver.Driver) bool
 	GetAllowedOnConnectionMethodNames() []string
-	PrepareDsn(properties map[string]string) string
+	PrepareDsn(properties map[string]string, info *host_info_util.HostInfo) string
 	IsNetworkError(err error) bool
 	IsLoginError(err error) bool
 	IsDriverRegistered(drivers map[string]driver.Driver) bool

@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 )
 
 func LogTopology(hosts []*host_info_util.HostInfo, msgPrefix string) string {
@@ -66,10 +67,12 @@ func GetFirstRowFromQuery(conn driver.Conn, query string) []driver.Value {
 		// Query failed.
 		return nil
 	}
+	if rows != nil {
+		defer rows.Close()
+	}
 
 	res := make([]driver.Value, len(rows.Columns()))
 	err = rows.Next(res)
-	rows.Close()
 	if err != nil {
 		// Gathering row failed.
 		return nil
@@ -137,15 +140,6 @@ func AllKeys[T comparable, V any](mapOfKeysAndValues map[T]V) []T {
 	return keys
 }
 
-func GetWriter(hosts []*host_info_util.HostInfo) *host_info_util.HostInfo {
-	for _, host := range hosts {
-		if host.Role == host_info_util.WRITER {
-			return host
-		}
-	}
-	return nil
-}
-
 func IsConnectionLost(conn driver.Conn) bool {
 	connectionPinger, ok := conn.(driver.Pinger)
 	if ok {
@@ -157,4 +151,44 @@ func IsConnectionLost(conn driver.Conn) bool {
 	}
 	// Unable to confirm that connection is lost.
 	return false
+}
+
+func IndexOf[T any](slice []T, item T, compareFunc func(T, T) bool) int {
+	for i, v := range slice {
+		if compareFunc(v, item) {
+			return i
+		}
+	}
+	return -1
+}
+
+func RemoveFromSlice[T any](slice []T, item T, compareFunc func(T, T) bool) []T {
+	index := IndexOf[T](
+		slice,
+		item,
+		compareFunc)
+	if index == -1 {
+		return slice
+	}
+	return append(slice[:index], slice[index+1:]...)
+}
+
+func LengthOfSyncMap(syncMap *sync.Map) int {
+	if syncMap == nil {
+		return 0
+	}
+	var i int
+	syncMap.Range(func(key, value interface{}) bool {
+		i++
+		return true
+	})
+	return i
+}
+
+func CreateMapCopy[K comparable, V any](mapToCopy map[K]V) map[K]V {
+	mapCopy := make(map[K]V, len(mapToCopy))
+	for key, value := range mapToCopy {
+		mapCopy[key] = value
+	}
+	return mapCopy
 }

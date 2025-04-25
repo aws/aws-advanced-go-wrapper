@@ -24,7 +24,7 @@ import (
 	"strings"
 )
 
-const DEFAULT_PLUGINS = "efm"
+const DEFAULT_PLUGINS = "failover,efm"
 const MONITORING_PROPERTY_PREFIX = "monitoring-"
 
 type WrapperPropertyType int
@@ -85,30 +85,35 @@ func GetVerifiedWrapperPropertyValue[T any](props map[string]string, property Aw
 }
 
 var ALL_WRAPPER_PROPERTIES = map[string]bool{
-	USER.Name:                             true,
-	PASSWORD.Name:                         true,
-	HOST.Name:                             true,
-	PORT.Name:                             true,
-	DATABASE.Name:                         true,
-	DRIVER_PROTOCOL.Name:                  true,
-	NET.Name:                              true,
-	SINGLE_WRITER_DSN.Name:                true,
-	PLUGINS.Name:                          true,
-	AUTO_SORT_PLUGIN_ORDER.Name:           true,
-	TARGET_DRIVER_DIALECT.Name:            true,
-	TARGET_DRIVER_AUTO_REGISTER.Name:      true,
-	CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name: true,
-	CLUSTER_ID.Name:                       true,
-	CLUSTER_INSTANCE_HOST_PATTERN.Name:    true,
-	IAM_HOST.Name:                         true,
-	IAM_EXPIRATION.Name:                   true,
-	IAM_REGION.Name:                       true,
-	IAM_DEFAULT_PORT.Name:                 true,
-	FAILURE_DETECTION_ENABLED.Name:        true,
-	FAILURE_DETECTION_TIME_MS.Name:        true,
-	FAILURE_DETECTION_INTERVAL_MS.Name:    true,
-	FAILURE_DETECTION_COUNT.Name:          true,
-	MONITOR_DISPOSAL_TIME_MS.Name:         true,
+	USER.Name:                                   true,
+	PASSWORD.Name:                               true,
+	HOST.Name:                                   true,
+	PORT.Name:                                   true,
+	DATABASE.Name:                               true,
+	DRIVER_PROTOCOL.Name:                        true,
+	NET.Name:                                    true,
+	SINGLE_WRITER_DSN.Name:                      true,
+	PLUGINS.Name:                                true,
+	AUTO_SORT_PLUGIN_ORDER.Name:                 true,
+	TARGET_DRIVER_DIALECT.Name:                  true,
+	TARGET_DRIVER_AUTO_REGISTER.Name:            true,
+	CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name:       true,
+	CLUSTER_ID.Name:                             true,
+	CLUSTER_INSTANCE_HOST_PATTERN.Name:          true,
+	IAM_HOST.Name:                               true,
+	IAM_EXPIRATION.Name:                         true,
+	IAM_REGION.Name:                             true,
+	IAM_DEFAULT_PORT.Name:                       true,
+	FAILURE_DETECTION_ENABLED.Name:              true,
+	FAILURE_DETECTION_TIME_MS.Name:              true,
+	FAILURE_DETECTION_INTERVAL_MS.Name:          true,
+	FAILURE_DETECTION_COUNT.Name:                true,
+	MONITOR_DISPOSAL_TIME_MS.Name:               true,
+	FAILOVER_TIMEOUT_MS.Name:                    true,
+	FAILOVER_MODE.Name:                          true,
+	FAILOVER_READER_HOST_SELECTOR_STRATEGY.Name: true,
+	ENABLE_CONNECT_FAILOVER.Name:                true,
+	CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS.Name:  true,
 }
 
 var USER = AwsWrapperProperty{
@@ -275,6 +280,43 @@ var IAM_EXPIRATION = AwsWrapperProperty{
 	Name:                "iamExpiration",
 	description:         "IAM token cache expiration in seconds.",
 	defaultValue:        "870",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var FAILOVER_TIMEOUT_MS = AwsWrapperProperty{
+	Name:                "failoverTimeoutMs",
+	description:         "Maximum allowed time for the failover process.",
+	defaultValue:        "300000",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var FAILOVER_MODE = AwsWrapperProperty{
+	Name:                "failoverMode",
+	description:         "Set host role to follow during failover.",
+	defaultValue:        "",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var FAILOVER_READER_HOST_SELECTOR_STRATEGY = AwsWrapperProperty{
+	Name:                "failoverReaderHostSelectorStrategy",
+	description:         "The strategy that should be used to select a new reader host when opening a new connection.",
+	defaultValue:        "random",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var ENABLE_CONNECT_FAILOVER = AwsWrapperProperty{
+	Name: "enableConnectFailover",
+	description: "Enable/disable cluster-aware failover if the initial connection to the database fails due to a " +
+		"network error. Note that this may result in a connection to a different instance in the cluster " +
+		"than was specified by the DSN.",
+	defaultValue:        "true",
+	wrapperPropertyType: WRAPPER_TYPE_BOOL,
+}
+
+var CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS = AwsWrapperProperty{
+	Name:                "clusterTopologyHighRefreshRateMs",
+	description:         "Cluster topology high refresh rate in milliseconds.",
+	defaultValue:        "100",
 	wrapperPropertyType: WRAPPER_TYPE_INT,
 }
 

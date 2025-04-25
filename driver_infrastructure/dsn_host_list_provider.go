@@ -23,6 +23,8 @@ import (
 	"awssql/utils"
 	"database/sql/driver"
 	"log/slog"
+	"math"
+	"time"
 )
 
 type DsnHostListProvider struct {
@@ -31,11 +33,20 @@ type DsnHostListProvider struct {
 	hostListProviderService        HostListProviderService
 	isInitialized                  bool
 	hostList                       []*host_info_util.HostInfo
+	initialHost                    string
 }
 
 func NewDsnHostListProvider(props map[string]string, dsn string, hostListProviderService HostListProviderService) *DsnHostListProvider {
 	isSingleWriterConnectionString := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.SINGLE_WRITER_DSN)
-	return &DsnHostListProvider{isSingleWriterConnectionString, dsn, hostListProviderService, false, []*host_info_util.HostInfo{}}
+	initialHost := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.HOST)
+	return &DsnHostListProvider{
+		isSingleWriterConnectionString,
+		dsn,
+		hostListProviderService,
+		false,
+		[]*host_info_util.HostInfo{},
+		initialHost,
+	}
 }
 
 func (c *DsnHostListProvider) init() error {
@@ -81,4 +92,13 @@ func (c *DsnHostListProvider) IdentifyConnection(conn driver.Conn) (*host_info_u
 func (c *DsnHostListProvider) GetClusterId() (clusterId string) {
 	slog.Warn(error_util.GetMessage("DsnHostListProvider.unsupportedGetClusterId"))
 	return
+}
+
+func (c *DsnHostListProvider) CreateHost(hostName string, hostRole host_info_util.HostRole, lag float64, cpu float64, lastUpdateTime time.Time) *host_info_util.HostInfo {
+	builder := host_info_util.NewHostInfoBuilder()
+	weight := int(math.Round(lag)*100 + math.Round(cpu))
+	port := c.hostListProviderService.GetDialect().GetDefaultPort()
+	builder.SetHost(c.initialHost).SetPort(port).SetRole(hostRole).SetAvailability(host_info_util.AVAILABLE).SetWeight(weight).SetLastUpdateTime(lastUpdateTime)
+	hostInfo, _ := builder.Build()
+	return hostInfo
 }

@@ -27,6 +27,7 @@ const (
 	InternalQueryTimeoutErrorType         AwsWrapperErrorType = 5
 	UnavailableHostErrorType              AwsWrapperErrorType = 6
 	DsnParsingErrorType                   AwsWrapperErrorType = 7
+	TimeoutErrorType                      AwsWrapperErrorType = 8
 	FailoverSuccessErrorType              AwsWrapperErrorType = 300
 	FailoverFailedErrorType               AwsWrapperErrorType = 301
 	TransactionResolutionUnknownErrorType AwsWrapperErrorType = 302
@@ -51,6 +52,10 @@ func (a *AwsWrapperError) IsFailoverErrorType() bool {
 
 func NewGenericAwsWrapperError(message string) *AwsWrapperError {
 	return &AwsWrapperError{message, GenericAwsWrapperErrorType}
+}
+
+func NewTimeoutError(message string) *AwsWrapperError {
+	return &AwsWrapperError{message, TimeoutErrorType}
 }
 
 func NewUnsupportedStrategyError(message string) *AwsWrapperError {

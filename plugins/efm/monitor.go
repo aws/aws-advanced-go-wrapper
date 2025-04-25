@@ -103,7 +103,9 @@ func (m *MonitorImpl) StartMonitoring(context *MonitorConnectionContext) {
 	}
 
 	startMonitoringTimeNano := time.Now().Add(m.failureDetectionTimeNanos)
+	m.lock.Lock()
 	m.NewContexts[startMonitoringTimeNano] = []weak.Pointer[MonitorConnectionContext]{weak.Make(context)}
+	m.lock.Unlock()
 }
 
 func (m *MonitorImpl) newContextRun() {
@@ -124,7 +126,9 @@ func (m *MonitorImpl) newContextRun() {
 					}
 				}
 				// Remove the processed entry from new contexts.
+				m.lock.Lock()
 				delete(m.NewContexts, startMonitoringTime)
+				m.lock.Unlock()
 			}
 		}
 		time.Sleep(time.Second)

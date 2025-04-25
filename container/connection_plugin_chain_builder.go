@@ -39,13 +39,15 @@ type PluginFactoryFuncWeight struct {
 }
 
 var pluginFactoryFuncByCode = map[string]PluginFactoryFunc{
-	"efm": efm.NewHostMonitoringPluginFactory,
-	"iam": iam.NewIamAuthPluginFactory,
+	"failover": plugins.NewFailoverPluginFactory,
+	"efm":      efm.NewHostMonitoringPluginFactory,
+	"iam":      iam.NewIamAuthPluginFactory,
 }
 
 var pluginWeightByCode = map[string]int{
-	"efm": 800,
-	"iam": 1000,
+	"failover": 700,
+	"efm":      800,
+	"iam":      1000,
 }
 
 type ConnectionPluginChainBuilder struct {

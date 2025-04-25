@@ -14,27 +14,11 @@
   limitations under the License.
 */
 
-package host_info_util
+package driver_infrastructure
 
-func AreHostListsEqual(s1 []*HostInfo, s2 []*HostInfo) bool {
-	if len(s1) != len(s2) {
-		return false
-	}
+import "awssql/host_info_util"
 
-	for i := 0; i < len(s1); i++ {
-		if !s1[i].Equals(s2[i]) {
-			return false
-		}
-	}
-
-	return true
-}
-
-func GetWriter(hosts []*HostInfo) *HostInfo {
-	for _, host := range hosts {
-		if host.Role == WRITER {
-			return host
-		}
-	}
-	return nil
+type BlockingHostListProvider interface {
+	HostListProvider
+	ForceRefreshHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) ([]*host_info_util.HostInfo, error)
 }

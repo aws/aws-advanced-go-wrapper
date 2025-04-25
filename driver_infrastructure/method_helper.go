@@ -48,7 +48,7 @@ const (
 	ROWS_HAS_NEXT_RESULT_SET            = "Rows.HasNextResultSet"
 	ROWS_NEXT_RESULT_SET                = "Rows.NextResultSet"
 	ROWS_COLUMN_TYPE_SCAN_TYPE          = "Rows.ColumnTypeScanType"
-	ROWS_CLUMN_TYPE_NULLABLE            = "Rows.ColumnTypeNullable"
+	ROWS_COLUMN_TYPE_NULLABLE           = "Rows.ColumnTypeNullable"
 )
 
 var REQUIRED_METHODS = []string{
@@ -87,6 +87,8 @@ var NETWORK_BOUND_METHODS = []string{
 	CONN_QUERY_CONTEXT,
 	CONN_EXEC_CONTEXT,
 	CONN_PING,
+	CONN_IS_VALID,
+	CONN_RESET_SESSION,
 	STMT_EXEC,
 	STMT_EXEC_CONTEXT,
 	STMT_QUERY,

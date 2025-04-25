@@ -37,7 +37,7 @@ func TestGetHostGivenUnavailableHost(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected error getting host: %v on iteration %v", err, i)
 		}
-		if actualHost.Equals(*availableHost) == false {
+		if actualHost.Equals(availableHost) == false {
 			t.Fatalf("Expected host %v but got %v on iteration %v", availableHost, actualHost, i)
 		}
 	}

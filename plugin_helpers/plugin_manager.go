@@ -27,8 +27,8 @@ import (
 
 const (
 	ALL_METHODS                      = "*"
-	CONNECT_METHOD                   = "connect"
-	FORCE_CONNECT_METHOD             = "forceConnect"
+	CONNECT_METHOD                   = "Conn.Connect"
+	FORCE_CONNECT_METHOD             = "Conn.ForceConnect"
 	ACCEPTS_STRATEGY_METHOD          = "acceptsStrategy"
 	GET_HOST_INFO_BY_STRATEGY_METHOD = "getHostInfoByStrategy"
 	INIT_HOST_PROVIDER_METHOD        = "initHostProvider"
@@ -37,8 +37,6 @@ const (
 )
 
 type PluginChain struct {
-	execFunc     func() (any, any, bool, error)
-	connectFunc  func() (driver.Conn, error)
 	execChain    func(pluginFunc driver_infrastructure.PluginExecFunc, execFunc func() (any, any, bool, error)) (any, any, bool, error)
 	connectChain func(pluginFunc driver_infrastructure.PluginConnectFunc, connectFunc func() (driver.Conn, error)) (driver.Conn, error)
 }
@@ -69,20 +67,20 @@ func (chain *PluginChain) ConnectAddToHead(plugin driver_infrastructure.Connecti
 	}
 }
 
-func (chain *PluginChain) Execute(pluginFunc driver_infrastructure.PluginExecFunc) (any, any, bool, error) {
+func (chain *PluginChain) Execute(pluginFunc driver_infrastructure.PluginExecFunc, execFunc func() (any, any, bool, error)) (any, any, bool, error) {
 	if chain.execChain == nil {
 		slog.Warn(error_util.GetMessage("PluginManager.pipelineNone"))
 		return nil, nil, false, error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginManager.pipelineNone"))
 	}
-	return chain.execChain(pluginFunc, chain.execFunc)
+	return chain.execChain(pluginFunc, execFunc)
 }
 
-func (chain *PluginChain) Connect(pluginFunc driver_infrastructure.PluginConnectFunc) (driver.Conn, error) {
+func (chain *PluginChain) Connect(pluginFunc driver_infrastructure.PluginConnectFunc, connectFunc func() (driver.Conn, error)) (driver.Conn, error) {
 	if chain.connectChain == nil {
 		slog.Warn(error_util.GetMessage("PluginManager.pipelineNone"))
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginManager.pipelineNone"))
 	}
-	return chain.connectChain(pluginFunc, chain.connectFunc)
+	return chain.connectChain(pluginFunc, connectFunc)
 }
 
 type PluginManagerImpl struct {
@@ -102,8 +100,8 @@ func NewPluginManagerImpl(
 	return &PluginManagerImpl{
 		targetDriver:        targetDriver,
 		props:               props,
-		pluginFuncMap:       pluginFuncMap,
 		connProviderManager: connProviderManager,
+		pluginFuncMap:       pluginFuncMap,
 	}
 }
 
@@ -183,10 +181,10 @@ func (pluginManager *PluginManagerImpl) executeWithSubscribedPlugins(
 	targetFunc driver_infrastructure.ExecuteFunc) (any, any, bool, error) {
 	chain, ok := pluginManager.pluginFuncMap[methodName]
 	if !ok {
-		chain = pluginManager.makePluginChain(methodName, targetFunc, nil)
+		chain = pluginManager.makePluginChain(methodName, true)
 		pluginManager.pluginFuncMap[methodName] = chain
 	}
-	return chain.Execute(pluginFunc)
+	return chain.Execute(pluginFunc, targetFunc)
 }
 
 func (pluginManager *PluginManagerImpl) connectWithSubscribedPlugins(
@@ -195,24 +193,23 @@ func (pluginManager *PluginManagerImpl) connectWithSubscribedPlugins(
 	targetFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	chain, ok := pluginManager.pluginFuncMap[methodName]
 	if !ok {
-		chain = pluginManager.makePluginChain(methodName, nil, targetFunc)
+		chain = pluginManager.makePluginChain(methodName, false)
 		pluginManager.pluginFuncMap[methodName] = chain
 	}
-	return chain.Connect(pluginFunc)
+	return chain.Connect(pluginFunc, targetFunc)
 }
 
 func (pluginManager *PluginManagerImpl) makePluginChain(
 	name string,
-	execFunc func() (any, any, bool, error),
-	connectFunc func() (driver.Conn, error)) PluginChain {
-	chain := PluginChain{execFunc: execFunc, connectFunc: connectFunc}
+	creatingExecChain bool) PluginChain {
+	chain := PluginChain{}
 	for i := len(pluginManager.plugins) - 1; i >= 0; i-- {
 		currentPlugin := pluginManager.plugins[i]
 		pluginSubscribedMethods := currentPlugin.GetSubscribedMethods()
 		if slices.Contains(pluginSubscribedMethods, ALL_METHODS) || slices.Contains(pluginSubscribedMethods, name) {
-			if execFunc != nil {
+			if creatingExecChain {
 				chain.ExecAddToHead(currentPlugin)
-			} else if connectFunc != nil {
+			} else {
 				chain.ConnectAddToHead(currentPlugin)
 			}
 		}
@@ -283,7 +280,7 @@ func (pluginManager *PluginManagerImpl) GetHostInfoByStrategy(
 	hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
 	for i := 0; i < len(pluginManager.plugins); i++ {
 		currentPlugin := pluginManager.plugins[i]
-		isSubscribed := slices.Contains(currentPlugin.GetSubscribedMethods(), strategy)
+		isSubscribed := slices.Contains(currentPlugin.GetSubscribedMethods(), ALL_METHODS) || slices.Contains(currentPlugin.GetSubscribedMethods(), GET_HOST_INFO_BY_STRATEGY_METHOD)
 
 		if isSubscribed {
 			host, err := currentPlugin.GetHostInfoByStrategy(role, strategy, hosts)

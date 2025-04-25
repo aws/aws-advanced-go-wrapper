@@ -50,10 +50,11 @@ func (p *PgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	return row != nil
 }
 
-func (m *PgDatabaseDialect) GetHostListProvider(
+func (p *PgDatabaseDialect) GetHostListProvider(
 	props map[string]string,
 	initialDsn string,
-	hostListProviderService HostListProviderService) HostListProvider {
+	hostListProviderService HostListProviderService,
+	pluginService PluginService) HostListProvider {
 	return HostListProvider(NewDsnHostListProvider(props, initialDsn, hostListProviderService))
 }
 
@@ -97,8 +98,12 @@ func (m *AuroraPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	return hasExtensions != nil && hasExtensions[0] == true && hasTopology != nil
 }
 
-func (m *AuroraPgDatabaseDialect) GetHostListProvider(props map[string]string, initialDsn string, hostListProviderService HostListProviderService) HostListProvider {
-	return HostListProvider(NewRdsHostListProvider(hostListProviderService, m, props, initialDsn))
+func (m *AuroraPgDatabaseDialect) GetHostListProvider(
+	props map[string]string,
+	initialDsn string,
+	hostListProviderService HostListProviderService,
+	pluginService PluginService) HostListProvider {
+	return HostListProvider(NewMonitoringRdsHostListProvider(hostListProviderService, m, props, initialDsn, pluginService))
 }
 
 func (m *AuroraPgDatabaseDialect) GetHostRole(conn driver.Conn) host_info_util.HostRole {
@@ -116,7 +121,7 @@ func (m *AuroraPgDatabaseDialect) GetHostRole(conn driver.Conn) host_info_util.H
 	return host_info_util.UNKNOWN
 }
 
-func (m *AuroraPgDatabaseDialect) GetTopology(conn driver.Conn, provider *RdsHostListProvider) ([]*host_info_util.HostInfo, error) {
+func (m *AuroraPgDatabaseDialect) GetTopology(conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
 	topologyQuery := "SELECT server_id, CASE WHEN SESSION_ID = 'MASTER_SESSION_ID' THEN TRUE ELSE FALSE END AS is_writer, " +
 		"CPU, COALESCE(REPLICA_LAG_IN_MSEC, 0) AS lag, LAST_UPDATE_TIMESTAMP " +
 		"FROM aurora_replica_status() " +
@@ -134,6 +139,9 @@ func (m *AuroraPgDatabaseDialect) GetTopology(conn driver.Conn, provider *RdsHos
 	if err != nil {
 		// Query failed.
 		return nil, err
+	}
+	if rows != nil {
+		defer rows.Close()
 	}
 
 	hosts := []*host_info_util.HostInfo{}
@@ -162,10 +170,9 @@ func (m *AuroraPgDatabaseDialect) GetTopology(conn driver.Conn, provider *RdsHos
 		if isWriter {
 			hostRole = host_info_util.WRITER
 		}
-		hosts = append(hosts, provider.createHost(hostName, hostRole, lag, cpu, lastUpdateTime))
+		hosts = append(hosts, provider.CreateHost(hostName, hostRole, lag, cpu, lastUpdateTime))
 		err = rows.Next(row)
 	}
-	rows.Close()
 	return hosts, nil
 }
 
@@ -179,4 +186,20 @@ func (m *AuroraPgDatabaseDialect) GetHostName(conn driver.Conn) string {
 		}
 	}
 	return ""
+}
+
+func (m *AuroraPgDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, error) {
+	hostIdQuery := "SELECT server_id FROM aurora_replica_status() WHERE SESSION_ID = 'MASTER_SESSION_ID' AND SERVER_ID = aurora_db_instance_identifier()"
+	res := utils.GetFirstRowFromQuery(conn, hostIdQuery)
+	if res == nil {
+		return "", error_util.NewGenericAwsWrapperError("Could not determine writer host name.")
+	}
+
+	if len(res) > 0 {
+		instanceId, ok := (res[0]).(string)
+		if ok {
+			return instanceId, nil
+		}
+	}
+	return "", nil
 }
