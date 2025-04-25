@@ -26,16 +26,18 @@ import (
 func ExecuteWithPlugins(
 	pluginManager driver_infrastructure.PluginManager,
 	methodName string,
-	executeFunc driver_infrastructure.ExecuteFunc) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
-	return pluginManager.Execute(methodName, executeFunc)
+	executeFunc driver_infrastructure.ExecuteFunc,
+	methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
+	return pluginManager.Execute(methodName, executeFunc, methodArgs...)
 }
 
 func queryWithPlugins(
 	pluginManager driver_infrastructure.PluginManager,
 	methodName string,
 	queryFunc driver_infrastructure.ExecuteFunc,
-	engine driver_infrastructure.DatabaseEngine) (driver.Rows, error) {
-	result, _, _, err := ExecuteWithPlugins(pluginManager, methodName, queryFunc)
+	engine driver_infrastructure.DatabaseEngine,
+	methodArgs ...any) (driver.Rows, error) {
+	result, _, _, err := ExecuteWithPlugins(pluginManager, methodName, queryFunc, methodArgs...)
 
 	if err == nil {
 		driverRows, ok := result.(driver.Rows)
@@ -55,8 +57,12 @@ func queryWithPlugins(
 	return nil, err
 }
 
-func execWithPlugins(pluginManager driver_infrastructure.PluginManager, methodName string, execFunc driver_infrastructure.ExecuteFunc) (driver.Result, error) {
-	result, _, _, err := ExecuteWithPlugins(pluginManager, methodName, execFunc)
+func execWithPlugins(
+	pluginManager driver_infrastructure.PluginManager,
+	methodName string,
+	execFunc driver_infrastructure.ExecuteFunc,
+	methodArgs ...any) (driver.Result, error) {
+	result, _, _, err := ExecuteWithPlugins(pluginManager, methodName, execFunc, methodArgs...)
 	if err == nil {
 		driverResult, ok := result.(driver.Result)
 		if ok {
@@ -72,8 +78,9 @@ func prepareWithPlugins(
 	pluginManager driver_infrastructure.PluginManager,
 	methodName string,
 	prepareFunc driver_infrastructure.ExecuteFunc,
-	conn AwsWrapperConn) (driver.Stmt, error) {
-	result, _, _, err := ExecuteWithPlugins(pluginManager, methodName, prepareFunc)
+	conn AwsWrapperConn,
+	methodArgs ...any) (driver.Stmt, error) {
+	result, _, _, err := ExecuteWithPlugins(pluginManager, methodName, prepareFunc, methodArgs...)
 	if err == nil {
 		driverStmt, ok := result.(driver.Stmt)
 		if ok {

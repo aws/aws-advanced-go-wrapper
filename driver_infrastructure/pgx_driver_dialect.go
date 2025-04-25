@@ -20,6 +20,7 @@ import (
 	"awssql/error_util"
 	"awssql/host_info_util"
 	"awssql/property_util"
+	"awssql/utils"
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
@@ -58,7 +59,7 @@ func (p PgxDriverDialect) IsDialect(driver driver.Driver) bool {
 }
 
 func (p PgxDriverDialect) GetAllowedOnConnectionMethodNames() []string {
-	return append(REQUIRED_METHODS, ROWS_COLUMN_TYPE_LENGTH)
+	return append(utils.REQUIRED_METHODS, utils.ROWS_COLUMN_TYPE_LENGTH)
 }
 
 func (p PgxDriverDialect) IsNetworkError(err error) bool {

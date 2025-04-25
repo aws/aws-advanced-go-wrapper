@@ -91,7 +91,7 @@ func (b *HostMonitorConnectionPlugin) Execute(
 	methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
 	isEnabled := property_util.GetVerifiedWrapperPropertyValue[bool](b.props, property_util.FAILURE_DETECTION_ENABLED)
 
-	if !isEnabled || !slices.Contains(driver_infrastructure.NETWORK_BOUND_METHODS, methodName) {
+	if !isEnabled || !slices.Contains(utils.NETWORK_BOUND_METHODS, methodName) {
 		return executeFunc()
 	}
 

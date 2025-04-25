@@ -23,6 +23,7 @@ import (
 	"awssql/plugin_helpers"
 	"awssql/plugins"
 	"awssql/property_util"
+	"awssql/utils"
 	"database/sql/driver"
 	"errors"
 	"github.com/stretchr/testify/assert"
@@ -399,7 +400,7 @@ func TestFailoverReader(t *testing.T) {
 	plugin, _ := initializeTest(props, false, false, false, false, false, false)
 	plugin.InitFailoverMode()
 
-	_, _, _, _ = plugin.Execute(driver_infrastructure.CONN_QUERY_CONTEXT, execFunc)
+	_, _, _, _ = plugin.Execute(utils.CONN_QUERY_CONTEXT, execFunc)
 	err := plugin.Failover()
 	if err != nil {
 		assert.Equal(t, error_util.FailoverSuccessError, err)
@@ -424,7 +425,7 @@ func TestFailoverReaderInTransaction(t *testing.T) {
 	plugin, _ := initializeTest(props, true, false, false, false, false, false)
 	plugin.InitFailoverMode()
 
-	_, _, _, _ = plugin.Execute(driver_infrastructure.CONN_QUERY_CONTEXT, execFunc)
+	_, _, _, _ = plugin.Execute(utils.CONN_QUERY_CONTEXT, execFunc)
 	err := plugin.Failover()
 	if err != nil {
 		assert.Equal(t, error_util.TransactionResolutionUnknownError, err)
@@ -449,7 +450,7 @@ func TestFailoverReaderFails(t *testing.T) {
 	plugin, _ := initializeTest(props, false, false, false, true, false, false)
 	plugin.InitFailoverMode()
 
-	_, _, _, _ = plugin.Execute(driver_infrastructure.CONN_QUERY_CONTEXT, execFunc)
+	_, _, _, _ = plugin.Execute(utils.CONN_QUERY_CONTEXT, execFunc)
 	err := plugin.Failover()
 	if err != nil {
 		assert.Equal(t, error_util.NewTimeoutError(error_util.GetMessage("ClusterTopologyMonitorImpl.topologyNotUpdated", 1100)), err)
@@ -499,7 +500,7 @@ func TestFailoverReaderIncorrectRole(t *testing.T) {
 	plugin, _ := initializeTest(props, false, true, false, false, false, false)
 	plugin.InitFailoverMode()
 
-	_, _, _, _ = plugin.Execute(driver_infrastructure.CONN_QUERY_CONTEXT, execFunc)
+	_, _, _, _ = plugin.Execute(utils.CONN_QUERY_CONTEXT, execFunc)
 	err := plugin.Failover()
 	if err != nil {
 		assert.Equal(t, error_util.NewFailoverFailedError(error_util.GetMessage("Failover.unableToConnectToReader")), err)
@@ -574,7 +575,7 @@ func TestExecuteWithFailoverDisabled(t *testing.T) {
 	plugin, _ := initializeTest(props, false, true, false, false, false, false)
 	plugin.InitFailoverMode()
 
-	_, _, _, _ = plugin.Execute(driver_infrastructure.CONN_QUERY_CONTEXT, execFunc)
+	_, _, _, _ = plugin.Execute(utils.CONN_QUERY_CONTEXT, execFunc)
 
 	assert.Equal(t, 1, execFuncCalls)
 	assert.Equal(t, 0, plugin.calledFailoverCount)

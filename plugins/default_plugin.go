@@ -20,6 +20,7 @@ import (
 	"awssql/driver_infrastructure"
 	"awssql/error_util"
 	"awssql/host_info_util"
+	"awssql/utils"
 	"database/sql/driver"
 )
 
@@ -43,8 +44,22 @@ func (d *DefaultPlugin) GetSubscribedMethods() []string {
 	return []string{"*"}
 }
 
-func (d *DefaultPlugin) Execute(methodName string, executeFunc driver_infrastructure.ExecuteFunc, methodArgs ...any) (any, any, bool, error) {
-	return executeFunc()
+func (d *DefaultPlugin) Execute(
+	methodName string,
+	executeFunc driver_infrastructure.ExecuteFunc,
+	methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
+	wrappedReturnValue, wrappedReturnValue2, wrappedOk, wrappedErr = executeFunc()
+	if wrappedErr != nil {
+		return
+	}
+
+	if utils.DoesOpenTransaction(methodName, methodArgs...) {
+		d.PluginService.SetInTransaction(true)
+	} else if utils.DoesCloseTransaction(methodName, methodArgs...) {
+		d.PluginService.SetInTransaction(false)
+	}
+
+	return
 }
 
 func (d *DefaultPlugin) Connect(

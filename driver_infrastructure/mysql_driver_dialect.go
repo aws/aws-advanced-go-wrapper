@@ -20,6 +20,7 @@ import (
 	"awssql/error_util"
 	"awssql/host_info_util"
 	"awssql/property_util"
+	"awssql/utils"
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
@@ -49,7 +50,7 @@ func (m MySQLDriverDialect) IsDialect(driver driver.Driver) bool {
 }
 
 func (m MySQLDriverDialect) GetAllowedOnConnectionMethodNames() []string {
-	return append(REQUIRED_METHODS, ROWS_HAS_NEXT_RESULT_SET, ROWS_NEXT_RESULT_SET, ROWS_COLUMN_TYPE_SCAN_TYPE, ROWS_COLUMN_TYPE_NULLABLE)
+	return append(utils.REQUIRED_METHODS, utils.ROWS_HAS_NEXT_RESULT_SET, utils.ROWS_NEXT_RESULT_SET, utils.ROWS_COLUMN_TYPE_SCAN_TYPE, utils.ROWS_COLUMN_TYPE_NULLABLE)
 }
 
 func (m MySQLDriverDialect) IsNetworkError(err error) bool {
