@@ -225,12 +225,13 @@ func (pluginManager *MockPluginManager) ForceConnect(
 }
 
 type MockConn struct {
-	queryResult   driver.Rows
-	execResult    driver.Result
-	beginResult   driver.Tx
-	prepareResult driver.Stmt
-	throwError    bool
-	closeCounter  int
+	queryResult        driver.Rows
+	execResult         driver.Result
+	beginResult        driver.Tx
+	prepareResult      driver.Stmt
+	throwError         bool
+	closeCounter       int
+	execContextCounter int
 }
 
 func (m *MockConn) Close() error {
@@ -254,6 +255,7 @@ func (m *MockConn) QueryContext(ctx context.Context, query string, args []driver
 }
 
 func (m *MockConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
+	m.execContextCounter++
 	return m.execResult, nil
 }
 
@@ -302,13 +304,25 @@ func (m MockResult) RowsAffected() (int64, error) {
 }
 
 type MockTx struct {
+	commitCounter   *int
+	rollbackCounter *int
+}
+
+func NewMockTx() *MockTx {
+	return &MockTx{commitCounter: new(int), rollbackCounter: new(int)}
 }
 
 func (a MockTx) Commit() error {
+	if a.commitCounter != nil {
+		*a.commitCounter++
+	}
 	return errors.New("MockTx error")
 }
 
 func (a MockTx) Rollback() error {
+	if a.rollbackCounter != nil {
+		*a.rollbackCounter++
+	}
 	return errors.New("MockTx error")
 }
 

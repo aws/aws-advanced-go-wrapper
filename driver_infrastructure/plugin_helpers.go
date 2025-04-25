@@ -48,6 +48,8 @@ type PluginService interface {
 	SetAvailability(hostAliases map[string]bool, availability host_info_util.HostAvailability)
 	IsInTransaction() bool
 	SetInTransaction(inTransaction bool)
+	GetCurrentTx() driver.Tx
+	SetCurrentTx(driver.Tx)
 	GetHostListProvider() HostListProvider
 	RefreshHostList(conn driver.Conn) error
 	ForceRefreshHostList(conn driver.Conn) error
