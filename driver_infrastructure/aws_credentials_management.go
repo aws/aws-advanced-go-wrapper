@@ -19,9 +19,10 @@ package driver_infrastructure
 import (
 	"awssql/host_info_util"
 	"context"
+	"sync"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"sync"
 )
 
 type AwsCredentialsProviderHandler interface {

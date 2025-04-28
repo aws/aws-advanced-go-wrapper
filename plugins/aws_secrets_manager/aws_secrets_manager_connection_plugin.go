@@ -1,0 +1,202 @@
+/*
+  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License").
+  You may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
+/*
+  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License").
+  You may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
+package aws_secrets_manager
+
+import (
+	"awssql/driver_infrastructure"
+	"awssql/error_util"
+	"awssql/host_info_util"
+	"awssql/plugin_helpers"
+	"awssql/plugins"
+	"awssql/property_util"
+	"awssql/region_util"
+	"database/sql/driver"
+	"errors"
+	"log/slog"
+	"net/url"
+	"sync"
+)
+
+type AwsSecretsManagerPluginFactory struct{}
+
+func (factory AwsSecretsManagerPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
+	props map[string]string,
+) (driver_infrastructure.ConnectionPlugin, error) {
+	return NewAwsSecretsManagerPlugin(pluginService, props, driver_infrastructure.NewAwsSecretsManagerClient)
+}
+
+func NewAwsSecretsManagerPluginFactory() driver_infrastructure.ConnectionPluginFactory {
+	return AwsSecretsManagerPluginFactory{}
+}
+
+var SecretsCache sync.Map
+
+type AwsSecretsManagerPlugin struct {
+	plugins.BaseConnectionPlugin
+	pluginService                   driver_infrastructure.PluginService
+	props                           map[string]string
+	secret                          AwsRdsSecrets
+	SecretsCacheKey                 string
+	region                          region_util.Region
+	endpoint                        string
+	awsSecretsManagerClientProvider driver_infrastructure.NewAwsSecretsManagerClientProvider
+}
+
+func NewAwsSecretsManagerPlugin(pluginService driver_infrastructure.PluginService,
+	props map[string]string,
+	awsSecretsManagerClientProvider driver_infrastructure.NewAwsSecretsManagerClientProvider,
+) (*AwsSecretsManagerPlugin, error) {
+	// Get and validate region
+	region, err := GetAwsSecretsManagerRegion(props[property_util.SECRETS_MANAGER_REGION.Name], props[property_util.SECRETS_MANAGER_SECRET_ID.Name])
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate endpoint if supplied
+	secretsEndpoint := props[property_util.SECRETS_MANAGER_ENDPOINT.Name]
+	if secretsEndpoint != "" {
+		_, err := url.ParseRequestURI(secretsEndpoint)
+		if err != nil {
+			return nil, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.endpointOverrideMisconfigured", secretsEndpoint))
+		}
+	}
+
+	return &AwsSecretsManagerPlugin{
+		pluginService: pluginService,
+		props:         props,
+		SecretsCacheKey: getCacheKey(
+			props[property_util.SECRETS_MANAGER_SECRET_ID.Name], string(region),
+		),
+		region:                          region,
+		endpoint:                        secretsEndpoint,
+		awsSecretsManagerClientProvider: awsSecretsManagerClientProvider,
+	}, err
+}
+
+func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) GetSubscribedMethods() []string {
+	return []string{plugin_helpers.CONNECT_METHOD, plugin_helpers.FORCE_CONNECT_METHOD}
+}
+
+func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) Connect(
+	hostInfo *host_info_util.HostInfo,
+	props map[string]string,
+	isInitialConnection bool,
+	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
+	return awsSecretsManagerPlugin.connectInternal(hostInfo, props, connectFunc)
+}
+
+func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) ForceConnect(
+	hostInfo *host_info_util.HostInfo,
+	props map[string]string,
+	isInitialConnection bool,
+	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
+	return awsSecretsManagerPlugin.connectInternal(hostInfo, props, connectFunc)
+}
+
+func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectInternal(
+	hostInfo *host_info_util.HostInfo,
+	props map[string]string,
+	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
+	secretsWasFetched, _ := awsSecretsManagerPlugin.updateSecrets(*hostInfo, props, false)
+
+	// try and connect
+	awsSecretsManagerPlugin.applySecretToProperties(props)
+	conn, err := connectFunc()
+
+	if err == nil {
+		slog.Debug("AwsSecretsManagerConnectionPlugin: Connected successfully using cached value")
+		return conn, err
+	}
+
+	if awsSecretsManagerPlugin.pluginService.IsLoginError(err) || !secretsWasFetched {
+		// Login unsuccessful with cached credentials
+		// Try to re-fetch credentials and try again
+		slog.Debug("AwsSecretsManagerConnectionPlugin: failed to connect initially, fetching new secret value")
+		secretsWasFetched, err = awsSecretsManagerPlugin.updateSecrets(*hostInfo, props, true)
+
+		if secretsWasFetched {
+			awsSecretsManagerPlugin.applySecretToProperties(props)
+			return connectFunc()
+		}
+		if err != nil {
+			return nil, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.unhandledException", err))
+		}
+	}
+
+	return nil, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.unhandledException", err))
+}
+
+func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) applySecretToProperties(
+	props map[string]string) {
+	props[property_util.USER.Name] = awsSecretsManagerPlugin.secret.Username
+	props[property_util.PASSWORD.Name] = awsSecretsManagerPlugin.secret.Password
+}
+
+func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) updateSecrets(
+	hostInfo host_info_util.HostInfo,
+	props map[string]string,
+	forceReFetch bool) (bool, error) {
+	fetched := false
+	var err error
+
+	secret, loaded := SecretsCache.Load(awsSecretsManagerPlugin.SecretsCacheKey)
+
+	if !loaded || forceReFetch {
+		secret, err = awsSecretsManagerPlugin.fetchLatestCredentials(&hostInfo, props)
+
+		if err == nil {
+			fetched = true
+			SecretsCache.Store(awsSecretsManagerPlugin.SecretsCacheKey, secret)
+		} else {
+			slog.Error(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.failedToFetchDbCredentials"))
+			return fetched, err
+		}
+	}
+
+	awsSecretsManagerPlugin.secret = secret.(AwsRdsSecrets)
+	return fetched, nil
+}
+
+func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) fetchLatestCredentials(
+	hostInfo *host_info_util.HostInfo,
+	props map[string]string) (AwsRdsSecrets, error) {
+	slog.Debug("AwsSecretsManagerConnectionPlugin: Fetching latest credentials")
+
+	secret, err := getRdsSecretFromAwsSecretsManager(
+		hostInfo,
+		props,
+		awsSecretsManagerPlugin.endpoint,
+		string(awsSecretsManagerPlugin.region),
+		awsSecretsManagerPlugin.awsSecretsManagerClientProvider)
+	return secret, err
+}

@@ -25,9 +25,11 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"reflect"
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 )
 
 var mysqlTestDsn = "someUser:somePassword@tcp(mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:3306)/myDatabase?foo=bar&pop=snap"
@@ -402,4 +404,32 @@ func (m *MockIamTokenUtility) GenerateAuthenticationToken(
 
 func (m *MockIamTokenUtility) GetMockTokenValue() string {
 	return "someToken"
+}
+
+// --- Aws Services Mocks. ---
+
+// Secrets Manager Mocks.
+type MockAwsSecretsManagerClient struct {
+}
+
+func (m *MockAwsSecretsManagerClient) GetSecretValue(ctx context.Context,
+	params *secretsmanager.GetSecretValueInput,
+	optFns ...func(*secretsmanager.Options),
+) (*secretsmanager.GetSecretValueOutput, error) {
+	mockOutput := secretsmanager.GetSecretValueOutput{
+		ARN:          aws.String("arn:aws:secretsmanager:us-west-2:account-id:secret:default"),
+		Name:         aws.String("default-secret-name"),
+		SecretString: aws.String("{\"username\":\"testuser\",\"password\":\"testpassword\"}"),
+		VersionId:    aws.String("default-version-id"),
+	}
+	return &mockOutput, nil
+}
+
+func NewMockAwsSecretsManagerClient(hostInfo *host_info_util.HostInfo,
+	props map[string]string,
+	endpoint string,
+	region string) (driver_infrastructure.AwsSecretsManagerClient, error) {
+	client := MockAwsSecretsManagerClient{}
+
+	return &client, nil
 }

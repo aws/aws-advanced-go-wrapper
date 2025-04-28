@@ -104,6 +104,9 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	IAM_EXPIRATION.Name:                         true,
 	IAM_REGION.Name:                             true,
 	IAM_DEFAULT_PORT.Name:                       true,
+	SECRETS_MANAGER_SECRET_ID.Name:              true,
+	SECRETS_MANAGER_REGION.Name:                 true,
+	SECRETS_MANAGER_ENDPOINT.Name:               true,
 	FAILURE_DETECTION_ENABLED.Name:              true,
 	FAILURE_DETECTION_TIME_MS.Name:              true,
 	FAILURE_DETECTION_INTERVAL_MS.Name:          true,
@@ -318,6 +321,27 @@ var CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS = AwsWrapperProperty{
 	description:         "Cluster topology high refresh rate in milliseconds.",
 	defaultValue:        "100",
 	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var SECRETS_MANAGER_SECRET_ID = AwsWrapperProperty{
+	Name:                "secretsManagerSecretId",
+	description:         "The name or the ARN of the secret to retrieve.",
+	defaultValue:        "",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var SECRETS_MANAGER_REGION = AwsWrapperProperty{
+	Name:                "secretsManagerRegion",
+	description:         "The region of the secret to retrieve.",
+	defaultValue:        "us-east-1",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var SECRETS_MANAGER_ENDPOINT = AwsWrapperProperty{
+	Name:                "secretsManagerEndpoint",
+	description:         "The endpoint of the secret to retrieve.",
+	defaultValue:        "",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
 func RemoveMonitoringProperties(props map[string]string) map[string]string {
