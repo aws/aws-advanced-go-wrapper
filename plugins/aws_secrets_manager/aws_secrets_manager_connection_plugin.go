@@ -83,11 +83,19 @@ func NewAwsSecretsManagerPlugin(pluginService driver_infrastructure.PluginServic
 	}
 
 	// Validate endpoint if supplied
-	secretsEndpoint := props[property_util.SECRETS_MANAGER_ENDPOINT.Name]
-	if secretsEndpoint != "" {
-		_, err := url.ParseRequestURI(secretsEndpoint)
+	secretsEndpoint := ""
+	propsEndpoint := props[property_util.SECRETS_MANAGER_ENDPOINT.Name]
+	if propsEndpoint != "" {
+		parsedUri, err := url.ParseRequestURI(propsEndpoint)
 		if err != nil {
 			return nil, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.endpointOverrideMisconfigured", secretsEndpoint))
+		}
+
+		// If no scheme is provided, e.g. 'localhost', Host is empty string and the host is placed in path
+		if parsedUri.Host == "" {
+			secretsEndpoint = parsedUri.Host
+		} else {
+			secretsEndpoint = parsedUri.Host
 		}
 	}
 
@@ -151,11 +159,11 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectInternal(
 			return connectFunc()
 		}
 		if err != nil {
-			return nil, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.unhandledException", err))
+			return nil, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.unhandledError", err))
 		}
 	}
 
-	return nil, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.unhandledException", err))
+	return nil, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.unhandledError", err))
 }
 
 func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) applySecretToProperties(
