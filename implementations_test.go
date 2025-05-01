@@ -22,6 +22,7 @@ import (
 	"awssql/error_util"
 	"awssql/plugin_helpers"
 	"awssql/plugins"
+	"awssql/plugins/aws_secrets_manager"
 	"awssql/plugins/efm"
 	"database/sql/driver"
 	"testing"
@@ -54,6 +55,7 @@ func TestImplementations(t *testing.T) {
 	var _ driver_infrastructure.ConnectionPlugin = (*plugins.BaseConnectionPlugin)(nil)
 	var _ driver_infrastructure.ConnectionPlugin = (*efm.HostMonitorConnectionPlugin)(nil)
 	var _ driver_infrastructure.ConnectionPlugin = (*plugins.FailoverPlugin)(nil)
+	var _ driver_infrastructure.ConnectionPlugin = (*aws_secrets_manager.AwsSecretsManagerPlugin)(nil)
 	var _ driver_infrastructure.ConnectionPluginFactory = (*efm.HostMonitoringPluginFactory)(nil)
 	var _ driver_infrastructure.ConnectionPluginFactory = (*plugins.FailoverPluginFactory)(nil)
 	var _ efm.MonitorService = (*efm.MonitorServiceImpl)(nil)

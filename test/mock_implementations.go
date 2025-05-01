@@ -429,7 +429,5 @@ func NewMockAwsSecretsManagerClient(hostInfo *host_info_util.HostInfo,
 	props map[string]string,
 	endpoint string,
 	region string) (driver_infrastructure.AwsSecretsManagerClient, error) {
-	client := MockAwsSecretsManagerClient{}
-
-	return &client, nil
+	return &MockAwsSecretsManagerClient{}, nil
 }

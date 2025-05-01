@@ -21,6 +21,7 @@ import (
 	"awssql/driver_infrastructure"
 	"awssql/error_util"
 	"awssql/plugin_helpers"
+	"awssql/plugins/aws_secrets_manager"
 	"awssql/plugins/efm"
 	"context"
 	"database/sql"
@@ -90,6 +91,7 @@ func ClearCaches() {
 	driver_infrastructure.ClearCaches()
 	plugin_helpers.ClearCaches()
 	efm.ClearCaches()
+	aws_secrets_manager.ClearCaches()
 }
 
 type AwsWrapperConn struct {

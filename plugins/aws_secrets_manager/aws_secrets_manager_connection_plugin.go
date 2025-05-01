@@ -127,14 +127,16 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectInternal(
 	hostInfo *host_info_util.HostInfo,
 	props map[string]string,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-	secretsWasFetched, _ := awsSecretsManagerPlugin.updateSecrets(*hostInfo, props, false)
+	secretsWasFetched, _ := awsSecretsManagerPlugin.updateSecrets(hostInfo, props, false)
 
 	// try and connect
 	awsSecretsManagerPlugin.applySecretToProperties(props)
 	conn, err := connectFunc()
 
 	if err == nil {
-		slog.Debug("AwsSecretsManagerConnectionPlugin: Connected successfully using cached value")
+		if !secretsWasFetched {
+			slog.Debug("AwsSecretsManagerConnectionPlugin: Connected successfully using cached value")
+		}
 		return conn, err
 	}
 
@@ -142,7 +144,7 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectInternal(
 		// Login unsuccessful with cached credentials
 		// Try to re-fetch credentials and try again
 		slog.Debug("AwsSecretsManagerConnectionPlugin: failed to connect initially, fetching new secret value")
-		secretsWasFetched, err = awsSecretsManagerPlugin.updateSecrets(*hostInfo, props, true)
+		secretsWasFetched, err = awsSecretsManagerPlugin.updateSecrets(hostInfo, props, true)
 
 		if secretsWasFetched {
 			awsSecretsManagerPlugin.applySecretToProperties(props)
@@ -163,7 +165,7 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) applySecretToProperties(
 }
 
 func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) updateSecrets(
-	hostInfo host_info_util.HostInfo,
+	hostInfo *host_info_util.HostInfo,
 	props map[string]string,
 	forceReFetch bool) (bool, error) {
 	fetched := false
@@ -172,7 +174,7 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) updateSecrets(
 	secret, loaded := SecretsCache.Load(awsSecretsManagerPlugin.SecretsCacheKey)
 
 	if !loaded || forceReFetch {
-		secret, err = awsSecretsManagerPlugin.fetchLatestCredentials(&hostInfo, props)
+		secret, err = awsSecretsManagerPlugin.fetchLatestCredentials(hostInfo, props)
 
 		if err == nil {
 			fetched = true
@@ -199,4 +201,8 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) fetchLatestCredentials(
 		string(awsSecretsManagerPlugin.region),
 		awsSecretsManagerPlugin.awsSecretsManagerClientProvider)
 	return secret, err
+}
+
+func ClearCaches() {
+	SecretsCache.Clear()
 }
