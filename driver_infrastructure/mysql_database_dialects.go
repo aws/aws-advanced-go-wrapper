@@ -19,9 +19,11 @@ package driver_infrastructure
 import (
 	"awssql/error_util"
 	"awssql/host_info_util"
+	"awssql/property_util"
 	"awssql/utils"
 	"context"
 	"database/sql/driver"
+	"log/slog"
 	"strings"
 	"time"
 )
@@ -108,7 +110,15 @@ func (m *AuroraMySQLDatabaseDialect) GetHostListProvider(
 	initialDsn string,
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
-	return HostListProvider(NewMonitoringRdsHostListProvider(hostListProviderService, m, props, initialDsn, pluginService))
+	pluginsProp := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PLUGINS)
+
+	if strings.Contains(pluginsProp, "failover") {
+		slog.Debug("Failover is enabled. Using MonitoringRdsHostListProvider")
+		return HostListProvider(NewMonitoringRdsHostListProvider(hostListProviderService, m, props, initialDsn, pluginService))
+	}
+
+	slog.Debug("Failover NOT enabled. Using RdsHostListProvider")
+	return HostListProvider(NewRdsHostListProvider(hostListProviderService, m, props, initialDsn, nil, nil))
 }
 
 func (m *AuroraMySQLDatabaseDialect) GetHostName(conn driver.Conn) string {
