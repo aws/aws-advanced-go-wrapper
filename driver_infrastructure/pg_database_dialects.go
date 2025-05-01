@@ -19,9 +19,12 @@ package driver_infrastructure
 import (
 	"awssql/error_util"
 	"awssql/host_info_util"
+	"awssql/property_util"
 	"awssql/utils"
 	"context"
 	"database/sql/driver"
+	"log/slog"
+	"strings"
 	"time"
 )
 
@@ -103,7 +106,15 @@ func (m *AuroraPgDatabaseDialect) GetHostListProvider(
 	initialDsn string,
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
-	return HostListProvider(NewMonitoringRdsHostListProvider(hostListProviderService, m, props, initialDsn, pluginService))
+	pluginsProp := props[property_util.PLUGINS.Name]
+
+	if strings.Contains(pluginsProp, "failover") || pluginsProp == "" {
+		slog.Debug("Failover is enabled. Getting MonitoringRdsHostListProvider")
+		return HostListProvider(NewMonitoringRdsHostListProvider(hostListProviderService, m, props, initialDsn, pluginService))
+	}
+
+	slog.Debug("Failover NOT enabled. Getting RdsHostListProvider")
+	return HostListProvider(NewRdsHostListProvider(hostListProviderService, m, props, initialDsn, nil, nil))
 }
 
 func (m *AuroraPgDatabaseDialect) GetHostRole(conn driver.Conn) host_info_util.HostRole {
