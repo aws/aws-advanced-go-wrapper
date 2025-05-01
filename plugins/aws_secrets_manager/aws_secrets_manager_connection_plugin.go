@@ -88,12 +88,12 @@ func NewAwsSecretsManagerPlugin(pluginService driver_infrastructure.PluginServic
 	if propsEndpoint != "" {
 		parsedUri, err := url.ParseRequestURI(propsEndpoint)
 		if err != nil {
-			return nil, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.endpointOverrideMisconfigured", secretsEndpoint))
+			return nil, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.endpointOverrideMisconfigured", propsEndpoint))
 		}
 
 		// If no scheme is provided, e.g. 'localhost', Host is empty string and the host is placed in path
 		if parsedUri.Host == "" {
-			secretsEndpoint = parsedUri.Host
+			secretsEndpoint = parsedUri.Path
 		} else {
 			secretsEndpoint = parsedUri.Host
 		}
