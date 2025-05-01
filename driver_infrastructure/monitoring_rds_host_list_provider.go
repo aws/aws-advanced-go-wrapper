@@ -30,6 +30,7 @@ var TOPOLOGY_CACHE_EXPIRATION_NANO = time.Minute * 5
 var DEFAULT_TOPOLOGY_QUERY_TIMEOUT_MS = 5000
 
 var clusterTopologyMonitors *utils.SlidingExpirationCache[ClusterTopologyMonitor]
+var clusterTopologyMonitorsMutex sync.Mutex
 var clusterTopologyMonitorWg = &sync.WaitGroup{}
 
 type MonitoringRdsHostListProvider struct {
@@ -49,6 +50,7 @@ func NewMonitoringRdsHostListProvider(
 	properties map[string]string,
 	originalDsn string,
 	pluginService PluginService) *MonitoringRdsHostListProvider {
+	clusterTopologyMonitorsMutex.Lock()
 	if clusterTopologyMonitors == nil {
 		var disposalFunc utils.DisposalFunc[ClusterTopologyMonitor] = func(item ClusterTopologyMonitor) bool {
 			item.Close()
@@ -57,6 +59,7 @@ func NewMonitoringRdsHostListProvider(
 		clusterTopologyMonitors = utils.NewSlidingExpirationCache[ClusterTopologyMonitor]("cluster-topology-monitors", disposalFunc)
 		clusterTopologyMonitors.SetCleanupIntervalNanos(MONITOR_EXPIRATION_NANOS)
 	}
+	clusterTopologyMonitorsMutex.Unlock()
 
 	m := &MonitoringRdsHostListProvider{
 		defaultTopologyQueryTimeoutMs: DEFAULT_TOPOLOGY_QUERY_TIMEOUT_MS,
