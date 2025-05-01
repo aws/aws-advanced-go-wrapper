@@ -106,14 +106,14 @@ func (m *AuroraPgDatabaseDialect) GetHostListProvider(
 	initialDsn string,
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
-	pluginsProp := props[property_util.PLUGINS.Name]
+	pluginsProp := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PLUGINS)
 
-	if strings.Contains(pluginsProp, "failover") || pluginsProp == "" {
-		slog.Debug("Failover is enabled. Getting MonitoringRdsHostListProvider")
+	if strings.Contains(pluginsProp, "failover") {
+		slog.Debug("Failover is enabled. Using MonitoringRdsHostListProvider")
 		return HostListProvider(NewMonitoringRdsHostListProvider(hostListProviderService, m, props, initialDsn, pluginService))
 	}
 
-	slog.Debug("Failover NOT enabled. Getting RdsHostListProvider")
+	slog.Debug("Failover NOT enabled. Using RdsHostListProvider")
 	return HostListProvider(NewRdsHostListProvider(hostListProviderService, m, props, initialDsn, nil, nil))
 }
 
