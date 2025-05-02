@@ -36,10 +36,11 @@ const (
 
 var (
 	pgxKeyValueDsnPattern = regexp.MustCompile("([a-zA-Z0-9]+=[-a-zA-Z0-9+&@#/%?=~_!:,.']+[ ]*)+")
-	mySqlDsnPattern       = regexp.MustCompile(`^(?:(?P<user>.*?)(?::(?P<passwd>.*))?@)?` + // [user[:password]@]
-		`(?:(?P<net>[^\(]*)(?:\((?P<addr>[^\)]*)\))?)?` + // [net[(addr)]]
-		`\/(?P<dbname>.*?)` + // /dbname
-		`(?:\?(?P<params>[^\?]*))?$`) // [?param1=value1&paramN=valueN]
+	mySqlDsnPattern       = regexp.MustCompile(`^(?:(?P<user>[^:@/]+)(?::(?P<passwd>[^@/]*))?@)?` + // [user[:password]@]
+		`(?:(?P<net>[^()/:?]+)?(?:\((?P<addr>[^\)]*)\))?)?` + // [net[(addr)]]
+		`/(?P<dbname>[^?]+)` + // /dbname
+		`(?:\?(?P<params>.*))?` + // [?param1=value1&paramN=valueN]
+		`$`)
 )
 
 func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []*host_info_util.HostInfo, err error) {
