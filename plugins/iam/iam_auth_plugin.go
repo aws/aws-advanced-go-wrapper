@@ -155,7 +155,7 @@ func (iamAuthPlugin *IamAuthPlugin) fetchAndSetToken(
 		slog.Debug(error_util.GetMessage("IamAuthPlugin.errorGeneratingNewToken", err))
 		return err
 	}
-	slog.Debug(error_util.GetMessage("IamAuthPlugin.generatedNewToken", token))
+	slog.Debug(error_util.GetMessage("AuthenticationToken.generatedNewToken", token))
 	props[property_util.PASSWORD.Name] = token
 	TokenCache.Put(cacheKey, token, time.Duration(tokenExpirationSec)*time.Second)
 	return nil
