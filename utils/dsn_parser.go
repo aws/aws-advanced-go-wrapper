@@ -328,8 +328,16 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 	properties = make(map[string]string)
 
+	// To account for props that have "/" in their value like endpoints
+	paramsStartIndex := strings.Index(dsn, "?")
+	if paramsStartIndex == -1 {
+		paramsStartIndex = len(dsn)
+	}
+
 	// [user[:password]@][net[(addr)]]/dbname[?param1=value1&paramN=valueN]
-	lastSlashIndex := strings.LastIndex(dsn, "/")
+
+	lastSlashIndex := strings.LastIndex(dsn[:paramsStartIndex], "/")
+
 	if lastSlashIndex == -1 {
 		return nil, error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.invalidDatabaseNoSlash", dsn))
 	}

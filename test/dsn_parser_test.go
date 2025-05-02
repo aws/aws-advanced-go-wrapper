@@ -42,7 +42,7 @@ func TestGetHostsFromDsnWithPgxDsnUrl(t *testing.T) {
 }
 
 func TestParseDsnPgxUrl(t *testing.T) {
-	dsn := "postgres://someUser:somePassword@localhost:5432/pgx_test?sslmode=disable&foo=bar"
+	dsn := "postgres://someUser:somePassword@localhost:5432/pgx_test?sslmode=disable&foo=bar&customEndpoint=https://someendpoint.com"
 	props, err := utils.ParseDsn(dsn)
 
 	if err != nil {
@@ -57,6 +57,7 @@ func TestParseDsnPgxUrl(t *testing.T) {
 	assert.Equal(t, "pgx_test", props[property_util.DATABASE.Name])
 	assert.Equal(t, "disable", props["sslmode"])
 	assert.Equal(t, "bar", props["foo"])
+	assert.Equal(t, "https://someendpoint.com", props["customEndpoint"])
 }
 
 func TestParseDsnPgxUrlWithoutParams(t *testing.T) {
@@ -94,7 +95,7 @@ func TestParseDsnPgxKeyValue(t *testing.T) {
 }
 
 func TestParseDsnMySql(t *testing.T) {
-	dsn := "someUser:somePassword@tcp(mydatabase.com:3306)/myDatabase?foo=bar&pop=snap"
+	dsn := "someUser:somePassword@tcp(mydatabase.com:3306)/myDatabase?foo=bar&pop=snap&customEndpoint=https://someendpoint.com"
 	props, err := utils.ParseDsn(dsn)
 
 	if err != nil {
@@ -109,6 +110,7 @@ func TestParseDsnMySql(t *testing.T) {
 	assert.Equal(t, "myDatabase", props[property_util.DATABASE.Name])
 	assert.Equal(t, "bar", props["foo"])
 	assert.Equal(t, "snap", props["pop"])
+	assert.Equal(t, "https://someendpoint.com", props["customEndpoint"])
 }
 
 func TestParseDsnMySqlWithoutParams(t *testing.T) {
