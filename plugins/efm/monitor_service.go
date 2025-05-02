@@ -34,8 +34,8 @@ var EFM_MONITORS *utils.SlidingExpirationCache[Monitor]
 
 type MonitorService interface {
 	StartMonitoring(conn driver.Conn, hostInfo *host_info_util.HostInfo, props map[string]string,
-		failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionCount int) (*MonitorConnectionContext, error)
-	StopMonitoring(context *MonitorConnectionContext, connToAbort driver.Conn)
+		failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionCount int) (*MonitorConnectionState, error)
+	StopMonitoring(state *MonitorConnectionState, connToAbort driver.Conn)
 }
 
 type MonitorServiceImpl struct {
@@ -65,7 +65,7 @@ func ClearCaches() {
 }
 
 func (m *MonitorServiceImpl) StartMonitoring(conn driver.Conn, hostInfo *host_info_util.HostInfo, props map[string]string,
-	failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionCount int) (*MonitorConnectionContext, error) {
+	failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionCount int) (*MonitorConnectionState, error) {
 	if conn == nil {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("MonitorServiceImpl.illegalArgumentException", "conn"))
 	}
@@ -73,20 +73,20 @@ func (m *MonitorServiceImpl) StartMonitoring(conn driver.Conn, hostInfo *host_in
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("MonitorServiceImpl.illegalArgumentException", "hostInfo"))
 	}
 	monitor := m.getMonitor(hostInfo, props, failureDetectionTimeMillis, failureDetectionIntervalMillis, failureDetectionCount)
-	context := NewMonitorConnectionContext(conn)
-	monitor.StartMonitoring(context)
-	return context, nil
+	state := NewMonitorConnectionState(conn)
+	monitor.StartMonitoring(state)
+	return state, nil
 }
 
-func (m *MonitorServiceImpl) StopMonitoring(context *MonitorConnectionContext, connToAbort driver.Conn) {
-	if context.ShouldAbort() {
-		context.SetInactive()
+func (m *MonitorServiceImpl) StopMonitoring(state *MonitorConnectionState, connToAbort driver.Conn) {
+	if state.ShouldAbort() {
+		state.SetInactive()
 		err := connToAbort.Close()
 		if err != nil {
 			slog.Debug(error_util.GetMessage("MonitorServiceImpl.errorAbortingConn", err.Error()))
 		}
 	} else {
-		context.SetInactive()
+		state.SetInactive()
 	}
 }
 
@@ -102,24 +102,24 @@ func (m *MonitorServiceImpl) getMonitor(hostInfo *host_info_util.HostInfo, props
 		cacheExpirationNano)
 }
 
-type MonitorConnectionContext struct {
+type MonitorConnectionState struct {
 	hostUnhealthy  bool
 	connToAbortRef weak.Pointer[driver.Conn]
 	connLock       sync.RWMutex
 	hostHealthLock sync.RWMutex
 }
 
-func NewMonitorConnectionContext(connToAbort driver.Conn) *MonitorConnectionContext {
-	return &MonitorConnectionContext{hostUnhealthy: false, connToAbortRef: weak.Make(&connToAbort)}
+func NewMonitorConnectionState(connToAbort driver.Conn) *MonitorConnectionState {
+	return &MonitorConnectionState{hostUnhealthy: false, connToAbortRef: weak.Make(&connToAbort)}
 }
 
-func (m *MonitorConnectionContext) SetHostUnhealthy(hostUnhealthy bool) {
+func (m *MonitorConnectionState) SetHostUnhealthy(hostUnhealthy bool) {
 	m.hostHealthLock.Lock()
 	defer m.hostHealthLock.Unlock()
 	m.hostUnhealthy = hostUnhealthy
 }
 
-func (m *MonitorConnectionContext) SetInactive() {
+func (m *MonitorConnectionState) SetInactive() {
 	m.connLock.Lock()
 	defer m.connLock.Unlock()
 
@@ -127,7 +127,7 @@ func (m *MonitorConnectionContext) SetInactive() {
 	m.connToAbortRef = weak.Make((*driver.Conn)(nilPointer))
 }
 
-func (m *MonitorConnectionContext) ShouldAbort() bool {
+func (m *MonitorConnectionState) ShouldAbort() bool {
 	m.connLock.RLock()
 	m.hostHealthLock.RLock()
 	defer m.connLock.RUnlock()
@@ -136,14 +136,14 @@ func (m *MonitorConnectionContext) ShouldAbort() bool {
 	return m.hostUnhealthy && m.connToAbortRef.Value() != nil
 }
 
-func (m *MonitorConnectionContext) GetConn() *driver.Conn {
+func (m *MonitorConnectionState) GetConn() *driver.Conn {
 	m.connLock.RLock()
 	defer m.connLock.RUnlock()
 
 	return m.connToAbortRef.Value()
 }
 
-func (m *MonitorConnectionContext) IsActive() bool {
+func (m *MonitorConnectionState) IsActive() bool {
 	m.connLock.RLock()
 	defer m.connLock.RUnlock()
 

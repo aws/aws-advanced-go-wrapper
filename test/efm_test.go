@@ -33,27 +33,27 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMonitorConnectionContext(t *testing.T) {
-	context := efm.NewMonitorConnectionContext(MockDriverConn{})
+func TestMonitorConnectionState(t *testing.T) {
+	state := efm.NewMonitorConnectionState(MockDriverConn{})
 
-	assert.NotNil(t, context.GetConn())
-	assert.True(t, context.IsActive())
+	assert.NotNil(t, state.GetConn())
+	assert.True(t, state.IsActive())
 	// By default nodeUnhealthy is false. When node is healthy should not abort.
-	assert.False(t, context.ShouldAbort())
+	assert.False(t, state.ShouldAbort())
 
-	context.SetHostUnhealthy(true)
+	state.SetHostUnhealthy(true)
 	// If there is an active unhealthy conn, should abort.
-	assert.True(t, context.ShouldAbort())
+	assert.True(t, state.ShouldAbort())
 
-	context.SetInactive()
-	assert.Nil(t, context.GetConn())
-	assert.False(t, context.IsActive())
+	state.SetInactive()
+	assert.Nil(t, state.GetConn())
+	assert.False(t, state.IsActive())
 	// If the unhealthy conn is inactive, no need to abort.
-	assert.False(t, context.ShouldAbort())
+	assert.False(t, state.ShouldAbort())
 
-	context.SetHostUnhealthy(false)
+	state.SetHostUnhealthy(false)
 	// Not unhealthy and no conn, no need to abort.
-	assert.False(t, context.ShouldAbort())
+	assert.False(t, state.ShouldAbort())
 }
 
 func TestMonitorServiceImpl(t *testing.T) {
@@ -75,49 +75,49 @@ func TestMonitorServiceImpl(t *testing.T) {
 	assert.True(t, strings.Contains(err.Error(), "hostInfo"))
 
 	// Monitoring with correct parameters should create a new monitor.
-	context, err := monitorService.StartMonitoring(testConn, mockHostInfo, nil, 0, 0, 0)
+	state, err := monitorService.StartMonitoring(testConn, mockHostInfo, nil, 0, 0, 0)
 	monitorKey := fmt.Sprintf("%d:%d:%d:%s", 0, 0, 0, mockHostInfo.GetUrl())
 
 	assert.Nil(t, err)
-	assert.True(t, context.IsActive())
+	assert.True(t, state.IsActive())
 	assert.Equal(t, efm.EFM_MONITORS.Size(), 1)
 	val, ok := efm.EFM_MONITORS.Get(monitorKey, time.Minute)
 	assert.True(t, ok)
 	assert.NotNil(t, val)
 
-	context2, err := monitorService.StartMonitoring(testConn, mockHostInfo, nil, 0, 0, 0)
+	state2, err := monitorService.StartMonitoring(testConn, mockHostInfo, nil, 0, 0, 0)
 	assert.Nil(t, err)
 	// Monitoring on the same host should not increase the cache size.
 	assert.Equal(t, efm.EFM_MONITORS.Size(), 1)
-	assert.True(t, context2.IsActive())
+	assert.True(t, state2.IsActive())
 
 	monitor, ok := val.(*efm.MonitorImpl)
 	assert.True(t, ok)
 	monitoringConn := &MockDriverConnection{}
 	monitor.MonitoringConn = monitoringConn
 
-	assert.Equal(t, 2, len(monitor.NewContexts))
-	time.Sleep(time.Second) // Let the newContexts monitoring routine update.
-	assert.Equal(t, 2, len(monitor.ActiveContexts))
-	assert.Equal(t, 0, len(monitor.NewContexts))
+	assert.Equal(t, 2, len(monitor.NewStates))
+	time.Sleep(time.Second) // Let the newStates monitoring routine update.
+	assert.Equal(t, 2, len(monitor.ActiveStates))
+	assert.Equal(t, 0, len(monitor.NewStates))
 
-	monitorService.StopMonitoring(context2, testConn)
+	monitorService.StopMonitoring(state2, testConn)
 	assert.Equal(t, efm.EFM_MONITORS.Size(), 1)
-	// Contexts are not tied together. First context remains active as one is cancelled.
-	assert.False(t, context2.IsActive())
-	assert.True(t, context.IsActive())
+	// States are not tied together. First state remains active as one is cancelled.
+	assert.False(t, state2.IsActive())
+	assert.True(t, state.IsActive())
 
-	assert.Equal(t, 2, len(monitor.ActiveContexts))
+	assert.Equal(t, 2, len(monitor.ActiveStates))
 	time.Sleep(time.Second) // Let the monitoring routine update.
-	assert.Equal(t, 1, len(monitor.ActiveContexts))
+	assert.Equal(t, 1, len(monitor.ActiveStates))
 
-	monitorService.StopMonitoring(context, testConn)
+	monitorService.StopMonitoring(state, testConn)
 	assert.Equal(t, efm.EFM_MONITORS.Size(), 1)
-	assert.False(t, context.IsActive())
+	assert.False(t, state.IsActive())
 
-	assert.Equal(t, 1, len(monitor.ActiveContexts))
+	assert.Equal(t, 1, len(monitor.ActiveStates))
 	time.Sleep(time.Second) // Let the monitoring routine update.
-	assert.Equal(t, 0, len(monitor.ActiveContexts))
+	assert.Equal(t, 0, len(monitor.ActiveStates))
 
 	assert.False(t, monitoringConn.IsClosed)
 	efm.EFM_MONITORS.Clear()
@@ -293,19 +293,19 @@ func TestMonitorCanDispose(t *testing.T) {
 	pluginService := &plugin_helpers.PluginServiceImpl{}
 	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0)
 	monitor.MonitoringConn = &MockDriverConnection{}
-	context := efm.NewMonitorConnectionContext(MockDriverConn{})
+	state := efm.NewMonitorConnectionState(MockDriverConn{})
 
-	// If there are no contexts, monitor can be disposed.
+	// If there are no states, monitor can be disposed.
 	assert.True(t, monitor.CanDispose())
 
-	monitor.NewContexts[time.Time{}] = nil
+	monitor.NewStates[time.Time{}] = nil
 	assert.False(t, monitor.CanDispose())
 
-	monitor.ActiveContexts = append(monitor.ActiveContexts, weak.Make(context))
+	monitor.ActiveStates = append(monitor.ActiveStates, weak.Make(state))
 	assert.False(t, monitor.CanDispose())
 
-	for t2 := range monitor.NewContexts {
-		delete(monitor.NewContexts, t2)
+	for t2 := range monitor.NewStates {
+		delete(monitor.NewStates, t2)
 	}
 	assert.False(t, monitor.CanDispose())
 }
