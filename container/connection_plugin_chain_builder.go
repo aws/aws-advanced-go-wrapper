@@ -57,7 +57,7 @@ func (builder *ConnectionPluginChainBuilder) GetPlugins(
 	pluginService driver_infrastructure.PluginService,
 	pluginManager driver_infrastructure.PluginManager,
 	props map[string]string) ([]driver_infrastructure.ConnectionPlugin, error) {
-	var resultPlugins []driver_infrastructure.ConnectionPlugin
+	var resultPlugins []driver_infrastructure.ConnectionPlugin = []driver_infrastructure.ConnectionPlugin{}
 	var pluginFactoryFuncWeights []PluginFactoryFuncWeight
 	usingDefault := false
 
@@ -68,7 +68,7 @@ func (builder *ConnectionPluginChainBuilder) GetPlugins(
 
 	pluginCodes = strings.ReplaceAll(strings.TrimSpace(pluginCodes), " ", "")
 	var pluginCodesSlice []string
-	if len(pluginCodes) != 0 {
+	if len(pluginCodes) != 0 && strings.ToLower(pluginCodes) != "none" {
 		pluginCodesSlice = strings.Split(pluginCodes, ",")
 	}
 	lastWeight := 0
@@ -118,6 +118,7 @@ func (builder *ConnectionPluginChainBuilder) GetPlugins(
 		slog.Info(fmt.Sprintf("Plugins order has been rearranged. The following order is in effect: '%v'.", getFactoryOrder(resultPlugins)))
 	}
 
+	fmt.Println(resultPlugins)
 	return resultPlugins, nil
 }
 

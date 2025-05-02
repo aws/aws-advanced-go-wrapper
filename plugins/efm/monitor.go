@@ -35,7 +35,7 @@ import (
 var EFM_ROUTINE_SLEEP_DURATION = 100 * time.Millisecond
 
 type Monitor interface {
-	StartMonitoring(context *MonitorConnectionContext)
+	StartMonitoring(state *MonitorConnectionState)
 	CanDispose() bool
 	Close()
 }
@@ -56,10 +56,10 @@ func NewMonitorImpl(pluginService driver_infrastructure.PluginService, hostInfo 
 		failureDetectionTimeNanos:     time.Millisecond * time.Duration(failureDetectionTimeMillis),
 		failureDetectionIntervalNanos: time.Millisecond * time.Duration(failureDetectionIntervalMillis),
 		failureDetectionCount:         failureDetectionCount,
-		NewContexts:                   map[time.Time][]weak.Pointer[MonitorConnectionContext]{}}
+		NewStates:                     map[time.Time][]weak.Pointer[MonitorConnectionState]{}}
 
 	monitor.wg.Add(2)
-	go monitor.newContextRun()
+	go monitor.newStateRun()
 	go monitor.run()
 
 	return monitor
@@ -75,8 +75,8 @@ type MonitorImpl struct {
 	FailureCount                  int
 	failureDetectionCount         int
 	InvalidHostStartTime          time.Time
-	ActiveContexts                []weak.Pointer[MonitorConnectionContext]
-	NewContexts                   map[time.Time][]weak.Pointer[MonitorConnectionContext]
+	ActiveStates                  []weak.Pointer[MonitorConnectionState]
+	NewStates                     map[time.Time][]weak.Pointer[MonitorConnectionState]
 	Stopped                       bool
 	HostUnhealthy                 bool
 	lock                          sync.RWMutex
@@ -84,7 +84,7 @@ type MonitorImpl struct {
 }
 
 func (m *MonitorImpl) CanDispose() bool {
-	return len(m.ActiveContexts) == 0 && len(m.NewContexts) == 0
+	return len(m.ActiveStates) == 0 && len(m.NewStates) == 0
 }
 
 func (m *MonitorImpl) Close() {
@@ -97,44 +97,44 @@ func (m *MonitorImpl) Close() {
 	slog.Debug(error_util.GetMessage("MonitorImpl.stopped", m.hostInfo.Host))
 }
 
-func (m *MonitorImpl) StartMonitoring(context *MonitorConnectionContext) {
+func (m *MonitorImpl) StartMonitoring(state *MonitorConnectionState) {
 	if m.isStopped() {
 		slog.Warn(error_util.GetMessage("MonitorImpl.monitorIsStopped", m.hostInfo.Host))
 	}
 
 	startMonitoringTimeNano := time.Now().Add(m.failureDetectionTimeNanos)
 	m.lock.Lock()
-	m.NewContexts[startMonitoringTimeNano] = []weak.Pointer[MonitorConnectionContext]{weak.Make(context)}
+	m.NewStates[startMonitoringTimeNano] = []weak.Pointer[MonitorConnectionState]{weak.Make(state)}
 	m.lock.Unlock()
 }
 
-func (m *MonitorImpl) newContextRun() {
-	slog.Debug(error_util.GetMessage("MonitorImpl.startMonitoringRoutineNewContext", m.hostInfo.Host))
+func (m *MonitorImpl) newStateRun() {
+	slog.Debug(error_util.GetMessage("MonitorImpl.startMonitoringRoutineNewState", m.hostInfo.Host))
 	defer m.wg.Done()
 
 	for !m.isStopped() {
 		currentTime := time.Now()
-		for startMonitoringTime, queuedContexts := range m.NewContexts {
+		for startMonitoringTime, queuedStates := range m.NewStates {
 			// Get entries with a starting time less than or equal to the current time.
 			if startMonitoringTime.Before(currentTime) {
-				// The value of an entry is the queued monitoring contexts awaiting active monitoring.
-				// Add the contexts to an active monitoring contexts queue. Ignore disposed contexts.
-				for _, contextWeakRef := range queuedContexts {
-					context := contextWeakRef.Value()
-					if context != nil && context.IsActive() {
-						m.ActiveContexts = append(m.ActiveContexts, contextWeakRef)
+				// The value of an entry is the queued monitoring states awaiting active monitoring.
+				// Add the states to an active monitoring states queue. Ignore disposed states.
+				for _, stateWeakRef := range queuedStates {
+					state := stateWeakRef.Value()
+					if state != nil && state.IsActive() {
+						m.ActiveStates = append(m.ActiveStates, stateWeakRef)
 					}
 				}
-				// Remove the processed entry from new contexts.
+				// Remove the processed entry from new states.
 				m.lock.Lock()
-				delete(m.NewContexts, startMonitoringTime)
+				delete(m.NewStates, startMonitoringTime)
 				m.lock.Unlock()
 			}
 		}
 		time.Sleep(time.Second)
 	}
 
-	slog.Debug(error_util.GetMessage("MonitorImpl.stopMonitoringRoutineNewContext", m.hostInfo.Host))
+	slog.Debug(error_util.GetMessage("MonitorImpl.stopMonitoringRoutineNewState", m.hostInfo.Host))
 }
 
 func (m *MonitorImpl) run() {
@@ -142,7 +142,7 @@ func (m *MonitorImpl) run() {
 	defer m.wg.Done()
 
 	for !m.isStopped() {
-		if len(m.ActiveContexts) == 0 && !m.HostUnhealthy {
+		if len(m.ActiveStates) == 0 && !m.HostUnhealthy {
 			time.Sleep(EFM_ROUTINE_SLEEP_DURATION)
 			continue
 		}
@@ -156,31 +156,31 @@ func (m *MonitorImpl) run() {
 			m.pluginService.SetAvailability(m.hostInfo.AllAliases, host_info_util.UNAVAILABLE)
 		}
 
-		var tmpActiveContexts []weak.Pointer[MonitorConnectionContext]
-		for _, monitorContextWeakRef := range m.ActiveContexts {
+		var tmpActiveStates []weak.Pointer[MonitorConnectionState]
+		for _, monitorStateWeakRef := range m.ActiveStates {
 			if m.isStopped() {
 				break
 			}
 
-			monitorContext := monitorContextWeakRef.Value()
-			if monitorContext == nil {
+			monitorState := monitorStateWeakRef.Value()
+			if monitorState == nil {
 				continue
 			}
 
 			if m.HostUnhealthy {
 				// Kill connection.
-				monitorContext.SetHostUnhealthy(true)
-				connToAbort := monitorContext.GetConn()
-				monitorContext.SetInactive()
+				monitorState.SetHostUnhealthy(true)
+				connToAbort := monitorState.GetConn()
+				monitorState.SetInactive()
 				if connToAbort != nil {
 					(*connToAbort).Close()
 				}
-			} else if monitorContext.IsActive() {
-				tmpActiveContexts = append(tmpActiveContexts, monitorContextWeakRef)
+			} else if monitorState.IsActive() {
+				tmpActiveStates = append(tmpActiveStates, monitorStateWeakRef)
 			}
 		}
-		// Update activeContexts to those that are still active.
-		m.ActiveContexts = tmpActiveContexts
+		// Update activeStates to those that are still active.
+		m.ActiveStates = tmpActiveStates
 		delayDurationNanos := m.failureDetectionIntervalNanos - (statusCheckEndTime.Sub(statusCheckStartTime))
 		if delayDurationNanos < EFM_ROUTINE_SLEEP_DURATION {
 			delayDurationNanos = EFM_ROUTINE_SLEEP_DURATION

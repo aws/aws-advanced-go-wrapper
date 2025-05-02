@@ -101,13 +101,13 @@ func (b *HostMonitorConnectionPlugin) Execute(
 
 	b.initMonitorService()
 
-	// Sets up a MonitorConnectionContext that is active for the duration of executeFunc.
-	// If there are any issues setting up the monitor/context, the error is passed on in wrappedErr.
-	var monitorContext *MonitorConnectionContext
+	// Sets up a MonitorConnectionState that is active for the duration of executeFunc.
+	// If there are any issues setting up the monitor/state, the error is passed on in wrappedErr.
+	var monitorState *MonitorConnectionState
 	monitoringHostInfo, err := b.getMonitoringHostInfo()
 	if err == nil {
 		slog.Debug(error_util.GetMessage("HostMonitoringConnectionPlugin.activatedMonitoring", methodName))
-		monitorContext, err = b.monitorService.StartMonitoring(
+		monitorState, err = b.monitorService.StartMonitoring(
 			b.pluginService.GetCurrentConnection(), monitoringHostInfo, b.props,
 			failureDetectionTimeMillis, failureDetectionIntervalMillis, failureDetectionCount)
 		if err != nil {
@@ -117,8 +117,8 @@ func (b *HostMonitorConnectionPlugin) Execute(
 		}
 		wrappedReturnValue, wrappedReturnValue2, wrappedOk, wrappedErr = executeFunc()
 
-		if monitorContext != nil {
-			b.monitorService.StopMonitoring(monitorContext, b.pluginService.GetCurrentConnection())
+		if monitorState != nil {
+			b.monitorService.StopMonitoring(monitorState, b.pluginService.GetCurrentConnection())
 			slog.Debug(error_util.GetMessage("HostMonitoringConnectionPlugin.monitoringDeactivated", methodName))
 		}
 	} else {
