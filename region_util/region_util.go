@@ -19,6 +19,7 @@ package region_util
 import (
 	"awssql/property_util"
 	"awssql/utils"
+	"regexp"
 	"strings"
 )
 
@@ -46,6 +47,18 @@ func GetRegionFromHost(host string) Region {
 	}
 
 	return GetRegionFromRegionString(regionString)
+}
+
+func GetRegionFromArn(arn string) Region {
+	// This regex captures the region (4th field in ARN)
+	re := regexp.MustCompile(`^arn:[^:]*:[^:]*:([^:]*):`)
+	matches := re.FindStringSubmatch(arn)
+
+	if len(matches) < 2 {
+		return ""
+	}
+
+	return GetRegionFromRegionString(matches[1])
 }
 
 func GetRegionFromRegionString(regionString string) Region {

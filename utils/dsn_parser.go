@@ -36,10 +36,11 @@ const (
 
 var (
 	pgxKeyValueDsnPattern = regexp.MustCompile("([a-zA-Z0-9]+=[-a-zA-Z0-9+&@#/%?=~_!:,.']+[ ]*)+")
-	mySqlDsnPattern       = regexp.MustCompile(`^(?:(?P<user>.*?)(?::(?P<passwd>.*))?@)?` + // [user[:password]@]
-		`(?:(?P<net>[^\(]*)(?:\((?P<addr>[^\)]*)\))?)?` + // [net[(addr)]]
-		`\/(?P<dbname>.*?)` + // /dbname
-		`(?:\?(?P<params>[^\?]*))?$`) // [?param1=value1&paramN=valueN]
+	mySqlDsnPattern       = regexp.MustCompile(`^(?:(?P<user>[^:@/]+)(?::(?P<passwd>[^@/]*))?@)?` + // [user[:password]@]
+		`(?:(?P<net>[^()/:?]+)?(?:\((?P<addr>[^\)]*)\))?)?` + // [net[(addr)]]
+		`/(?P<dbname>[^?]+)` + // /dbname
+		`(?:\?(?P<params>.*))?` + // [?param1=value1&paramN=valueN]
+		`$`)
 )
 
 func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []*host_info_util.HostInfo, err error) {
@@ -328,8 +329,16 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 	properties = make(map[string]string)
 
+	// To account for props that have "/" in their value like endpoints
+	paramsStartIndex := strings.Index(dsn, "?")
+	if paramsStartIndex == -1 {
+		paramsStartIndex = len(dsn)
+	}
+
 	// [user[:password]@][net[(addr)]]/dbname[?param1=value1&paramN=valueN]
-	lastSlashIndex := strings.LastIndex(dsn, "/")
+
+	lastSlashIndex := strings.LastIndex(dsn[:paramsStartIndex], "/")
+
 	if lastSlashIndex == -1 {
 		return nil, error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.invalidDatabaseNoSlash", dsn))
 	}

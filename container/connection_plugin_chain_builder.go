@@ -20,6 +20,7 @@ import (
 	"awssql/driver_infrastructure"
 	"awssql/error_util"
 	"awssql/plugins"
+	"awssql/plugins/aws_secrets_manager"
 	"awssql/plugins/efm"
 	"awssql/plugins/iam"
 	"awssql/property_util"
@@ -39,15 +40,17 @@ type PluginFactoryFuncWeight struct {
 }
 
 var pluginFactoryFuncByCode = map[string]PluginFactoryFunc{
-	"failover": plugins.NewFailoverPluginFactory,
-	"efm":      efm.NewHostMonitoringPluginFactory,
-	"iam":      iam.NewIamAuthPluginFactory,
+	"failover":          plugins.NewFailoverPluginFactory,
+	"efm":               efm.NewHostMonitoringPluginFactory,
+	"iam":               iam.NewIamAuthPluginFactory,
+	"awsSecretsManager": aws_secrets_manager.NewAwsSecretsManagerPluginFactory,
 }
 
 var pluginWeightByCode = map[string]int{
-	"failover": 700,
-	"efm":      800,
-	"iam":      1000,
+	"failover":          700,
+	"efm":               800,
+	"iam":               1000,
+	"awsSecretsManager": 1100,
 }
 
 type ConnectionPluginChainBuilder struct {
