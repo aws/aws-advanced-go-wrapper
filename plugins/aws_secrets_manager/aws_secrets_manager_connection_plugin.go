@@ -136,27 +136,25 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectInternal(
 
 	if err == nil {
 		if !secretsWasFetched {
-			slog.Debug("AwsSecretsManagerConnectionPlugin: Connected successfully using cached value")
+			slog.Debug("AwsSecretsManagerConnectionPlugin: Connected successfully using cached secret.")
 		}
 		return conn, err
 	}
 
-	if awsSecretsManagerPlugin.pluginService.IsLoginError(err) || !secretsWasFetched {
+	if awsSecretsManagerPlugin.pluginService.IsLoginError(err) && !secretsWasFetched {
 		// Login unsuccessful with cached credentials
 		// Try to re-fetch credentials and try again
-		slog.Debug("AwsSecretsManagerConnectionPlugin: failed to connect initially, fetching new secret value")
 		secretsWasFetched, err = awsSecretsManagerPlugin.updateSecrets(hostInfo, props, true)
 
 		if secretsWasFetched {
+			slog.Debug("AwsSecretsManagerConnectionPlugin: failed initial connection, trying again after fetching new secret value.")
+
 			awsSecretsManagerPlugin.applySecretToProperties(props)
 			return connectFunc()
 		}
-		if err != nil {
-			return nil, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.unhandledError", err))
-		}
 	}
 
-	return nil, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.unhandledError", err))
+	return nil, err
 }
 
 func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) applySecretToProperties(
