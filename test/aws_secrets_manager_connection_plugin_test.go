@@ -23,10 +23,9 @@ import (
 	"awssql/plugin_helpers"
 	"awssql/plugins/aws_secrets_manager"
 	"awssql/property_util"
+	"awssql/utils"
 	"database/sql/driver"
 	"fmt"
-	"sync"
-	"sync/atomic"
 	"testing"
 
 	"github.com/go-sql-driver/mysql"
@@ -41,15 +40,6 @@ func beforeAwsSecretsManagerConnectionPluginTests(props map[string]string) drive
 
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 	return mockPluginService
-}
-
-func getSizeOfSyncMap(syncMap *sync.Map) int {
-	var count atomic.Int64
-	syncMap.Range(func(key, value any) bool {
-		count.Add(1)
-		return true
-	})
-	return int(count.Load())
 }
 
 func TestAwsSecretsManagerConnectionPluginConnect(t *testing.T) {
@@ -266,7 +256,7 @@ func TestAwsSecretsManagerConnectionPluginLoginError(t *testing.T) {
 	assert.Nil(t, connection)
 	assert.NotNil(t, err)
 	assert.Equal(t, mockLoginError, err)
-	assert.Equal(t, 1, getSizeOfSyncMap(&aws_secrets_manager.SecretsCache))
+	assert.Equal(t, 1, utils.LengthOfSyncMap(&aws_secrets_manager.SecretsCache))
 	assert.Equal(t, "testuser", props[property_util.USER.Name])
 	assert.Equal(t, "testpassword", props[property_util.PASSWORD.Name])
 }
