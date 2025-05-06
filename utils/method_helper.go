@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-package driver_infrastructure
+package utils
 
 const (
 	CONN_PREPARE                        = "Conn.Prepare"

@@ -97,7 +97,7 @@ func (p *FailoverPlugin) GetSubscribedMethods() []string {
 	return append([]string{
 		plugin_helpers.CONNECT_METHOD,
 		plugin_helpers.INIT_HOST_PROVIDER_METHOD,
-	}, driver_infrastructure.NETWORK_BOUND_METHODS...)
+	}, utils.NETWORK_BOUND_METHODS...)
 }
 
 func (p *FailoverPlugin) InitHostProvider(
@@ -235,7 +235,7 @@ func (p *FailoverPlugin) isFailoverEnabled() bool {
 }
 
 func (p *FailoverPlugin) canDirectExecute(methodName string) bool {
-	return methodName == driver_infrastructure.CONN_CLOSE
+	return methodName == utils.CONN_CLOSE
 }
 
 func (p *FailoverPlugin) Failover() error {

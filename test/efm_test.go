@@ -206,7 +206,7 @@ func TestHostMonitoringPluginNotifyConnectionChanged(t *testing.T) {
 	plugin, err := mockHostMonitoringPlugin(nil)
 	assert.Nil(t, err)
 	// Set monitoring HostInfo by executing a network bound method.
-	_, _, _, err = plugin.Execute(driver_infrastructure.CONN_QUERY_CONTEXT, incrementQueryCounter)
+	_, _, _, err = plugin.Execute(utils.CONN_QUERY_CONTEXT, incrementQueryCounter)
 	assert.Nil(t, err)
 	assert.NotNil(t, plugin.GetMonitoringHostInfo())
 
@@ -219,7 +219,7 @@ func TestHostMonitoringPluginNotifyConnectionChanged(t *testing.T) {
 	plugin, err = mockHostMonitoringPlugin(nil)
 	assert.Nil(t, err)
 	// Set monitoring HostInfo by executing a network bound method.
-	_, _, _, err = plugin.Execute(driver_infrastructure.CONN_QUERY_CONTEXT, incrementQueryCounter)
+	_, _, _, err = plugin.Execute(utils.CONN_QUERY_CONTEXT, incrementQueryCounter)
 	assert.Nil(t, err)
 	assert.NotNil(t, plugin.GetMonitoringHostInfo())
 
@@ -237,7 +237,7 @@ func TestHostMonitoringPluginExecuteMonitoringDisabled(t *testing.T) {
 	assert.Zero(t, efm.EFM_MONITORS.Size())
 	assert.Zero(t, queryCounter)
 
-	_, _, _, err = plugin.Execute(driver_infrastructure.CONN_QUERY_CONTEXT, incrementQueryCounter)
+	_, _, _, err = plugin.Execute(utils.CONN_QUERY_CONTEXT, incrementQueryCounter)
 	assert.Nil(t, err)
 
 	// When monitoring is disabled, function is executed but no monitoring occurs.
@@ -251,7 +251,7 @@ func TestHostMonitoringPluginExecuteMonitoringUnnecessary(t *testing.T) {
 	assert.Zero(t, efm.EFM_MONITORS.Size())
 	assert.Zero(t, queryCounter)
 
-	_, _, _, err = plugin.Execute(driver_infrastructure.CONN_CLOSE, incrementQueryCounter)
+	_, _, _, err = plugin.Execute(utils.CONN_CLOSE, incrementQueryCounter)
 	assert.Nil(t, err)
 
 	// When method to be executed is not network bound, no monitoring occurs.
@@ -265,7 +265,7 @@ func TestHostMonitoringPluginExecuteMonitoringEnabled(t *testing.T) {
 	assert.Zero(t, efm.EFM_MONITORS.Size())
 	assert.Zero(t, queryCounter)
 
-	_, _, _, err = plugin.Execute(driver_infrastructure.CONN_QUERY_CONTEXT, incrementQueryCounter)
+	_, _, _, err = plugin.Execute(utils.CONN_QUERY_CONTEXT, incrementQueryCounter)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, efm.EFM_MONITORS.Size())
 	assert.Equal(t, 1, queryCounter)
@@ -282,7 +282,7 @@ func TestHostMonitoringPluginExecuteThrowsError(t *testing.T) {
 	assert.Zero(t, efm.EFM_MONITORS.Size())
 	assert.Zero(t, queryCounter)
 
-	_, _, _, err := plugin.Execute(driver_infrastructure.CONN_QUERY_CONTEXT, incrementQueryCounter)
+	_, _, _, err := plugin.Execute(utils.CONN_QUERY_CONTEXT, incrementQueryCounter)
 	// Empty plugin service unable to supply a host info to monitor.
 	assert.NotNil(t, err)
 	assert.Zero(t, efm.EFM_MONITORS.Size())
