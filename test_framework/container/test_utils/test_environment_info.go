@@ -72,3 +72,7 @@ func NewTestEnvironmentInfo(testInfo map[string]any) (info TestEnvironmentInfo, 
 		databaseEngineVersion: databaseEngineVersion,
 	}, nil
 }
+
+func (t TestEnvironmentInfo) AuroraClusterName() string {
+	return t.auroraClusterName
+}

@@ -92,10 +92,10 @@ public class ContainerHelper {
 
     Long exitCode;
     if (filter != null) {
-      exitCode = execInContainer(container, consumer, "go", "test", "-v", "./test_framework/container/tests...", "-run", filter);
+      exitCode = execInContainer(container, consumer, "go", "test", "-timeout", "30m", "-v", "./test_framework/container/tests...", "-run", filter);
     } else {
       // Run all tests located in aws-advanced-go-wrapper/test_framework/container.
-      exitCode = execInContainer(container, consumer, "go", "test", "-v", "./test_framework/container/tests...");
+      exitCode = execInContainer(container, consumer, "go", "test", "-timeout", "30m", "-v", "./test_framework/container/tests...");
     }
 
     System.out.println("==== Container console feed ==== <<<<");
@@ -105,7 +105,7 @@ public class ContainerHelper {
   public void debugTest(GenericContainer<?> container, String testFolder, TestEnvironmentConfig config)
       throws IOException, InterruptedException {
     System.out.println("==== Container console feed ==== >>>>");
-    Consumer<OutputFrame> consumer = new ConsoleConsumer();
+    Consumer<OutputFrame> consumer = new ConsoleConsumer(true);
 
     // Install Delve debugger.
     execInContainer(container, consumer, "go", "install", "github.com/go-delve/delve/cmd/dlv@latest");

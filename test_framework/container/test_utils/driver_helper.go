@@ -19,6 +19,8 @@ package test_utils
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
+	"errors"
 	"fmt"
 	"slices"
 	"strconv"
@@ -50,7 +52,7 @@ func GetInstanceIdSql(engine DatabaseEngine, deployment DatabaseEngineDeployment
 	return "", fmt.Errorf("Invalid deployment: %s.", deployment)
 }
 
-func ExecuteInstanceQuery(engine DatabaseEngine, deployment DatabaseEngineDeployment, db *sql.DB) (string, error) {
+func ExecuteInstanceQueryDB(engine DatabaseEngine, deployment DatabaseEngineDeployment, db *sql.DB) (string, error) {
 	var instanceId string
 	sql, err := GetInstanceIdSql(engine, deployment)
 	if err != nil || sql == "" {
@@ -62,8 +64,81 @@ func ExecuteInstanceQuery(engine DatabaseEngine, deployment DatabaseEngineDeploy
 	return instanceId, nil
 }
 
+func ExecuteInstanceQuery(engine DatabaseEngine, deployment DatabaseEngineDeployment, conn driver.Conn) (string, error) {
+	sql, err := GetInstanceIdSql(engine, deployment)
+	if err != nil || sql == "" {
+		return "", err
+	}
+	return GetFirstItemFromQueryAsString(engine, conn, sql)
+}
+
+func GetFirstItemFromQueryAsString(engine DatabaseEngine, conn driver.Conn, query string) (string, error) {
+	queryerCtx, ok := conn.(driver.QueryerContext)
+	if !ok {
+		return "", errors.New("conn does not implement QueryerContext")
+	}
+
+	rows, err := queryerCtx.QueryContext(context.TODO(), query, nil)
+	if err != nil {
+		return "", err
+	}
+	if rows != nil {
+		defer rows.Close()
+	}
+	if len(rows.Columns()) == 0 {
+		return "", errors.New("nothing returned from query")
+	}
+
+	firstRow := make([]driver.Value, len(rows.Columns()))
+	err = rows.Next(firstRow)
+	if err != nil {
+		return "", err
+	}
+	if engine == MYSQL {
+		stringAsInt, ok := firstRow[0].([]uint8)
+		if ok {
+			return string(stringAsInt), nil
+		}
+	} else {
+		firstItem, ok := firstRow[0].(string)
+		if ok {
+			return firstItem, nil
+		}
+	}
+	return "", errors.New("unable to cast result")
+}
+
+func GetFirstItemFromQueryAsInt(conn driver.Conn, query string) (int, error) {
+	queryerCtx, ok := conn.(driver.QueryerContext)
+	if !ok {
+		return -1, errors.New("conn does not implement QueryerContext")
+	}
+
+	rows, err := queryerCtx.QueryContext(context.TODO(), query, nil)
+	if err != nil {
+		return -1, err
+	}
+	if rows != nil {
+		defer rows.Close()
+	}
+	if len(rows.Columns()) == 0 {
+		return -1, errors.New("nothing returned from query")
+	}
+
+	firstRow := make([]driver.Value, len(rows.Columns()))
+	err = rows.Next(firstRow)
+	if err != nil {
+		return -1, err
+	}
+	firstItem, ok := firstRow[0].(int64)
+	if ok {
+		return int(firstItem), nil
+	}
+	return -1, errors.New("unable to cast result")
+}
+
 func ExecuteInstanceQueryWithTimeout(engine DatabaseEngine, deployment DatabaseEngineDeployment, db *sql.DB, seconds int) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(seconds))
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Second*time.Duration(seconds))
 	defer cancel()
 	var instanceId string
 	sql, err := GetInstanceIdSql(engine, deployment)
@@ -97,7 +172,7 @@ func ExecuteQuery(engine DatabaseEngine, db *sql.DB, sql string, timeoutValueSec
 	var ctx context.Context
 	if len(timeoutValueSeconds) > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(context.Background(), time.Second*time.Duration(timeoutValueSeconds[0]))
+		ctx, cancel = context.WithTimeout(context.TODO(), time.Second*time.Duration(timeoutValueSeconds[0]))
 		defer cancel()
 	} else {
 		ctx = context.TODO()

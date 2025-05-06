@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"log/slog"
+	"net"
 	"slices"
 	"strings"
 	"testing"
@@ -138,7 +139,18 @@ func doesStatusMatch(currentStatus *string, desiredStatus string) bool {
 	return false
 }
 
-func (a AuroraTestUtility) getClusterWriterInstanceId(clusterId string) (string, error) {
+func (a AuroraTestUtility) IsDbInstanceWriter(instanceId string, clusterId string) bool {
+	writerId, err := a.GetClusterWriterInstanceId(clusterId)
+	if err == nil && writerId == instanceId {
+		return true
+	}
+	if err != nil {
+		slog.Warn(fmt.Sprintf("Unable to gather writer instance id, returning false for match. Error: %s.", err.Error()))
+	}
+	return false
+}
+
+func (a AuroraTestUtility) GetClusterWriterInstanceId(clusterId string) (string, error) {
 	if clusterId == "" {
 		env, err := GetCurrentTestEnvironment()
 		if err != nil {
@@ -171,6 +183,125 @@ func (a AuroraTestUtility) getDbCluster(clusterId string) (cluster types.DBClust
 		return
 	}
 	return resp.DBClusters[0], nil
+}
+
+func (a AuroraTestUtility) FailoverClusterAndWaitTillWriterChanged(initialWriter string, clusterId string, targetWriterId string) (err error) {
+	env, err := GetCurrentTestEnvironment()
+	if err != nil {
+		return err
+	}
+
+	if clusterId == "" {
+		clusterId = env.Info().AuroraClusterName()
+	}
+
+	if initialWriter == "" {
+		initialWriter, err = a.GetClusterWriterInstanceId(clusterId)
+		if err != nil {
+			return err
+		}
+		if initialWriter == "" {
+			return errors.New("unable to gather initial writer instance id")
+		}
+	}
+
+	clusterEndpoint := env.DatabaseInfo().clusterEndpoint
+	initialAddresses, err := net.LookupHost(clusterEndpoint)
+	if err != nil || len(initialAddresses) == 0 {
+		return errors.New("unable to lookup initial ip address")
+	}
+	initialAddress := initialAddresses[0]
+
+	failoverErr := a.failoverClusterToTarget(clusterId, targetWriterId)
+	if failoverErr != nil {
+		return failoverErr
+	}
+
+	clusterAddresses, err := net.LookupHost(clusterEndpoint)
+	if err != nil || len(clusterAddresses) == 0 {
+		return errors.New("unable to lookup current ip address")
+	}
+	clusterAddress := clusterAddresses[0]
+	stopTime := time.Now().Add(10 * time.Minute)
+	for clusterAddress == initialAddress && time.Now().Before(stopTime) {
+		time.Sleep(time.Second)
+		clusterAddresses, err = net.LookupHost(clusterEndpoint)
+		if err != nil || len(clusterAddresses) == 0 {
+			return errors.New("unable to lookup current ip address")
+		}
+		clusterAddress = clusterAddresses[0]
+	}
+	if !time.Now().Before(stopTime) {
+		slog.Info("check for updated IP address timed out after 10 minutes")
+	}
+
+	if !a.writerChanged(initialWriter, clusterId, 10) {
+		return errors.New("writer did not change in 10 minutes following failover command")
+	}
+
+	return nil
+}
+
+func (a AuroraTestUtility) failoverClusterToTarget(clusterId string, targetWriterId string) error {
+	env, err := GetCurrentTestEnvironment()
+	if err != nil {
+		return err
+	}
+
+	if clusterId == "" {
+		clusterId = env.Info().AuroraClusterName()
+	}
+
+	err = a.waitUntilClusterHasDesiredStatus(clusterId, "available")
+	if err != nil {
+		return err
+	}
+
+	var command *rds.FailoverDBClusterInput
+	if targetWriterId != "" {
+		command = &rds.FailoverDBClusterInput{
+			DBClusterIdentifier:        &clusterId,
+			TargetDBInstanceIdentifier: &targetWriterId,
+		}
+	} else {
+		command = &rds.FailoverDBClusterInput{
+			DBClusterIdentifier: &clusterId,
+		}
+	}
+
+	remainingAttempts := 10
+	auroraUtility := NewAuroraTestUtility(env.info.region)
+	for remainingAttempts > 0 {
+		remainingAttempts--
+		resp, err := a.client.FailoverDBCluster(context.TODO(), command)
+		if err == nil && resp.DBCluster != nil {
+			err = auroraUtility.waitUntilClusterHasDesiredStatus(clusterId, "available")
+			if err != nil {
+				continue
+			}
+			writerId, err := auroraUtility.GetClusterWriterInstanceId(clusterId)
+			if err != nil {
+				continue
+			}
+			env.info.databaseInfo.moveInstanceFirst(writerId, false)
+			env.info.proxyDatabaseInfo.moveInstanceFirst(writerId, true)
+			return nil
+		}
+		time.Sleep(time.Second)
+	}
+	return errors.New("unable to failover in 10 attempts")
+}
+
+func (a AuroraTestUtility) writerChanged(initialWriter string, clusterId string, timeoutMinutes int) bool {
+	stopTime := time.Now().Add(time.Minute * time.Duration(timeoutMinutes))
+
+	currentWriterId, _ := a.GetClusterWriterInstanceId(clusterId)
+
+	for initialWriter == currentWriterId && time.Now().Before(stopTime) {
+		time.Sleep(3 * time.Second)
+		currentWriterId, _ = a.GetClusterWriterInstanceId(clusterId)
+	}
+	return initialWriter != currentWriterId
 }
 
 func BasicCleanupAfterBasicSetup(t *testing.T) func() {

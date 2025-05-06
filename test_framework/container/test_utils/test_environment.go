@@ -139,6 +139,18 @@ func (t TestEnvironment) ProxyDatabaseInfo() TestProxyDatabaseInfo {
 	return t.info.proxyDatabaseInfo
 }
 
+func (t TestEnvironment) DatabaseInfo() TestDatabaseInfo {
+	return t.info.databaseInfo
+}
+
+func (t TestEnvironment) Info() TestEnvironmentInfo {
+	return t.info
+}
+
+func (t TestEnvironment) InstanceCount() int {
+	return t.info.request.instanceCount
+}
+
 func VerifyClusterStatus() error {
 	env, err := GetCurrentTestEnvironment()
 	if err != nil {
@@ -156,7 +168,7 @@ func VerifyClusterStatus() error {
 				rebootAllClusterInstances()
 				break
 			}
-			writerId, err := auroraUtility.getClusterWriterInstanceId(info.auroraClusterName)
+			writerId, err := auroraUtility.GetClusterWriterInstanceId(info.auroraClusterName)
 			if err != nil {
 				rebootAllClusterInstances()
 				break

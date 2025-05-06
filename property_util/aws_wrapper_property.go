@@ -26,6 +26,7 @@ import (
 
 const DEFAULT_PLUGINS = "failover,efm"
 const MONITORING_PROPERTY_PREFIX = "monitoring-"
+const INTERNAL_CONNECT_PROPERTY_NAME string = "76c06979-49c4-4c86-9600-a63605b83f50"
 
 type WrapperPropertyType int
 
@@ -457,12 +458,12 @@ var SSL_INSECURE = AwsWrapperProperty{
 	wrapperPropertyType: WRAPPER_TYPE_BOOL,
 }
 
-func RemoveMonitoringProperties(props map[string]string) map[string]string {
+func RemoveInternalAwsWrapperProperties(props map[string]string) map[string]string {
 	copyProps := map[string]string{}
 
 	for key, value := range props {
-		// Monitoring properties are not included in copy.
-		if !strings.HasPrefix(key, MONITORING_PROPERTY_PREFIX) {
+		// Monitoring properties and the internal connect property flag are not included in copy.
+		if !strings.HasPrefix(key, MONITORING_PROPERTY_PREFIX) && key != INTERNAL_CONNECT_PROPERTY_NAME {
 			copyProps[key] = value
 		}
 	}

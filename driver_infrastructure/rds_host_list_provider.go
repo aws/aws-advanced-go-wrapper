@@ -22,6 +22,7 @@ import (
 	"awssql/property_util"
 	"awssql/utils"
 	"database/sql/driver"
+	"fmt"
 	"log/slog"
 	"math"
 	"strings"
@@ -129,9 +130,16 @@ func (r *RdsHostListProvider) init() {
 			r.clusterId = suggestedClusterId
 			r.IsPrimaryClusterId = isPrimary
 		} else {
-			r.clusterId = r.originalDsn
-			r.IsPrimaryClusterId = true
-			primaryClusterIdCache.Put(r.clusterId, true, utils.CleanupIntervalNanos)
+			clusterRdsHostUrl := utils.GetRdsClusterHostUrl(r.initialHostInfo.Host)
+			if clusterRdsHostUrl != "" {
+				if r.clusterInstanceTemplate.Port != 0 {
+					r.clusterId = fmt.Sprintf("%s:%d", clusterRdsHostUrl, r.clusterInstanceTemplate.Port)
+				} else {
+					r.clusterId = clusterRdsHostUrl
+				}
+				r.IsPrimaryClusterId = true
+				primaryClusterIdCache.Put(r.clusterId, true, utils.CleanupIntervalNanos)
+			}
 		}
 	}
 

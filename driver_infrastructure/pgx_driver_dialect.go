@@ -82,7 +82,7 @@ func (p PgxDriverDialect) RegisterDriver() {
 
 func (p PgxDriverDialect) PrepareDsn(properties map[string]string, hostInfo *host_info_util.HostInfo) string {
 	var builder strings.Builder
-	copyProps := property_util.RemoveMonitoringProperties(properties)
+	copyProps := property_util.RemoveInternalAwsWrapperProperties(properties)
 	for k, v := range copyProps {
 		if slices.Contains(pgxPersistingProperties, k) || !property_util.ALL_WRAPPER_PROPERTIES[k] {
 			value := v

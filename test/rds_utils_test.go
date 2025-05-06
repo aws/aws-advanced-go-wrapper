@@ -225,3 +225,16 @@ func TestGetRdsRegion(t *testing.T) {
 	assert.Equal(t, "us-isob-east-1", utils.GetRdsRegion(usIsobEastRegionCluster))
 	assert.Equal(t, "us-iso-east-1", utils.GetRdsRegion(usIsoEastRegionCluster))
 }
+
+func TestGetRdsClusterHostUrl(t *testing.T) {
+	assert.Equal(t, "database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com", utils.GetRdsClusterHostUrl(usEastRegionCluster))
+	assert.Equal(t, "database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com", utils.GetRdsClusterHostUrl(usEastRegionClusterReadOnly))
+	assert.Equal(t, "instance-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com", utils.GetRdsClusterHostUrl(usEastRegionInstance))
+	assert.Equal(t, "proxy-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com", utils.GetRdsClusterHostUrl(usEastRegionProxy))
+	assert.Equal(t, "custom-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com", utils.GetRdsClusterHostUrl(usEastRegionCustomDomain))
+	assert.Equal(t, "database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com", utils.GetRdsClusterHostUrl(usEastRegionLimitlessDbShardGroup))
+
+	assert.Equal(t, "database-test-name.cluster-XYZ.rds.cn-northwest-1.amazonaws.com.cn", utils.GetRdsClusterHostUrl(chinaRegionClusterReadOnly))
+	assert.Equal(t, "database-test-name.cluster-XYZ.rds.us-isob-east-1.sc2s.sgov.gov", utils.GetRdsClusterHostUrl(usIsobEastRegionCluster))
+	assert.Equal(t, "database-test-name.cluster-XYZ.rds.us-iso-east-1.c2s.ic.gov", utils.GetRdsClusterHostUrl(usIsoEastRegionCluster))
+}

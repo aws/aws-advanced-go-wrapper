@@ -26,8 +26,9 @@ import (
 	"awssql/utils"
 	"database/sql/driver"
 	"errors"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var execFuncCalls = 0
@@ -543,7 +544,7 @@ func TestInvalidateCurrentConnectionInTransaction(t *testing.T) {
 
 	plugin.InvalidateCurrentConnection()
 	assert.Equal(t, 2, pluginService.isInTransactionCounter)
-	assert.Equal(t, 0, mockConn.closeCounter)
+	assert.Equal(t, 1, mockConn.closeCounter)
 
 	cleanupTest()
 }

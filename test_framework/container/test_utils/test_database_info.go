@@ -42,6 +42,24 @@ func (t TestDatabaseInfo) InstanceEndpointSuffix() string {
 	return t.instanceEndpointSuffix
 }
 
+func (t TestDatabaseInfo) ClusterEndpoint() string {
+	return t.clusterEndpoint
+}
+
+func (t TestDatabaseInfo) WriterInstanceEndpoint() string {
+	if len(t.instances) > 0 && t.instances[0].host != "" {
+		return t.instances[0].host
+	}
+	return ""
+}
+
+func (t TestDatabaseInfo) ReaderInstance() (info TestInstanceInfo) {
+	if len(t.instances) > 1 && t.instances[1].host != "" && t.instances[1].instanceId != "" {
+		info = t.instances[1]
+	}
+	return
+}
+
 // Creates a reordered slice of the instances in t where the instance matching instanceId is first.
 // Updates either proxyTestDatabaseInfo or testDatabaseInfo of the testEnvironment variable to contain the reordered instances.
 func (t TestDatabaseInfo) moveInstanceFirst(instanceId string, isProxyTestDatabaseInfo bool) {

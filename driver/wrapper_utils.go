@@ -100,9 +100,8 @@ func beginWithPlugins(
 	if err == nil {
 		driverTx, ok := result.(driver.Tx)
 		if ok {
-			tx := &AwsWrapperTx{driverTx, pluginManager, pluginService}
-			pluginService.SetCurrentTx(tx)
-			return tx, nil
+			pluginService.SetCurrentTx(driverTx)
+			return &AwsWrapperTx{driverTx, pluginManager, pluginService}, nil
 		}
 		err = errors.New(error_util.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Tx"))
 	}

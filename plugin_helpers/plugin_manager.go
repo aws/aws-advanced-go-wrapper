@@ -292,7 +292,7 @@ func (pluginManager *PluginManagerImpl) GetHostInfoByStrategy(
 	}
 
 	return nil, error_util.NewUnsupportedStrategyError(
-		error_util.GetMessage("The wrapper does not support the requested host selection strategy: " + strategy))
+		error_util.GetMessage("PluginManagerImpl.unsupportedHostSelectionStrategy", strategy))
 }
 
 func (pluginManager *PluginManagerImpl) GetDefaultConnectionProvider() driver_infrastructure.ConnectionProvider {

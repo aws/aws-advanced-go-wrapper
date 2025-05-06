@@ -118,7 +118,8 @@ func (p *FailoverPlugin) Connect(
 
 	var conn driver.Conn
 
-	if !property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.ENABLE_CONNECT_FAILOVER) {
+	_, internalConnect := props[property_util.INTERNAL_CONNECT_PROPERTY_NAME]
+	if !property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.ENABLE_CONNECT_FAILOVER) || internalConnect {
 		return p.staleDnsHelper.GetVerifiedConnection(hostInfo.Host, isInitialConnection, p.hostListProviderService, props, connectFunc)
 	}
 
@@ -286,7 +287,7 @@ func (p *FailoverPlugin) FailoverWriter() error {
 		return error_util.NewFailoverFailedError(message)
 	}
 
-	writerCandidateConn, err := p.pluginService.Connect(writerCandidate, p.props)
+	writerCandidateConn, err := p.createConnectionForHost(writerCandidate)
 	if err != nil {
 		slog.Error(error_util.GetMessage("Failover.errorConnectingToWriter", err.Error()))
 		return error_util.NewFailoverFailedError(err.Error())
@@ -352,23 +353,31 @@ func (p *FailoverPlugin) returnReaderFailoverErr() error {
 	return error_util.NewFailoverFailedError(error_util.GetMessage("Failover.unableToConnectToReader"))
 }
 
-func (p *FailoverPlugin) getReaderFailoverConnection(endTime time.Time) (ReaderFailoverResult, error) {
-	// The roles in this list might not be accurate, depending on whether the new topology has become available yet.
-	hosts := p.pluginService.GetHosts()
+func (p *FailoverPlugin) getReaderFailoverCandidates(hosts []*host_info_util.HostInfo) ([]*host_info_util.HostInfo, *host_info_util.HostInfo) {
 	readerCandidates := utils.FilterSlice(hosts, func(hostInfo *host_info_util.HostInfo) bool {
 		return hostInfo.Role == host_info_util.READER
 	})
 	originalWriter := host_info_util.GetWriter(hosts)
+	return readerCandidates, originalWriter
+}
+
+func (p *FailoverPlugin) getReaderFailoverConnection(endTime time.Time) (ReaderFailoverResult, error) {
+	// The roles in this list might not be accurate, depending on whether the new topology has become available yet.
+	readerCandidates, originalWriter := p.getReaderFailoverCandidates(p.pluginService.GetHosts())
 	isOriginalWriterStillWriter := false
 
-	// First, try all original readers
 	for ok := true; ok; ok = time.Now().Before(endTime) {
 		remainingReaders := readerCandidates
 
+		// First, try all original readers
 		for len(remainingReaders) > 0 && time.Now().Before(endTime) {
 			readerCandidate, err := p.pluginService.GetHostInfoByStrategy(host_info_util.READER, p.failoverReaderHostSelectorStrategySetting, remainingReaders)
 			if err != nil {
 				slog.Debug(utils.LogTopology(remainingReaders, error_util.GetMessage("Failover.errorSelectingReaderHost", err)))
+				hosts, err := p.pluginService.GetUpdatedHostListWithTimeout(false, driver_infrastructure.FallbackTopologyRefreshTimeoutMs)
+				if err == nil {
+					readerCandidates, originalWriter = p.getReaderFailoverCandidates(hosts)
+				}
 				break
 			}
 
@@ -377,7 +386,7 @@ func (p *FailoverPlugin) getReaderFailoverConnection(endTime time.Time) (ReaderF
 				break
 			}
 
-			candidateConn, err := p.pluginService.Connect(readerCandidate, p.props)
+			candidateConn, err := p.createConnectionForHost(readerCandidate)
 			if candidateConn == nil || err != nil {
 				remainingReaders = utils.RemoveFromSlice[*host_info_util.HostInfo](remainingReaders,
 					readerCandidate,
@@ -428,7 +437,7 @@ func (p *FailoverPlugin) getReaderFailoverConnection(endTime time.Time) (ReaderF
 		}
 
 		// Try the original writer, which may have been demoted to a reader.
-		candidateConn, err := p.pluginService.Connect(originalWriter, p.props)
+		candidateConn, err := p.createConnectionForHost(originalWriter)
 		if candidateConn == nil || err != nil {
 			slog.Debug(error_util.GetMessage("Failover.failedReaderConnection", originalWriter.Host))
 		} else {
@@ -464,7 +473,6 @@ func (p *FailoverPlugin) InvalidateCurrentConnection() {
 	if p.pluginService.IsInTransaction() {
 		p.isInTransaction = p.pluginService.IsInTransaction()
 		utils.Rollback(conn, p.pluginService.GetCurrentTx())
-		return
 	}
 
 	if !utils.IsConnectionLost(conn) {
@@ -479,4 +487,11 @@ func (p *FailoverPlugin) shouldErrorTriggerConnectionSwitch(err error) bool {
 	}
 
 	return p.pluginService.IsNetworkError(err)
+}
+
+func (p *FailoverPlugin) createConnectionForHost(hostInfo *host_info_util.HostInfo) (driver.Conn, error) {
+	copyProps := utils.CreateMapCopy(p.props)
+	copyProps[property_util.HOST.Name] = hostInfo.Host
+	copyProps[property_util.INTERNAL_CONNECT_PROPERTY_NAME] = "true"
+	return p.pluginService.Connect(hostInfo, copyProps)
 }
