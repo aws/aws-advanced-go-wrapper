@@ -120,7 +120,7 @@ func (a AuroraTestUtility) waitUntilClusterHasDesiredStatus(clusterId string, de
 	for !doesStatusMatch(status, desiredStatus) {
 		// Keep trying until cluster has desired status.
 		time.Sleep(time.Second)
-		clusterInfo, err := a.getDbCluster(clusterId)
+		clusterInfo, err = a.getDbCluster(clusterId)
 		if err == nil {
 			status = clusterInfo.Status
 		}

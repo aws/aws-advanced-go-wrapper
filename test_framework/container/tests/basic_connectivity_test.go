@@ -54,7 +54,7 @@ func TestBasicConnectivityWrapper(t *testing.T) {
 
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
-	dsn := test_utils.GetDsn(environment, map[string]string{})
+	dsn := test_utils.GetDsn(environment, map[string]string{"plugins": "none"})
 	db, err := sql.Open("awssql", dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
@@ -77,6 +77,7 @@ func TestBasicConnectivityWrapperProxy(t *testing.T) {
 		"host":                       environment.ProxyInstances()[0].Host(),
 		"port":                       strconv.Itoa(environment.ProxyDatabaseInfo().InstanceEndpointPort()),
 		"clusterInstanceHostPattern": "?." + environment.ProxyDatabaseInfo().InstanceEndpointSuffix(),
+		"plugins":                    "none",
 	})
 	db, err := sql.Open("awssql", dsn)
 	assert.Nil(t, err)
@@ -105,7 +106,7 @@ func TestBasicConnectivityFailoverClusterEndpoint(t *testing.T) {
 
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
-	dsn := test_utils.GetDsn(environment, map[string]string{"plugins": "failover,efm"})
+	dsn := test_utils.GetDsn(environment, map[string]string{})
 	db, err := sql.Open("awssql", dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
@@ -125,8 +126,7 @@ func TestBasicConnectivityFailoverInstanceEndpoint(t *testing.T) {
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
 	dsn := test_utils.GetDsn(environment, map[string]string{
-		"plugins": "failover,efm",
-		"host":    environment.Instances()[0].Host(),
+		"host": environment.Instances()[0].Host(),
 	})
 	db, err := sql.Open("awssql", dsn)
 	assert.Nil(t, err)
@@ -147,8 +147,7 @@ func TestBasicConnectivityFailoverReaderEndpoint(t *testing.T) {
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
 	dsn := test_utils.GetDsn(environment, map[string]string{
-		"plugins": "failover,efm",
-		"host":    environment.ClusterReadOnlyEndpoint(),
+		"host": environment.ClusterReadOnlyEndpoint(),
 	})
 	db, err := sql.Open("awssql", dsn)
 	assert.Nil(t, err)

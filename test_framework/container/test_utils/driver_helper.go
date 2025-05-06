@@ -25,14 +25,15 @@ import (
 	"time"
 )
 
-func GetSleepSql(engine DatabaseEngine, deployment DatabaseEngineDeployment) string {
-	if deployment == AURORA {
-		switch engine {
-		case PG:
-			return "select pg_sleep(10)"
-		case MYSQL:
-			return "select sleep(10)"
-		}
+func GetSleepSql(engine DatabaseEngine, seconds ...int) string {
+	if len(seconds) == 0 {
+		seconds = []int{10}
+	}
+	switch engine {
+	case PG:
+		return fmt.Sprintf("select pg_sleep(%d)", seconds[0])
+	case MYSQL:
+		return fmt.Sprintf("select sleep(%d)", seconds[0])
 	}
 	return ""
 }
@@ -79,7 +80,7 @@ func ExecuteInstanceQueryWithTimeout(engine DatabaseEngine, deployment DatabaseE
 }
 
 func ExecuteInstanceQueryWithSleep(engine DatabaseEngine, deployment DatabaseEngineDeployment, db *sql.DB) (instanceId string, err error) {
-	sql1 := GetSleepSql(engine, deployment)
+	sql1 := GetSleepSql(engine)
 	sql2, err := GetInstanceIdSql(engine, deployment)
 	if err != nil {
 		return
@@ -95,16 +96,6 @@ func ExecuteInstanceQueryWithSleep(engine DatabaseEngine, deployment DatabaseEng
 	return instanceId, nil
 }
 
-func GetSleepQuery(engine DatabaseEngine, seconds int) string {
-	switch engine {
-	case PG:
-		return fmt.Sprintf("select pg_sleep(%d)", seconds)
-	case MYSQL:
-		return fmt.Sprintf("select sleep(%d)", seconds)
-	}
-	return ""
-}
-
 func ExecuteQuery(engine DatabaseEngine, db *sql.DB, sql string, timeoutValueSeconds ...int) (*sql.Rows, error) {
 	var ctx context.Context
 	if len(timeoutValueSeconds) > 0 {
@@ -118,7 +109,7 @@ func ExecuteQuery(engine DatabaseEngine, db *sql.DB, sql string, timeoutValueSec
 }
 
 func GetDsn(environment *TestEnvironment, props map[string]string) string {
-	return ContructDsn(environment.Engine(), ConfigureProps(environment, props))
+	return ConstructDsn(environment.Engine(), ConfigureProps(environment, props))
 }
 
 func ConfigureProps(environment *TestEnvironment, props map[string]string) map[string]string {
@@ -132,7 +123,7 @@ func ConfigureProps(environment *TestEnvironment, props map[string]string) map[s
 		props["host"] = environment.ClusterEndpoint()
 	}
 	if _, ok := props["dbname"]; !ok {
-		props["database"] = environment.DefaultDbName()
+		props["dbname"] = environment.DefaultDbName()
 	}
 	if _, ok := props["password"]; !ok {
 		props["password"] = environment.Password()
@@ -140,25 +131,22 @@ func ConfigureProps(environment *TestEnvironment, props map[string]string) map[s
 	if _, ok := props["port"]; !ok {
 		props["port"] = strconv.Itoa(environment.InstanceEndpointPort())
 	}
-	if _, ok := props["plugins"]; !ok {
-		props["plugins"] = "none"
-	}
 	return props
 }
 
-var requiredProps = []string{"user", "password", "host", "port", "plugins"}
+var requiredProps = []string{"user", "password", "host", "port", "dbname"}
 
-func ContructDsn(engine DatabaseEngine, props map[string]string) (dsn string) {
+func ConstructDsn(engine DatabaseEngine, props map[string]string) (dsn string) {
 	switch engine {
 	case PG:
 		for propKey, propValue := range props {
 			dsn = dsn + fmt.Sprintf("%s=%s ", propKey, propValue)
 		}
 	case MYSQL:
-		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?plugins=%s", props["user"], props["password"], props["host"], props["port"], props["dbname"], props["plugins"])
+		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?", props["user"], props["password"], props["host"], props["port"], props["dbname"])
 		for propKey, propValue := range props {
 			if !slices.Contains(requiredProps, propKey) {
-				dsn = dsn + fmt.Sprintf("&%s=%s", propKey, propValue)
+				dsn = dsn + fmt.Sprintf("%s=%s&", propKey, propValue)
 			}
 		}
 	}

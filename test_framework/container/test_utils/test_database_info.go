@@ -42,22 +42,36 @@ func (t TestDatabaseInfo) InstanceEndpointSuffix() string {
 	return t.instanceEndpointSuffix
 }
 
-func (t *TestDatabaseInfo) moveInstanceFirst(instanceId string) {
+// Creates a reordered slice of the instances in t where the instance matching instanceId is first.
+// Updates either proxyTestDatabaseInfo or testDatabaseInfo of the testEnvironment variable to contain the reordered instances.
+func (t TestDatabaseInfo) moveInstanceFirst(instanceId string, isProxyTestDatabaseInfo bool) {
 	index := slices.IndexFunc(t.instances, func(info TestInstanceInfo) bool { return info.instanceId == instanceId })
 	if index == 0 || index == -1 {
 		// Given instance is either at the front or not in the slice at all.
 		return
 	}
-	result := append(append(append(make([]TestInstanceInfo, 0, len(t.instances)), t.instances[index]), t.instances[:index]...), t.instances[index+1:]...)
-	t.instances = result
+	reorderedInstances := append(append(append(make([]TestInstanceInfo, 0, len(t.instances)), t.instances[index]),
+		t.instances[:index]...), t.instances[index+1:]...)
+
+	// Update testEnvironment to have correct order.
+	testEnvironmentMutex.Lock()
+	defer testEnvironmentMutex.Unlock()
+	if testEnvironment == nil {
+		return
+	}
+	if isProxyTestDatabaseInfo {
+		testEnvironment.info.proxyDatabaseInfo.instances = reorderedInstances
+	} else {
+		testEnvironment.info.databaseInfo.instances = reorderedInstances
+	}
 }
 
 func NewTestDatabaseInfo(databaseInfoMap map[string]any) (databaseInfo TestDatabaseInfo, err error) {
 	instanceMaps, ok := databaseInfoMap["instances"].([]any)
 	instances := make([]TestInstanceInfo, len(instanceMaps))
 	for i, instanceMapVal := range instanceMaps {
-		instanceMap, map_ok := instanceMapVal.(map[string]any)
-		if map_ok {
+		instanceMap, mapOk := instanceMapVal.(map[string]any)
+		if mapOk {
 			instances[i], err = NewTestInstanceInfo(instanceMap)
 			if err != nil {
 				return

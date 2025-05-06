@@ -23,9 +23,11 @@ import (
 	"log/slog"
 	"os"
 	"slices"
+	"sync"
 )
 
-var test_env *TestEnvironment = nil
+var testEnvironment *TestEnvironment = nil
+var testEnvironmentMutex = sync.RWMutex{}
 
 type TestEnvironment struct {
 	info    TestEnvironmentInfo
@@ -37,15 +39,29 @@ func NewTestEnvironment(testInfo map[string]any) (*TestEnvironment, error) {
 	return &TestEnvironment{info: info, proxies: map[string]ProxyInfo{}}, err
 }
 
+func getTestEnvironment() *TestEnvironment {
+	testEnvironmentMutex.RLock()
+	defer testEnvironmentMutex.RUnlock()
+	return testEnvironment
+}
+
+func setTestEnvironment(newTestEnvironment *TestEnvironment) *TestEnvironment {
+	testEnvironmentMutex.Lock()
+	defer testEnvironmentMutex.Unlock()
+	testEnvironment = newTestEnvironment
+	return testEnvironment
+}
+
 func GetCurrentTestEnvironment() (*TestEnvironment, error) {
-	if test_env == nil {
-		env, err := CreateTestEnvironment()
+	currentTestEnvironment := getTestEnvironment()
+	if currentTestEnvironment == nil {
+		newTestEnvironment, err := CreateTestEnvironment()
 		if err != nil {
 			return nil, err
 		}
-		test_env = env
+		currentTestEnvironment = setTestEnvironment(newTestEnvironment)
 	}
-	return test_env, nil
+	return currentTestEnvironment, nil
 }
 
 func CreateTestEnvironment() (*TestEnvironment, error) {
@@ -124,14 +140,16 @@ func (t TestEnvironment) ProxyDatabaseInfo() TestProxyDatabaseInfo {
 }
 
 func VerifyClusterStatus() error {
-	if test_env == nil {
-		return nil
+	env, err := GetCurrentTestEnvironment()
+	if err != nil {
+		return err
 	}
-	info := test_env.info
+	info := env.info
 	if info.request.deployment == AURORA { // TODO || info.request.deployment == RDS_MULTI_AZ_CLUSTER {
 		remainingTries := 3
 		success := false
 		for !success && remainingTries > 0 {
+			remainingTries--
 			auroraUtility := NewAuroraTestUtility(info.region)
 			err := auroraUtility.waitUntilClusterHasDesiredStatus(info.auroraClusterName, "available")
 			if err != nil {
@@ -143,8 +161,9 @@ func VerifyClusterStatus() error {
 				rebootAllClusterInstances()
 				break
 			}
-			info.databaseInfo.moveInstanceFirst(writerId)
-			info.proxyDatabaseInfo.moveInstanceFirst(writerId)
+			info.databaseInfo.moveInstanceFirst(writerId, false)
+			info.proxyDatabaseInfo.moveInstanceFirst(writerId, true)
+
 			success = true
 		}
 		if !success {
