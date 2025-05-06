@@ -17,10 +17,12 @@
 package utils
 
 import (
+	"awssql/error_util"
 	"awssql/host_info_util"
 	"context"
 	"database/sql/driver"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
 	"sync"
@@ -191,4 +193,22 @@ func CreateMapCopy[K comparable, V any](mapToCopy map[K]V) map[K]V {
 		mapCopy[key] = value
 	}
 	return mapCopy
+}
+
+func Rollback(conn driver.Conn, currentTx driver.Tx) {
+	if currentTx != nil {
+		err := currentTx.Rollback()
+		if err != nil {
+			slog.Info(error_util.GetMessage("Utils.rollbackError", err.Error()))
+		}
+		return
+	}
+
+	execerContext, ok := conn.(driver.ExecerContext)
+	if ok {
+		_, err := execerContext.ExecContext(context.TODO(), "rollback", nil)
+		if err != nil {
+			slog.Info(error_util.GetMessage("Utils.rollbackError", err.Error()))
+		}
+	}
 }

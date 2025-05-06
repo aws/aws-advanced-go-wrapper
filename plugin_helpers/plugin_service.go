@@ -45,6 +45,7 @@ type PluginServiceImpl struct {
 	AllHosts                  []*host_info_util.HostInfo
 	initialHostInfo           *host_info_util.HostInfo
 	isInTransaction           bool
+	currentTx                 driver.Tx
 }
 
 func NewPluginServiceImpl(
@@ -156,6 +157,14 @@ func (p *PluginServiceImpl) SetCurrentConnection(
 		}
 	}
 	return nil
+}
+
+func (p *PluginServiceImpl) GetCurrentTx() driver.Tx {
+	return p.currentTx
+}
+
+func (p *PluginServiceImpl) SetCurrentTx(tx driver.Tx) {
+	p.currentTx = tx
 }
 
 func (p *PluginServiceImpl) compare(connA driver.Conn, hostInfoA *host_info_util.HostInfo, connB driver.Conn,

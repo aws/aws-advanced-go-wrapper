@@ -463,7 +463,7 @@ func (p *FailoverPlugin) InvalidateCurrentConnection() {
 
 	if p.pluginService.IsInTransaction() {
 		p.isInTransaction = p.pluginService.IsInTransaction()
-		// TODO: rollback
+		utils.Rollback(conn, p.pluginService.GetCurrentTx())
 		return
 	}
 

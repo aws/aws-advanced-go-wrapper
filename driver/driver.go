@@ -139,7 +139,7 @@ func (c *AwsWrapperConn) Begin() (driver.Tx, error) {
 		result, err := c.pluginService.GetCurrentConnection().Begin() //nolint:all
 		return result, nil, false, err
 	}
-	return beginWithPlugins(c.pluginManager, driver_infrastructure.CONN_BEGIN, beginFunc)
+	return beginWithPlugins(c.pluginManager, c.pluginService, driver_infrastructure.CONN_BEGIN, beginFunc)
 }
 
 func (c *AwsWrapperConn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
@@ -151,7 +151,7 @@ func (c *AwsWrapperConn) BeginTx(ctx context.Context, opts driver.TxOptions) (dr
 		result, err := beginTx.BeginTx(ctx, opts)
 		return result, nil, false, err
 	}
-	return beginWithPlugins(c.pluginManager, driver_infrastructure.CONN_BEGIN_TX, beginFunc)
+	return beginWithPlugins(c.pluginManager, c.pluginService, driver_infrastructure.CONN_BEGIN_TX, beginFunc)
 }
 
 func (c *AwsWrapperConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
@@ -339,17 +339,20 @@ func (a *AwsWrapperResult) RowsAffected() (int64, error) {
 type AwsWrapperTx struct {
 	underlyingTx  driver.Tx
 	pluginManager driver_infrastructure.PluginManager
+	pluginService driver_infrastructure.PluginService
 }
 
 func (a *AwsWrapperTx) Commit() error {
 	commitFunc := func() (any, any, bool, error) { return nil, nil, false, a.underlyingTx.Commit() }
 	_, _, _, err := ExecuteWithPlugins(a.pluginManager, driver_infrastructure.TX_COMMIT, commitFunc)
+	a.pluginService.SetCurrentTx(nil)
 	return err
 }
 
 func (a *AwsWrapperTx) Rollback() error {
 	rollbackFunc := func() (any, any, bool, error) { return nil, nil, false, a.underlyingTx.Rollback() }
 	_, _, _, err := ExecuteWithPlugins(a.pluginManager, driver_infrastructure.TX_ROLLBACK, rollbackFunc)
+	a.pluginService.SetCurrentTx(nil)
 	return err
 }
 

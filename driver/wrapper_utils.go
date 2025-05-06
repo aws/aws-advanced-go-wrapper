@@ -84,12 +84,18 @@ func prepareWithPlugins(
 	return nil, err
 }
 
-func beginWithPlugins(pluginManager driver_infrastructure.PluginManager, methodName string, beginFunc driver_infrastructure.ExecuteFunc) (driver.Tx, error) {
+func beginWithPlugins(
+	pluginManager driver_infrastructure.PluginManager,
+	pluginService driver_infrastructure.PluginService,
+	methodName string,
+	beginFunc driver_infrastructure.ExecuteFunc) (driver.Tx, error) {
 	result, _, _, err := ExecuteWithPlugins(pluginManager, methodName, beginFunc)
 	if err == nil {
 		driverTx, ok := result.(driver.Tx)
 		if ok {
-			return &AwsWrapperTx{driverTx, pluginManager}, nil
+			tx := &AwsWrapperTx{driverTx, pluginManager, pluginService}
+			pluginService.SetCurrentTx(tx)
+			return tx, nil
 		}
 		err = errors.New(error_util.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Tx"))
 	}
