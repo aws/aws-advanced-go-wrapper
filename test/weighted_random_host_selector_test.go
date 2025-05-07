@@ -21,8 +21,9 @@ import (
 	"awssql/error_util"
 	"awssql/host_info_util"
 	"awssql/property_util"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestWeightedRandomHostSelectorGetHost(t *testing.T) {
@@ -101,7 +102,7 @@ func TestWeightedRandomHostSelectorGetHostBySettingWeights(t *testing.T) {
 
 func TestWeightedRandomHostSelectorGetHostByProps(t *testing.T) {
 	props := map[string]string{
-		property_util.WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS.Name: "host0:3,host1:2,host2:1",
+		property_util.WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS.Name: "host0:3,host1:2,host2:01",
 	}
 
 	hostSelector := driver_infrastructure.WeightedRandomHostSelector{}
@@ -142,6 +143,31 @@ func TestWeightedRandomHostSelectorGetHostByProps(t *testing.T) {
 	assert.Equal(t, actualHost5, host2)
 }
 
+func TestWeightedRandomHostSelectorGetHostByInvalidWeightsReturnsError(t *testing.T) {
+	hostSelector := driver_infrastructure.WeightedRandomHostSelector{}
+
+	host0, _ := host_info_util.NewHostInfoBuilder().SetHost("host0").Build()
+	host1, _ := host_info_util.NewHostInfoBuilder().SetHost("host1").Build()
+	host2, _ := host_info_util.NewHostInfoBuilder().SetHost("host2").Build()
+	hostList := []*host_info_util.HostInfo{host0, host1, host2}
+
+	propsWeightOfZero := map[string]string{
+		property_util.WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS.Name: "host0:3,host1:2,host2:0",
+	}
+
+	_, err := hostSelector.GetHost(hostList, host_info_util.WRITER, propsWeightOfZero)
+	assert.NotNil(t, err)
+	assert.Equal(t, error_util.GetMessage("HostSelector.invalidHostWeightPairs"), err.Error())
+
+	propsNegativeWeight := map[string]string{
+		property_util.WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS.Name: "host0:3,host1:-1,host2:2",
+	}
+
+	_, err = hostSelector.GetHost(hostList, host_info_util.WRITER, propsNegativeWeight)
+	assert.NotNil(t, err)
+	assert.Equal(t, error_util.GetMessage("HostSelector.invalidHostWeightPairs"), err.Error())
+}
+
 func TestWeightedRandomHostSelectorGetHostByInvalidPropsReturnsError(t *testing.T) {
 	props := map[string]string{
 		property_util.WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS.Name: "someinvalidString",
@@ -156,7 +182,7 @@ func TestWeightedRandomHostSelectorGetHostByInvalidPropsReturnsError(t *testing.
 
 	_, err := hostSelector.GetHost(hostList, host_info_util.WRITER, props)
 	assert.NotNil(t, err)
-	assert.Equal(t, error_util.GetMessage("HostSelector.InvalidHostWeightPairs"), err.Error())
+	assert.Equal(t, error_util.GetMessage("HostSelector.invalidHostWeightPairs"), err.Error())
 }
 
 func TestIsInNumberRange(t *testing.T) {

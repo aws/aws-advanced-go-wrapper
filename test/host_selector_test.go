@@ -19,8 +19,9 @@ package test
 import (
 	"awssql/driver_infrastructure"
 	"awssql/error_util"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetHostWeightMapFromString(t *testing.T) {
@@ -50,7 +51,7 @@ func TestGetHostWeightMapFromStringGivenInvalidString(t *testing.T) {
 	_, err := driver_infrastructure.GetHostWeightMapFromString(hostWeightString)
 
 	assert.NotNil(t, err)
-	assert.Equal(t, error_util.GetMessage("HostSelector.InvalidHostWeightPairs"), err.Error())
+	assert.Equal(t, error_util.GetMessage("HostSelector.invalidHostWeightPairs"), err.Error())
 }
 
 func TestGetHostWeightMapFromStringGivenInvalidHostName(t *testing.T) {
@@ -58,7 +59,7 @@ func TestGetHostWeightMapFromStringGivenInvalidHostName(t *testing.T) {
 	_, err := driver_infrastructure.GetHostWeightMapFromString(hostWeightString)
 
 	assert.NotNil(t, err)
-	assert.Equal(t, error_util.GetMessage("HostSelector.InvalidHostWeightPairs"), err.Error())
+	assert.Equal(t, error_util.GetMessage("HostSelector.invalidHostWeightPairs"), err.Error())
 }
 
 func TestGetHostWeightMapFromStringGivenInvalidHostWeight(t *testing.T) {
@@ -66,5 +67,5 @@ func TestGetHostWeightMapFromStringGivenInvalidHostWeight(t *testing.T) {
 	_, err := driver_infrastructure.GetHostWeightMapFromString(hostWeightString)
 
 	assert.NotNil(t, err)
-	assert.Equal(t, error_util.GetMessage("HostSelector.InvalidHostWeightPairs"), err.Error())
+	assert.Equal(t, error_util.GetMessage("HostSelector.invalidHostWeightPairs"), err.Error())
 }

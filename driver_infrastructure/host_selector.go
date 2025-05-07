@@ -31,7 +31,8 @@ const (
 )
 
 var (
-	HOST_WEIGHT_PAIR_PATTERN  = regexp.MustCompile("(?i)^((?P<host>[^:/?#]*):(?P<weight>[0-9]*))")
+	// Example host weight pair patterns: "host0:3,host1:02,host2:1", "host.com:50000".
+	HOST_WEIGHT_PAIR_PATTERN  = regexp.MustCompile("(?i)^((?P<host>[^:/?#]*):(?P<weight>0*[1-9][0-9]*))")
 	HOST_PATTERN_GROUP        = "host"
 	HOST_WEIGHT_PATTERN_GROUP = "weight"
 )
@@ -56,15 +57,15 @@ func GetHostWeightMapFromString(hostWeightMapString string) (map[string]int, err
 			hostName := strings.TrimSpace(HOST_WEIGHT_PAIR_PATTERN.FindStringSubmatch(hostWeightPair)[HOST_WEIGHT_PAIR_PATTERN.SubexpIndex(HOST_PATTERN_GROUP)])
 			hostWeightString := strings.TrimSpace(HOST_WEIGHT_PAIR_PATTERN.FindStringSubmatch(hostWeightPair)[HOST_WEIGHT_PAIR_PATTERN.SubexpIndex(HOST_WEIGHT_PATTERN_GROUP)])
 			if hostName == "" || hostWeightString == "" {
-				return nil, errors.New(error_util.GetMessage("HostSelector.InvalidHostWeightPairs"))
+				return nil, errors.New(error_util.GetMessage("HostSelector.invalidHostWeightPairs"))
 			}
 			hostWeight, err := strconv.Atoi(hostWeightString)
-			if err != nil || hostWeight < 1 {
-				return nil, errors.New(error_util.GetMessage("InvalidHostWeightPairs"))
+			if err != nil {
+				return nil, errors.New(error_util.GetMessage("HostSelector.invalidHostWeightPairs"))
 			}
 			hostWeightMap[hostName] = hostWeight
 		} else {
-			return nil, errors.New(error_util.GetMessage("HostSelector.InvalidHostWeightPairs"))
+			return nil, errors.New(error_util.GetMessage("HostSelector.invalidHostWeightPairs"))
 		}
 	}
 	return hostWeightMap, nil

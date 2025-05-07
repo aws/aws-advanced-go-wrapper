@@ -69,7 +69,7 @@ func (r *WeightedRandomHostSelector) GetHost(hosts []*host_info_util.HostInfo, r
 	}
 
 	// this should not be reached
-	return nil, errors.New(error_util.GetMessage("WeightedRandomHostSelector.UnableToGetHost")) // TODO: add this message
+	return nil, errors.New(error_util.GetMessage("WeightedRandomHostSelector.unableToGetHost"))
 }
 
 func (r *WeightedRandomHostSelector) SetHostWeights(hostWeightMap map[string]int) {
