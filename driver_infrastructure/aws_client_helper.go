@@ -70,6 +70,7 @@ func NewAwsSecretsManagerClient(hostInfo *host_info_util.HostInfo,
 	return client, err
 }
 
+// Aws Sts Client.
 type AwsStsClient interface {
 	AssumeRoleWithSAML(ctx context.Context, params *sts.AssumeRoleWithSAMLInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleWithSAMLOutput, error)
 }

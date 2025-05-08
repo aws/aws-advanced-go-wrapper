@@ -128,6 +128,7 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	IDP_ENDPOINT.Name:                           true,
 	RELAYING_PARTY_ID.Name:                      true,
 	DB_USER.Name:                                true,
+	APP_ID.Name:                                 true,
 	HTTP_TIMEOUT.Name:                           true,
 	SSL_INSECURE.Name:                           true,
 }
@@ -430,6 +431,13 @@ var RELAYING_PARTY_ID = AwsWrapperProperty{
 var DB_USER = AwsWrapperProperty{
 	Name:                "dbUser",
 	description:         "The database user used to access the database.",
+	defaultValue:        "",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var APP_ID = AwsWrapperProperty{
+	Name:                "appId",
+	description:         "The ID of the AWS application configured on Okta.",
 	defaultValue:        "",
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }

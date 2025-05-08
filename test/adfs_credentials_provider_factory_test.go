@@ -17,31 +17,22 @@
 package test
 
 import (
-	"awssql/driver_infrastructure"
 	"awssql/error_util"
 	"awssql/plugins/federated_auth"
 	"awssql/property_util"
 	"errors"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var federatedAuthUsername = "someFederatedUsername@example.com"
 var federatedAuthPassword = "somePassword"
 
-func readFile(t *testing.T, fileName string) []byte {
-	content, err := os.ReadFile(fileName)
-	if err != nil {
-		t.Fatalf("Error reading from file: '%s'.", err.Error())
-	}
-	return content
-}
-
-func TestGetSamlAssertion(t *testing.T) {
+func TestAdfsCredProviderGetSamlAssertion(t *testing.T) {
 	getAdfsTestHttpClientFunc := func(timeoutMs int, sslInsecure bool, jar http.CookieJar) federated_auth.HttpClient {
 		getReturnValue := http.Response{
 			StatusCode: 200,
@@ -51,7 +42,7 @@ func TestGetSamlAssertion(t *testing.T) {
 			StatusCode: 200,
 			Body:       io.NopCloser(strings.NewReader(string(readFile(t, "./resources/adfs-saml.html")))),
 		}
-		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValue: &doReturnValue}
+		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValues: []*http.Response{&doReturnValue}, doCallCount: new(int)}
 	}
 
 	props := map[string]string{
@@ -62,7 +53,7 @@ func TestGetSamlAssertion(t *testing.T) {
 		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
 		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
 	}
-	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, driver_infrastructure.NewAwsStsClient)
+	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient)
 
 	content := readFile(t, "./resources/saml-assertion.txt")
 	expectedSamlAssertion := strings.ReplaceAll(strings.ReplaceAll(string(content), "\n", ""), "\r", "")
@@ -72,7 +63,7 @@ func TestGetSamlAssertion(t *testing.T) {
 	assert.Equal(t, expectedSamlAssertion, samlAssertion)
 }
 
-func TestGetSignInPageFailure(t *testing.T) {
+func TestAdfsCredProviderGetSignInPageFailure(t *testing.T) {
 	getAdfsTestHttpClientFunc := func(timeoutMs int, sslInsecure bool, jar http.CookieJar) federated_auth.HttpClient {
 		getReturnValue := http.Response{
 			StatusCode: 500,
@@ -82,7 +73,7 @@ func TestGetSignInPageFailure(t *testing.T) {
 			StatusCode: 200,
 			Body:       io.NopCloser(strings.NewReader(string(readFile(t, "./resources/adfs-saml.html")))),
 		}
-		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValue: &doReturnValue}
+		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValues: []*http.Response{&doReturnValue}, doCallCount: new(int)}
 	}
 
 	props := map[string]string{
@@ -93,7 +84,7 @@ func TestGetSignInPageFailure(t *testing.T) {
 		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
 		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
 	}
-	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, driver_infrastructure.NewAwsStsClient)
+	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient)
 
 	samlAssertion, err := adfsCredentialsProviderFactory.GetSamlAssertion(props)
 	assert.Error(t, err)
@@ -101,7 +92,7 @@ func TestGetSignInPageFailure(t *testing.T) {
 	assert.Zero(t, samlAssertion)
 }
 
-func TestGetSignInPageError(t *testing.T) {
+func TestAdfsCredProviderGetSignInPageError(t *testing.T) {
 	getAdfsTestHttpClientFunc := func(timeoutMs int, sslInsecure bool, jar http.CookieJar) federated_auth.HttpClient {
 		getReturnValue := http.Response{
 			StatusCode: 200,
@@ -112,7 +103,7 @@ func TestGetSignInPageError(t *testing.T) {
 			Body:       io.NopCloser(strings.NewReader(string(readFile(t, "./resources/adfs-saml.html")))),
 		}
 		errReturnValue := errors.New("HTTP Error")
-		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValue: &doReturnValue, errReturnValue: errReturnValue}
+		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValues: []*http.Response{&doReturnValue}, doCallCount: new(int), errReturnValue: errReturnValue}
 	}
 
 	props := map[string]string{
@@ -123,14 +114,14 @@ func TestGetSignInPageError(t *testing.T) {
 		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
 		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
 	}
-	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, driver_infrastructure.NewAwsStsClient)
+	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient)
 
 	samlAssertion, err := adfsCredentialsProviderFactory.GetSamlAssertion(props)
 	assert.Equal(t, errors.New("HTTP Error"), err)
 	assert.Zero(t, samlAssertion)
 }
 
-func TestGetSamlAssertionLoginFailure(t *testing.T) {
+func TestAdfsCredProviderGetSamlAssertionLoginFailure(t *testing.T) {
 	getAdfsTestHttpClientFunc := func(timeoutMs int, sslInsecure bool, jar http.CookieJar) federated_auth.HttpClient {
 		getReturnValue := http.Response{
 			StatusCode: 200,
@@ -140,7 +131,7 @@ func TestGetSamlAssertionLoginFailure(t *testing.T) {
 			StatusCode: 200,
 			Body:       io.NopCloser(strings.NewReader(string(readFile(t, "./resources/adfs-sign-in-page.html")))),
 		}
-		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValue: &doReturnValue}
+		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValues: []*http.Response{&doReturnValue}, doCallCount: new(int)}
 	}
 
 	props := map[string]string{
@@ -151,7 +142,7 @@ func TestGetSamlAssertionLoginFailure(t *testing.T) {
 		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
 		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
 	}
-	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, driver_infrastructure.NewAwsStsClient)
+	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient)
 
 	samlAssertion, err := adfsCredentialsProviderFactory.GetSamlAssertion(props)
 	assert.Error(t, err)
@@ -159,7 +150,7 @@ func TestGetSamlAssertionLoginFailure(t *testing.T) {
 	assert.Zero(t, samlAssertion)
 }
 
-func TestGetSamlAssertionPostFailure(t *testing.T) {
+func TestAdfsCredProviderGetSamlAssertionPostFailure(t *testing.T) {
 	getAdfsTestHttpClientFunc := func(timeoutMs int, sslInsecure bool, jar http.CookieJar) federated_auth.HttpClient {
 		getReturnValue := http.Response{
 			StatusCode: 200,
@@ -169,7 +160,7 @@ func TestGetSamlAssertionPostFailure(t *testing.T) {
 			StatusCode: 500,
 			Body:       io.NopCloser(strings.NewReader(string(readFile(t, "./resources/adfs-saml.html")))),
 		}
-		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValue: &doReturnValue}
+		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValues: []*http.Response{&doReturnValue}, doCallCount: new(int)}
 	}
 
 	props := map[string]string{
@@ -180,7 +171,7 @@ func TestGetSamlAssertionPostFailure(t *testing.T) {
 		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
 		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
 	}
-	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, driver_infrastructure.NewAwsStsClient)
+	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient)
 
 	samlAssertion, err := adfsCredentialsProviderFactory.GetSamlAssertion(props)
 	assert.Error(t, err)
@@ -188,7 +179,7 @@ func TestGetSamlAssertionPostFailure(t *testing.T) {
 	assert.Zero(t, samlAssertion)
 }
 
-func TestGetSamlAssertionPostError(t *testing.T) {
+func TestAdfsCredProviderGetSamlAssertionPostError(t *testing.T) {
 	getAdfsTestHttpClientFunc := func(timeoutMs int, sslInsecure bool, jar http.CookieJar) federated_auth.HttpClient {
 		getReturnValue := http.Response{
 			StatusCode: 200,
@@ -199,7 +190,7 @@ func TestGetSamlAssertionPostError(t *testing.T) {
 			Body:       io.NopCloser(strings.NewReader(string(readFile(t, "./resources/adfs-saml.html")))),
 		}
 		errReturnValue := errors.New("HTTP Error")
-		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValue: &doReturnValue, errReturnValue: errReturnValue}
+		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValues: []*http.Response{&doReturnValue}, doCallCount: new(int), errReturnValue: errReturnValue}
 	}
 
 	props := map[string]string{
@@ -210,14 +201,14 @@ func TestGetSamlAssertionPostError(t *testing.T) {
 		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
 		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
 	}
-	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, driver_infrastructure.NewAwsStsClient)
+	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient)
 
 	samlAssertion, err := adfsCredentialsProviderFactory.GetSamlAssertion(props)
 	assert.Equal(t, errors.New("HTTP Error"), err)
 	assert.Zero(t, samlAssertion)
 }
 
-func TestGetUriAndParametersFromSignInPage(t *testing.T) {
+func TestAdfsCredProviderGetUriAndParametersFromSignInPage(t *testing.T) {
 	getAdfsTestHttpClientFunc := func(timeoutMs int, sslInsecure bool, jar http.CookieJar) federated_auth.HttpClient {
 		getReturnValue := http.Response{
 			StatusCode: 200,
@@ -227,7 +218,7 @@ func TestGetUriAndParametersFromSignInPage(t *testing.T) {
 			StatusCode: 200,
 			Body:       io.NopCloser(strings.NewReader(string(readFile(t, "./resources/adfs-saml.html")))),
 		}
-		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValue: &doReturnValue}
+		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValues: []*http.Response{&doReturnValue}, doCallCount: new(int)}
 	}
 
 	props := map[string]string{
@@ -238,7 +229,7 @@ func TestGetUriAndParametersFromSignInPage(t *testing.T) {
 		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
 		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
 	}
-	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, driver_infrastructure.NewAwsStsClient)
+	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient)
 	uri, params, err := adfsCredentialsProviderFactory.GetUriAndParamsFromSignInPage("https://ec2amaz-ab3cdef.example.com", props)
 	assert.Nil(t, err)
 	assert.Equal(
@@ -251,7 +242,7 @@ func TestGetUriAndParametersFromSignInPage(t *testing.T) {
 	assert.Equal(t, "FormsAuthentication", params["AuthMethod"])
 }
 
-func TestMissingInputTags(t *testing.T) {
+func TestAdfsCredProviderMissingInputTags(t *testing.T) {
 	getAdfsTestHttpClientFunc := func(timeoutMs int, sslInsecure bool, jar http.CookieJar) federated_auth.HttpClient {
 		getReturnValue := http.Response{
 			StatusCode: 200,
@@ -261,7 +252,7 @@ func TestMissingInputTags(t *testing.T) {
 			StatusCode: 200,
 			Body:       io.NopCloser(strings.NewReader(string(readFile(t, "./resources/adfs-saml.html")))),
 		}
-		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValue: &doReturnValue}
+		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValues: []*http.Response{&doReturnValue}, doCallCount: new(int)}
 	}
 
 	props := map[string]string{
@@ -272,14 +263,14 @@ func TestMissingInputTags(t *testing.T) {
 		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
 		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
 	}
-	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, driver_infrastructure.NewAwsStsClient)
+	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient)
 
 	_, params, err := adfsCredentialsProviderFactory.GetUriAndParamsFromSignInPage("https://ec2amaz-ab3cdef.example.com", props)
 	assert.Equal(t, 0, len(params))
 	assert.Nil(t, err)
 }
 
-func TestGetSignInPageUrl(t *testing.T) {
+func TestAdfsCredProviderGetSignInPageUrl(t *testing.T) {
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
 		property_util.PLUGINS.Name:         "federatedAuth",

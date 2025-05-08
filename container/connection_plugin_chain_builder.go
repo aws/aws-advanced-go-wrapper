@@ -44,6 +44,7 @@ var pluginFactoryFuncByCode = map[string]PluginFactoryFunc{
 	"failover":          plugins.NewFailoverPluginFactory,
 	"efm":               efm.NewHostMonitoringPluginFactory,
 	"iam":               iam.NewIamAuthPluginFactory,
+	"okta":              federated_auth.NewOktaAuthPluginFactory,
 	"awsSecretsManager": aws_secrets_manager.NewAwsSecretsManagerPluginFactory,
 	"federatedAuth":     federated_auth.NewFederatedAuthPluginFactory,
 }
@@ -54,6 +55,7 @@ var pluginWeightByCode = map[string]int{
 	"iam":               1000,
 	"awsSecretsManager": 1100,
 	"federatedAuth":     1200,
+	"okta":              1300,
 }
 
 type ConnectionPluginChainBuilder struct {

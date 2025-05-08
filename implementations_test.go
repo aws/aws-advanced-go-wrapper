@@ -24,6 +24,7 @@ import (
 	"awssql/plugins"
 	"awssql/plugins/aws_secrets_manager"
 	"awssql/plugins/efm"
+	"awssql/plugins/federated_auth"
 	"awssql/plugins/iam"
 	"database/sql/driver"
 	"testing"
@@ -60,10 +61,14 @@ func TestImplementations(t *testing.T) {
 	var _ driver_infrastructure.ConnectionPlugin = (*plugins.FailoverPlugin)(nil)
 	var _ driver_infrastructure.ConnectionPlugin = (*iam.IamAuthPlugin)(nil)
 	var _ driver_infrastructure.ConnectionPlugin = (*aws_secrets_manager.AwsSecretsManagerPlugin)(nil)
+	var _ driver_infrastructure.ConnectionPlugin = (*federated_auth.OktaAuthPlugin)(nil)
+	var _ driver_infrastructure.ConnectionPlugin = (*federated_auth.FederatedAuthPlugin)(nil)
 	var _ driver_infrastructure.ConnectionPluginFactory = (*efm.HostMonitoringPluginFactory)(nil)
 	var _ driver_infrastructure.ConnectionPluginFactory = (*plugins.FailoverPluginFactory)(nil)
 	var _ driver_infrastructure.ConnectionPluginFactory = (*iam.IamAuthPluginFactory)(nil)
 	var _ driver_infrastructure.ConnectionPluginFactory = (*aws_secrets_manager.AwsSecretsManagerPluginFactory)(nil)
+	var _ driver_infrastructure.ConnectionPluginFactory = (*federated_auth.OktaAuthPluginFactory)(nil)
+	var _ driver_infrastructure.ConnectionPluginFactory = (*federated_auth.FederatedAuthPluginFactory)(nil)
 	var _ efm.MonitorService = (*efm.MonitorServiceImpl)(nil)
 	var _ efm.Monitor = (*efm.MonitorImpl)(nil)
 	var _ error_util.ErrorHandler = (*driver_infrastructure.MySQLErrorHandler)(nil)

@@ -26,10 +26,10 @@ import (
 	"awssql/region_util"
 	"database/sql/driver"
 	"errors"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var federatedAuthTestToken = "someToken"
@@ -41,17 +41,6 @@ var federatedAuthHostInfo1, _ = host_info_util.NewHostInfoBuilder().SetHost(fede
 var federatedAuthHostInfo2, _ = host_info_util.NewHostInfoBuilder().SetHost("localhost").SetPort(1234).Build()
 var mockIamTokenUtility = &MockIamTokenUtility{}
 var credentialsProviderFactory = &MockCredentialsProviderFactory{}
-
-type MockCredentialsProviderFactory struct {
-	getAwsCredentialsProviderError error
-}
-
-func (m MockCredentialsProviderFactory) GetAwsCredentialsProvider(host string, region region_util.Region, props map[string]string) (aws.CredentialsProvider, error) {
-	if m.getAwsCredentialsProviderError != nil {
-		return nil, m.getAwsCredentialsProviderError
-	}
-	return nil, nil
-}
 
 func connectFunc() (driver.Conn, error) {
 	return nil, nil
