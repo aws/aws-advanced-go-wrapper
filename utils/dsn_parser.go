@@ -91,7 +91,10 @@ func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []*host_i
 
 func ParseHostPortPair(dsn string) (*host_info_util.HostInfo, error) {
 	hosts, err := GetHostsFromDsn(dsn, true)
-	return hosts[0], err
+	if err == nil && len(hosts) > 0 {
+		return hosts[0], nil
+	}
+	return nil, err
 }
 
 func ParseDatabaseFromDsn(dsn string) (string, error) {

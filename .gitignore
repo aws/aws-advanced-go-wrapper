@@ -1,3 +1,7 @@
 # IDE files
-.idea
-.DS_Store
+**/.idea
+**/.DS_Store
+**/.gradle
+
+# integration test output
+test_framework/host/build/
