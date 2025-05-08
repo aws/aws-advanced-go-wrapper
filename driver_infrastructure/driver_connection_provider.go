@@ -31,6 +31,7 @@ type DriverConnectionProvider struct {
 func NewDriverConnectionProvider(targetDriver driver.Driver) *DriverConnectionProvider {
 	acceptedStrategies := make(map[string]HostSelector)
 	acceptedStrategies[SELECTOR_RANDOM] = &RandomHostSelector{}
+	acceptedStrategies[SELECTOR_WEIGHTED_RANDOM] = &WeightedRandomHostSelector{}
 	return &DriverConnectionProvider{acceptedStrategies, targetDriver}
 }
 

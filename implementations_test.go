@@ -24,6 +24,7 @@ import (
 	"awssql/plugins"
 	"awssql/plugins/aws_secrets_manager"
 	"awssql/plugins/efm"
+	"awssql/plugins/iam"
 	"database/sql/driver"
 	"testing"
 )
@@ -45,6 +46,8 @@ func TestImplementations(t *testing.T) {
 	var _ driver_infrastructure.CanReleaseResources = (*plugin_helpers.PluginServiceImpl)(nil)
 	var _ driver_infrastructure.HostListProviderService = (*plugin_helpers.PluginServiceImpl)(nil)
 	var _ driver_infrastructure.HostSelector = (*driver_infrastructure.RandomHostSelector)(nil)
+	var _ driver_infrastructure.HostSelector = (*driver_infrastructure.WeightedRandomHostSelector)(nil)
+	var _ driver_infrastructure.WeightedHostSelector = (*driver_infrastructure.WeightedRandomHostSelector)(nil)
 	var _ driver_infrastructure.HostListProvider = (*driver_infrastructure.DsnHostListProvider)(nil)
 	var _ driver_infrastructure.HostListProvider = (*driver_infrastructure.RdsHostListProvider)(nil)
 	var _ driver_infrastructure.HostListProvider = (*driver_infrastructure.MonitoringRdsHostListProvider)(nil)
@@ -55,9 +58,12 @@ func TestImplementations(t *testing.T) {
 	var _ driver_infrastructure.ConnectionPlugin = (*plugins.BaseConnectionPlugin)(nil)
 	var _ driver_infrastructure.ConnectionPlugin = (*efm.HostMonitorConnectionPlugin)(nil)
 	var _ driver_infrastructure.ConnectionPlugin = (*plugins.FailoverPlugin)(nil)
+	var _ driver_infrastructure.ConnectionPlugin = (*iam.IamAuthPlugin)(nil)
 	var _ driver_infrastructure.ConnectionPlugin = (*aws_secrets_manager.AwsSecretsManagerPlugin)(nil)
 	var _ driver_infrastructure.ConnectionPluginFactory = (*efm.HostMonitoringPluginFactory)(nil)
 	var _ driver_infrastructure.ConnectionPluginFactory = (*plugins.FailoverPluginFactory)(nil)
+	var _ driver_infrastructure.ConnectionPluginFactory = (*iam.IamAuthPluginFactory)(nil)
+	var _ driver_infrastructure.ConnectionPluginFactory = (*aws_secrets_manager.AwsSecretsManagerPluginFactory)(nil)
 	var _ efm.MonitorService = (*efm.MonitorServiceImpl)(nil)
 	var _ efm.Monitor = (*efm.MonitorImpl)(nil)
 	var _ error_util.ErrorHandler = (*driver_infrastructure.MySQLErrorHandler)(nil)

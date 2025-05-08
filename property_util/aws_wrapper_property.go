@@ -117,6 +117,7 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	FAILOVER_READER_HOST_SELECTOR_STRATEGY.Name: true,
 	ENABLE_CONNECT_FAILOVER.Name:                true,
 	CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS.Name:  true,
+	WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS.Name:      true,
 }
 
 var USER = AwsWrapperProperty{
@@ -340,6 +341,13 @@ var SECRETS_MANAGER_REGION = AwsWrapperProperty{
 var SECRETS_MANAGER_ENDPOINT = AwsWrapperProperty{
 	Name:                "secretsManagerEndpoint",
 	description:         "The endpoint of the secret to retrieve.",
+	defaultValue:        "",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS = AwsWrapperProperty{
+	Name:                "weightedRandomHostWeightPairs",
+	description:         "Comma separated list of database host-weight pairs in the format of `<host>:<weight>`.",
 	defaultValue:        "",
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }

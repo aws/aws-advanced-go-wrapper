@@ -80,6 +80,7 @@
 	"HostMonitoringRoutine.routineCompleted": "Host monitoring routine completed in %v.",
 	"HostMonitoringRoutine.writerHostChanged": "Writer node changed from '%s' to node '%s'.",
 	"HostSelector.noHostsMatchingRole": "No available hosts were found matching the requested '%v' role.",
+	"HostSelector.invalidHostWeightPairs": "The provided host weight pairs have not been configured correctly. Please ensure the provided host weight pairs is a comma separated list of pairs, each pair in the format of <host>:<weight>. Weight values must be an integer greater than or equal to the default weight value of 1.",
 	"IamAuthPlugin.connectionError": "Error occurred while opening a connection: '%v'.",
 	"IamAuthPlugin.errorGeneratingNewToken": "Error occurred while generating authentication token: '%v'.",
 	"IamAuthPlugin.errorGettingAwsCredentialsProvider": "Error occurred while getting aws.CredentialsProvider: '%v'.",
@@ -126,5 +127,7 @@
 	"TargetDriverHelper.invalidProtocol": "Invalid database protocol was found: %v",
 	"TargetDriverHelper.missingDriver": "Cannot find the target driver for %v. Please ensure the target driver is imported and registered. Here is the list of registered drivers found: %v",
 	"Utils.rollbackError": "Error occurred when attempting rollback: '%s'.",
-	"Utils.topology": "%s \n%s"
+	"Utils.topology": "%s \n%s",
+	"WeightedRandomHostSelector.noHostsMatchingRole": "Weighted Random strategy was unable to select a host. No available hosts were found matching the requested '%v' role.",
+	"WeightedRandomHostSelector.unableToGetHost": "Weighted Random strategy was unable to select a host."
 }
