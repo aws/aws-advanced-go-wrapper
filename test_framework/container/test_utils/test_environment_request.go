@@ -34,10 +34,11 @@ func NewTestEnvironmentRequest(requestVal any) (request TestEnvironmentRequest, 
 		err = fmt.Errorf("Unable to cast request value to usable map: %s", requestMap)
 		return
 	}
-	instanceCount, ok := requestMap["numOfInstances"].(int)
-	if !ok || instanceCount < 1 {
-		instanceCount = 1
-	}
+	instanceCountAsFloat, ok := requestMap["numOfInstances"].(float64)
+    instanceCount := 1
+    if ok && instanceCountAsFloat > 1 {
+    	instanceCount = int(instanceCountAsFloat)
+    }
 	var instances DatabaseInstances
 	instancesVal := requestMap["instances"]
 	if instancesVal == "SINGLE_INSTANCE" {

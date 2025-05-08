@@ -25,15 +25,12 @@ import (
 	"time"
 )
 
-func GetSleepSql(engine DatabaseEngine, seconds ...int) string {
-	if len(seconds) == 0 {
-		seconds = []int{10}
-	}
+func GetSleepSql(engine DatabaseEngine, seconds int) string {
 	switch engine {
 	case PG:
-		return fmt.Sprintf("select pg_sleep(%d)", seconds[0])
+		return fmt.Sprintf("select pg_sleep(%d)", seconds)
 	case MYSQL:
-		return fmt.Sprintf("select sleep(%d)", seconds[0])
+		return fmt.Sprintf("select sleep(%d)", seconds)
 	}
 	return ""
 }
@@ -80,7 +77,7 @@ func ExecuteInstanceQueryWithTimeout(engine DatabaseEngine, deployment DatabaseE
 }
 
 func ExecuteInstanceQueryWithSleep(engine DatabaseEngine, deployment DatabaseEngineDeployment, db *sql.DB) (instanceId string, err error) {
-	sql1 := GetSleepSql(engine)
+	sql1 := GetSleepSql(engine, 10)
 	sql2, err := GetInstanceIdSql(engine, deployment)
 	if err != nil {
 		return
