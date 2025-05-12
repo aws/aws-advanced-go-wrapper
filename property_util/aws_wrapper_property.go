@@ -118,6 +118,18 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	ENABLE_CONNECT_FAILOVER.Name:                true,
 	CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS.Name:  true,
 	WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS.Name:      true,
+	IAM_TOKEN_EXPIRATION.Name:                   true,
+	IDP_NAME.Name:                               true,
+	IDP_USERNAME.Name:                           true,
+	IDP_PASSWORD.Name:                           true,
+	IDP_PORT.Name:                               true,
+	IAM_ROLE_ARN.Name:                           true,
+	IAM_IDP_ARN.Name:                            true,
+	IDP_ENDPOINT.Name:                           true,
+	RELAYING_PARTY_ID.Name:                      true,
+	DB_USER.Name:                                true,
+	HTTP_TIMEOUT.Name:                           true,
+	SSL_INSECURE.Name:                           true,
 }
 
 var USER = AwsWrapperProperty{
@@ -350,6 +362,91 @@ var WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS = AwsWrapperProperty{
 	description:         "Comma separated list of database host-weight pairs in the format of `<host>:<weight>`.",
 	defaultValue:        "",
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var IAM_TOKEN_EXPIRATION = AwsWrapperProperty{
+	Name:                "iamTokenExpiration",
+	description:         "IAM token cache expiration in seconds.",
+	defaultValue:        "870",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var IDP_NAME = AwsWrapperProperty{
+	Name:                "idpName",
+	description:         "The name of the Identity Provider implementation used.",
+	defaultValue:        "adfs",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var IDP_USERNAME = AwsWrapperProperty{
+	Name:                "idpUsername",
+	description:         "The federated user name.",
+	defaultValue:        "",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var IDP_PASSWORD = AwsWrapperProperty{
+	Name:                "idpPassword",
+	description:         "The federated user password.",
+	defaultValue:        "",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var IDP_PORT = AwsWrapperProperty{
+	Name:                "idpPort",
+	description:         "The hosting port of Identity Provider.",
+	defaultValue:        "443",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var IAM_ROLE_ARN = AwsWrapperProperty{
+	Name:                "iamRoleArn",
+	description:         "The ARN of the IAM Role that is to be assumed.",
+	defaultValue:        "",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var IAM_IDP_ARN = AwsWrapperProperty{
+	Name:                "iamIdpArn",
+	description:         "The ARN of the Identity Provider.",
+	defaultValue:        "",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var IDP_ENDPOINT = AwsWrapperProperty{
+	Name:                "idpEndpoint",
+	description:         "The hosting URL of the Identity Provider.",
+	defaultValue:        "",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var RELAYING_PARTY_ID = AwsWrapperProperty{
+	Name:                "rpIdentifier",
+	description:         "The relaying party identifier.",
+	defaultValue:        "urn:amazon:webservices",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var DB_USER = AwsWrapperProperty{
+	Name:                "dbUser",
+	description:         "The database user used to access the database.",
+	defaultValue:        "",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var HTTP_TIMEOUT = AwsWrapperProperty{
+	Name:                "httpTimeoutMs",
+	description:         "The timeout value in milliseconds provided to http clients.",
+	defaultValue:        "60000",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var SSL_INSECURE = AwsWrapperProperty{
+	Name: "sslInsecure",
+	description: "Set to true to disable server certificate verification. This is useful for local testing, " +
+		"but setting this to true is not recommended for production environments.",
+	defaultValue:        "false",
+	wrapperPropertyType: WRAPPER_TYPE_BOOL,
 }
 
 func RemoveMonitoringProperties(props map[string]string) map[string]string {

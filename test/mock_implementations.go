@@ -25,6 +25,8 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"net/http"
 	"reflect"
 	"time"
 
@@ -399,6 +401,7 @@ type MockIamTokenUtility struct {
 	CapturedPort                           int
 	CapturedRegion                         region_util.Region
 	GenerateAuthenticationTokenCallCounter int
+	GenerateTokenError                     error
 }
 
 func (m *MockIamTokenUtility) GenerateAuthenticationToken(
@@ -413,11 +416,58 @@ func (m *MockIamTokenUtility) GenerateAuthenticationToken(
 	m.CapturedHost = host
 	m.CapturedPort = port
 	m.CapturedRegion = region
+	if m.GenerateTokenError != nil {
+		return "", m.GenerateTokenError
+	}
 	return m.GetMockTokenValue(), nil
 }
 
 func (m *MockIamTokenUtility) GetMockTokenValue() string {
 	return "someToken"
+}
+
+func (m *MockIamTokenUtility) Reset() {
+	m.CapturedUsername = ""
+	m.CapturedHost = ""
+	m.CapturedPort = 0
+	m.CapturedRegion = ""
+	m.GenerateAuthenticationTokenCallCounter = 0
+	m.GenerateTokenError = nil
+}
+
+type MockHttpClient struct {
+	doReturnValue  *http.Response
+	getReturnValue *http.Response
+	errReturnValue error
+}
+
+func (m MockHttpClient) Get(uri string) (*http.Response, error) {
+	if m.getReturnValue != nil {
+		return m.getReturnValue, m.errReturnValue
+	}
+	return nil, nil
+}
+
+func (m MockHttpClient) Do(req *http.Request) (*http.Response, error) {
+	if m.doReturnValue != nil {
+		return m.doReturnValue, m.errReturnValue
+	}
+	return nil, nil
+}
+
+type MockAwsStsClient struct {
+	assumeRoleWithSAMLErr         error
+	assumeRoleWithSAMLReturnValue *sts.AssumeRoleWithSAMLOutput
+}
+
+func (m MockAwsStsClient) AssumeRoleWithSAML(ctx context.Context, params *sts.AssumeRoleWithSAMLInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleWithSAMLOutput, error) {
+	if m.assumeRoleWithSAMLErr != nil {
+		return nil, m.assumeRoleWithSAMLErr
+	}
+	if m.assumeRoleWithSAMLReturnValue != nil {
+		return m.assumeRoleWithSAMLReturnValue, nil
+	}
+	return nil, nil
 }
 
 // --- Aws Services Mocks. ---

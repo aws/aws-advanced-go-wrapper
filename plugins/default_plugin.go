@@ -20,6 +20,7 @@ import (
 	"awssql/driver_infrastructure"
 	"awssql/error_util"
 	"awssql/host_info_util"
+	"awssql/plugin_helpers"
 	"awssql/utils"
 	"database/sql/driver"
 )
@@ -41,7 +42,7 @@ func (d *DefaultPlugin) InitHostProvider(
 }
 
 func (d *DefaultPlugin) GetSubscribedMethods() []string {
-	return []string{"*"}
+	return []string{plugin_helpers.ALL_METHODS}
 }
 
 func (d *DefaultPlugin) Execute(

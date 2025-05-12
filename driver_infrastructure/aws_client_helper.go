@@ -24,6 +24,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
 // Aws Secrets Manager Client.
@@ -67,4 +68,15 @@ func NewAwsSecretsManagerClient(hostInfo *host_info_util.HostInfo,
 	})
 
 	return client, err
+}
+
+type AwsStsClient interface {
+	AssumeRoleWithSAML(ctx context.Context, params *sts.AssumeRoleWithSAMLInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleWithSAMLOutput, error)
+}
+
+type AwsStsClientProvider func(region string) AwsStsClient
+
+func NewAwsStsClient(region string) AwsStsClient {
+	options := sts.Options{Region: region}
+	return sts.New(options)
 }

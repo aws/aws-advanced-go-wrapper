@@ -22,6 +22,7 @@ import (
 	"awssql/plugins"
 	"awssql/plugins/aws_secrets_manager"
 	"awssql/plugins/efm"
+	"awssql/plugins/federated_auth"
 	"awssql/plugins/iam"
 	"awssql/property_util"
 	"fmt"
@@ -44,6 +45,7 @@ var pluginFactoryFuncByCode = map[string]PluginFactoryFunc{
 	"efm":               efm.NewHostMonitoringPluginFactory,
 	"iam":               iam.NewIamAuthPluginFactory,
 	"awsSecretsManager": aws_secrets_manager.NewAwsSecretsManagerPluginFactory,
+	"federatedAuth":     federated_auth.NewFederatedAuthPluginFactory,
 }
 
 var pluginWeightByCode = map[string]int{
@@ -51,6 +53,7 @@ var pluginWeightByCode = map[string]int{
 	"efm":               800,
 	"iam":               1000,
 	"awsSecretsManager": 1100,
+	"federatedAuth":     1200,
 }
 
 type ConnectionPluginChainBuilder struct {
@@ -121,7 +124,6 @@ func (builder *ConnectionPluginChainBuilder) GetPlugins(
 		slog.Info(fmt.Sprintf("Plugins order has been rearranged. The following order is in effect: '%v'.", getFactoryOrder(resultPlugins)))
 	}
 
-	fmt.Println(resultPlugins)
 	return resultPlugins, nil
 }
 
