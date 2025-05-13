@@ -57,29 +57,6 @@ func setup(props map[string]string) *federated_auth.FederatedAuthPlugin {
 	return federated_auth.NewFederatedAuthPlugin(mockPluginService, credentialsProviderFactory, mockIamTokenUtility)
 }
 
-func TestGetFederatedAuthPlugin(t *testing.T) {
-	props := map[string]string{
-		property_util.IDP_NAME.Name: "adfs",
-	}
-	pluginFactory := federated_auth.NewFederatedAuthPluginFactory()
-	_, err := pluginFactory.GetInstance(&MockPluginServiceImpl{}, props)
-	assert.Nil(t, err)
-
-	props = map[string]string{
-		property_util.IDP_NAME.Name: "",
-	}
-	pluginFactory = federated_auth.NewFederatedAuthPluginFactory()
-	_, err = pluginFactory.GetInstance(&MockPluginServiceImpl{}, props)
-	assert.Nil(t, err)
-
-	props = map[string]string{
-		property_util.IDP_NAME.Name: "any",
-	}
-	pluginFactory = federated_auth.NewFederatedAuthPluginFactory()
-	_, err = pluginFactory.GetInstance(&MockPluginServiceImpl{}, props)
-	assert.Equal(t, error_util.NewIllegalArgumentError(error_util.GetMessage("CredentialsProviderFactory.unsupportedIdp", "any")), err)
-}
-
 func TestCachedToken(t *testing.T) {
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",

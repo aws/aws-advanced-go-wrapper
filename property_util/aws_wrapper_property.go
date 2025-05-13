@@ -119,7 +119,6 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS.Name:  true,
 	WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS.Name:      true,
 	IAM_TOKEN_EXPIRATION.Name:                   true,
-	IDP_NAME.Name:                               true,
 	IDP_USERNAME.Name:                           true,
 	IDP_PASSWORD.Name:                           true,
 	IDP_PORT.Name:                               true,
@@ -129,7 +128,7 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	RELAYING_PARTY_ID.Name:                      true,
 	DB_USER.Name:                                true,
 	APP_ID.Name:                                 true,
-	HTTP_TIMEOUT.Name:                           true,
+	HTTP_TIMEOUT_MS.Name:                        true,
 	SSL_INSECURE.Name:                           true,
 }
 
@@ -372,13 +371,6 @@ var IAM_TOKEN_EXPIRATION = AwsWrapperProperty{
 	wrapperPropertyType: WRAPPER_TYPE_INT,
 }
 
-var IDP_NAME = AwsWrapperProperty{
-	Name:                "idpName",
-	description:         "The name of the Identity Provider implementation used.",
-	defaultValue:        "adfs",
-	wrapperPropertyType: WRAPPER_TYPE_STRING,
-}
-
 var IDP_USERNAME = AwsWrapperProperty{
 	Name:                "idpUsername",
 	description:         "The federated user name.",
@@ -442,7 +434,7 @@ var APP_ID = AwsWrapperProperty{
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
-var HTTP_TIMEOUT = AwsWrapperProperty{
+var HTTP_TIMEOUT_MS = AwsWrapperProperty{
 	Name:                "httpTimeoutMs",
 	description:         "The timeout value in milliseconds provided to http clients.",
 	defaultValue:        "60000",
