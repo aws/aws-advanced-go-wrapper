@@ -31,29 +31,13 @@ import (
 	"time"
 )
 
-var IDP_NAME = "adfs"
-
 var TokenCache = utils.NewCache[string]()
 
 type FederatedAuthPluginFactory struct{}
 
 func (f FederatedAuthPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService, props map[string]string) (driver_infrastructure.ConnectionPlugin, error) {
-	providerFactory, err := f.getCredentialsProviderFactory(props, GetBasicHttpClient, driver_infrastructure.NewAwsStsClient)
-	if err != nil {
-		return nil, err
-	}
+	providerFactory := NewAdfsCredentialsProviderFactory(GetBasicHttpClient, driver_infrastructure.NewAwsStsClient)
 	return NewFederatedAuthPlugin(pluginService, providerFactory, iam.RegularIamTokenUtility{}), nil
-}
-
-func (f FederatedAuthPluginFactory) getCredentialsProviderFactory(
-	props map[string]string,
-	httpClientProvider HttpClientProvider,
-	awsStsClientProvider driver_infrastructure.AwsStsClientProvider) (CredentialsProviderFactory, error) {
-	idpName := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IDP_NAME)
-	if idpName == "" || idpName == IDP_NAME {
-		return NewAdfsCredentialsProviderFactory(httpClientProvider, awsStsClientProvider), nil
-	}
-	return nil, error_util.NewIllegalArgumentError(error_util.GetMessage("CredentialsProviderFactory.unsupportedIdp", idpName))
 }
 
 func NewFederatedAuthPluginFactory() driver_infrastructure.ConnectionPluginFactory {
@@ -118,11 +102,7 @@ func (f *FederatedAuthPlugin) connectInternal(
 		port,
 		region)
 
-	token, ok := TokenCache.Get(cacheKey)
-	isCachedToken := false
-	if ok {
-		isCachedToken = true
-	}
+	token, isCachedToken := TokenCache.Get(cacheKey)
 
 	if isCachedToken {
 		slog.Debug(error_util.GetMessage("AuthenticationToken.useCachedToken", token))

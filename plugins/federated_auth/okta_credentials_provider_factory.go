@@ -57,7 +57,7 @@ func (o *OktaCredentialsProviderFactory) GetSamlAssertion(props map[string]strin
 		return "", err
 	}
 
-	httpTimeoutMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.HTTP_TIMEOUT)
+	httpTimeoutMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.HTTP_TIMEOUT_MS)
 	insecureSsl := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.SSL_INSECURE)
 	client := o.httpClientProvider(httpTimeoutMs, insecureSsl, nil)
 
@@ -110,7 +110,7 @@ func (o *OktaCredentialsProviderFactory) GetSessionToken(props map[string]string
 	idpHost := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IDP_ENDPOINT)
 	idpUser := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IDP_USERNAME)
 	idpPassword := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IDP_PASSWORD)
-	httpTimeoutMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.HTTP_TIMEOUT)
+	httpTimeoutMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.HTTP_TIMEOUT_MS)
 	insecureSsl := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.SSL_INSECURE)
 
 	client := o.httpClientProvider(httpTimeoutMs, insecureSsl, nil)

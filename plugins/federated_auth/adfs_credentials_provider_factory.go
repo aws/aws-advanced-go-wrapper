@@ -76,7 +76,7 @@ func (a *AdfsCredentialsProviderFactory) GetUriAndParamsFromSignInPage(uri strin
 	}
 
 	client := a.httpClientProvider(
-		property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.HTTP_TIMEOUT),
+		property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.HTTP_TIMEOUT_MS),
 		property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.SSL_INSECURE),
 		nil)
 
@@ -148,7 +148,7 @@ func (a *AdfsCredentialsProviderFactory) getSamlAssertionFromPost(uri string, pa
 		return "", err
 	}
 	client := a.httpClientProvider(
-		property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.HTTP_TIMEOUT),
+		property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.HTTP_TIMEOUT_MS),
 		property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.SSL_INSECURE),
 		jar)
 
