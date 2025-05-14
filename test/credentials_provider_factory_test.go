@@ -20,15 +20,16 @@ import (
 	"awssql/driver_infrastructure"
 	"awssql/plugins/federated_auth"
 	"errors"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetAwsCredentialsProviderGetSamlAssertionError(t *testing.T) {
 	getSamlAssertionFunc := func(props map[string]string) (string, error) {
 		return "", errors.New("something went wrong")
 	}
-	factory := &federated_auth.SamlCredentialsProviderFactory{AwsStsClientProvider: driver_infrastructure.NewAwsStsClient, GetSamlAssertionFunc: getSamlAssertionFunc}
+	factory := &federated_auth.SamlCredentialsProviderFactory{AwsStsClientProvider: NewMockAwsStsClient, GetSamlAssertionFunc: getSamlAssertionFunc}
 	_, err := factory.GetAwsCredentialsProvider(federatedAuthHost, federatedAuthRegion, map[string]string{})
 	assert.Equal(t, errors.New("something went wrong"), err)
 }

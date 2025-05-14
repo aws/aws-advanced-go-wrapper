@@ -25,13 +25,13 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"net/http"
 	"reflect"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
 var mysqlTestDsn = "someUser:somePassword@tcp(mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:3306)/myDatabase?foo=bar&pop=snap"
@@ -436,7 +436,8 @@ func (m *MockIamTokenUtility) Reset() {
 }
 
 type MockHttpClient struct {
-	doReturnValue  *http.Response
+	doReturnValues []*http.Response
+	doCallCount    *int
 	getReturnValue *http.Response
 	errReturnValue error
 }
@@ -449,8 +450,32 @@ func (m MockHttpClient) Get(uri string) (*http.Response, error) {
 }
 
 func (m MockHttpClient) Do(req *http.Request) (*http.Response, error) {
-	if m.doReturnValue != nil {
-		return m.doReturnValue, m.errReturnValue
+	if m.doCallCount == nil {
+		if len(m.doReturnValues) > 0 {
+			return m.doReturnValues[0], m.errReturnValue
+		}
+		return nil, m.errReturnValue
+	}
+
+	idx := *m.doCallCount
+	maxIndex := len(m.doReturnValues) - 1
+	if idx > maxIndex {
+		idx = maxIndex
+	}
+
+	resp := m.doReturnValues[idx]
+
+	(*m.doCallCount)++
+	return resp, m.errReturnValue
+}
+
+type MockCredentialsProviderFactory struct {
+	getAwsCredentialsProviderError error
+}
+
+func (m MockCredentialsProviderFactory) GetAwsCredentialsProvider(host string, region region_util.Region, props map[string]string) (aws.CredentialsProvider, error) {
+	if m.getAwsCredentialsProviderError != nil {
+		return nil, m.getAwsCredentialsProviderError
 	}
 	return nil, nil
 }
@@ -468,6 +493,10 @@ func (m MockAwsStsClient) AssumeRoleWithSAML(ctx context.Context, params *sts.As
 		return m.assumeRoleWithSAMLReturnValue, nil
 	}
 	return nil, nil
+}
+
+func NewMockAwsStsClient(region string) driver_infrastructure.AwsStsClient {
+	return &MockAwsStsClient{}
 }
 
 // --- Aws Services Mocks. ---
