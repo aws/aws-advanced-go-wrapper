@@ -23,10 +23,10 @@ import (
 	"awssql/plugin_helpers"
 	"awssql/plugins/aws_secrets_manager"
 	"awssql/property_util"
-	"awssql/utils"
 	"database/sql/driver"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
@@ -152,7 +152,7 @@ func TestAwsSecretsManagerConnectionPluginInvalidEndpoint(t *testing.T) {
 
 func TestAwsSecretsManagerConnectionPluginCacheSize1(t *testing.T) {
 	// assert cache is of size 0.
-	assert.Equal(t, 0, utils.LengthOfSyncMap(&aws_secrets_manager.SecretsCache))
+	assert.Equal(t, 0, aws_secrets_manager.SecretsCache.Size())
 
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
@@ -171,7 +171,40 @@ func TestAwsSecretsManagerConnectionPluginCacheSize1(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "testuser", props[property_util.USER.Name])
 	assert.Equal(t, "testpassword", props[property_util.PASSWORD.Name])
-	assert.Equal(t, 1, utils.LengthOfSyncMap(&aws_secrets_manager.SecretsCache))
+	assert.Equal(t, 1, aws_secrets_manager.SecretsCache.Size())
+}
+
+func TestAwsSecretsManagerConnectionPluginUsingExpiredSecret(t *testing.T) {
+	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	assert.Nil(t, err)
+	mockConnFunc := func() (driver.Conn, error) { return &MockConn{nil, nil, nil, nil, true, 0, 0}, nil }
+	secretId := "myId"
+	region := "us-west-2"
+	cachedUsername := "cachedUsername"
+	cachedPassword := "cachedPassword"
+
+	props := map[string]string{
+		property_util.SECRETS_MANAGER_REGION.Name:    region,
+		property_util.SECRETS_MANAGER_SECRET_ID.Name: secretId,
+	}
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+
+	cacheKey := fmt.Sprintf("%s:%s", secretId, region)
+	awsRdsSecrets := aws_secrets_manager.AwsRdsSecrets{
+		Username: cachedUsername,
+		Password: cachedPassword,
+	}
+	aws_secrets_manager.SecretsCache.Put(cacheKey, awsRdsSecrets, time.Nanosecond)
+	assert.Equal(t, 1, aws_secrets_manager.SecretsCache.Size())
+
+	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
+
+	_, err = awsSecretsManagerConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
+
+	assert.Nil(t, err)
+	assert.Equal(t, "testuser", props[property_util.USER.Name])
+	assert.Equal(t, "testpassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, 1, aws_secrets_manager.SecretsCache.Size())
 }
 
 func TestAwsSecretsManagerConnectionPluginConnectingUsingCache(t *testing.T) {
@@ -194,8 +227,8 @@ func TestAwsSecretsManagerConnectionPluginConnectingUsingCache(t *testing.T) {
 		Username: cachedUsername,
 		Password: cachedPassword,
 	}
-	aws_secrets_manager.SecretsCache.Store(cacheKey, awsRdsSecrets)
-	assert.Equal(t, 1, utils.LengthOfSyncMap(&aws_secrets_manager.SecretsCache))
+	aws_secrets_manager.SecretsCache.Put(cacheKey, awsRdsSecrets, time.Minute)
+	assert.Equal(t, 1, aws_secrets_manager.SecretsCache.Size())
 
 	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
 
@@ -204,7 +237,7 @@ func TestAwsSecretsManagerConnectionPluginConnectingUsingCache(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, cachedUsername, props[property_util.USER.Name])
 	assert.Equal(t, cachedPassword, props[property_util.PASSWORD.Name])
-	assert.Equal(t, 1, utils.LengthOfSyncMap(&aws_secrets_manager.SecretsCache))
+	assert.Equal(t, 1, aws_secrets_manager.SecretsCache.Size())
 }
 
 func TestAwsSecretsManagerConnectionPluginMultipleConnectionsCache(t *testing.T) {
@@ -226,14 +259,14 @@ func TestAwsSecretsManagerConnectionPluginMultipleConnectionsCache(t *testing.T)
 		mockPluginServices[i] = beforeAwsSecretsManagerConnectionPluginTests(props[i])
 	}
 
-	assert.Equal(t, 0, utils.LengthOfSyncMap(&aws_secrets_manager.SecretsCache))
+	assert.Equal(t, 0, aws_secrets_manager.SecretsCache.Size())
 
 	for i := 0; i < 4; i++ {
 		awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginServices[i], props[i], NewMockAwsSecretsManagerClient)
 		_, err = awsSecretsManagerConnectionPlugin.Connect(hostInfo, props[i], false, mockConnFunc)
 		assert.Nil(t, err)
 	}
-	assert.Equal(t, 4, utils.LengthOfSyncMap(&aws_secrets_manager.SecretsCache))
+	assert.Equal(t, 4, aws_secrets_manager.SecretsCache.Size())
 }
 
 func TestAwsSecretsManagerConnectionPluginLoginError(t *testing.T) {
@@ -256,7 +289,7 @@ func TestAwsSecretsManagerConnectionPluginLoginError(t *testing.T) {
 	assert.Nil(t, connection)
 	assert.NotNil(t, err)
 	assert.Equal(t, mockLoginError, err)
-	assert.Equal(t, 1, utils.LengthOfSyncMap(&aws_secrets_manager.SecretsCache))
+	assert.Equal(t, 1, aws_secrets_manager.SecretsCache.Size())
 	assert.Equal(t, "testuser", props[property_util.USER.Name])
 	assert.Equal(t, "testpassword", props[property_util.PASSWORD.Name])
 }
