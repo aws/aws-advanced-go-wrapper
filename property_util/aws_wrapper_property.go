@@ -107,6 +107,7 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	SECRETS_MANAGER_SECRET_ID.Name:              true,
 	SECRETS_MANAGER_REGION.Name:                 true,
 	SECRETS_MANAGER_ENDPOINT.Name:               true,
+	SECRETS_MANAGER_EXPIRATION_SEC.Name:         true,
 	FAILURE_DETECTION_ENABLED.Name:              true,
 	FAILURE_DETECTION_TIME_MS.Name:              true,
 	FAILURE_DETECTION_INTERVAL_MS.Name:          true,
@@ -355,6 +356,13 @@ var SECRETS_MANAGER_ENDPOINT = AwsWrapperProperty{
 	description:         "The endpoint of the secret to retrieve.",
 	defaultValue:        "",
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var SECRETS_MANAGER_EXPIRATION_SEC = AwsWrapperProperty{
+	Name:                "secretsManagerExpirationSec",
+	description:         "The time in seconds that secrets are cached for.",
+	defaultValue:        "870",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
 }
 
 var WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS = AwsWrapperProperty{

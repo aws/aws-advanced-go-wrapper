@@ -24,11 +24,12 @@ import (
 	"awssql/plugins"
 	"awssql/property_util"
 	"awssql/region_util"
+	"awssql/utils"
 	"database/sql/driver"
 	"errors"
 	"log/slog"
 	"net/url"
-	"sync"
+	"time"
 )
 
 type AwsSecretsManagerPluginFactory struct{}
@@ -43,7 +44,7 @@ func NewAwsSecretsManagerPluginFactory() driver_infrastructure.ConnectionPluginF
 	return AwsSecretsManagerPluginFactory{}
 }
 
-var SecretsCache sync.Map
+var SecretsCache = utils.NewCache[AwsRdsSecrets]()
 
 type AwsSecretsManagerPlugin struct {
 	plugins.BaseConnectionPlugin
@@ -54,6 +55,7 @@ type AwsSecretsManagerPlugin struct {
 	region                          region_util.Region
 	endpoint                        string
 	awsSecretsManagerClientProvider driver_infrastructure.NewAwsSecretsManagerClientProvider
+	secretExpirationTimeSec         time.Duration
 }
 
 func NewAwsSecretsManagerPlugin(pluginService driver_infrastructure.PluginService,
@@ -85,6 +87,7 @@ func NewAwsSecretsManagerPlugin(pluginService driver_infrastructure.PluginServic
 		region:                          region,
 		endpoint:                        secretsEndpoint,
 		awsSecretsManagerClientProvider: awsSecretsManagerClientProvider,
+		secretExpirationTimeSec:         time.Second * time.Duration(property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.SECRETS_MANAGER_EXPIRATION_SEC)),
 	}, err
 }
 
@@ -154,21 +157,21 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) updateSecrets(
 	fetched := false
 	var err error
 
-	secret, loaded := SecretsCache.Load(awsSecretsManagerPlugin.SecretsCacheKey)
+	secret, loaded := SecretsCache.Get(awsSecretsManagerPlugin.SecretsCacheKey)
 
 	if !loaded || forceReFetch {
 		secret, err = awsSecretsManagerPlugin.fetchLatestCredentials(hostInfo, props)
 
 		if err == nil {
 			fetched = true
-			SecretsCache.Store(awsSecretsManagerPlugin.SecretsCacheKey, secret)
+			SecretsCache.Put(awsSecretsManagerPlugin.SecretsCacheKey, secret, awsSecretsManagerPlugin.secretExpirationTimeSec)
 		} else {
 			slog.Error(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.failedToFetchDbCredentials"))
 			return fetched, err
 		}
 	}
 
-	awsSecretsManagerPlugin.secret = secret.(AwsRdsSecrets)
+	awsSecretsManagerPlugin.secret = secret
 	return fetched, nil
 }
 
