@@ -28,6 +28,7 @@ type TestEnvironmentInfo struct {
 	databaseEngine        string
 	DatabaseInfo          TestDatabaseInfo
 	ProxyDatabaseInfo     TestProxyDatabaseInfo
+	iamUsername           string
 }
 
 func NewTestEnvironmentInfo(testInfo map[string]any) (info TestEnvironmentInfo, err error) {
@@ -62,6 +63,13 @@ func NewTestEnvironmentInfo(testInfo map[string]any) (info TestEnvironmentInfo, 
 		return
 	}
 
+	iamUser, ok := testInfo["iamUsername"].(string)
+
+	if !ok {
+		err = errors.New("Unable to get IAM username")
+		return
+	}
+
 	return TestEnvironmentInfo{
 		Request:               request,
 		Region:                region,
@@ -70,6 +78,7 @@ func NewTestEnvironmentInfo(testInfo map[string]any) (info TestEnvironmentInfo, 
 		ProxyDatabaseInfo:     proxyDatabaseInfo,
 		databaseEngine:        databaseEngine,
 		databaseEngineVersion: databaseEngineVersion,
+		iamUsername:           iamUser,
 	}, nil
 }
 
