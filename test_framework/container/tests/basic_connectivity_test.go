@@ -17,40 +17,15 @@
 package test
 
 import (
-	awsDriver "awssql/driver"
 	"awssql/test_framework/container/test_utils"
 	"database/sql"
-	"fmt"
-	"log/slog"
+	"github.com/stretchr/testify/assert"
 	"strconv"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
-func basicSetup(name string) (*test_utils.AuroraTestUtility, error) {
-	slog.Info(fmt.Sprintf("Test started: %s.", name))
-	env, err := test_utils.GetCurrentTestEnvironment()
-	if err != nil {
-		return nil, err
-	}
-	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Region())
-	test_utils.EnableAllConnectivity()
-	err = test_utils.VerifyClusterStatus()
-	if err != nil {
-		return nil, err
-	}
-	return auroraTestUtility, nil
-}
-
-func basicCleanup(name string) {
-	awsDriver.ClearCaches()
-	slog.Info(fmt.Sprintf("Test finished: %s.", name))
-}
-
 func TestBasicConnectivityWrapper(t *testing.T) {
-	_, err := basicSetup(t.Name())
-	assert.Nil(t, err)
+	defer test_utils.BasicCleanupAfterBasicSetup(t)
 
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
@@ -63,13 +38,10 @@ func TestBasicConnectivityWrapper(t *testing.T) {
 	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Engine(), environment.Deployment(), db)
 	assert.Nil(t, err)
 	assert.NotZero(t, instanceId)
-
-	basicCleanup(t.Name())
 }
 
 func TestBasicConnectivityWrapperProxy(t *testing.T) {
-	_, err := basicSetup(t.Name())
-	assert.Nil(t, err)
+	defer test_utils.BasicCleanupAfterBasicSetup(t)
 
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
@@ -96,13 +68,10 @@ func TestBasicConnectivityWrapperProxy(t *testing.T) {
 	instanceId, err2 := test_utils.ExecuteInstanceQuery(environment.Engine(), environment.Deployment(), db)
 	assert.Nil(t, err2)
 	assert.NotZero(t, instanceId)
-
-	basicCleanup(t.Name())
 }
 
 func TestBasicConnectivityFailoverClusterEndpoint(t *testing.T) {
-	_, err := basicSetup(t.Name())
-	assert.Nil(t, err)
+	defer test_utils.BasicCleanupAfterBasicSetup(t)
 
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
@@ -115,13 +84,10 @@ func TestBasicConnectivityFailoverClusterEndpoint(t *testing.T) {
 	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Engine(), environment.Deployment(), db)
 	assert.Nil(t, err)
 	assert.NotZero(t, instanceId)
-
-	basicCleanup(t.Name())
 }
 
 func TestBasicConnectivityFailoverInstanceEndpoint(t *testing.T) {
-	_, err := basicSetup(t.Name())
-	assert.Nil(t, err)
+	defer test_utils.BasicCleanupAfterBasicSetup(t)
 
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
@@ -136,13 +102,10 @@ func TestBasicConnectivityFailoverInstanceEndpoint(t *testing.T) {
 	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Engine(), environment.Deployment(), db)
 	assert.Nil(t, err)
 	assert.NotZero(t, instanceId)
-
-	basicCleanup(t.Name())
 }
 
 func TestBasicConnectivityFailoverReaderEndpoint(t *testing.T) {
-	_, err := basicSetup(t.Name())
-	assert.Nil(t, err)
+	defer test_utils.BasicCleanupAfterBasicSetup(t)
 
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
@@ -157,6 +120,4 @@ func TestBasicConnectivityFailoverReaderEndpoint(t *testing.T) {
 	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Engine(), environment.Deployment(), db)
 	assert.Nil(t, err)
 	assert.NotZero(t, instanceId)
-
-	basicCleanup(t.Name())
 }

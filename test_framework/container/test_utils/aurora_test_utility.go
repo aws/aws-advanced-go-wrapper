@@ -17,12 +17,15 @@
 package test_utils
 
 import (
+	awsDriver "awssql/driver"
 	"context"
 	"errors"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"log/slog"
 	"slices"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -168,4 +171,34 @@ func (a AuroraTestUtility) getDbCluster(clusterId string) (cluster types.DBClust
 		return
 	}
 	return resp.DBClusters[0], nil
+}
+
+func BasicCleanupAfterBasicSetup(t *testing.T) func() {
+	_, err := BasicSetup(t.Name())
+	assert.Nil(t, err)
+
+	return func() {
+		BasicCleanup(t.Name())
+	}
+}
+
+func BasicSetup(name string) (*AuroraTestUtility, error) {
+	slog.SetLogLoggerLevel(slog.LevelDebug)
+	slog.Info(fmt.Sprintf("Test started: %s.", name))
+	env, err := GetCurrentTestEnvironment()
+	if err != nil {
+		return nil, err
+	}
+	auroraTestUtility := NewAuroraTestUtility(env.Region())
+	EnableAllConnectivity()
+	err = VerifyClusterStatus()
+	if err != nil {
+		return nil, err
+	}
+	return auroraTestUtility, nil
+}
+
+func BasicCleanup(name string) {
+	awsDriver.ClearCaches()
+	slog.Info(fmt.Sprintf("Test finished: %s.", name))
 }
