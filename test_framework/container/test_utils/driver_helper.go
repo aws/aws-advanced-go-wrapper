@@ -82,9 +82,7 @@ func GetFirstItemFromQueryAsString(engine DatabaseEngine, conn driver.Conn, quer
 	if err != nil {
 		return "", err
 	}
-	if rows != nil {
-		defer rows.Close()
-	}
+	defer rows.Close()
 	if len(rows.Columns()) == 0 {
 		return "", errors.New("nothing returned from query")
 	}
@@ -118,9 +116,7 @@ func GetFirstItemFromQueryAsInt(conn driver.Conn, query string) (int, error) {
 	if err != nil {
 		return -1, err
 	}
-	if rows != nil {
-		defer rows.Close()
-	}
+	defer rows.Close()
 	if len(rows.Columns()) == 0 {
 		return -1, errors.New("nothing returned from query")
 	}
@@ -181,7 +177,7 @@ func ExecuteQuery(engine DatabaseEngine, db *sql.DB, sql string, timeoutValueSec
 }
 
 func GetDsn(environment *TestEnvironment, props map[string]string) string {
-	return ConstructDsn(environment.Engine(), ConfigureProps(environment, props))
+	return ConstructDsn(environment.Info().Request.Engine, ConfigureProps(environment, props))
 }
 
 func ConfigureProps(environment *TestEnvironment, props map[string]string) map[string]string {
@@ -189,19 +185,19 @@ func ConfigureProps(environment *TestEnvironment, props map[string]string) map[s
 		props["failureDetectionTimeMs"] = "1000"
 	}
 	if _, ok := props["user"]; !ok {
-		props["user"] = environment.User()
+		props["user"] = environment.Info().DatabaseInfo.Username
 	}
 	if _, ok := props["host"]; !ok {
-		props["host"] = environment.ClusterEndpoint()
+		props["host"] = environment.Info().DatabaseInfo.ClusterEndpoint
 	}
 	if _, ok := props["dbname"]; !ok {
-		props["dbname"] = environment.DefaultDbName()
+		props["dbname"] = environment.Info().DatabaseInfo.DefaultDbName
 	}
 	if _, ok := props["password"]; !ok {
-		props["password"] = environment.Password()
+		props["password"] = environment.Info().DatabaseInfo.Password
 	}
 	if _, ok := props["port"]; !ok {
-		props["port"] = strconv.Itoa(environment.InstanceEndpointPort())
+		props["port"] = strconv.Itoa(environment.Info().DatabaseInfo.instanceEndpointPort)
 	}
 	return props
 }

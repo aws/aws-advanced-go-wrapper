@@ -22,16 +22,16 @@ import (
 )
 
 type TestDatabaseInfo struct {
-	username                    string
-	password                    string
-	defaultDbName               string
-	clusterEndpoint             string
+	Username                    string
+	Password                    string
+	DefaultDbName               string
+	ClusterEndpoint             string
 	clusterEndpointPort         int
-	clusterReadOnlyEndpoint     string
+	ClusterReadOnlyEndpoint     string
 	clusterReadOnlyEndpointPort int
 	instanceEndpointSuffix      string
 	instanceEndpointPort        int
-	instances                   []TestInstanceInfo
+	Instances                   []TestInstanceInfo
 }
 
 func (t TestDatabaseInfo) InstanceEndpointPort() int {
@@ -42,20 +42,16 @@ func (t TestDatabaseInfo) InstanceEndpointSuffix() string {
 	return t.instanceEndpointSuffix
 }
 
-func (t TestDatabaseInfo) ClusterEndpoint() string {
-	return t.clusterEndpoint
-}
-
 func (t TestDatabaseInfo) WriterInstanceEndpoint() string {
-	if len(t.instances) > 0 && t.instances[0].host != "" {
-		return t.instances[0].host
+	if len(t.Instances) > 0 && t.Instances[0].host != "" {
+		return t.Instances[0].host
 	}
 	return ""
 }
 
 func (t TestDatabaseInfo) ReaderInstance() (info TestInstanceInfo) {
-	if len(t.instances) > 1 && t.instances[1].host != "" && t.instances[1].instanceId != "" {
-		info = t.instances[1]
+	if len(t.Instances) > 1 && t.Instances[1].host != "" && t.Instances[1].instanceId != "" {
+		info = t.Instances[1]
 	}
 	return
 }
@@ -63,13 +59,13 @@ func (t TestDatabaseInfo) ReaderInstance() (info TestInstanceInfo) {
 // Creates a reordered slice of the instances in t where the instance matching instanceId is first.
 // Updates either proxyTestDatabaseInfo or testDatabaseInfo of the testEnvironment variable to contain the reordered instances.
 func (t TestDatabaseInfo) moveInstanceFirst(instanceId string, isProxyTestDatabaseInfo bool) {
-	index := slices.IndexFunc(t.instances, func(info TestInstanceInfo) bool { return info.instanceId == instanceId })
+	index := slices.IndexFunc(t.Instances, func(info TestInstanceInfo) bool { return info.instanceId == instanceId })
 	if index == 0 || index == -1 {
 		// Given instance is either at the front or not in the slice at all.
 		return
 	}
-	reorderedInstances := append(append(append(make([]TestInstanceInfo, 0, len(t.instances)), t.instances[index]),
-		t.instances[:index]...), t.instances[index+1:]...)
+	reorderedInstances := append(append(append(make([]TestInstanceInfo, 0, len(t.Instances)), t.Instances[index]),
+		t.Instances[:index]...), t.Instances[index+1:]...)
 
 	// Update testEnvironment to have correct order.
 	testEnvironmentMutex.Lock()
@@ -78,9 +74,9 @@ func (t TestDatabaseInfo) moveInstanceFirst(instanceId string, isProxyTestDataba
 		return
 	}
 	if isProxyTestDatabaseInfo {
-		testEnvironment.info.proxyDatabaseInfo.instances = reorderedInstances
+		testEnvironment.info.ProxyDatabaseInfo.Instances = reorderedInstances
 	} else {
-		testEnvironment.info.databaseInfo.instances = reorderedInstances
+		testEnvironment.info.DatabaseInfo.Instances = reorderedInstances
 	}
 }
 
@@ -108,16 +104,16 @@ func NewTestDatabaseInfo(databaseInfoMap map[string]any) (databaseInfo TestDatab
 
 	if ok && ok1 && ok2 && ok3 && ok4 && ok5 && ok6 && ok7 && ok8 && ok9 {
 		return TestDatabaseInfo{
-			username:                    username,
-			password:                    password,
-			defaultDbName:               defaultDbName,
-			clusterEndpoint:             clusterEndpoint,
+			Username:                    username,
+			Password:                    password,
+			DefaultDbName:               defaultDbName,
+			ClusterEndpoint:             clusterEndpoint,
 			clusterEndpointPort:         int(clusterEndpointPort),
-			clusterReadOnlyEndpoint:     clusterReadOnlyEndpoint,
+			ClusterReadOnlyEndpoint:     clusterReadOnlyEndpoint,
 			clusterReadOnlyEndpointPort: int(clusterReadOnlyEndpointPort),
 			instanceEndpointSuffix:      instanceEndpointSuffix,
 			instanceEndpointPort:        int(instanceEndpointPort),
-			instances:                   instances,
+			Instances:                   instances,
 		}, nil
 	}
 	err = errors.New("Unable to cast a database info value")

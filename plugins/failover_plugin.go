@@ -337,19 +337,19 @@ func (p *FailoverPlugin) FailoverReader() error {
 
 	result, getReaderErr := p.getReaderFailoverConnection(failoverEndTime)
 	if getReaderErr != nil {
-		return p.returnReaderFailoverErr()
+		return p.returnReaderFailoverErr(getReaderErr)
 	}
 	setConnErr := p.pluginService.SetCurrentConnection(result.Conn, result.HostInfo, nil)
 	if setConnErr != nil {
-		return p.returnReaderFailoverErr()
+		return p.returnReaderFailoverErr(setConnErr)
 	}
 
 	slog.Info(error_util.GetMessage("Failover.establishedConnection", result.HostInfo.String()))
 	return p.returnFailoverSuccessError()
 }
 
-func (p *FailoverPlugin) returnReaderFailoverErr() error {
-	slog.Error(error_util.GetMessage("Failover.unableToConnectToReader"))
+func (p *FailoverPlugin) returnReaderFailoverErr(err error) error {
+	slog.Error(err.Error())
 	return error_util.NewFailoverFailedError(error_util.GetMessage("Failover.unableToConnectToReader"))
 }
 
@@ -373,6 +373,9 @@ func (p *FailoverPlugin) getReaderFailoverConnection(endTime time.Time) (ReaderF
 		for len(remainingReaders) > 0 && time.Now().Before(endTime) {
 			readerCandidate, err := p.pluginService.GetHostInfoByStrategy(host_info_util.READER, p.failoverReaderHostSelectorStrategySetting, remainingReaders)
 			if err != nil {
+				if error_util.IsType(err, error_util.UnsupportedStrategyErrorType) {
+					return ReaderFailoverResult{}, err
+				}
 				slog.Debug(utils.LogTopology(remainingReaders, error_util.GetMessage("Failover.errorSelectingReaderHost", err)))
 				hosts, err := p.pluginService.GetUpdatedHostListWithTimeout(false, driver_infrastructure.FallbackTopologyRefreshTimeoutMs)
 				if err == nil {

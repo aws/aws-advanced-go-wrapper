@@ -27,8 +27,8 @@ import (
 
 func initProxies(environment *TestEnvironment) error {
 	environment.proxies = map[string]ProxyInfo{}
-	proxyControlPort := environment.info.proxyDatabaseInfo.controlPort
-	for i, instance := range environment.info.proxyDatabaseInfo.instances {
+	proxyControlPort := environment.info.ProxyDatabaseInfo.controlPort
+	for i, instance := range environment.info.ProxyDatabaseInfo.Instances {
 		if instance.host == "" || instance.instanceId == "" {
 			return errors.New("No valid host for instance")
 		}
@@ -37,28 +37,28 @@ func initProxies(environment *TestEnvironment) error {
 		if err != nil {
 			return err
 		}
-		host := environment.info.databaseInfo.instances[i].host
+		host := environment.info.DatabaseInfo.Instances[i].host
 		if host == "" {
 			return errors.New("No host")
 		}
-		environment.proxies[instance.instanceId] = NewProxyInfo(proxies[environment.info.databaseInfo.instances[i].Url()], host, proxyControlPort)
+		environment.proxies[instance.instanceId] = NewProxyInfo(proxies[environment.info.DatabaseInfo.Instances[i].Url()], host, proxyControlPort)
 	}
 
-	endpoint := environment.info.proxyDatabaseInfo.clusterEndpoint
+	endpoint := environment.info.ProxyDatabaseInfo.ClusterEndpoint
 	if endpoint != "" {
 		client := toxiproxy.NewClient(createProxyUrl(endpoint, proxyControlPort))
-		baseEndpoint := environment.info.databaseInfo.clusterEndpoint
-		name := fmt.Sprintf("%s:%d", baseEndpoint, environment.info.databaseInfo.clusterEndpointPort)
+		baseEndpoint := environment.info.DatabaseInfo.ClusterEndpoint
+		name := fmt.Sprintf("%s:%d", baseEndpoint, environment.info.DatabaseInfo.clusterEndpointPort)
 		proxy, err := client.Proxy(name)
 		if err == nil {
 			environment.proxies[endpoint] = NewProxyInfo(proxy, baseEndpoint, proxyControlPort)
 		}
 	}
-	endpoint = environment.info.proxyDatabaseInfo.clusterReadOnlyEndpoint
+	endpoint = environment.info.ProxyDatabaseInfo.ClusterReadOnlyEndpoint
 	if endpoint != "" {
 		client := toxiproxy.NewClient(createProxyUrl(endpoint, proxyControlPort))
-		baseEndpoint := environment.info.databaseInfo.clusterReadOnlyEndpoint
-		name := fmt.Sprintf("%s:%d", baseEndpoint, environment.info.databaseInfo.clusterEndpointPort)
+		baseEndpoint := environment.info.DatabaseInfo.ClusterReadOnlyEndpoint
+		name := fmt.Sprintf("%s:%d", baseEndpoint, environment.info.DatabaseInfo.clusterEndpointPort)
 		proxy, err := client.Proxy(name)
 		if err == nil {
 			environment.proxies[endpoint] = NewProxyInfo(proxy, baseEndpoint, proxyControlPort)

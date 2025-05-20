@@ -34,8 +34,8 @@ import (
 func failoverSetup(t *testing.T) (*test_utils.AuroraTestUtility, error) {
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
-	if environment.InstanceCount() < 2 {
-		t.Skipf("Skipping integration test %s, instanceCount = %v.", t.Name(), environment.InstanceCount())
+	if environment.Info().Request.InstanceCount < 2 {
+		t.Skipf("Skipping integration test %s, instanceCount = %v.", t.Name(), environment.Info().Request.InstanceCount)
 	}
 	return basicSetup(t.Name())
 }
@@ -46,8 +46,8 @@ func TestFailoverWriter(t *testing.T) {
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
 	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":    environment.DatabaseInfo().ClusterEndpoint(),
-		"port":    strconv.Itoa(environment.DatabaseInfo().InstanceEndpointPort()),
+		"host":    environment.Info().DatabaseInfo.ClusterEndpoint,
+		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort()),
 		"plugins": "failover",
 	})
 	wrapperDriver := &awsDriver.AwsWrapperDriver{}
@@ -59,19 +59,19 @@ func TestFailoverWriter(t *testing.T) {
 	defer conn.Close()
 
 	// Check that we are connected to the writer.
-	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Engine(), environment.Deployment(), conn)
+	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	assert.Nil(t, err)
 	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Failover and check that it has failed over.
 	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(instanceId, "", "")
 	assert.Nil(t, triggerFailoverError)
-	_, queryError := test_utils.ExecuteInstanceQuery(environment.Engine(), environment.Deployment(), conn)
+	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
 	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryError.Error())
 
 	// Assert that we are connected to the new writer after failover.
-	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Engine(), environment.Deployment(), conn)
+	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	assert.Nil(t, err)
 	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
 	assert.Nil(t, err)
@@ -88,8 +88,8 @@ func TestFailoverWriterEndpoint(t *testing.T) {
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
 	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":    environment.DatabaseInfo().WriterInstanceEndpoint(),
-		"port":    strconv.Itoa(environment.DatabaseInfo().InstanceEndpointPort()),
+		"host":    environment.Info().DatabaseInfo.WriterInstanceEndpoint(),
+		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort()),
 		"plugins": "failover",
 	})
 	wrapperDriver := &awsDriver.AwsWrapperDriver{}
@@ -101,19 +101,19 @@ func TestFailoverWriterEndpoint(t *testing.T) {
 	defer conn.Close()
 
 	// Check that we are connected to the writer.
-	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Engine(), environment.Deployment(), conn)
+	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	assert.Nil(t, err)
 	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Failover and check that it has failed over.
 	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(instanceId, "", "")
 	assert.Nil(t, triggerFailoverError)
-	_, queryError := test_utils.ExecuteInstanceQuery(environment.Engine(), environment.Deployment(), conn)
+	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
 	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryError.Error())
 
 	// Assert that we are connected to the new writer after failover.
-	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Engine(), environment.Deployment(), conn)
+	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	assert.Nil(t, err)
 	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
 	assert.Nil(t, err)
@@ -130,8 +130,8 @@ func TestFailoverReaderOrWriter(t *testing.T) {
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
 	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":         environment.DatabaseInfo().WriterInstanceEndpoint(),
-		"port":         strconv.Itoa(environment.DatabaseInfo().InstanceEndpointPort()),
+		"host":         environment.Info().DatabaseInfo.WriterInstanceEndpoint(),
+		"port":         strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort()),
 		"plugins":      "failover",
 		"failoverMode": "reader-or-writer",
 	})
@@ -144,19 +144,19 @@ func TestFailoverReaderOrWriter(t *testing.T) {
 	defer conn.Close()
 
 	// Check that we are connected.
-	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Engine(), environment.Deployment(), conn)
+	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	assert.Nil(t, err)
 	assert.NotZero(t, instanceId)
 
 	// Failover and check that it has failed over.
 	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
 	assert.Nil(t, triggerFailoverError)
-	_, queryError := test_utils.ExecuteInstanceQuery(environment.Engine(), environment.Deployment(), conn)
+	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
 	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryError.Error())
 
 	// Assert that we are able to connect after failover.
-	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Engine(), environment.Deployment(), conn)
+	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	assert.Nil(t, err)
 	assert.NotZero(t, newInstanceId)
 
@@ -170,8 +170,8 @@ func TestFailoverStrictReader(t *testing.T) {
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
 	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":              environment.DatabaseInfo().ReaderInstance().Host(),
-		"port":              strconv.Itoa(environment.DatabaseInfo().InstanceEndpointPort()),
+		"host":              environment.Info().DatabaseInfo.ReaderInstance().Host(),
+		"port":              strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort()),
 		"plugins":           "failover",
 		"failoverMode":      "strict-reader",
 		"failoverTimeoutMs": "30000",
@@ -185,19 +185,19 @@ func TestFailoverStrictReader(t *testing.T) {
 	defer conn.Close()
 
 	// Check that we are not connected to the writer.
-	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Engine(), environment.Deployment(), conn)
+	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	assert.Nil(t, err)
 	assert.False(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Failover and check that it has failed over.
 	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
 	assert.Nil(t, triggerFailoverError)
-	_, queryError := test_utils.ExecuteInstanceQuery(environment.Engine(), environment.Deployment(), conn)
+	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
 	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryError.Error())
 
 	// Assert that we are connected to a reader instance after failover.
-	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Engine(), environment.Deployment(), conn)
+	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	assert.Nil(t, err)
 	assert.False(t, auroraTestUtility.IsDbInstanceWriter(newInstanceId, ""))
 
@@ -211,8 +211,8 @@ func TestFailoverWriterInTransactionWithSQL(t *testing.T) {
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
 	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":    environment.DatabaseInfo().ClusterEndpoint(),
-		"port":    strconv.Itoa(environment.DatabaseInfo().InstanceEndpointPort()),
+		"host":    environment.Info().DatabaseInfo.ClusterEndpoint,
+		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort()),
 		"plugins": "failover",
 	})
 	wrapperDriver := &awsDriver.AwsWrapperDriver{}
@@ -247,7 +247,7 @@ func TestFailoverWriterInTransactionWithSQL(t *testing.T) {
 	// Failover and check that it has failed over.
 	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
 	assert.Nil(t, triggerFailoverError)
-	_, queryError := test_utils.ExecuteInstanceQuery(environment.Engine(), environment.Deployment(), conn)
+	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
 	assert.Equal(t, error_util.GetMessage("Failover.transactionResolutionUnknownError"), queryError.Error())
 

@@ -277,22 +277,25 @@ func (pluginManager *PluginManagerImpl) NotifySubscribedPlugins(
 func (pluginManager *PluginManagerImpl) GetHostInfoByStrategy(
 	role host_info_util.HostRole,
 	strategy string,
-	hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
+	hosts []*host_info_util.HostInfo) (host *host_info_util.HostInfo, err error) {
 	for i := 0; i < len(pluginManager.plugins); i++ {
 		currentPlugin := pluginManager.plugins[i]
 		isSubscribed := slices.Contains(currentPlugin.GetSubscribedMethods(), ALL_METHODS) || slices.Contains(currentPlugin.GetSubscribedMethods(), GET_HOST_INFO_BY_STRATEGY_METHOD)
 
 		if isSubscribed {
-			host, err := currentPlugin.GetHostInfoByStrategy(role, strategy, hosts)
+			host, err = currentPlugin.GetHostInfoByStrategy(role, strategy, hosts)
 
 			if err == nil {
-				return host, nil
+				return
 			}
 		}
 	}
 
-	return nil, error_util.NewUnsupportedStrategyError(
-		error_util.GetMessage("PluginManagerImpl.unsupportedHostSelectionStrategy", strategy))
+	if err == nil {
+		err = error_util.NewUnsupportedStrategyError(
+			error_util.GetMessage("PluginManagerImpl.unsupportedHostSelectionStrategy", strategy))
+	}
+	return
 }
 
 func (pluginManager *PluginManagerImpl) GetDefaultConnectionProvider() driver_infrastructure.ConnectionProvider {

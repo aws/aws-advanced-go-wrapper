@@ -46,6 +46,14 @@ func (a *AwsWrapperError) IsType(errorType AwsWrapperErrorType) bool {
 	return a.ErrorType == errorType
 }
 
+func IsType(err error, errorType AwsWrapperErrorType) bool {
+	awsWrapperError, ok := err.(*AwsWrapperError)
+	if ok {
+		return awsWrapperError.IsType(errorType)
+	}
+	return false
+}
+
 func (a *AwsWrapperError) IsFailoverErrorType() bool {
 	return a.ErrorType >= 300
 }

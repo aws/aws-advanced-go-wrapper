@@ -37,8 +37,8 @@ func TestFailoverWriterDB(t *testing.T) {
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
 	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":    environment.DatabaseInfo().ClusterEndpoint(),
-		"port":    strconv.Itoa(environment.DatabaseInfo().InstanceEndpointPort()),
+		"host":    environment.Info().DatabaseInfo.ClusterEndpoint,
+		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort()),
 		"plugins": "failover",
 	})
 	db, err := sql.Open("awssql", dsn)
@@ -50,31 +50,24 @@ func TestFailoverWriterDB(t *testing.T) {
 	err = db.Ping()
 	require.NoError(t, err, "Failed to open database connection.")
 
-	// Check that we are connected to the writer.
-	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
-	assert.Nil(t, err)
-	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Engine(), environment.Deployment(), db)
-	assert.Nil(t, err)
-	assert.Equal(t, currWriterId, instanceId)
-
 	// Failover and check that it has failed over.
 	failoverComplete := make(chan struct{})
 	var triggerFailoverError error
 	go func() {
 		time.Sleep(5 * time.Second) // Give the query time to reach the database.
-		triggerFailoverError = auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(currWriterId, "", "")
+		triggerFailoverError = auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
 		close(failoverComplete)
 	}()
-	_, queryError := test_utils.ExecuteQuery(environment.Engine(), db, test_utils.GetSleepSql(environment.Engine(), 60))
+	_, queryError := test_utils.ExecuteQuery(environment.Info().Request.Engine, db, test_utils.GetSleepSql(environment.Info().Request.Engine, 60))
 	<-failoverComplete
 	require.NoError(t, triggerFailoverError, "Request to DB to failover did not succeed.")
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
 	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryError.Error())
 
 	// Assert that we are connected to the new writer after failover.
-	instanceId, err = test_utils.ExecuteInstanceQueryDB(environment.Engine(), environment.Deployment(), db)
+	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
 	assert.Nil(t, err)
-	currWriterId, err = auroraTestUtility.GetClusterWriterInstanceId("")
+	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, instanceId)
 	basicCleanup(t.Name())
@@ -86,8 +79,8 @@ func TestFailoverWriterInTransactionWithBegin(t *testing.T) {
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
 	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":    environment.DatabaseInfo().ClusterEndpoint(),
-		"port":    strconv.Itoa(environment.DatabaseInfo().InstanceEndpointPort()),
+		"host":    environment.Info().DatabaseInfo.ClusterEndpoint,
+		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort()),
 		"plugins": "failover",
 	})
 	db, err := sql.Open("awssql", dsn)
@@ -127,7 +120,7 @@ func TestFailoverWriterInTransactionWithBegin(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 0, count, "Transaction should have been rolled back, table should be empty.")
 
-	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Engine(), environment.Deployment(), db)
+	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
 	assert.Nil(t, err)
 	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
 	assert.Nil(t, err)

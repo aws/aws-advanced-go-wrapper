@@ -35,7 +35,7 @@ func NewTestProxyDatabaseInfo(databaseInfoMap map[string]any) (TestProxyDatabase
 		if ok {
 			controlPort = int(controlPortFloat)
 		} else {
-			err = fmt.Errorf("No control port value for new proxy database info %s.", super.clusterEndpoint)
+			err = fmt.Errorf("No control port value for new proxy database info %s.", super.ClusterEndpoint)
 		}
 	}
 	return TestProxyDatabaseInfo{controlPort, super}, err
