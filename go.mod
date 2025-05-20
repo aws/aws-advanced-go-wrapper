@@ -11,7 +11,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.35.4
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.19
 	github.com/go-sql-driver/mysql v1.9.2
-	github.com/jackc/pgx/v5 v5.7.4
+	github.com/jackc/pgx/v5 v5.7.5
 	github.com/nicksnyder/go-i18n/v2 v2.6.0
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/text v0.25.0
