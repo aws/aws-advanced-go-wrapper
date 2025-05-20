@@ -38,6 +38,7 @@ type HostListProviderService interface {
 
 type PluginService interface {
 	GetCurrentConnection() driver.Conn
+	GetCurrentConnectionRef() *driver.Conn
 	SetCurrentConnection(conn driver.Conn, hostInfo *host_info_util.HostInfo, skipNotificationForThisPlugin ConnectionPlugin) error
 	GetInitialConnectionHostInfo() *host_info_util.HostInfo
 	GetCurrentHostInfo() (*host_info_util.HostInfo, error)

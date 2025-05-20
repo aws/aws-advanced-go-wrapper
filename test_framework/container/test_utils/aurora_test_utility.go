@@ -306,7 +306,7 @@ func retrieveIpAddress(clusterEndpoint string) (string, error) {
 }
 
 func BasicCleanupAfterBasicSetup(t *testing.T) func() {
-	_, err := BasicSetup(t.Name())
+	err := BasicSetup(t.Name())
 	assert.Nil(t, err)
 
 	return func() {
@@ -314,20 +314,11 @@ func BasicCleanupAfterBasicSetup(t *testing.T) func() {
 	}
 }
 
-func BasicSetup(name string) (*AuroraTestUtility, error) {
+func BasicSetup(name string) error {
 	slog.SetLogLoggerLevel(slog.LevelDebug)
 	slog.Info(fmt.Sprintf("Test started: %s.", name))
-	env, err := GetCurrentTestEnvironment()
-	if err != nil {
-		return nil, err
-	}
-	auroraTestUtility := NewAuroraTestUtility(env.Info().Region)
-	EnableAllConnectivity()
-	err = VerifyClusterStatus()
-	if err != nil {
-		return nil, err
-	}
-	return auroraTestUtility, nil
+	EnableAllConnectivity(false)
+	return VerifyClusterStatus()
 }
 
 func BasicCleanup(name string) {

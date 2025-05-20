@@ -164,15 +164,21 @@ func ExecuteInstanceQueryWithSleep(engine DatabaseEngine, deployment DatabaseEng
 	return instanceId, nil
 }
 
-func ExecuteQuery(engine DatabaseEngine, db *sql.DB, sql string, timeoutValueSeconds ...int) (*sql.Rows, error) {
-	var ctx context.Context
-	if len(timeoutValueSeconds) > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(context.TODO(), time.Second*time.Duration(timeoutValueSeconds[0]))
-		defer cancel()
-	} else {
-		ctx = context.TODO()
+func ExecuteQuery(engine DatabaseEngine, conn driver.Conn, sql string, timeoutValueSeconds int) (driver.Rows, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeoutValueSeconds))
+	defer cancel()
+
+	queryerCtx, ok := conn.(driver.QueryerContext)
+	if !ok {
+		return nil, errors.New("conn does not implement QueryerContext")
 	}
+
+	return queryerCtx.QueryContext(ctx, sql, nil)
+}
+
+func ExecuteQueryDB(engine DatabaseEngine, db *sql.DB, sql string, timeoutValueSeconds int) (*sql.Rows, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeoutValueSeconds))
+	defer cancel()
 	return db.QueryContext(ctx, sql)
 }
 
@@ -197,7 +203,7 @@ func ConfigureProps(environment *TestEnvironment, props map[string]string) map[s
 		props["password"] = environment.Info().DatabaseInfo.Password
 	}
 	if _, ok := props["port"]; !ok {
-		props["port"] = strconv.Itoa(environment.Info().DatabaseInfo.instanceEndpointPort)
+		props["port"] = strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort)
 	}
 	return props
 }

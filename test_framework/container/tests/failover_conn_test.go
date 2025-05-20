@@ -31,23 +31,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func failoverSetup(t *testing.T) (*test_utils.AuroraTestUtility, error) {
+func failoverSetup(t *testing.T) (*test_utils.AuroraTestUtility, *test_utils.TestEnvironment, error) {
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
 	if environment.Info().Request.InstanceCount < 2 {
 		t.Skipf("Skipping integration test %s, instanceCount = %v.", t.Name(), environment.Info().Request.InstanceCount)
 	}
-	return basicSetup(t.Name())
+	auroraTestUtility := test_utils.NewAuroraTestUtility(environment.Info().Region)
+	return auroraTestUtility, environment, test_utils.BasicSetup(t.Name())
 }
 
 func TestFailoverWriter(t *testing.T) {
-	auroraTestUtility, err := failoverSetup(t)
-	assert.Nil(t, err)
-	environment, err := test_utils.GetCurrentTestEnvironment()
+	auroraTestUtility, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	dsn := test_utils.GetDsn(environment, map[string]string{
 		"host":    environment.Info().DatabaseInfo.ClusterEndpoint,
-		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort()),
+		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
 		"plugins": "failover",
 	})
 	wrapperDriver := &awsDriver.AwsWrapperDriver{}
@@ -79,17 +79,15 @@ func TestFailoverWriter(t *testing.T) {
 	assert.NotEqual(t, instanceId, newInstanceId)
 
 	wrapperDriver.ReleaseResources()
-	basicCleanup(t.Name())
 }
 
 func TestFailoverWriterEndpoint(t *testing.T) {
-	auroraTestUtility, err := failoverSetup(t)
-	assert.Nil(t, err)
-	environment, err := test_utils.GetCurrentTestEnvironment()
+	auroraTestUtility, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	dsn := test_utils.GetDsn(environment, map[string]string{
 		"host":    environment.Info().DatabaseInfo.WriterInstanceEndpoint(),
-		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort()),
+		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
 		"plugins": "failover",
 	})
 	wrapperDriver := &awsDriver.AwsWrapperDriver{}
@@ -121,17 +119,15 @@ func TestFailoverWriterEndpoint(t *testing.T) {
 	assert.NotEqual(t, instanceId, newInstanceId)
 
 	wrapperDriver.ReleaseResources()
-	basicCleanup(t.Name())
 }
 
 func TestFailoverReaderOrWriter(t *testing.T) {
-	auroraTestUtility, err := failoverSetup(t)
-	assert.Nil(t, err)
-	environment, err := test_utils.GetCurrentTestEnvironment()
+	auroraTestUtility, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	dsn := test_utils.GetDsn(environment, map[string]string{
 		"host":         environment.Info().DatabaseInfo.WriterInstanceEndpoint(),
-		"port":         strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort()),
+		"port":         strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
 		"plugins":      "failover",
 		"failoverMode": "reader-or-writer",
 	})
@@ -161,17 +157,15 @@ func TestFailoverReaderOrWriter(t *testing.T) {
 	assert.NotZero(t, newInstanceId)
 
 	wrapperDriver.ReleaseResources()
-	basicCleanup(t.Name())
 }
 
 func TestFailoverStrictReader(t *testing.T) {
-	auroraTestUtility, err := failoverSetup(t)
-	assert.Nil(t, err)
-	environment, err := test_utils.GetCurrentTestEnvironment()
+	auroraTestUtility, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	dsn := test_utils.GetDsn(environment, map[string]string{
 		"host":              environment.Info().DatabaseInfo.ReaderInstance().Host(),
-		"port":              strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort()),
+		"port":              strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
 		"plugins":           "failover",
 		"failoverMode":      "strict-reader",
 		"failoverTimeoutMs": "30000",
@@ -202,17 +196,15 @@ func TestFailoverStrictReader(t *testing.T) {
 	assert.False(t, auroraTestUtility.IsDbInstanceWriter(newInstanceId, ""))
 
 	wrapperDriver.ReleaseResources()
-	basicCleanup(t.Name())
 }
 
 func TestFailoverWriterInTransactionWithSQL(t *testing.T) {
-	auroraTestUtility, err := failoverSetup(t)
-	assert.Nil(t, err)
-	environment, err := test_utils.GetCurrentTestEnvironment()
+	auroraTestUtility, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	dsn := test_utils.GetDsn(environment, map[string]string{
 		"host":    environment.Info().DatabaseInfo.ClusterEndpoint,
-		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort()),
+		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
 		"plugins": "failover",
 	})
 	wrapperDriver := &awsDriver.AwsWrapperDriver{}
@@ -261,5 +253,4 @@ func TestFailoverWriterInTransactionWithSQL(t *testing.T) {
 	assert.Nil(t, err)
 
 	wrapperDriver.ReleaseResources()
-	basicCleanup(t.Name())
 }

@@ -87,6 +87,10 @@ func CreateTestEnvironment() (*TestEnvironment, error) {
 	return env, nil
 }
 
+func (t TestEnvironment) GetProxy(instanceId string) ProxyInfo {
+	return t.proxies[instanceId]
+}
+
 func (t TestEnvironment) ProxyInfos() map[string]ProxyInfo {
 	return t.proxies
 }

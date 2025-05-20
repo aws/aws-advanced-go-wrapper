@@ -32,13 +32,12 @@ import (
 )
 
 func TestFailoverWriterDB(t *testing.T) {
-	auroraTestUtility, err := failoverSetup(t)
-	assert.Nil(t, err)
-	environment, err := test_utils.GetCurrentTestEnvironment()
+	auroraTestUtility, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	dsn := test_utils.GetDsn(environment, map[string]string{
 		"host":    environment.Info().DatabaseInfo.ClusterEndpoint,
-		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort()),
+		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
 		"plugins": "failover",
 	})
 	db, err := sql.Open("awssql", dsn)
@@ -58,7 +57,7 @@ func TestFailoverWriterDB(t *testing.T) {
 		triggerFailoverError = auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
 		close(failoverComplete)
 	}()
-	_, queryError := test_utils.ExecuteQuery(environment.Info().Request.Engine, db, test_utils.GetSleepSql(environment.Info().Request.Engine, 60))
+	_, queryError := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, test_utils.GetSleepSql(environment.Info().Request.Engine, 60), 61)
 	<-failoverComplete
 	require.NoError(t, triggerFailoverError, "Request to DB to failover did not succeed.")
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -70,17 +69,15 @@ func TestFailoverWriterDB(t *testing.T) {
 	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, instanceId)
-	basicCleanup(t.Name())
 }
 
 func TestFailoverWriterInTransactionWithBegin(t *testing.T) {
-	auroraTestUtility, err := failoverSetup(t)
-	assert.Nil(t, err)
-	environment, err := test_utils.GetCurrentTestEnvironment()
+	auroraTestUtility, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	dsn := test_utils.GetDsn(environment, map[string]string{
 		"host":    environment.Info().DatabaseInfo.ClusterEndpoint,
-		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort()),
+		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
 		"plugins": "failover",
 	})
 	db, err := sql.Open("awssql", dsn)
@@ -134,6 +131,4 @@ func TestFailoverWriterInTransactionWithBegin(t *testing.T) {
 
 	_, err = db.Exec("DROP TABLE IF EXISTS test_failover_tx_rollback")
 	assert.Nil(t, err)
-
-	basicCleanup(t.Name())
 }

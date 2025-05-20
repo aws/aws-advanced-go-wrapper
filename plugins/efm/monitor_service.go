@@ -33,7 +33,7 @@ import (
 var EFM_MONITORS *utils.SlidingExpirationCache[Monitor]
 
 type MonitorService interface {
-	StartMonitoring(conn driver.Conn, hostInfo *host_info_util.HostInfo, props map[string]string,
+	StartMonitoring(conn *driver.Conn, hostInfo *host_info_util.HostInfo, props map[string]string,
 		failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionCount int) (*MonitorConnectionState, error)
 	StopMonitoring(state *MonitorConnectionState, connToAbort driver.Conn)
 }
@@ -64,7 +64,7 @@ func ClearCaches() {
 	}
 }
 
-func (m *MonitorServiceImpl) StartMonitoring(conn driver.Conn, hostInfo *host_info_util.HostInfo, props map[string]string,
+func (m *MonitorServiceImpl) StartMonitoring(conn *driver.Conn, hostInfo *host_info_util.HostInfo, props map[string]string,
 	failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionCount int) (*MonitorConnectionState, error) {
 	if conn == nil {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("MonitorServiceImpl.illegalArgumentException", "conn"))
@@ -109,8 +109,8 @@ type MonitorConnectionState struct {
 	hostHealthLock sync.RWMutex
 }
 
-func NewMonitorConnectionState(connToAbort driver.Conn) *MonitorConnectionState {
-	return &MonitorConnectionState{hostUnhealthy: false, connToAbortRef: weak.Make(&connToAbort)}
+func NewMonitorConnectionState(connToAbort *driver.Conn) *MonitorConnectionState {
+	return &MonitorConnectionState{hostUnhealthy: false, connToAbortRef: weak.Make(connToAbort)}
 }
 
 func (m *MonitorConnectionState) SetHostUnhealthy(hostUnhealthy bool) {
