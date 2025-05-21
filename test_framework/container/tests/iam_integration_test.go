@@ -31,7 +31,7 @@ import (
 )
 
 // Attempt to connect using the wrong database username.
-func TestIamWrongDatabaseUsename(t *testing.T) {
+func TestIamWrongDatabaseUsername(t *testing.T) {
 	testEnvironment, err := test_utils.GetCurrentTestEnvironment()
 
 	assert.NoError(t, err)
@@ -122,7 +122,7 @@ func TestIamValidConnectionProperties(t *testing.T) {
 	assert.NoError(t, pingErr)
 }
 
-// Attempt to connect using valid database username, valis Amazon RDS hostname, but no password.
+// Attempt to connect using valid database username, valid Amazon RDS hostname, but no password.
 func TestIamValidConnectionPropertiesNoPassword(t *testing.T) {
 	testEnvironment, err := test_utils.GetCurrentTestEnvironment()
 	assert.NoError(t, err)
@@ -177,7 +177,7 @@ func TestIamNoAwsProtocolConnection(t *testing.T) {
 }
 
 // Attempts a valid connection with a datasource and makes sure the user and password properties persist.
-func TestIamUserAndPasswordPorpertiesArePreserved(t *testing.T) {
+func TestIamUserAndPasswordPropertiesArePreserved(t *testing.T) {
 	// Successful connection
 	testEnvironment, err := test_utils.GetCurrentTestEnvironment()
 	assert.NoError(t, err)
