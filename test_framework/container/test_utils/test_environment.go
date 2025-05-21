@@ -95,10 +95,6 @@ func (t TestEnvironment) Info() TestEnvironmentInfo {
 	return t.info
 }
 
-func (t TestEnvironment) IamUsername() string {
-	return t.info.iamUsername
-}
-
 func VerifyClusterStatus() error {
 	env, err := GetCurrentTestEnvironment()
 	if err != nil {

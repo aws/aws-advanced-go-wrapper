@@ -33,7 +33,7 @@ import (
 )
 
 func beforeIamAuthPluginTests(props map[string]string) (driver_infrastructure.PluginService, iam.IamTokenUtility) {
-	iam.TokenCache.Clear()
+	iam.ClearCaches()
 	mockTargetDriver := &MockTargetDriver{}
 	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}))
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, driver_infrastructure.NewMySQLDriverDialect(), props, mysqlTestDsn)

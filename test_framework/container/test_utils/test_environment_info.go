@@ -28,7 +28,7 @@ type TestEnvironmentInfo struct {
 	databaseEngine        string
 	DatabaseInfo          TestDatabaseInfo
 	ProxyDatabaseInfo     TestProxyDatabaseInfo
-	iamUsername           string
+	IamUsername           string
 }
 
 func NewTestEnvironmentInfo(testInfo map[string]any) (info TestEnvironmentInfo, err error) {
@@ -37,7 +37,7 @@ func NewTestEnvironmentInfo(testInfo map[string]any) (info TestEnvironmentInfo, 
 	databaseEngine, ok3 := testInfo["databaseEngine"].(string)
 	databaseEngineVersion, ok4 := testInfo["databaseEngineVersion"].(string)
 	if !ok1 || !ok2 || !ok3 || !ok4 {
-		err = errors.New("Unable to cast an environment info value")
+		err = errors.New("unable to cast an environment info value")
 		return
 	}
 	request, err := NewTestEnvironmentRequest(testInfo["request"])
@@ -46,7 +46,7 @@ func NewTestEnvironmentInfo(testInfo map[string]any) (info TestEnvironmentInfo, 
 	}
 	databaseInfoMap, ok := testInfo["databaseInfo"].(map[string]any)
 	if !ok {
-		err = errors.New("Unable to cast databaseInfo value to usable map")
+		err = errors.New("unable to cast databaseInfo value to usable map")
 		return
 	}
 	databaseInfo, err := NewTestDatabaseInfo(databaseInfoMap)
@@ -55,7 +55,7 @@ func NewTestEnvironmentInfo(testInfo map[string]any) (info TestEnvironmentInfo, 
 	}
 	proxyDatabaseInfoMap, ok := testInfo["proxyDatabaseInfo"].(map[string]any)
 	if !ok {
-		err = errors.New("Unable to cast proxyDatabaseInfo value to usable map")
+		err = errors.New("unable to cast proxyDatabaseInfo value to usable map")
 		return
 	}
 	proxyDatabaseInfo, err := NewTestProxyDatabaseInfo(proxyDatabaseInfoMap)
@@ -66,7 +66,7 @@ func NewTestEnvironmentInfo(testInfo map[string]any) (info TestEnvironmentInfo, 
 	iamUser, ok := testInfo["iamUsername"].(string)
 
 	if !ok {
-		err = errors.New("Unable to get IAM username")
+		err = errors.New("unable to get IAM username")
 		return
 	}
 
@@ -78,7 +78,7 @@ func NewTestEnvironmentInfo(testInfo map[string]any) (info TestEnvironmentInfo, 
 		ProxyDatabaseInfo:     proxyDatabaseInfo,
 		databaseEngine:        databaseEngine,
 		databaseEngineVersion: databaseEngineVersion,
-		iamUsername:           iamUser,
+		IamUsername:           iamUser,
 	}, nil
 }
 
