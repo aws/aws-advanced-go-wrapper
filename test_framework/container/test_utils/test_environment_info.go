@@ -21,13 +21,13 @@ import (
 )
 
 type TestEnvironmentInfo struct {
-	request               TestEnvironmentRequest
-	region                string
+	Request               TestEnvironmentRequest
+	Region                string
 	auroraClusterName     string
 	databaseEngineVersion string
 	databaseEngine        string
-	databaseInfo          TestDatabaseInfo
-	proxyDatabaseInfo     TestProxyDatabaseInfo
+	DatabaseInfo          TestDatabaseInfo
+	ProxyDatabaseInfo     TestProxyDatabaseInfo
 }
 
 func NewTestEnvironmentInfo(testInfo map[string]any) (info TestEnvironmentInfo, err error) {
@@ -63,12 +63,16 @@ func NewTestEnvironmentInfo(testInfo map[string]any) (info TestEnvironmentInfo, 
 	}
 
 	return TestEnvironmentInfo{
-		request:               request,
-		region:                region,
+		Request:               request,
+		Region:                region,
 		auroraClusterName:     auroraClusterName,
-		databaseInfo:          databaseInfo,
-		proxyDatabaseInfo:     proxyDatabaseInfo,
+		DatabaseInfo:          databaseInfo,
+		ProxyDatabaseInfo:     proxyDatabaseInfo,
 		databaseEngine:        databaseEngine,
 		databaseEngineVersion: databaseEngineVersion,
 	}, nil
+}
+
+func (t TestEnvironmentInfo) AuroraClusterName() string {
+	return t.auroraClusterName
 }

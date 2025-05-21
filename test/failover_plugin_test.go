@@ -26,8 +26,10 @@ import (
 	"awssql/utils"
 	"database/sql/driver"
 	"errors"
-	"github.com/stretchr/testify/assert"
+	"slices"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var execFuncCalls = 0
@@ -180,7 +182,8 @@ func (t *mockAuroraMysqlDialect) GetHostRole(conn driver.Conn) host_info_util.Ho
 }
 
 type mockDefaultPlugin struct {
-	connectFails bool
+	connectFails       bool
+	acceptedStrategies []string
 	plugins.DefaultPlugin
 }
 
@@ -210,7 +213,10 @@ func (t *mockDefaultPlugin) GetHostInfoByStrategy(
 	role host_info_util.HostRole,
 	strategy string,
 	hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
-	return hosts[0], nil
+	if slices.Contains(t.acceptedStrategies, strategy) {
+		return hosts[0], nil
+	}
+	return nil, error_util.NewUnsupportedStrategyError("unsupported failover strategy")
 }
 
 func execFunc() (any, any, bool, error) {
@@ -250,7 +256,8 @@ func initializeTest(
 	hostListProviderService.SetHostListProvider(mockMonitoringRdsHostListProvider)
 
 	defaultPlugin := mockDefaultPlugin{
-		connectFails: connectFails,
+		connectFails:       connectFails,
+		acceptedStrategies: []string{"random"},
 		DefaultPlugin: plugins.DefaultPlugin{
 			PluginService:       mockPluginService,
 			DefaultConnProvider: mockPluginManager.GetDefaultConnectionProvider(),
@@ -514,6 +521,31 @@ func TestFailoverReaderIncorrectRole(t *testing.T) {
 	cleanupTest()
 }
 
+func TestFailoverReaderUnsupportedStrategy(t *testing.T) {
+	setupTest()
+	props := map[string]string{
+		property_util.ENABLE_CONNECT_FAILOVER.Name:                "false",
+		property_util.DRIVER_PROTOCOL.Name:                        "mysql",
+		property_util.FAILOVER_MODE.Name:                          "strict-reader",
+		property_util.FAILOVER_READER_HOST_SELECTOR_STRATEGY.Name: "unsupported",
+	}
+	plugin, _ := initializeTest(props, false, false, false, false, false, false)
+	plugin.InitFailoverMode()
+
+	_, _, _, _ = plugin.Execute(utils.CONN_QUERY_CONTEXT, execFunc)
+	err := plugin.Failover()
+	if err != nil {
+		assert.Equal(t, error_util.GetMessage("Failover.unableToConnectToReader"), err.Error())
+	} else {
+		assert.Fail(t, "Unexpected failover without error")
+	}
+	assert.Equal(t, 1, plugin.calledFailoverCount)
+	assert.Equal(t, 0, plugin.calledFailoverWriterCount)
+	assert.Equal(t, 1, plugin.calledFailoverReaderCount)
+
+	cleanupTest()
+}
+
 func TestInvalidateCurrentConnectionWithNilConn(t *testing.T) {
 	setupTest()
 
@@ -543,7 +575,7 @@ func TestInvalidateCurrentConnectionInTransaction(t *testing.T) {
 
 	plugin.InvalidateCurrentConnection()
 	assert.Equal(t, 2, pluginService.isInTransactionCounter)
-	assert.Equal(t, 0, mockConn.closeCounter)
+	assert.Equal(t, 1, mockConn.closeCounter)
 
 	cleanupTest()
 }

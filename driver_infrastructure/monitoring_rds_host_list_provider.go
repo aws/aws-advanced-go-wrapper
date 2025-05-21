@@ -118,5 +118,9 @@ func (m *MonitoringRdsHostListProvider) getMonitor() ClusterTopologyMonitor {
 
 func (m *MonitoringRdsHostListProvider) ForceRefreshHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) ([]*host_info_util.HostInfo, error) {
 	monitor := m.getMonitor()
-	return monitor.ForceRefreshVerifyWriter(shouldVerifyWriter, timeoutMs)
+	updatedHosts, err := monitor.ForceRefreshVerifyWriter(shouldVerifyWriter, timeoutMs)
+	if err == nil && len(updatedHosts) > 0 {
+		TopologyCache.Put(m.clusterId, updatedHosts, TOPOLOGY_CACHE_EXPIRATION_NANO)
+	}
+	return updatedHosts, err
 }

@@ -111,7 +111,7 @@ func (m MySQLDriverDialect) PrepareDsn(properties map[string]string, hostInfo *h
 	}
 
 	var params strings.Builder
-	copyProps := property_util.RemoveMonitoringProperties(properties)
+	copyProps := property_util.RemoveInternalAwsWrapperProperties(properties)
 	for k, v := range copyProps {
 		if !property_util.ALL_WRAPPER_PROPERTIES[k] {
 			if params.Len() != 0 {

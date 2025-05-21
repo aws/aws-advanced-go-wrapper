@@ -78,7 +78,7 @@ func CreateTestEnvironment() (*TestEnvironment, error) {
 	if err != nil {
 		return nil, err
 	}
-	if slices.Contains(env.info.request.features, NETWORK_OUTAGES_ENABLED) {
+	if slices.Contains(env.info.Request.features, NETWORK_OUTAGES_ENABLED) {
 		err = initProxies(env)
 		if err != nil {
 			return nil, err
@@ -87,56 +87,12 @@ func CreateTestEnvironment() (*TestEnvironment, error) {
 	return env, nil
 }
 
-func (t TestEnvironment) Region() string {
-	return t.info.region
-}
-
 func (t TestEnvironment) ProxyInfos() map[string]ProxyInfo {
 	return t.proxies
 }
 
-func (t TestEnvironment) Engine() DatabaseEngine {
-	return t.info.request.engine
-}
-
-func (t TestEnvironment) Deployment() DatabaseEngineDeployment {
-	return t.info.request.deployment
-}
-
-func (t TestEnvironment) User() string {
-	return t.info.databaseInfo.username
-}
-
-func (t TestEnvironment) Password() string {
-	return t.info.databaseInfo.password
-}
-
-func (t TestEnvironment) DefaultDbName() string {
-	return t.info.databaseInfo.defaultDbName
-}
-
-func (t TestEnvironment) ClusterEndpoint() string {
-	return t.info.databaseInfo.clusterEndpoint
-}
-
-func (t TestEnvironment) InstanceEndpointPort() int {
-	return t.info.databaseInfo.instanceEndpointPort
-}
-
-func (t TestEnvironment) Instances() []TestInstanceInfo {
-	return t.info.databaseInfo.instances
-}
-
-func (t TestEnvironment) ClusterReadOnlyEndpoint() string {
-	return t.info.databaseInfo.clusterReadOnlyEndpoint
-}
-
-func (t TestEnvironment) ProxyInstances() []TestInstanceInfo {
-	return t.info.proxyDatabaseInfo.instances
-}
-
-func (t TestEnvironment) ProxyDatabaseInfo() TestProxyDatabaseInfo {
-	return t.info.proxyDatabaseInfo
+func (t TestEnvironment) Info() TestEnvironmentInfo {
+	return t.info
 }
 
 func VerifyClusterStatus() error {
@@ -145,24 +101,24 @@ func VerifyClusterStatus() error {
 		return err
 	}
 	info := env.info
-	if info.request.deployment == AURORA { // TODO || info.request.deployment == RDS_MULTI_AZ_CLUSTER {
+	if info.Request.Deployment == AURORA { // TODO || info.request.deployment == RDS_MULTI_AZ_CLUSTER {
 		remainingTries := 3
 		success := false
 		for !success && remainingTries > 0 {
 			remainingTries--
-			auroraUtility := NewAuroraTestUtility(info.region)
+			auroraUtility := NewAuroraTestUtility(info.Region)
 			err := auroraUtility.waitUntilClusterHasDesiredStatus(info.auroraClusterName, "available")
 			if err != nil {
 				rebootAllClusterInstances()
 				break
 			}
-			writerId, err := auroraUtility.getClusterWriterInstanceId(info.auroraClusterName)
+			writerId, err := auroraUtility.GetClusterWriterInstanceId(info.auroraClusterName)
 			if err != nil {
 				rebootAllClusterInstances()
 				break
 			}
-			info.databaseInfo.moveInstanceFirst(writerId, false)
-			info.proxyDatabaseInfo.moveInstanceFirst(writerId, true)
+			info.DatabaseInfo.moveInstanceFirst(writerId, false)
+			info.ProxyDatabaseInfo.moveInstanceFirst(writerId, true)
 
 			success = true
 		}
@@ -180,18 +136,18 @@ func rebootAllClusterInstances() {
 		slog.Warn(fmt.Sprintf("Unable to reboot with no test environment. Error: %s.", err.Error()))
 	}
 	info := env.info
-	auroraUtility := NewAuroraTestUtility(info.region)
+	auroraUtility := NewAuroraTestUtility(info.Region)
 	if info.auroraClusterName == "" {
 		return
 	}
 	waitForClusterAndLogError(auroraUtility, info.auroraClusterName)
 
-	for _, instance := range info.databaseInfo.instances {
+	for _, instance := range info.DatabaseInfo.Instances {
 		auroraUtility.rebootInstance(instance.instanceId)
 	}
 	waitForClusterAndLogError(auroraUtility, info.auroraClusterName)
 
-	for _, instance := range info.databaseInfo.instances {
+	for _, instance := range info.DatabaseInfo.Instances {
 		waitForClusterAndLogError(auroraUtility, instance.instanceId)
 	}
 }

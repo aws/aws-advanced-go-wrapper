@@ -21,17 +21,18 @@ import (
 	"awssql/host_info_util"
 	"awssql/utils"
 	"database/sql/driver"
-	"github.com/google/uuid"
 	"log/slog"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 var highRefreshPeriodAfterPanicNano = time.Second * 30
 var ignoreTopologyRequestNano = time.Second * 10
-var fallbackTimeoutMs = 1100
+var FallbackTopologyRefreshTimeoutMs = 1100
 var topologyUpdateWaitTime = time.Millisecond * 1000
 
 type ConnectionContainer struct {
@@ -180,7 +181,7 @@ func (c *ClusterTopologyMonitorImpl) waitTillTopologyGetsUpdated(timeoutMs int) 
 	}
 
 	if timeoutMs == 0 {
-		timeoutMs = fallbackTimeoutMs
+		timeoutMs = FallbackTopologyRefreshTimeoutMs
 	}
 	end := time.Now().Add(time.Millisecond * time.Duration(timeoutMs))
 	latestMapEntry := mapEntry

@@ -115,6 +115,7 @@
 	"PluginManager.pipelineNone": "A pipeline was requested but the created pipeline evaluated to nil.",
 	"PluginManager.unknownPluginCode": "Unknown plugin code: '%v'.",
 	"PluginManagerImpl.releaseResources": "Releasing resources from PluginManagerImpl.",
+	"PluginManagerImpl.unsupportedHostSelectionStrategy": "The wrapper does not support the requested host selection strategy: %v.",
 	"PluginServiceImpl.releaseResources": "Releasing resources from PluginServiceImpl.",
 	"PluginServiceImpl.requiredBlockingHostListProvider": "The detected host list provider is not a BlockingHostListProvider. A BlockingHostListProvider is required to force refresh the host list. Detected host list provider: '%t'.",
 	"PluginServiceImpl.nilHost": "Current host evaluates to nil.",

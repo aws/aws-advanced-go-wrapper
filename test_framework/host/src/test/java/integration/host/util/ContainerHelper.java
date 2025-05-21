@@ -57,6 +57,7 @@ public class ContainerHelper {
   private static final String XRAY_TELEMETRY_IMAGE_NAME = "amazon/aws-xray-daemon";
   private static final String OTLP_TELEMETRY_IMAGE_NAME = "amazon/aws-otel-collector";
 
+  private static final String INTEGRATION_TEST_TIMEOUT = "30m";
   private static final String RETRIEVE_TOPOLOGY_SQL_POSTGRES =
       "SELECT SERVER_ID, SESSION_ID FROM aurora_replica_status() "
           + "ORDER BY CASE WHEN SESSION_ID = 'MASTER_SESSION_ID' THEN 0 ELSE 1 END";
@@ -92,10 +93,10 @@ public class ContainerHelper {
 
     Long exitCode;
     if (filter != null) {
-      exitCode = execInContainer(container, consumer, "go", "test", "-v", "./test_framework/container/tests...", "-run", filter);
+      exitCode = execInContainer(container, consumer, "go", "test", "-timeout", INTEGRATION_TEST_TIMEOUT, "-v", "./test_framework/container/tests...", "-run", filter);
     } else {
       // Run all tests located in aws-advanced-go-wrapper/test_framework/container.
-      exitCode = execInContainer(container, consumer, "go", "test", "-v", "./test_framework/container/tests...");
+      exitCode = execInContainer(container, consumer, "go", "test", "-timeout", INTEGRATION_TEST_TIMEOUT, "-v", "./test_framework/container/tests...");
     }
 
     System.out.println("==== Container console feed ==== <<<<");
@@ -105,7 +106,7 @@ public class ContainerHelper {
   public void debugTest(GenericContainer<?> container, String testFolder, TestEnvironmentConfig config)
       throws IOException, InterruptedException {
     System.out.println("==== Container console feed ==== >>>>");
-    Consumer<OutputFrame> consumer = new ConsoleConsumer();
+    Consumer<OutputFrame> consumer = new ConsoleConsumer(true);
 
     // Install Delve debugger.
     execInContainer(container, consumer, "go", "install", "github.com/go-delve/delve/cmd/dlv@latest");

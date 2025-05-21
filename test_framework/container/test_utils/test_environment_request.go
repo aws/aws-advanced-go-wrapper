@@ -21,10 +21,10 @@ import (
 )
 
 type TestEnvironmentRequest struct {
-	instanceCount int
+	InstanceCount int
 	instances     DatabaseInstances
-	engine        DatabaseEngine
-	deployment    DatabaseEngineDeployment
+	Engine        DatabaseEngine
+	Deployment    DatabaseEngineDeployment
 	features      []TestEnvironmentFeatures
 }
 
@@ -35,10 +35,10 @@ func NewTestEnvironmentRequest(requestVal any) (request TestEnvironmentRequest, 
 		return
 	}
 	instanceCountAsFloat, ok := requestMap["numOfInstances"].(float64)
-    instanceCount := 1
-    if ok && instanceCountAsFloat > 1 {
-    	instanceCount = int(instanceCountAsFloat)
-    }
+	instanceCount := 1
+	if ok && instanceCountAsFloat > 1 {
+		instanceCount = int(instanceCountAsFloat)
+	}
 	var instances DatabaseInstances
 	instancesVal := requestMap["instances"]
 	if instancesVal == "SINGLE_INSTANCE" {
@@ -80,9 +80,9 @@ func NewTestEnvironmentRequest(requestVal any) (request TestEnvironmentRequest, 
 
 	return TestEnvironmentRequest{
 		instances:     instances,
-		instanceCount: instanceCount,
-		engine:        engine,
-		deployment:    deployment,
+		InstanceCount: instanceCount,
+		Engine:        engine,
+		Deployment:    deployment,
 		features:      features,
 	}, nil
 }

@@ -239,3 +239,60 @@ func GetRdsInstanceHostPattern(host string) string {
 	}
 	return fmt.Sprintf("?.%s", group)
 }
+
+func GetRdsClusterHostUrl(host string) string {
+	preparedHost := GetPreparedHost(host)
+	if preparedHost == "" {
+		return ""
+	}
+
+	if AURORA_DNS_PATTERN.MatchString(preparedHost) {
+		matches := AURORA_DNS_PATTERN.FindStringSubmatch(preparedHost)
+		instanceIndex := AURORA_DNS_PATTERN.SubexpIndex(INSTANCE_GROUP)
+		domainIndex := AURORA_DNS_PATTERN.SubexpIndex(DOMAIN_GROUP)
+
+		if instanceIndex >= 0 && domainIndex >= 0 && len(matches) > domainIndex {
+			instance := matches[instanceIndex]
+			domain := matches[domainIndex]
+			return fmt.Sprintf("%s.cluster-%s", instance, domain)
+		}
+	}
+
+	if AURORA_CHINA_DNS_PATTERN.MatchString(preparedHost) {
+		matches := AURORA_CHINA_DNS_PATTERN.FindStringSubmatch(preparedHost)
+		instanceIndex := AURORA_CHINA_DNS_PATTERN.SubexpIndex(INSTANCE_GROUP)
+		domainIndex := AURORA_CHINA_DNS_PATTERN.SubexpIndex(DOMAIN_GROUP)
+
+		if instanceIndex >= 0 && domainIndex >= 0 && len(matches) > domainIndex {
+			instance := matches[instanceIndex]
+			domain := matches[domainIndex]
+			return fmt.Sprintf("%s.cluster-%s", instance, domain)
+		}
+	}
+
+	if AURORA_OLD_CHINA_DNS_PATTERN.MatchString(preparedHost) {
+		matches := AURORA_OLD_CHINA_DNS_PATTERN.FindStringSubmatch(preparedHost)
+		instanceIndex := AURORA_OLD_CHINA_DNS_PATTERN.SubexpIndex(INSTANCE_GROUP)
+		domainIndex := AURORA_OLD_CHINA_DNS_PATTERN.SubexpIndex(DOMAIN_GROUP)
+
+		if instanceIndex >= 0 && domainIndex >= 0 && len(matches) > domainIndex {
+			instance := matches[instanceIndex]
+			domain := matches[domainIndex]
+			return fmt.Sprintf("%s.cluster-%s", instance, domain)
+		}
+	}
+
+	if AURORA_GOV_DNS_PATTERN.MatchString(preparedHost) {
+		matches := AURORA_GOV_DNS_PATTERN.FindStringSubmatch(preparedHost)
+		instanceIndex := AURORA_GOV_DNS_PATTERN.SubexpIndex(INSTANCE_GROUP)
+		domainIndex := AURORA_GOV_DNS_PATTERN.SubexpIndex(DOMAIN_GROUP)
+
+		if instanceIndex >= 0 && domainIndex >= 0 && len(matches) > domainIndex {
+			instance := matches[instanceIndex]
+			domain := matches[domainIndex]
+			return fmt.Sprintf("%s.cluster-%s", instance, domain)
+		}
+	}
+
+	return ""
+}

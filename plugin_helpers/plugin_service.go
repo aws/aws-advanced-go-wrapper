@@ -386,13 +386,7 @@ func (p *PluginServiceImpl) ForceConnect(hostInfo *host_info_util.HostInfo, prop
 }
 
 func (p *PluginServiceImpl) ForceRefreshHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) (bool, error) {
-	hostListProvider := p.GetHostListProvider()
-	blockingHostListProvider, ok := hostListProvider.(driver_infrastructure.BlockingHostListProvider)
-	if !ok {
-		return false, error_util.NewFailoverFailedError(error_util.GetMessage("PluginServiceImpl.requiredBlockingHostListProvider", hostListProvider))
-	}
-
-	updatedHostList, err := blockingHostListProvider.ForceRefreshHostListWithTimeout(shouldVerifyWriter, timeoutMs)
+	updatedHostList, err := p.GetUpdatedHostListWithTimeout(shouldVerifyWriter, timeoutMs)
 	if err != nil {
 		slog.Warn(err.Error())
 		return false, err
@@ -404,6 +398,16 @@ func (p *PluginServiceImpl) ForceRefreshHostListWithTimeout(shouldVerifyWriter b
 	}
 
 	return false, nil
+}
+
+func (p *PluginServiceImpl) GetUpdatedHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) ([]*host_info_util.HostInfo, error) {
+	hostListProvider := p.GetHostListProvider()
+	blockingHostListProvider, ok := hostListProvider.(driver_infrastructure.BlockingHostListProvider)
+	if !ok {
+		return nil, error_util.NewFailoverFailedError(error_util.GetMessage("PluginServiceImpl.requiredBlockingHostListProvider", hostListProvider))
+	}
+
+	return blockingHostListProvider.ForceRefreshHostListWithTimeout(shouldVerifyWriter, timeoutMs)
 }
 
 func (p *PluginServiceImpl) GetTargetDriverDialect() driver_infrastructure.DriverDialect {
