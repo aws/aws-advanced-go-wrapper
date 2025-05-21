@@ -101,11 +101,13 @@ func (r *RdsHostListProvider) init() {
 		// Should never be called. Host is explicitly set when building default template.
 		return
 	}
+
 	if clusterInstancePattern != "" {
 		r.clusterInstanceTemplate, err = utils.ParseHostPortPair(clusterInstancePattern)
 	}
 	if err == nil && !r.clusterInstanceTemplate.IsNil() {
 		rdsUrlType := utils.IdentifyRdsUrlType(r.clusterInstanceTemplate.Host)
+
 		if rdsUrlType == utils.RDS_PROXY || rdsUrlType == utils.RDS_CUSTOM_CLUSTER || !strings.Contains(r.clusterInstanceTemplate.Host, "?") {
 			// Host can not be used as instance pattern.
 			slog.Warn(error_util.GetMessage("RdsHostListProvider.givenTemplateInvalid"))

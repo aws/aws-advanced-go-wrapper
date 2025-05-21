@@ -39,6 +39,8 @@ var NetworkErrors = []string{
 	"99",
 	"F0",
 	"XX",
+	"unexpected EOF",
+	"use of closed network connection",
 }
 
 var PgNetworkErrorMessages = []string{
@@ -52,11 +54,12 @@ type PgxErrorHandler struct {
 
 func (p *PgxErrorHandler) IsNetworkError(err error) bool {
 	sqlState := p.getSQLStateFromError(err)
+
 	if sqlState != "" && slices.Contains(NetworkErrors, sqlState) {
 		return true
 	}
 
-	for _, networkError := range PgNetworkErrorMessages {
+	for _, networkError := range NetworkErrors {
 		if strings.Contains(err.Error(), networkError) {
 			return true
 		}

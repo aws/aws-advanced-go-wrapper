@@ -58,6 +58,11 @@ public class ContainerHelper {
   private static final String OTLP_TELEMETRY_IMAGE_NAME = "amazon/aws-otel-collector";
 
   private static final String INTEGRATION_TEST_TIMEOUT = "30m";
+  private static final String PERFORMANCE_TEST_TIMEOUT = "12h";
+
+  private static final String PERFORMANCE_TEST_TAG = "-tags=performance";
+  private static final String PERFORMANCE_TEST_FILTER = "^TestPerformance";
+
   private static final String RETRIEVE_TOPOLOGY_SQL_POSTGRES =
       "SELECT SERVER_ID, SESSION_ID FROM aurora_replica_status() "
           + "ORDER BY CASE WHEN SESSION_ID = 'MASTER_SESSION_ID' THEN 0 ELSE 1 END";
@@ -84,7 +89,7 @@ public class ContainerHelper {
     return exitCode;
   }
 
-  public void runTest(GenericContainer<?> container, String testFolder, TestEnvironmentConfig config)
+  public void runTest(GenericContainer<?> container, String testFolder, TestEnvironmentConfig config, boolean isPerformanceTest)
       throws IOException, InterruptedException {
     System.out.println("==== Container console feed ==== >>>>");
     Consumer<OutputFrame> consumer = new ConsoleConsumer(true);
@@ -92,7 +97,10 @@ public class ContainerHelper {
     final String filter = System.getenv("FILTER");
 
     Long exitCode;
-    if (filter != null) {
+    if (isPerformanceTest) {
+      exitCode = execInContainer(container, consumer, "go", "test", "-timeout", PERFORMANCE_TEST_TIMEOUT, PERFORMANCE_TEST_TAG, "-run", PERFORMANCE_TEST_FILTER,  "-v", "./test_framework/container/tests..." );
+    }
+    else if (filter != null) {
       exitCode = execInContainer(container, consumer, "go", "test", "-timeout", INTEGRATION_TEST_TIMEOUT, "-v", "./test_framework/container/tests...", "-run", filter);
     } else {
       // Run all tests located in aws-advanced-go-wrapper/test_framework/container.
@@ -222,6 +230,7 @@ public class ContainerHelper {
 
     final String containerId = containerInfo.getId();
     final DockerClient dockerClient = DockerClientFactory.instance().client();
+
     final ExecCreateCmd cmd = dockerClient
         .execCreateCmd(containerId)
         .withAttachStdout(true)

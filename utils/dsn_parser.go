@@ -90,11 +90,29 @@ func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []*host_i
 }
 
 func ParseHostPortPair(dsn string) (*host_info_util.HostInfo, error) {
-	hosts, err := GetHostsFromDsn(dsn, true)
-	if err == nil && len(hosts) > 0 {
-		return hosts[0], nil
+	hostPortPair := strings.Split(dsn, ":")
+
+	host := hostPortPair[0]
+	urlType := IdentifyRdsUrlType(host)
+	port := 0
+	var err error
+	if len(hostPortPair) >= 2 {
+		port, err = strconv.Atoi(hostPortPair[1])
 	}
-	return nil, err
+
+	if err != nil {
+		return nil, err
+	}
+
+	hostRole := host_info_util.WRITER
+
+	if urlType == RDS_READER_CLUSTER {
+		hostRole = host_info_util.READER
+	}
+
+	builder := host_info_util.NewHostInfoBuilder()
+	builder.SetHost(host).SetPort(port).SetRole(hostRole)
+	return builder.Build()
 }
 
 func ParseDatabaseFromDsn(dsn string) (string, error) {
@@ -140,7 +158,6 @@ func GetProtocol(dsn string) (string, error) {
 func ParseDsn(dsn string) (map[string]string, error) {
 	connStringSettings := make(map[string]string)
 	var err error
-
 	if isDsnPgxUrl(dsn) {
 		connStringSettings, err = parsePgxURLSettings(dsn)
 		if err != nil {
