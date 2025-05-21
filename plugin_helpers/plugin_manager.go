@@ -35,6 +35,7 @@ const (
 	FORCE_CONNECT_METHOD             = "Conn.ForceConnect"
 	ACCEPTS_STRATEGY_METHOD          = "acceptsStrategy"
 	GET_HOST_INFO_BY_STRATEGY_METHOD = "getHostInfoByStrategy"
+	GET_HOST_SELECT_STRATEGY_METHOD  = "getHostSelectorStrategy"
 	INIT_HOST_PROVIDER_METHOD        = "initHostProvider"
 	NOTIFY_CONNECTION_CHANGED_METHOD = "notifyConnectionChanged"
 	NOTIFY_HOST_LIST_CHANGED_METHOD  = "notifyHostListChanged"
@@ -267,13 +268,13 @@ func (pluginManager *PluginManagerImpl) makePluginChain(
 	return chain
 }
 
-func (pluginManager *PluginManagerImpl) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
+func (pluginManager *PluginManagerImpl) AcceptsStrategy(strategy string) bool {
 	for i := 0; i < len(pluginManager.plugins); i++ {
 		currentPlugin := pluginManager.plugins[i]
 		pluginSubscribedMethods := currentPlugin.GetSubscribedMethods()
 		isSubscribed := slices.Contains(pluginSubscribedMethods, strategy) || slices.Contains(pluginSubscribedMethods, ALL_METHODS)
 
-		if isSubscribed && currentPlugin.AcceptsStrategy(role, strategy) {
+		if isSubscribed && currentPlugin.AcceptsStrategy(strategy) {
 			return true
 		}
 	}
@@ -334,6 +335,26 @@ func (pluginManager *PluginManagerImpl) GetHostInfoByStrategy(
 		if isSubscribed {
 			host, err = currentPlugin.GetHostInfoByStrategy(role, strategy, hosts)
 
+			if err == nil {
+				return
+			}
+		}
+	}
+
+	if err == nil {
+		err = error_util.NewUnsupportedStrategyError(
+			error_util.GetMessage("PluginManagerImpl.unsupportedHostSelectionStrategy", strategy))
+	}
+	return
+}
+
+func (pluginManager *PluginManagerImpl) GetHostSelectorStrategy(strategy string) (hostSelector driver_infrastructure.HostSelector, err error) {
+	for i := 0; i < len(pluginManager.plugins); i++ {
+		currentPlugin := pluginManager.plugins[i]
+		isSubscribed := slices.Contains(currentPlugin.GetSubscribedMethods(), ALL_METHODS) || slices.Contains(currentPlugin.GetSubscribedMethods(), GET_HOST_SELECT_STRATEGY_METHOD)
+
+		if isSubscribed {
+			hostSelector, err = currentPlugin.GetHostSelectorStrategy(strategy)
 			if err == nil {
 				return
 			}

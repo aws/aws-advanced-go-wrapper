@@ -90,7 +90,7 @@ func newTestMockMonitoringRdsHostListProvider(
 			pluginService,
 		),
 	}
-	_ = provider.RdsHostListProvider.GetClusterId()
+	_, _ = provider.RdsHostListProvider.GetClusterId()
 	return provider
 }
 

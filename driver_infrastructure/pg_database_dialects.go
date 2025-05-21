@@ -214,3 +214,7 @@ func (m *AuroraPgDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, e
 	}
 	return "", nil
 }
+
+func (m *AuroraPgDatabaseDialect) GetLimitlessRouterEndpointQuery() string {
+	return "select router_endpoint, load from aurora_limitless_router_endpoints()"
+}

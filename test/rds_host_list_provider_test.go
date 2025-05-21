@@ -46,12 +46,12 @@ func beforeMySqlTests() *driver_infrastructure.RdsHostListProvider {
 
 func TestGetClusterId(t *testing.T) {
 	mockPgRdsHostListProvider := beforePgTests()
-	pgClusterId := mockPgRdsHostListProvider.GetClusterId()
+	pgClusterId, _ := mockPgRdsHostListProvider.GetClusterId()
 	if pgClusterId != "pg_cluster" {
 		t.Errorf("Init should set cluster id to the value in mockPgProps.")
 	}
 	mockMySQLRdsHostListProvider := beforeMySqlTests()
-	mysqlClusterId := mockMySQLRdsHostListProvider.GetClusterId()
+	mysqlClusterId, _ := mockMySQLRdsHostListProvider.GetClusterId()
 	if mysqlClusterId != "mysql_cluster" {
 		t.Errorf("Init should set cluster id to the value in mockMySQLProps.")
 	}
@@ -252,7 +252,11 @@ func TestSuggestedClusterIdForRds(t *testing.T) {
 	assert.Equal(t, "instance-a-1.xyz.us-east-2.rds.amazonaws.com", hosts[0].Host)
 
 	provider2 := driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, emptyProps, dsn, nil, nil)
-	assert.Equal(t, provider1.GetClusterId(), provider2.GetClusterId())
+	actualClusterId1, err1 := provider1.GetClusterId()
+	actualClusterId2, err2 := provider2.GetClusterId()
+	assert.Equal(t, actualClusterId1, actualClusterId2)
+	assert.Nil(t, err1)
+	assert.Nil(t, err2)
 	assert.True(t, provider1.IsPrimaryClusterId)
 	assert.True(t, provider2.IsPrimaryClusterId)
 
@@ -284,7 +288,11 @@ func TestNoSuggestedClusterId(t *testing.T) {
 
 	hosts, err = provider2.Refresh(&mockConn)
 	assert.Nil(t, err)
-	assert.NotEqual(t, provider1.GetClusterId(), provider2.GetClusterId())
+	actualClusterId1, err1 := provider1.GetClusterId()
+	actualClusterId2, err2 := provider2.GetClusterId()
+	assert.NotEqual(t, actualClusterId1, actualClusterId2)
+	assert.Nil(t, err1)
+	assert.Nil(t, err2)
 	assert.True(t, provider1.IsPrimaryClusterId)
 	assert.True(t, provider2.IsPrimaryClusterId)
 	assert.Equal(t, "instance-b-1.xyz.us-east-2.rds.amazonaws.com", hosts[0].Host)

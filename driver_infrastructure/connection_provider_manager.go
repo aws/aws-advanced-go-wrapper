@@ -39,12 +39,12 @@ func (connProviderManager *ConnectionProviderManager) GetDefaultProvider() Conne
 	return connProviderManager.DefaultProvider
 }
 
-func (connProviderManager *ConnectionProviderManager) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
-	if connProviderManager.EffectiveProvider != nil && connProviderManager.EffectiveProvider.AcceptsStrategy(role, strategy) {
+func (connProviderManager *ConnectionProviderManager) AcceptsStrategy(strategy string) bool {
+	if connProviderManager.EffectiveProvider != nil && connProviderManager.EffectiveProvider.AcceptsStrategy(strategy) {
 		return true
 	}
 
-	return connProviderManager.DefaultProvider.AcceptsStrategy(role, strategy)
+	return connProviderManager.DefaultProvider.AcceptsStrategy(strategy)
 }
 
 func (connProviderManager *ConnectionProviderManager) GetHostInfoByStrategy(
@@ -52,7 +52,7 @@ func (connProviderManager *ConnectionProviderManager) GetHostInfoByStrategy(
 	role host_info_util.HostRole,
 	strategy string,
 	props map[string]string) (*host_info_util.HostInfo, error) {
-	if connProviderManager.EffectiveProvider != nil && connProviderManager.EffectiveProvider.AcceptsStrategy(role, strategy) {
+	if connProviderManager.EffectiveProvider != nil && connProviderManager.EffectiveProvider.AcceptsStrategy(strategy) {
 		host, err := connProviderManager.EffectiveProvider.GetHostInfoByStrategy(hosts, role, strategy, props)
 		if err == nil {
 			return host, err
@@ -60,4 +60,15 @@ func (connProviderManager *ConnectionProviderManager) GetHostInfoByStrategy(
 	}
 
 	return connProviderManager.DefaultProvider.GetHostInfoByStrategy(hosts, role, strategy, props)
+}
+
+func (connProviderManager *ConnectionProviderManager) GetHostSelectorStrategy(strategy string) (HostSelector, error) {
+	if connProviderManager.EffectiveProvider != nil && connProviderManager.EffectiveProvider.AcceptsStrategy(strategy) {
+		hostSelector, err := connProviderManager.EffectiveProvider.GetHostSelectorStrategy(strategy)
+		if err == nil {
+			return hostSelector, err
+		}
+	}
+
+	return connProviderManager.DefaultProvider.GetHostSelectorStrategy(strategy)
 }

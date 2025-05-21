@@ -108,8 +108,8 @@ func (d *DefaultPlugin) connectInternal(
 	return conn, err
 }
 
-func (d *DefaultPlugin) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
-	return d.ConnProviderManager.AcceptsStrategy(role, strategy)
+func (d *DefaultPlugin) AcceptsStrategy(strategy string) bool {
+	return d.ConnProviderManager.AcceptsStrategy(strategy)
 }
 
 func (d *DefaultPlugin) GetHostInfoByStrategy(
@@ -120,6 +120,10 @@ func (d *DefaultPlugin) GetHostInfoByStrategy(
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DefaultConnectionPlugin.noHostsAvailable"))
 	}
 	return d.ConnProviderManager.GetHostInfoByStrategy(hosts, role, strategy, d.PluginService.GetProperties())
+}
+
+func (d *DefaultPlugin) GetHostSelectorStrategy(strategy string) (driver_infrastructure.HostSelector, error) {
+	return d.ConnProviderManager.GetHostSelectorStrategy(strategy)
 }
 
 func (d *DefaultPlugin) NotifyConnectionChanged(changes map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {

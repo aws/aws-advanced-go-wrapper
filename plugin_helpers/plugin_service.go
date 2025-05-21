@@ -240,8 +240,8 @@ func (p *PluginServiceImpl) GetInitialConnectionHostInfo() *host_info_util.HostI
 	return p.initialHostInfo
 }
 
-func (p *PluginServiceImpl) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
-	return p.pluginManager.AcceptsStrategy(role, strategy)
+func (p *PluginServiceImpl) AcceptsStrategy(strategy string) bool {
+	return p.pluginManager.AcceptsStrategy(strategy)
 }
 
 func (p *PluginServiceImpl) GetHostInfoByStrategy(
@@ -251,6 +251,9 @@ func (p *PluginServiceImpl) GetHostInfoByStrategy(
 	return p.pluginManager.GetHostInfoByStrategy(role, strategy, hosts)
 }
 
+func (p *PluginServiceImpl) GetHostSelectorStrategy(strategy string) (hostSelector driver_infrastructure.HostSelector, err error) {
+	return p.pluginManager.GetHostSelectorStrategy(strategy)
+}
 func (p *PluginServiceImpl) GetHostRole(conn driver.Conn) host_info_util.HostRole {
 	return p.hostListProvider.GetHostRole(conn)
 }
