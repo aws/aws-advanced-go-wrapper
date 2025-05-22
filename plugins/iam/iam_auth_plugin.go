@@ -160,3 +160,7 @@ func (iamAuthPlugin *IamAuthPlugin) fetchAndSetToken(
 	TokenCache.Put(cacheKey, token, time.Duration(tokenExpirationSec)*time.Second)
 	return nil
 }
+
+func ClearCaches() {
+	TokenCache.Clear()
+}

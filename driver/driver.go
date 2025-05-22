@@ -23,6 +23,7 @@ import (
 	"awssql/plugin_helpers"
 	"awssql/plugins/aws_secrets_manager"
 	"awssql/plugins/efm"
+	"awssql/plugins/iam"
 	"awssql/utils"
 	"context"
 	"database/sql"
@@ -93,6 +94,7 @@ func ClearCaches() {
 	plugin_helpers.ClearCaches()
 	efm.ClearCaches()
 	aws_secrets_manager.ClearCaches()
+	iam.ClearCaches()
 }
 
 type AwsWrapperConn struct {
