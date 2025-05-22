@@ -32,7 +32,8 @@ import (
 )
 
 func TestFailoverWriterDB(t *testing.T) {
-	auroraTestUtility, err := failoverSetup(t)
+	auroraTestUtility, err := test_utils.FailoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
@@ -70,11 +71,11 @@ func TestFailoverWriterDB(t *testing.T) {
 	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, instanceId)
-	basicCleanup(t.Name())
 }
 
 func TestFailoverWriterInTransactionWithBegin(t *testing.T) {
-	auroraTestUtility, err := failoverSetup(t)
+	auroraTestUtility, err := test_utils.FailoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
@@ -83,9 +84,9 @@ func TestFailoverWriterInTransactionWithBegin(t *testing.T) {
 		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort()),
 		"plugins": "failover",
 	})
-	db, err := sql.Open("awssql", dsn)
-	assert.Nil(t, err)
-	assert.NotNil(t, db)
+
+	db := test_utils.ConnectToTheWriterWithClusterEndpointDB(dsn, environment, auroraTestUtility, t)
+	require.NotNil(t, db)
 	defer db.Close()
 
 	// Verify connection works.
@@ -132,8 +133,9 @@ func TestFailoverWriterInTransactionWithBegin(t *testing.T) {
 		defer db.Close()
 	}
 
-	_, err = db.Exec("DROP TABLE IF EXISTS test_failover_tx_rollback")
+	db2 := test_utils.ConnectToTheWriterWithClusterEndpointDB(dsn, environment, auroraTestUtility, t)
+	require.NotNil(t, db2)
+	defer db2.Close()
+	_, err = db2.Exec("DROP TABLE IF EXISTS test_failover_tx_rollback")
 	assert.Nil(t, err)
-
-	basicCleanup(t.Name())
 }

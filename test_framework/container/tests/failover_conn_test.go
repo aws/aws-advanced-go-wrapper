@@ -18,10 +18,9 @@ package test
 
 import (
 	awsDriver "awssql/driver"
-	"context"
-
 	"awssql/error_util"
 	"awssql/test_framework/container/test_utils"
+	"context"
 	"database/sql/driver"
 	"log"
 	"strconv"
@@ -31,17 +30,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func failoverSetup(t *testing.T) (*test_utils.AuroraTestUtility, error) {
-	environment, err := test_utils.GetCurrentTestEnvironment()
-	assert.Nil(t, err)
-	if environment.Info().Request.InstanceCount < 2 {
-		t.Skipf("Skipping integration test %s, instanceCount = %v.", t.Name(), environment.Info().Request.InstanceCount)
-	}
-	return basicSetup(t.Name())
-}
-
 func TestFailoverWriter(t *testing.T) {
-	auroraTestUtility, err := failoverSetup(t)
+	auroraTestUtility, err := test_utils.FailoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
@@ -79,11 +70,11 @@ func TestFailoverWriter(t *testing.T) {
 	assert.NotEqual(t, instanceId, newInstanceId)
 
 	wrapperDriver.ReleaseResources()
-	basicCleanup(t.Name())
 }
 
 func TestFailoverWriterEndpoint(t *testing.T) {
-	auroraTestUtility, err := failoverSetup(t)
+	auroraTestUtility, err := test_utils.FailoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
@@ -121,11 +112,11 @@ func TestFailoverWriterEndpoint(t *testing.T) {
 	assert.NotEqual(t, instanceId, newInstanceId)
 
 	wrapperDriver.ReleaseResources()
-	basicCleanup(t.Name())
 }
 
 func TestFailoverReaderOrWriter(t *testing.T) {
-	auroraTestUtility, err := failoverSetup(t)
+	auroraTestUtility, err := test_utils.FailoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
@@ -161,11 +152,11 @@ func TestFailoverReaderOrWriter(t *testing.T) {
 	assert.NotZero(t, newInstanceId)
 
 	wrapperDriver.ReleaseResources()
-	basicCleanup(t.Name())
 }
 
 func TestFailoverStrictReader(t *testing.T) {
-	auroraTestUtility, err := failoverSetup(t)
+	auroraTestUtility, err := test_utils.FailoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
@@ -202,11 +193,11 @@ func TestFailoverStrictReader(t *testing.T) {
 	assert.False(t, auroraTestUtility.IsDbInstanceWriter(newInstanceId, ""))
 
 	wrapperDriver.ReleaseResources()
-	basicCleanup(t.Name())
 }
 
 func TestFailoverWriterInTransactionWithSQL(t *testing.T) {
-	auroraTestUtility, err := failoverSetup(t)
+	auroraTestUtility, err := test_utils.FailoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
@@ -215,12 +206,9 @@ func TestFailoverWriterInTransactionWithSQL(t *testing.T) {
 		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort()),
 		"plugins": "failover",
 	})
-	wrapperDriver := &awsDriver.AwsWrapperDriver{}
 
-	conn, err := wrapperDriver.Open(dsn)
-	if err != nil {
-		log.Fatal(err)
-	}
+	conn, wrapperDriver := test_utils.ConnectToTheWriterWithClusterEndpoint(dsn, environment, auroraTestUtility, t)
+	require.NotNil(t, conn)
 	defer conn.Close()
 
 	// Verify connection works.
@@ -257,9 +245,12 @@ func TestFailoverWriterInTransactionWithSQL(t *testing.T) {
 	assert.Equal(t, 0, count, "Transaction should have been rolled back, table should be empty.")
 
 	// Clean up the test table
+	conn2, wrapperDriver2 := test_utils.ConnectToTheWriterWithClusterEndpoint(dsn, environment, auroraTestUtility, t)
+	require.NotNil(t, conn2)
+	defer conn2.Close()
 	_, err = execer.ExecContext(ctx, "DROP TABLE IF EXISTS test_failover_tx_rollback", []driver.NamedValue{})
 	assert.Nil(t, err)
 
 	wrapperDriver.ReleaseResources()
-	basicCleanup(t.Name())
+	wrapperDriver2.ReleaseResources()
 }

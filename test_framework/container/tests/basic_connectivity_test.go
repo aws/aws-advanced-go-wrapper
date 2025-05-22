@@ -17,36 +17,13 @@
 package test
 
 import (
-	awsDriver "awssql/driver"
 	"awssql/test_framework/container/test_utils"
 	"database/sql"
-	"fmt"
-	"log/slog"
 	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
-
-func basicSetup(name string) (*test_utils.AuroraTestUtility, error) {
-	slog.Info(fmt.Sprintf("Test started: %s.", name))
-	env, err := test_utils.GetCurrentTestEnvironment()
-	if err != nil {
-		return nil, err
-	}
-	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info().Region)
-	test_utils.EnableAllConnectivity()
-	err = test_utils.VerifyClusterStatus()
-	if err != nil {
-		return nil, err
-	}
-	return auroraTestUtility, nil
-}
-
-func basicCleanup(name string) {
-	awsDriver.ClearCaches()
-	slog.Info(fmt.Sprintf("Test finished: %s.", name))
-}
 
 func TestBasicConnectivityWrapper(t *testing.T) {
 	defer test_utils.BasicCleanupAfterBasicSetup(t)

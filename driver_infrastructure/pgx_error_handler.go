@@ -18,9 +18,10 @@ package driver_infrastructure
 
 import (
 	"errors"
-	"github.com/jackc/pgx/v5/pgconn"
 	"slices"
 	"strings"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 var AccessErrors = []string{
@@ -49,7 +50,7 @@ func (p *PgxErrorHandler) IsNetworkError(err error) bool {
 		return true
 	}
 
-	if strings.Contains(err.Error(), "unexpected EOF") {
+	if strings.Contains(err.Error(), "unexpected EOF") || strings.Contains(err.Error(), "broken pipe") {
 		return true
 	}
 

@@ -19,6 +19,8 @@ package test_utils
 import (
 	awsDriver "awssql/driver"
 	"context"
+	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -36,6 +38,7 @@ import (
 )
 
 const writerChangeTimeout int = 10
+const RETRY_CONNECTION_TO_WRITER_WITH_CLUSTER_ENDPOINT_TIME time.Duration = 30 * time.Second
 
 type AuroraTestUtility struct {
 	client *rds.Client
@@ -222,6 +225,7 @@ func (a AuroraTestUtility) FailoverClusterAndWaitTillWriterChanged(initialWriter
 	if err != nil {
 		return err
 	}
+	// TODO: potentially update so returns a warning but not an error if writer has changed but ip hasn't.
 	stopTime := time.Now().Add(time.Duration(writerChangeTimeout) * time.Minute)
 	slog.Debug(fmt.Sprintf("Waiting for ip address of %s to change after trigging failover for %d minutes.", clusterEndpoint, writerChangeTimeout))
 	for clusterAddress == initialAddress && time.Now().Before(stopTime) {
@@ -305,8 +309,61 @@ func retrieveIpAddress(clusterEndpoint string) (string, error) {
 	return clusterAddresses[0], nil
 }
 
+func ConnectToTheWriterWithClusterEndpoint(dsn string, environment *TestEnvironment, auroraTestUtility *AuroraTestUtility,
+	t *testing.T) (driver.Conn, *awsDriver.AwsWrapperDriver) {
+	wrapperDriver := &awsDriver.AwsWrapperDriver{}
+
+	endRetryTimeNano := time.Now().Add(RETRY_CONNECTION_TO_WRITER_WITH_CLUSTER_ENDPOINT_TIME)
+	var conn driver.Conn
+	var err error
+	for time.Now().Before(endRetryTimeNano) {
+		conn, err = wrapperDriver.Open(dsn)
+		if err != nil {
+			slog.Debug("Unable to open connection with dsn.")
+			continue
+		}
+		instanceId, err := ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
+		assert.Nil(t, err)
+		writerId, err := auroraTestUtility.GetClusterWriterInstanceId("")
+		assert.Nil(t, err)
+		slog.Debug(fmt.Sprintf("Writer instance id: %s. Connected to: %s.", writerId, instanceId))
+		if writerId == instanceId {
+			slog.Debug("Connected to the writer!")
+			break
+		}
+		err = conn.Close()
+		slog.Debug(fmt.Sprintf("Closing connection, err: %e.", err))
+	}
+	return conn, wrapperDriver
+}
+
+func ConnectToTheWriterWithClusterEndpointDB(dsn string, environment *TestEnvironment, auroraTestUtility *AuroraTestUtility, t *testing.T) *sql.DB {
+	endRetryTimeNano := time.Now().Add(RETRY_CONNECTION_TO_WRITER_WITH_CLUSTER_ENDPOINT_TIME)
+	var db *sql.DB
+	var err error
+	for time.Now().Before(endRetryTimeNano) {
+		db, err = sql.Open("awssql", dsn)
+		if err != nil {
+			slog.Debug("Unable to open connection with dsn.")
+			continue
+		}
+		instanceId, err := ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
+		assert.Nil(t, err)
+		writerId, err := auroraTestUtility.GetClusterWriterInstanceId("")
+		assert.Nil(t, err)
+		slog.Debug(fmt.Sprintf("Writer instance id: %s. Connected to: %s.", writerId, instanceId))
+		if writerId == instanceId {
+			slog.Debug("Connected to the writer!")
+			break
+		}
+		err = db.Close()
+		slog.Debug(fmt.Sprintf("Closing connection, err: %e.", err))
+	}
+	return db
+}
+
 func BasicCleanupAfterBasicSetup(t *testing.T) func() {
-	_, err := BasicSetup(t.Name())
+	err := BasicSetup(t.Name())
 	assert.Nil(t, err)
 
 	return func() {
@@ -314,23 +371,25 @@ func BasicCleanupAfterBasicSetup(t *testing.T) func() {
 	}
 }
 
-func BasicSetup(name string) (*AuroraTestUtility, error) {
+func BasicSetup(name string) error {
 	slog.SetLogLoggerLevel(slog.LevelDebug)
 	slog.Info(fmt.Sprintf("Test started: %s.", name))
-	env, err := GetCurrentTestEnvironment()
-	if err != nil {
-		return nil, err
-	}
-	auroraTestUtility := NewAuroraTestUtility(env.Info().Region)
+
 	EnableAllConnectivity()
-	err = VerifyClusterStatus()
-	if err != nil {
-		return nil, err
-	}
-	return auroraTestUtility, nil
+	return VerifyClusterStatus()
 }
 
 func BasicCleanup(name string) {
 	awsDriver.ClearCaches()
 	slog.Info(fmt.Sprintf("Test finished: %s.", name))
+}
+
+func FailoverSetup(t *testing.T) (*AuroraTestUtility, error) {
+	environment, err := GetCurrentTestEnvironment()
+	assert.Nil(t, err)
+	if environment.Info().Request.InstanceCount < 2 {
+		t.Skipf("Skipping integration test %s, instanceCount = %v.", t.Name(), environment.Info().Request.InstanceCount)
+	}
+	auroraTestUtility := NewAuroraTestUtility(environment.Info().Region)
+	return auroraTestUtility, BasicSetup(t.Name())
 }
