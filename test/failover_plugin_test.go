@@ -24,6 +24,7 @@ import (
 	"awssql/plugins"
 	"awssql/property_util"
 	"awssql/utils"
+	"awssql/utils/telemetry"
 	"database/sql/driver"
 	"errors"
 	"slices"
@@ -232,7 +233,9 @@ func initializeTest(
 	connectFails bool,
 	forceRefreshFails bool,
 	isCurrentConnNil bool) (*MockFailoverPlugin, *MockPluginServiceImpl) {
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}))
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	mockPluginManager := driver_infrastructure.PluginManager(
+		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
 	pluginServiceImpl := newMockPluginServiceImpl(
 		mockPluginManager,
 		driver_infrastructure.MySQLDriverDialect{},
@@ -264,7 +267,7 @@ func initializeTest(
 			ConnProviderManager: mockPluginManager.GetConnectionProviderManager(),
 		},
 	}
-	failoverPlugin := plugins.NewFailoverPlugin(pluginServiceImpl, props)
+	failoverPlugin, _ := plugins.NewFailoverPlugin(pluginServiceImpl, props)
 	mockFailoverPlugin := &MockFailoverPlugin{FailoverPlugin: failoverPlugin}
 	_ = mockPluginManager.Init(mockPluginService, []driver_infrastructure.ConnectionPlugin{mockFailoverPlugin, &defaultPlugin})
 	_ = mockPluginManager.InitHostProvider(mysqlTestDsn, props, hostListProviderService)

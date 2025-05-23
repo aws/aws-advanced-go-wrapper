@@ -22,6 +22,7 @@ import (
 	"awssql/host_info_util"
 	"awssql/property_util"
 	"awssql/utils"
+	"awssql/utils/telemetry"
 	"context"
 	"database/sql/driver"
 	"log/slog"
@@ -227,6 +228,15 @@ func (m *MonitorImpl) UpdateHostHealthStatus(connIsValid bool, statusCheckStartT
 }
 
 func (m *MonitorImpl) CheckConnectionStatus() bool {
+	parentCtx := m.pluginService.GetTelemetryContext()
+	telemetryCtx, ctx := m.pluginService.GetTelemetryFactory().OpenTelemetryContext(telemetry.TELEMETRY_CONN_STATUS_CHECK, telemetry.FORCE_TOP_LEVEL, nil)
+	telemetryCtx.SetAttribute(telemetry.TELEMETRY_ATTRIBUTE_URL, m.hostInfo.Host)
+	m.pluginService.SetTelemetryContext(ctx)
+	defer func() {
+		telemetryCtx.CloseContext()
+		m.pluginService.SetTelemetryContext(parentCtx)
+	}()
+
 	if m.MonitoringConn == nil || utils.IsConnectionLost(m.MonitoringConn) {
 		// Open a new connection.
 		slog.Debug(error_util.GetMessage("MonitorImpl.openingMonitoringConnection", m.hostInfo.Host))

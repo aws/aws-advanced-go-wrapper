@@ -20,12 +20,14 @@ import (
 	"awssql/driver_infrastructure"
 	"awssql/plugin_helpers"
 	"awssql/utils"
+	"awssql/utils/telemetry"
 )
 
 type Container struct {
-	PluginManager driver_infrastructure.PluginManager
-	PluginService driver_infrastructure.PluginService
-	Props         map[string]string
+	PluginManager           driver_infrastructure.PluginManager
+	PluginService           driver_infrastructure.PluginService
+	HostListProviderService driver_infrastructure.HostListProviderService
+	Props                   map[string]string
 }
 
 func NewContainer(dsn string) (Container, error) {
@@ -47,7 +49,11 @@ func NewContainer(dsn string) (Container, error) {
 	defaultConnProvider := driver_infrastructure.NewDriverConnectionProvider(targetDriver)
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{DefaultProvider: defaultConnProvider}
 
-	pluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(targetDriver, props, connectionProviderManager))
+	telemetryFactory, err := telemetry.NewDefaultTelemetryFactory(props)
+	if err != nil {
+		return Container{}, err
+	}
+	pluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(targetDriver, props, connectionProviderManager, telemetryFactory))
 	pluginServiceImpl, err := plugin_helpers.NewPluginServiceImpl(pluginManager, targetDriverDialect, props, dsn)
 	if err != nil {
 		return Container{}, err
@@ -69,14 +75,10 @@ func NewContainer(dsn string) (Container, error) {
 	provider := hostListProviderService.CreateHostListProvider(props, dsn)
 	hostListProviderService.SetHostListProvider(provider)
 
-	err = pluginManager.InitHostProvider(dsn, props, hostListProviderService)
-	if err != nil {
-		return Container{}, err
-	}
-
 	return Container{
-		PluginManager: pluginManager,
-		PluginService: pluginService,
-		Props:         props,
+		PluginManager:           pluginManager,
+		PluginService:           pluginService,
+		HostListProviderService: hostListProviderService,
+		Props:                   props,
 	}, nil
 }

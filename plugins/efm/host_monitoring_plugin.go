@@ -34,10 +34,10 @@ type HostMonitoringPluginFactory struct {
 func (h HostMonitoringPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
 	properties map[string]string) (driver_infrastructure.ConnectionPlugin, error) {
 	if pluginService == nil {
-		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("HostMonitoringConnectionPlugin.illegalArgumentException", "pluginService"))
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("HostMonitoringConnectionPlugin.illegalArgumentError", "pluginService"))
 	}
 	if properties == nil {
-		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("HostMonitoringConnectionPlugin.illegalArgumentException", "properties"))
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("HostMonitoringConnectionPlugin.illegalArgumentError", "properties"))
 	}
 	return &HostMonitorConnectionPlugin{pluginService: pluginService, props: properties}, nil
 }

@@ -111,13 +111,11 @@ public class TestEnvironmentConfig implements AutoCloseable {
       createProxyContainers(env);
     }
 
-    if (!USE_OTLP_CONTAINER_FOR_TRACES
-        && request.getFeatures().contains(TestEnvironmentFeatures.TELEMETRY_TRACES_ENABLED)) {
+    if (request.getFeatures().contains(TestEnvironmentFeatures.TELEMETRY_TRACES_ENABLED)) {
       createTelemetryXRayContainer(env);
     }
 
-    if ((USE_OTLP_CONTAINER_FOR_TRACES
-        && request.getFeatures().contains(TestEnvironmentFeatures.TELEMETRY_TRACES_ENABLED))
+    if (request.getFeatures().contains(TestEnvironmentFeatures.TELEMETRY_TRACES_ENABLED)
         || request.getFeatures().contains(TestEnvironmentFeatures.TELEMETRY_METRICS_ENABLED)) {
       createTelemetryOtlpContainer(env);
     }
@@ -228,7 +226,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
     env.info.setRegion(
         !StringUtils.isNullOrEmpty(System.getenv("RDS_DB_REGION"))
             ? System.getenv("RDS_DB_REGION")
-            : "us-east-1");
+            : "eu-west-1");
 
     env.reuseAuroraDbCluster =
         !StringUtils.isNullOrEmpty(System.getenv("REUSE_RDS_CLUSTER"))
@@ -663,7 +661,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
     String xrayAwsRegion =
         !StringUtils.isNullOrEmpty(System.getenv("XRAY_AWS_REGION"))
             ? System.getenv("XRAY_AWS_REGION")
-            : "us-east-1";
+            : "eu-west-1";
 
     LOGGER.finest("Creating XRay telemetry container");
     final ContainerHelper containerHelper = new ContainerHelper();
@@ -685,7 +683,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
         .withEnv("AWS_SECRET_ACCESS_KEY", env.awsSecretAccessKey)
         .withEnv("AWS_SESSION_TOKEN", env.awsSessionToken);
 
-    env.info.setTracesTelemetryInfo(new TestTelemetryInfo(TELEMETRY_XRAY_CONTAINER_NAME, 2000));
+    env.info.setXrayTracesTelemetryInfo(new TestTelemetryInfo(TELEMETRY_XRAY_CONTAINER_NAME, 2000));
     LOGGER.finest("Starting XRay telemetry container");
     env.telemetryXRayContainer.start();
   }
@@ -708,7 +706,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
 
     String otlpRegion = !StringUtils.isNullOrEmpty(System.getenv("OTLP_AWS_REGION"))
         ? System.getenv("OTLP_AWS_REGION")
-        : "us-east-1";
+        : "eu-west-1";
 
     env.telemetryOtlpContainer
         .withEnv("AWS_ACCESS_KEY_ID", env.awsAccessKeyId)
@@ -716,7 +714,8 @@ public class TestEnvironmentConfig implements AutoCloseable {
         .withEnv("AWS_SESSION_TOKEN", env.awsSessionToken)
         .withEnv("AWS_REGION", otlpRegion);
 
-    env.info.setTracesTelemetryInfo(new TestTelemetryInfo(TELEMETRY_OTLP_CONTAINER_NAME, 4317));
+    System.out.println("MAKING OTEL CONTAINER WITH NAME: " + TELEMETRY_OTLP_CONTAINER_NAME);
+    env.info.setOtelTracesTelemetryInfo(new TestTelemetryInfo(TELEMETRY_OTLP_CONTAINER_NAME, 4317));
     env.info.setMetricsTelemetryInfo(new TestTelemetryInfo(TELEMETRY_OTLP_CONTAINER_NAME, 4317));
 
     LOGGER.finest("Starting OTLP telemetry container");

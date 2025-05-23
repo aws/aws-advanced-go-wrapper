@@ -17,6 +17,20 @@
 package test
 
 import (
+	"awssql/driver_infrastructure"
+	"awssql/plugin_helpers"
+	"awssql/utils/telemetry"
+	"context"
+	"errors"
+	"github.com/aws/aws-xray-sdk-go/strategy/sampling"
+	"github.com/aws/aws-xray-sdk-go/xray"
+	"github.com/aws/aws-xray-sdk-go/xraylog"
+	xray2 "go.opentelemetry.io/contrib/propagators/aws/xray"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdkTrace "go.opentelemetry.io/otel/sdk/trace"
 	"os"
 	"testing"
 )
@@ -27,4 +41,62 @@ func readFile(t *testing.T, fileName string) []byte {
 		t.Fatalf("Error reading from file: '%s'.", err.Error())
 	}
 	return content
+}
+
+func SetupTelemetry() error {
+	ctx := context.Background()
+
+	endpoint := "localhost:4317"
+
+	exporter, err := otlptracegrpc.New(
+		ctx,
+		otlptracegrpc.WithEndpoint(endpoint),
+		otlptracegrpc.WithInsecure(),
+	)
+	if err != nil {
+		return errors.New("unable to create otlp trace exporter")
+	}
+
+	bsp := sdkTrace.NewBatchSpanProcessor(exporter,
+		sdkTrace.WithMaxQueueSize(10_000),
+		sdkTrace.WithMaxExportBatchSize(10_000))
+	defer func() { _ = bsp.Shutdown(ctx) }()
+
+	resource, err := resource.New(ctx,
+		resource.WithFromEnv(),
+		resource.WithTelemetrySDK(),
+		resource.WithHost(),
+		resource.WithAttributes(
+			attribute.String("service.name", "aws-advanced-go-wrapper-unit-tests"),
+			attribute.String("service.version", "1.0.0"),
+		))
+	if err != nil {
+		return err
+	}
+
+	tracerProvider := sdkTrace.NewTracerProvider(
+		sdkTrace.WithResource(resource),
+		sdkTrace.WithIDGenerator(xray2.NewIDGenerator()),
+	)
+	tracerProvider.RegisterSpanProcessor(bsp)
+
+	otel.SetTracerProvider(tracerProvider)
+
+	xray.SetLogger(xraylog.NewDefaultLogger(os.Stdout, xraylog.LogLevelDebug))
+	s, _ := sampling.NewCentralizedStrategyWithFilePath("./resources/sampling_rules.json") // path to local sampling json
+	err = xray.Configure(xray.Config{SamplingStrategy: s})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func CreateMockPluginService(props map[string]string) driver_infrastructure.PluginService {
+	mockTargetDriver := &MockTargetDriver{}
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	mockPluginManager := driver_infrastructure.PluginManager(
+		plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
+	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, driver_infrastructure.NewMySQLDriverDialect(), props, mysqlTestDsn)
+	return driver_infrastructure.PluginService(pluginServiceImpl)
 }

@@ -26,6 +26,7 @@ import (
 	"awssql/plugins/efm"
 	"awssql/plugins/federated_auth"
 	"awssql/plugins/iam"
+	"awssql/utils/telemetry"
 	"database/sql/driver"
 	"testing"
 )
@@ -69,6 +70,15 @@ func TestImplementations(t *testing.T) {
 	var _ driver_infrastructure.ConnectionPluginFactory = (*aws_secrets_manager.AwsSecretsManagerPluginFactory)(nil)
 	var _ driver_infrastructure.ConnectionPluginFactory = (*federated_auth.OktaAuthPluginFactory)(nil)
 	var _ driver_infrastructure.ConnectionPluginFactory = (*federated_auth.FederatedAuthPluginFactory)(nil)
+	var _ telemetry.TelemetryCounter = (*telemetry.NilTelemetryCounter)(nil)
+	var _ telemetry.TelemetryCounter = (*telemetry.OpenTelemetryCounter)(nil)
+	var _ telemetry.TelemetryContext = (*telemetry.NilTelemetryContext)(nil)
+	var _ telemetry.TelemetryContext = (*telemetry.OpenTelemetryContext)(nil)
+	var _ telemetry.TelemetryContext = (*telemetry.XRayTelemetryContext)(nil)
+	var _ telemetry.TelemetryFactory = (*telemetry.NilTelemetryFactory)(nil)
+	var _ telemetry.TelemetryFactory = (*telemetry.OpenTelemetryFactory)(nil)
+	var _ telemetry.TelemetryFactory = (*telemetry.XRayTelemetryFactory)(nil)
+	var _ telemetry.TelemetryFactory = (*telemetry.DefaultTelemetryFactory)(nil)
 	var _ efm.MonitorService = (*efm.MonitorServiceImpl)(nil)
 	var _ efm.Monitor = (*efm.MonitorImpl)(nil)
 	var _ error_util.ErrorHandler = (*driver_infrastructure.MySQLErrorHandler)(nil)

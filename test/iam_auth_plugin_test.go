@@ -20,7 +20,6 @@ import (
 	"awssql/driver_infrastructure"
 	"awssql/error_util"
 	"awssql/host_info_util"
-	"awssql/plugin_helpers"
 	"awssql/plugins/iam"
 	"awssql/property_util"
 	"awssql/region_util"
@@ -34,11 +33,7 @@ import (
 
 func beforeIamAuthPluginTests(props map[string]string) (driver_infrastructure.PluginService, iam.IamTokenUtility) {
 	iam.ClearCaches()
-	mockTargetDriver := &MockTargetDriver{}
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}))
-	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, driver_infrastructure.NewMySQLDriverDialect(), props, mysqlTestDsn)
-
-	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
+	mockPluginService := CreateMockPluginService(props)
 	return mockPluginService, &MockIamTokenUtility{}
 }
 
@@ -53,7 +48,7 @@ func TestIamAuthPluginConnect(t *testing.T) {
 	}
 	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
 
-	iamAuthPlugin := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
+	iamAuthPlugin, _ := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
 
 	_, err = iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
 
@@ -81,7 +76,7 @@ func TestIamAuthPluginConnectWithIamProps(t *testing.T) {
 	}
 	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
 
-	iamAuthPlugin := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
+	iamAuthPlugin, _ := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
 
 	_, err = iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
 
@@ -107,7 +102,7 @@ func TestIamAuthPluginConnectInvalidRegionError(t *testing.T) {
 	}
 	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
 
-	iamAuthPlugin := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
+	iamAuthPlugin, _ := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
 
 	_, err = iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
 
@@ -126,7 +121,7 @@ func TestIamAuthPluginConnectPopulatesEmptyTokenCache(t *testing.T) {
 	}
 	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
 
-	iamAuthPlugin := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
+	iamAuthPlugin, _ := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
 
 	assert.Equal(t, 0, iam.TokenCache.Size())
 
@@ -162,7 +157,7 @@ func TestIamAuthPluginConnectUsesCachedToken(t *testing.T) {
 
 	iam.TokenCache.Put(cacheKey, cachedToken, cacheExpirationDuration)
 
-	iamAuthPlugin := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
+	iamAuthPlugin, _ := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
 
 	_, err = iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
 
@@ -196,7 +191,7 @@ func TestIamAuthPluginConnectCacheExpiredToken(t *testing.T) {
 
 	iam.TokenCache.Put(cacheKey, cachedToken, expiredCacheExpirationDuration)
 
-	iamAuthPlugin := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
+	iamAuthPlugin, _ := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
 
 	_, err = iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
 
@@ -247,7 +242,7 @@ func TestIamAuthPluginConnectTtlExpiredCachedToken(t *testing.T) {
 
 	iam.TokenCache.Put(cacheKey, cachedToken, expiredCacheExpirationDuration)
 
-	iamAuthPlugin := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
+	iamAuthPlugin, _ := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
 
 	_, err = iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
 
@@ -274,7 +269,7 @@ func TestIamAuthPluginConnectLoginError(t *testing.T) {
 	}
 	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
 
-	iamAuthPlugin := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
+	iamAuthPlugin, _ := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
 
 	result, err := iamAuthPlugin.Connect(hostInfo, props, false, mockConnFunc)
 

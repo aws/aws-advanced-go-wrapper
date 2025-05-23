@@ -24,6 +24,7 @@ import (
 	"awssql/plugins/federated_auth"
 	"awssql/property_util"
 	"awssql/region_util"
+	"awssql/utils/telemetry"
 	"database/sql/driver"
 	"errors"
 	"testing"
@@ -51,10 +52,13 @@ func setup(props map[string]string) *federated_auth.FederatedAuthPlugin {
 	credentialsProviderFactory.getAwsCredentialsProviderError = nil
 	federated_auth.TokenCache.Clear()
 	mockTargetDriver := &MockTargetDriver{}
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}))
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	mockPluginManager := driver_infrastructure.PluginManager(
+		plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, driver_infrastructure.NewPgxDriverDialect(), props, pgTestDsn)
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
-	return federated_auth.NewFederatedAuthPlugin(mockPluginService, credentialsProviderFactory, mockIamTokenUtility)
+	federatedAuthPlugin, _ := federated_auth.NewFederatedAuthPlugin(mockPluginService, credentialsProviderFactory, mockIamTokenUtility)
+	return federatedAuthPlugin
 }
 
 func TestCachedToken(t *testing.T) {

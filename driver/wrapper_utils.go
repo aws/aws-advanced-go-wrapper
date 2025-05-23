@@ -19,8 +19,11 @@ package driver
 import (
 	"awssql/driver_infrastructure"
 	"awssql/error_util"
+	"awssql/utils/telemetry"
+	"context"
 	"database/sql/driver"
 	"errors"
+	"fmt"
 )
 
 func ExecuteWithPlugins(
@@ -28,7 +31,24 @@ func ExecuteWithPlugins(
 	methodName string,
 	executeFunc driver_infrastructure.ExecuteFunc,
 	methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
-	return pluginManager.Execute(methodName, executeFunc, methodArgs...)
+	telemetryCtx, ctx := pluginManager.GetTelemetryFactory().OpenTelemetryContext(
+		fmt.Sprintf(telemetry.TELEMETRY_EXECUTE, methodName),
+		telemetry.TOP_LEVEL,
+		nil)
+	telemetryCtx.SetAttribute(telemetry.TELEMETRY_ATTRIBUTE_SQL_CALL, methodName)
+	pluginManager.SetTelemetryContext(ctx)
+	defer func() {
+		telemetryCtx.CloseContext()
+		pluginManager.SetTelemetryContext(context.TODO())
+	}()
+	wrappedReturnValue, wrappedReturnValue2, wrappedOk, wrappedErr = pluginManager.Execute(methodName, executeFunc, methodArgs...)
+	if wrappedErr != nil {
+		telemetryCtx.SetSuccess(false)
+		telemetryCtx.SetError(wrappedErr)
+	} else {
+		telemetryCtx.SetSuccess(true)
+	}
+	return
 }
 
 func queryWithPlugins(

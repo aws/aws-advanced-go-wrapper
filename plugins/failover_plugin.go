@@ -23,6 +23,8 @@ import (
 	"awssql/plugin_helpers"
 	"awssql/property_util"
 	"awssql/utils"
+	"awssql/utils/telemetry"
+	"context"
 	"database/sql/driver"
 	"errors"
 	"log/slog"
@@ -60,7 +62,7 @@ type ReaderFailoverResult struct {
 type FailoverPluginFactory struct{}
 
 func (f FailoverPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService, props map[string]string) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewFailoverPlugin(pluginService, props), nil
+	return NewFailoverPlugin(pluginService, props)
 }
 
 func NewFailoverPluginFactory() driver_infrastructure.ConnectionPluginFactory {
@@ -68,29 +70,68 @@ func NewFailoverPluginFactory() driver_infrastructure.ConnectionPluginFactory {
 }
 
 type FailoverPlugin struct {
-	pluginService                             driver_infrastructure.PluginService
-	hostListProviderService                   driver_infrastructure.HostListProviderService
-	props                                     map[string]string
-	failoverTimeoutMsSetting                  int
-	failoverReaderHostSelectorStrategySetting string
-	FailoverMode                              FailoverMode
-	isInTransaction                           bool
-	rdsUrlType                                utils.RdsUrlType
-	lastErrorDealtWith                        error
-	staleDnsHelper                            *StaleDnsHelper
+	pluginService                              driver_infrastructure.PluginService
+	hostListProviderService                    driver_infrastructure.HostListProviderService
+	props                                      map[string]string
+	failoverTimeoutMsSetting                   int
+	failoverReaderHostSelectorStrategySetting  string
+	FailoverMode                               FailoverMode
+	isInTransaction                            bool
+	rdsUrlType                                 utils.RdsUrlType
+	lastErrorDealtWith                         error
+	staleDnsHelper                             *StaleDnsHelper
+	failoverWriterTriggeredCounter             telemetry.TelemetryCounter
+	failoverWriterSuccessCounter               telemetry.TelemetryCounter
+	failoverWriterFailedCounter                telemetry.TelemetryCounter
+	failoverReaderTriggeredCounter             telemetry.TelemetryCounter
+	failoverReaderSuccessCounter               telemetry.TelemetryCounter
+	failoverReaderFailedCounter                telemetry.TelemetryCounter
+	telemetryFailoverAdditionalTopTraceSetting bool
 	BaseConnectionPlugin
 }
 
-func NewFailoverPlugin(pluginService driver_infrastructure.PluginService, props map[string]string) *FailoverPlugin {
+func NewFailoverPlugin(pluginService driver_infrastructure.PluginService, props map[string]string) (*FailoverPlugin, error) {
 	failoverTimeoutMsSetting := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.FAILOVER_TIMEOUT_MS)
 	failoverReaderHostSelectorStrategySetting := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.FAILOVER_READER_HOST_SELECTOR_STRATEGY)
+
+	failoverWriterTriggeredCounter, err := pluginService.GetTelemetryFactory().CreateCounter("writerFailover.triggered.count")
+	if err != nil {
+		return nil, err
+	}
+	failoverWriterSuccessCounter, err := pluginService.GetTelemetryFactory().CreateCounter("writerFailover.completed.success.count")
+	if err != nil {
+		return nil, err
+	}
+	failoverWriterFailedCounter, err := pluginService.GetTelemetryFactory().CreateCounter("writerFailover.completed.failed.count")
+	if err != nil {
+		return nil, err
+	}
+	failoverReaderTriggeredCounter, err := pluginService.GetTelemetryFactory().CreateCounter("readerFailover.triggered.count")
+	if err != nil {
+		return nil, err
+	}
+	failoverReaderSuccessCounter, err := pluginService.GetTelemetryFactory().CreateCounter("readerFailover.completed.success.count")
+	if err != nil {
+		return nil, err
+	}
+	failoverReaderFailedCounter, err := pluginService.GetTelemetryFactory().CreateCounter("readerFailover.completed.failed.count")
+	if err != nil {
+		return nil, err
+	}
 	return &FailoverPlugin{
 		pluginService:            pluginService,
 		props:                    props,
 		failoverTimeoutMsSetting: failoverTimeoutMsSetting,
 		failoverReaderHostSelectorStrategySetting: failoverReaderHostSelectorStrategySetting,
-		staleDnsHelper: &StaleDnsHelper{pluginService: pluginService},
-	}
+		staleDnsHelper:                             &StaleDnsHelper{pluginService: pluginService},
+		failoverWriterTriggeredCounter:             failoverWriterTriggeredCounter,
+		failoverWriterSuccessCounter:               failoverWriterSuccessCounter,
+		failoverWriterFailedCounter:                failoverWriterFailedCounter,
+		failoverReaderTriggeredCounter:             failoverReaderTriggeredCounter,
+		failoverReaderSuccessCounter:               failoverReaderSuccessCounter,
+		failoverReaderFailedCounter:                failoverReaderFailedCounter,
+		telemetryFailoverAdditionalTopTraceSetting: property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.TELEMETRY_FAILOVER_ADDITIONAL_TOP_TRACE),
+	}, nil
 }
 
 func (p *FailoverPlugin) GetSubscribedMethods() []string {
@@ -265,8 +306,21 @@ func (p *FailoverPlugin) returnFailoverSuccessError() error {
 func (p *FailoverPlugin) FailoverWriter() error {
 	failoverStartTime := time.Now()
 
+	parentCtx := p.pluginService.GetTelemetryContext()
+	telemetryCtx, ctx := p.pluginService.GetTelemetryFactory().OpenTelemetryContext(telemetry.TELEMETRY_WRITER_FAILOVER, telemetry.NESTED, parentCtx)
+	p.pluginService.SetTelemetryContext(ctx)
+	p.failoverWriterTriggeredCounter.Inc(ctx)
+
 	defer func() {
 		slog.Info(error_util.GetMessage("Failover.writerFailoverElapsed", time.Since(failoverStartTime)))
+		telemetryCtx.CloseContext()
+		p.pluginService.SetTelemetryContext(parentCtx)
+		if p.telemetryFailoverAdditionalTopTraceSetting {
+			err := p.pluginService.GetTelemetryFactory().PostCopy(telemetryCtx, telemetry.FORCE_TOP_LEVEL)
+			if err != nil {
+				slog.Error(err.Error())
+			}
+		}
 	}()
 
 	slog.Info(error_util.GetMessage("Failover.startWriterFailover"))
@@ -275,7 +329,9 @@ func (p *FailoverPlugin) FailoverWriter() error {
 	forceRefreshOk, _ := p.pluginService.ForceRefreshHostListWithTimeout(true, p.failoverTimeoutMsSetting)
 	if !forceRefreshOk {
 		slog.Error(error_util.GetMessage("Failover.unableToRefreshHostList"))
-		return error_util.NewFailoverFailedError(error_util.GetMessage("Failover.unableToRefreshHostList"))
+		err := error_util.NewFailoverFailedError(error_util.GetMessage("Failover.unableToRefreshHostList"))
+		p.recordTelemetryWriterFailoverFailed(telemetryCtx, ctx, err)
+		return err
 	}
 
 	updatedHosts := p.pluginService.GetHosts()
@@ -284,13 +340,17 @@ func (p *FailoverPlugin) FailoverWriter() error {
 	if writerCandidate.IsNil() {
 		message := utils.LogTopology(updatedHosts, error_util.GetMessage("Failover.noWriterHost"))
 		slog.Error(message)
-		return error_util.NewFailoverFailedError(message)
+		err := error_util.NewFailoverFailedError(message)
+		p.recordTelemetryWriterFailoverFailed(telemetryCtx, ctx, err)
+		return err
 	}
 
 	writerCandidateConn, err := p.createConnectionForHost(writerCandidate)
 	if err != nil {
 		slog.Error(error_util.GetMessage("Failover.errorConnectingToWriter", err.Error()))
-		return error_util.NewFailoverFailedError(err.Error())
+		err = error_util.NewFailoverFailedError(err.Error())
+		p.recordTelemetryWriterFailoverFailed(telemetryCtx, ctx, err)
+		return err
 	}
 
 	role := p.pluginService.GetHostRole(writerCandidateConn)
@@ -299,28 +359,54 @@ func (p *FailoverPlugin) FailoverWriter() error {
 
 		message := error_util.GetMessage("Failover.unexpectedReaderRole", writerCandidate.Host, role)
 		slog.Error(message)
-		return error_util.NewFailoverFailedError(message)
+		err = error_util.NewFailoverFailedError(message)
+		p.recordTelemetryWriterFailoverFailed(telemetryCtx, ctx, err)
+		return err
 	}
 
 	err = p.pluginService.SetCurrentConnection(writerCandidateConn, writerCandidate, nil)
 	if err != nil {
+		p.recordTelemetryWriterFailoverFailed(telemetryCtx, ctx, err)
 		return err
 	}
 
 	currentHostInfo, err := p.pluginService.GetCurrentHostInfo()
 	if currentHostInfo.IsNil() || err != nil {
+		p.recordTelemetryWriterFailoverFailed(telemetryCtx, ctx, err)
 		return err
 	}
 	slog.Info(error_util.GetMessage("Failover.establishedConnection", currentHostInfo.String()))
-	return p.returnFailoverSuccessError()
+	failoverSuccessErr := p.returnFailoverSuccessError()
+	telemetryCtx.SetSuccess(true)
+	telemetryCtx.SetError(failoverSuccessErr)
+	p.failoverWriterSuccessCounter.Inc(ctx)
+	return failoverSuccessErr
+}
+
+func (p *FailoverPlugin) recordTelemetryWriterFailoverFailed(telemetryCtx telemetry.TelemetryContext, ctx context.Context, err error) {
+	telemetryCtx.SetSuccess(false)
+	telemetryCtx.SetError(err)
+	p.failoverWriterFailedCounter.Inc(ctx)
 }
 
 func (p *FailoverPlugin) FailoverReader() error {
 	failoverStartTime := time.Now()
 	failoverEndTime := failoverStartTime.Add(time.Duration(p.failoverTimeoutMsSetting) * time.Millisecond)
 
+	parentCtx := p.pluginService.GetTelemetryContext()
+	telemetryCtx, ctx := p.pluginService.GetTelemetryFactory().OpenTelemetryContext(telemetry.TELEMETRY_READER_FAILOVER, telemetry.NESTED, parentCtx)
+	p.pluginService.SetTelemetryContext(ctx)
+	p.failoverReaderTriggeredCounter.Inc(ctx)
 	defer func() {
 		slog.Info(error_util.GetMessage("Failover.readerFailoverElapsed", time.Since(failoverStartTime)))
+		telemetryCtx.CloseContext()
+		p.pluginService.SetTelemetryContext(parentCtx)
+		if p.telemetryFailoverAdditionalTopTraceSetting {
+			err := p.pluginService.GetTelemetryFactory().PostCopy(telemetryCtx, telemetry.FORCE_TOP_LEVEL)
+			if err != nil {
+				slog.Error(err.Error())
+			}
+		}
 	}()
 
 	slog.Info(error_util.GetMessage("Failover.startReaderFailover"))
@@ -328,24 +414,41 @@ func (p *FailoverPlugin) FailoverReader() error {
 	// for it to get updated, since we do not need updated topology to establish a reader connection.
 	forceRefreshOk, err := p.pluginService.ForceRefreshHostListWithTimeout(false, 0)
 	if err != nil {
+		p.recordTelemetryReaderFailoverFailed(telemetryCtx, ctx, err)
 		return err
 	}
 	if !forceRefreshOk {
 		slog.Error(error_util.GetMessage("Failover.failoverReaderUnableToRefreshHostList"))
-		return error_util.NewFailoverFailedError(error_util.GetMessage("Failover.failoverReaderUnableToRefreshHostList"))
+		err = error_util.NewFailoverFailedError(error_util.GetMessage("Failover.failoverReaderUnableToRefreshHostList"))
+		p.recordTelemetryReaderFailoverFailed(telemetryCtx, ctx, err)
+		return err
 	}
 
 	result, getReaderErr := p.getReaderFailoverConnection(failoverEndTime)
 	if getReaderErr != nil {
-		return p.returnReaderFailoverErr(getReaderErr)
+		err = p.returnReaderFailoverErr(getReaderErr)
+		p.recordTelemetryReaderFailoverFailed(telemetryCtx, ctx, err)
+		return err
 	}
 	setConnErr := p.pluginService.SetCurrentConnection(result.Conn, result.HostInfo, nil)
 	if setConnErr != nil {
-		return p.returnReaderFailoverErr(setConnErr)
+		err = p.returnReaderFailoverErr(setConnErr)
+		p.recordTelemetryReaderFailoverFailed(telemetryCtx, ctx, err)
+		return err
 	}
 
 	slog.Info(error_util.GetMessage("Failover.establishedConnection", result.HostInfo.String()))
-	return p.returnFailoverSuccessError()
+	successErr := p.returnFailoverSuccessError()
+	telemetryCtx.SetSuccess(true)
+	telemetryCtx.SetError(successErr)
+	p.failoverReaderSuccessCounter.Inc(ctx)
+	return successErr
+}
+
+func (p *FailoverPlugin) recordTelemetryReaderFailoverFailed(telemetryCtx telemetry.TelemetryContext, ctx context.Context, err error) {
+	telemetryCtx.SetSuccess(false)
+	telemetryCtx.SetError(err)
+	p.failoverReaderFailedCounter.Inc(ctx)
 }
 
 func (p *FailoverPlugin) returnReaderFailoverErr(err error) error {

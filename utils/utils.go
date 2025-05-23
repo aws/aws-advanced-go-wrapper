@@ -215,3 +215,7 @@ func Rollback(conn driver.Conn, currentTx driver.Tx) {
 		}
 	}
 }
+
+func GetStructName(v any) string {
+	return strings.ReplaceAll(fmt.Sprintf("%T", v), "*", "")
+}

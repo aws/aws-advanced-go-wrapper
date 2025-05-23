@@ -26,7 +26,7 @@ import (
 )
 
 func TestBasicConnectivityWrapper(t *testing.T) {
-	defer test_utils.BasicCleanupAfterBasicSetup(t)
+	defer test_utils.BasicCleanupAfterBasicSetup(t)()
 
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
@@ -42,7 +42,7 @@ func TestBasicConnectivityWrapper(t *testing.T) {
 }
 
 func TestBasicConnectivityWrapperProxy(t *testing.T) {
-	defer test_utils.BasicCleanupAfterBasicSetup(t)
+	defer test_utils.BasicCleanupAfterBasicSetup(t)()
 
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
@@ -72,7 +72,7 @@ func TestBasicConnectivityWrapperProxy(t *testing.T) {
 }
 
 func TestBasicConnectivityFailoverClusterEndpoint(t *testing.T) {
-	defer test_utils.BasicCleanupAfterBasicSetup(t)
+	defer test_utils.BasicCleanupAfterBasicSetup(t)()
 
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
@@ -88,7 +88,7 @@ func TestBasicConnectivityFailoverClusterEndpoint(t *testing.T) {
 }
 
 func TestBasicConnectivityFailoverInstanceEndpoint(t *testing.T) {
-	defer test_utils.BasicCleanupAfterBasicSetup(t)
+	defer test_utils.BasicCleanupAfterBasicSetup(t)()
 
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
@@ -106,7 +106,7 @@ func TestBasicConnectivityFailoverInstanceEndpoint(t *testing.T) {
 }
 
 func TestBasicConnectivityFailoverReaderEndpoint(t *testing.T) {
-	defer test_utils.BasicCleanupAfterBasicSetup(t)
+	defer test_utils.BasicCleanupAfterBasicSetup(t)()
 
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)

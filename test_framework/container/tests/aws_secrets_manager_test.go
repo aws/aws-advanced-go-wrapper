@@ -89,6 +89,14 @@ func TestSecretsManager(t *testing.T) {
 		connectionTest(t, env, secretName)
 	})
 
+	t.Run("ConnectionWithTelemetryOtel", func(t *testing.T) {
+		connectionTestWithTelemetryOtel(t, env, secretName)
+	})
+
+	t.Run("ConnectionWithTelemetryXray", func(t *testing.T) {
+		connectionTestWithTelemetryXray(t, env, secretName)
+	})
+
 	t.Run("ConnectWithARN", func(t *testing.T) {
 		connectWithARNTest(t, env, secretARN)
 	})
@@ -115,7 +123,7 @@ func TestSecretsManager(t *testing.T) {
 }
 
 func connectionTest(t *testing.T, env *test_utils.TestEnvironment, secretName string) {
-	defer test_utils.BasicCleanupAfterBasicSetup(t)
+	defer test_utils.BasicCleanupAfterBasicSetup(t)()
 
 	dsn := test_utils.GetDsn(env, map[string]string{
 		"plugins":                "awsSecretsManager",
@@ -133,8 +141,60 @@ func connectionTest(t *testing.T, env *test_utils.TestEnvironment, secretName st
 	assert.Nil(t, pingErr)
 }
 
+func connectionTestWithTelemetryOtel(t *testing.T, env *test_utils.TestEnvironment, secretName string) {
+	defer test_utils.BasicCleanupAfterBasicSetup(t)()
+	bsp, err := test_utils.SetupTelemetry(env)
+	assert.Nil(t, err)
+	assert.NotNil(t, bsp)
+	defer func() { _ = bsp.Shutdown(context.TODO()) }()
+
+	dsn := test_utils.GetDsn(env, map[string]string{
+		"plugins":                 "awsSecretsManager",
+		"user":                    "incorrectUser",
+		"password":                "incorrectPassword",
+		"secretsManagerSecretId":  secretName,
+		"secretsManagerRegion":    env.Info().Region,
+		"enableTelemetry":         "true",
+		"telemetryTracesBackend":  "OTLP",
+		"telemetryMetricsBackend": "OTLP",
+	})
+	db, err := sql.Open("awssql", dsn)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+	defer db.Close()
+
+	pingErr := db.Ping()
+	assert.Nil(t, pingErr)
+}
+
+func connectionTestWithTelemetryXray(t *testing.T, env *test_utils.TestEnvironment, secretName string) {
+	defer test_utils.BasicCleanupAfterBasicSetup(t)()
+	bsp, err := test_utils.SetupTelemetry(env)
+	assert.Nil(t, err)
+	assert.NotNil(t, bsp)
+	defer func() { _ = bsp.Shutdown(context.TODO()) }()
+
+	dsn := test_utils.GetDsn(env, map[string]string{
+		"plugins":                 "awsSecretsManager",
+		"user":                    "incorrectUser",
+		"password":                "incorrectPassword",
+		"secretsManagerSecretId":  secretName,
+		"secretsManagerRegion":    env.Info().Region,
+		"enableTelemetry":         "true",
+		"telemetryTracesBackend":  "XRAY",
+		"telemetryMetricsBackend": "OTLP",
+	})
+	db, err := sql.Open("awssql", dsn)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+	defer db.Close()
+
+	pingErr := db.Ping()
+	assert.Nil(t, pingErr)
+}
+
 func connectWithARNTest(t *testing.T, env *test_utils.TestEnvironment, secretARN string) {
-	defer test_utils.BasicCleanupAfterBasicSetup(t)
+	defer test_utils.BasicCleanupAfterBasicSetup(t)()
 
 	dsn := test_utils.GetDsn(env, map[string]string{
 		"plugins":                "awsSecretsManager",
@@ -152,7 +212,7 @@ func connectWithARNTest(t *testing.T, env *test_utils.TestEnvironment, secretARN
 }
 
 func incorrectSecretIdTest(t *testing.T, env *test_utils.TestEnvironment) {
-	defer test_utils.BasicCleanupAfterBasicSetup(t)
+	defer test_utils.BasicCleanupAfterBasicSetup(t)()
 
 	dsn := test_utils.GetDsn(env, map[string]string{
 		"plugins":                "awsSecretsManager",
@@ -171,7 +231,7 @@ func incorrectSecretIdTest(t *testing.T, env *test_utils.TestEnvironment) {
 }
 
 func missingSecretIdTest(t *testing.T, env *test_utils.TestEnvironment) {
-	defer test_utils.BasicCleanupAfterBasicSetup(t)
+	defer test_utils.BasicCleanupAfterBasicSetup(t)()
 
 	dsn := test_utils.GetDsn(env, map[string]string{
 		"plugins":              "awsSecretsManager",
@@ -189,7 +249,7 @@ func missingSecretIdTest(t *testing.T, env *test_utils.TestEnvironment) {
 }
 
 func invalidRegionTest(t *testing.T, env *test_utils.TestEnvironment, secretName string) {
-	defer test_utils.BasicCleanupAfterBasicSetup(t)
+	defer test_utils.BasicCleanupAfterBasicSetup(t)()
 
 	dsn := test_utils.GetDsn(env, map[string]string{
 		"plugins":                "awsSecretsManager",
@@ -211,7 +271,7 @@ func invalidRegionTest(t *testing.T, env *test_utils.TestEnvironment, secretName
 }
 
 func missingRegionTest(t *testing.T, env *test_utils.TestEnvironment, secretName string) {
-	defer test_utils.BasicCleanupAfterBasicSetup(t)
+	defer test_utils.BasicCleanupAfterBasicSetup(t)()
 
 	dsn := test_utils.GetDsn(env, map[string]string{
 		"plugins":                "awsSecretsManager",
@@ -232,7 +292,7 @@ func missingRegionTest(t *testing.T, env *test_utils.TestEnvironment, secretName
 }
 
 func incorrectRegionTest(t *testing.T, env *test_utils.TestEnvironment, secretName string) {
-	defer test_utils.BasicCleanupAfterBasicSetup(t)
+	defer test_utils.BasicCleanupAfterBasicSetup(t)()
 
 	dsn := test_utils.GetDsn(env, map[string]string{
 		"plugins":                "awsSecretsManager",

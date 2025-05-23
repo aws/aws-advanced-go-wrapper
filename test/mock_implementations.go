@@ -410,6 +410,7 @@ func (m *MockIamTokenUtility) GenerateAuthenticationToken(
 	port int,
 	region region_util.Region,
 	awsCredentialsProvider aws.CredentialsProvider,
+	pluginService driver_infrastructure.PluginService,
 ) (string, error) {
 	m.GenerateAuthenticationTokenCallCounter++
 	m.CapturedUsername = username

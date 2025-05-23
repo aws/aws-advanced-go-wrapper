@@ -21,6 +21,7 @@ import (
 	"awssql/error_util"
 	"awssql/property_util"
 	"awssql/utils"
+	"awssql/utils/telemetry"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -37,14 +38,16 @@ var ONE_TIME_TOKEN = "onetimetoken"
 type OktaCredentialsProviderFactory struct {
 	SamlCredentialsProviderFactory
 	httpClientProvider HttpClientProvider
+	pluginService      driver_infrastructure.PluginService
 }
 
 func NewOktaCredentialsProviderFactory(
 	httpClientProvider HttpClientProvider,
 	awsStsClientProvider driver_infrastructure.AwsStsClientProvider,
-) *OktaCredentialsProviderFactory {
+	pluginService driver_infrastructure.PluginService) *OktaCredentialsProviderFactory {
 	providerFactory := &OktaCredentialsProviderFactory{
 		httpClientProvider: httpClientProvider,
+		pluginService:      pluginService,
 	}
 	providerFactory.GetSamlAssertionFunc = providerFactory.GetSamlAssertion
 	providerFactory.AwsStsClientProvider = awsStsClientProvider
@@ -52,8 +55,18 @@ func NewOktaCredentialsProviderFactory(
 }
 
 func (o *OktaCredentialsProviderFactory) GetSamlAssertion(props map[string]string) (string, error) {
+	parentCtx := o.pluginService.GetTelemetryContext()
+	telemetryCtx, ctx := o.pluginService.GetTelemetryFactory().OpenTelemetryContext(telemetry.TELEMETRY_FETCH_SAML_OKTA, telemetry.NESTED, parentCtx)
+	o.pluginService.SetTelemetryContext(ctx)
+	defer func() {
+		telemetryCtx.CloseContext()
+		o.pluginService.SetTelemetryContext(parentCtx)
+	}()
+
 	sessionToken, err := o.GetSessionToken(props)
 	if err != nil {
+		telemetryCtx.SetSuccess(true)
+		telemetryCtx.SetError(err)
 		return "", err
 	}
 
@@ -63,6 +76,8 @@ func (o *OktaCredentialsProviderFactory) GetSamlAssertion(props map[string]strin
 
 	baseUri, err := getSamlUrl(props)
 	if err != nil {
+		telemetryCtx.SetSuccess(false)
+		telemetryCtx.SetError(err)
 		return "", err
 	}
 
@@ -73,22 +88,31 @@ func (o *OktaCredentialsProviderFactory) GetSamlAssertion(props map[string]strin
 
 	req, err := http.NewRequest(http.MethodGet, baseUri.String(), nil)
 	if err != nil {
+		telemetryCtx.SetSuccess(false)
+		telemetryCtx.SetError(err)
 		return "", err
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
+		telemetryCtx.SetSuccess(false)
+		telemetryCtx.SetError(err)
 		return "", err
 	}
 	defer resp.Body.Close()
 
 	statusCode := resp.StatusCode
 	if statusCode/100 != 2 {
-		return "", error_util.NewGenericAwsWrapperError(error_util.GetMessage("OktaAuthPlugin.httpNon200StatusCode", baseUri.String(), statusCode))
+		err = error_util.NewGenericAwsWrapperError(error_util.GetMessage("OktaAuthPlugin.httpNon200StatusCode", baseUri.String(), statusCode))
+		telemetryCtx.SetSuccess(false)
+		telemetryCtx.SetError(err)
+		return "", err
 	}
 
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
+		telemetryCtx.SetSuccess(false)
+		telemetryCtx.SetError(err)
 		return "", err
 	}
 
@@ -103,6 +127,8 @@ func (o *OktaCredentialsProviderFactory) GetSamlAssertion(props map[string]strin
 	if samlResponse == "" {
 		return samlResponse, error_util.NewGenericAwsWrapperError(error_util.GetMessage("OktaAuthPlugin.failedSamlAssertion", baseUri.String()))
 	}
+
+	telemetryCtx.SetSuccess(true)
 	return samlResponse, nil
 }
 

@@ -17,7 +17,9 @@
 package iam
 
 import (
+	"awssql/driver_infrastructure"
 	"awssql/region_util"
+	"awssql/utils/telemetry"
 	"context"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/rds/auth"
@@ -31,6 +33,7 @@ type IamTokenUtility interface {
 		port int,
 		region region_util.Region,
 		awsCredentialsProvider aws.CredentialsProvider,
+		pluginService driver_infrastructure.PluginService,
 	) (string, error)
 }
 
@@ -42,7 +45,16 @@ func (iamTokenUtility RegularIamTokenUtility) GenerateAuthenticationToken(
 	port int,
 	region region_util.Region,
 	awsCredentialsProvider aws.CredentialsProvider,
+	pluginService driver_infrastructure.PluginService,
 ) (string, error) {
+	parentCtx := pluginService.GetTelemetryContext()
+	telemetryCtx, ctx := pluginService.GetTelemetryFactory().OpenTelemetryContext(telemetry.TELEMETRY_FETCH_TOKEN, telemetry.NESTED, parentCtx)
+	pluginService.SetTelemetryContext(ctx)
+	defer func() {
+		telemetryCtx.CloseContext()
+		pluginService.SetTelemetryContext(parentCtx)
+	}()
+
 	authToken, err := auth.BuildAuthToken(
 		context.TODO(),
 		host+":"+strconv.Itoa(port),
@@ -51,7 +63,11 @@ func (iamTokenUtility RegularIamTokenUtility) GenerateAuthenticationToken(
 		awsCredentialsProvider,
 	)
 	if err != nil {
+		telemetryCtx.SetSuccess(false)
+		telemetryCtx.SetError(err)
 		return "", err
 	}
+
+	telemetryCtx.SetSuccess(true)
 	return authToken, nil
 }

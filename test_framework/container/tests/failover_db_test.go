@@ -17,6 +17,7 @@
 package test
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
@@ -39,6 +40,100 @@ func TestFailoverWriterDB(t *testing.T) {
 		"host":    environment.Info().DatabaseInfo.ClusterEndpoint,
 		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
 		"plugins": "failover",
+	})
+	db, err := sql.Open("awssql", dsn)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+	defer db.Close()
+
+	// Verify connection works.
+	err = db.Ping()
+	require.NoError(t, err, "Failed to open database connection.")
+
+	// Failover and check that it has failed over.
+	failoverComplete := make(chan struct{})
+	var triggerFailoverError error
+	go func() {
+		time.Sleep(5 * time.Second) // Give the query time to reach the database.
+		triggerFailoverError = auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
+		close(failoverComplete)
+	}()
+	_, queryError := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, test_utils.GetSleepSql(environment.Info().Request.Engine, 60), 61)
+	<-failoverComplete
+	require.NoError(t, triggerFailoverError, "Request to DB to failover did not succeed.")
+	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
+	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryError.Error())
+
+	// Assert that we are connected to the new writer after failover.
+	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
+	assert.Nil(t, err)
+	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
+	assert.Nil(t, err)
+	assert.Equal(t, currWriterId, instanceId)
+}
+
+func TestFailoverWriterDBWithTelemetryOtel(t *testing.T) {
+	auroraTestUtility, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
+	assert.Nil(t, err)
+	bsp, err := test_utils.SetupTelemetry(environment)
+	assert.Nil(t, err)
+	assert.NotNil(t, bsp)
+	defer func() { _ = bsp.Shutdown(context.TODO()) }()
+	dsn := test_utils.GetDsn(environment, map[string]string{
+		"host":                    environment.Info().DatabaseInfo.ClusterEndpoint,
+		"port":                    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
+		"plugins":                 "failover",
+		"enableTelemetry":         "true",
+		"telemetryTracesBackend":  "OTLP",
+		"telemetryMetricsBackend": "OTLP",
+	})
+	db, err := sql.Open("awssql", dsn)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+	defer db.Close()
+
+	// Verify connection works.
+	err = db.Ping()
+	require.NoError(t, err, "Failed to open database connection.")
+
+	// Failover and check that it has failed over.
+	failoverComplete := make(chan struct{})
+	var triggerFailoverError error
+	go func() {
+		time.Sleep(5 * time.Second) // Give the query time to reach the database.
+		triggerFailoverError = auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
+		close(failoverComplete)
+	}()
+	_, queryError := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, test_utils.GetSleepSql(environment.Info().Request.Engine, 60), 61)
+	<-failoverComplete
+	require.NoError(t, triggerFailoverError, "Request to DB to failover did not succeed.")
+	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
+	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryError.Error())
+
+	// Assert that we are connected to the new writer after failover.
+	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
+	assert.Nil(t, err)
+	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
+	assert.Nil(t, err)
+	assert.Equal(t, currWriterId, instanceId)
+}
+
+func TestFailoverWriterDBWithTelemetryXray(t *testing.T) {
+	auroraTestUtility, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
+	assert.Nil(t, err)
+	bsp, err := test_utils.SetupTelemetry(environment)
+	assert.Nil(t, err)
+	assert.NotNil(t, bsp)
+	defer func() { _ = bsp.Shutdown(context.TODO()) }()
+	dsn := test_utils.GetDsn(environment, map[string]string{
+		"host":                    environment.Info().DatabaseInfo.ClusterEndpoint,
+		"port":                    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
+		"plugins":                 "failover",
+		"enableTelemetry":         "true",
+		"telemetryTracesBackend":  "XRAY",
+		"telemetryMetricsBackend": "OTLP",
 	})
 	db, err := sql.Open("awssql", dsn)
 	assert.Nil(t, err)

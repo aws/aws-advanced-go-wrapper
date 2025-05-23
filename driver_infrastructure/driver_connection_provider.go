@@ -62,9 +62,5 @@ func (d DriverConnectionProvider) Connect(hostInfo *host_info_util.HostInfo, pro
 	targetDriverDialect := pluginService.GetTargetDriverDialect()
 	dsn := targetDriverDialect.PrepareDsn(props, hostInfo)
 	conn, err := d.targetDriver.Open(dsn)
-	//nolint:all
-	if err != nil {
-		// TODO: green node replacement
-	}
 	return conn, err
 }

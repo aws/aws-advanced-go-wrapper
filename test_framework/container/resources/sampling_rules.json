@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "default": {
+    "fixed_target": 10,
+    "rate": 1.0
+  }
+}

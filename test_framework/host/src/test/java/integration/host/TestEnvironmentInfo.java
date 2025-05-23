@@ -33,7 +33,8 @@ public class TestEnvironmentInfo {
   private TestProxyDatabaseInfo proxyDatabaseInfo;
   private String databaseEngine;
   private String databaseEngineVersion;
-  private TestTelemetryInfo tracesTelemetryInfo;
+  private TestTelemetryInfo otelTracesTelemetryInfo;
+  private TestTelemetryInfo xrayTracesTelemetryInfo;
   private TestTelemetryInfo metricsTelemetryInfo;
 
   public TestDatabaseInfo getDatabaseInfo() {
@@ -52,9 +53,13 @@ public class TestEnvironmentInfo {
     return databaseEngineVersion;
   }
 
-  public TestTelemetryInfo getTracesTelemetryInfo() {
-    return this.tracesTelemetryInfo;
+  public TestTelemetryInfo getOtelTracesTelemetryInfo() {
+    return this.otelTracesTelemetryInfo;
   }
+
+  public TestTelemetryInfo getXrayTracesTelemetryInfo() {
+      return this.xrayTracesTelemetryInfo;
+    }
 
   public TestTelemetryInfo getMetricsTelemetryInfo() {
     return this.metricsTelemetryInfo;
@@ -124,9 +129,13 @@ public class TestEnvironmentInfo {
     this.databaseEngineVersion = databaseEngineVersion;
   }
 
-  public void setTracesTelemetryInfo(TestTelemetryInfo tracesTelemetryInfo) {
-    this.tracesTelemetryInfo = tracesTelemetryInfo;
+  public void setOtelTracesTelemetryInfo(TestTelemetryInfo otelTracesTelemetryInfo) {
+    this.otelTracesTelemetryInfo = otelTracesTelemetryInfo;
   }
+
+  public void setXrayTracesTelemetryInfo(TestTelemetryInfo xrayTracesTelemetryInfo) {
+      this.xrayTracesTelemetryInfo = xrayTracesTelemetryInfo;
+    }
 
   public void setMetricsTelemetryInfo(TestTelemetryInfo metricsTelemetryInfo) {
     this.metricsTelemetryInfo = metricsTelemetryInfo;

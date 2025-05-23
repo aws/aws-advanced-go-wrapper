@@ -23,6 +23,7 @@ import (
 	"awssql/plugin_helpers"
 	"awssql/plugins/aws_secrets_manager"
 	"awssql/property_util"
+	"awssql/utils/telemetry"
 	"database/sql/driver"
 	"fmt"
 	"testing"
@@ -35,9 +36,10 @@ import (
 func beforeAwsSecretsManagerConnectionPluginTests(props map[string]string) driver_infrastructure.PluginService {
 	aws_secrets_manager.SecretsCache.Clear()
 	mockTargetDriver := &MockTargetDriver{}
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}))
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	mockPluginManager := driver_infrastructure.PluginManager(
+		plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, driver_infrastructure.NewMySQLDriverDialect(), props, mysqlTestDsn)
-
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 	return mockPluginService
 }
@@ -50,6 +52,7 @@ func TestAwsSecretsManagerConnectionPluginConnect(t *testing.T) {
 	props := map[string]string{
 		property_util.SECRETS_MANAGER_REGION.Name:    "us-west-2",
 		property_util.SECRETS_MANAGER_SECRET_ID.Name: "myId",
+		property_util.DRIVER_PROTOCOL.Name:           "mysql",
 	}
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
@@ -70,6 +73,7 @@ func TestAwsSecretsManagerConnectionPluginForceConnect(t *testing.T) {
 	props := map[string]string{
 		property_util.SECRETS_MANAGER_REGION.Name:    "us-west-2",
 		property_util.SECRETS_MANAGER_SECRET_ID.Name: "myId",
+		property_util.DRIVER_PROTOCOL.Name:           "mysql",
 	}
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
@@ -91,6 +95,7 @@ func TestAwsSecretsManagerConnectionPluginProps(t *testing.T) {
 		property_util.SECRETS_MANAGER_REGION.Name:    "us-west-2",
 		property_util.SECRETS_MANAGER_SECRET_ID.Name: "myId",
 		property_util.SECRETS_MANAGER_ENDPOINT.Name:  "https://someEndpoint.com",
+		property_util.DRIVER_PROTOCOL.Name:           "mysql",
 	}
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
@@ -107,6 +112,7 @@ func TestAwsSecretsManagerConnectionPluginProps(t *testing.T) {
 func TestAwsSecretsManagerConnectionPluginInvalidRegion(t *testing.T) {
 	props := map[string]string{
 		property_util.SECRETS_MANAGER_SECRET_ID.Name: "myId",
+		property_util.DRIVER_PROTOCOL.Name:           "mysql",
 	}
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
@@ -124,6 +130,7 @@ func TestAwsSecretsManagerConnectionPluginValidRegionThroughArn(t *testing.T) {
 
 	props := map[string]string{
 		property_util.SECRETS_MANAGER_SECRET_ID.Name: "arn:aws:secretsmanager:us-west-2:account-id:secret:default",
+		property_util.DRIVER_PROTOCOL.Name:           "mysql",
 	}
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
@@ -140,6 +147,7 @@ func TestAwsSecretsManagerConnectionPluginInvalidEndpoint(t *testing.T) {
 	props := map[string]string{
 		property_util.SECRETS_MANAGER_SECRET_ID.Name: "arn:aws:secretsmanager:us-west-2:account-id:secret:default",
 		property_util.SECRETS_MANAGER_ENDPOINT.Name:  "NotAValidEndpoi nt?-!=",
+		property_util.DRIVER_PROTOCOL.Name:           "mysql",
 	}
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
@@ -161,6 +169,7 @@ func TestAwsSecretsManagerConnectionPluginCacheSize1(t *testing.T) {
 	props := map[string]string{
 		property_util.SECRETS_MANAGER_REGION.Name:    "us-west-2",
 		property_util.SECRETS_MANAGER_SECRET_ID.Name: "myId",
+		property_util.DRIVER_PROTOCOL.Name:           "mysql",
 	}
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
@@ -186,6 +195,7 @@ func TestAwsSecretsManagerConnectionPluginUsingExpiredSecret(t *testing.T) {
 	props := map[string]string{
 		property_util.SECRETS_MANAGER_REGION.Name:    region,
 		property_util.SECRETS_MANAGER_SECRET_ID.Name: secretId,
+		property_util.DRIVER_PROTOCOL.Name:           "mysql",
 	}
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
@@ -219,6 +229,7 @@ func TestAwsSecretsManagerConnectionPluginConnectingUsingCache(t *testing.T) {
 	props := map[string]string{
 		property_util.SECRETS_MANAGER_REGION.Name:    region,
 		property_util.SECRETS_MANAGER_SECRET_ID.Name: secretId,
+		property_util.DRIVER_PROTOCOL.Name:           "mysql",
 	}
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
@@ -255,6 +266,7 @@ func TestAwsSecretsManagerConnectionPluginMultipleConnectionsCache(t *testing.T)
 		props[i] = map[string]string{
 			property_util.SECRETS_MANAGER_REGION.Name:    region[i],
 			property_util.SECRETS_MANAGER_SECRET_ID.Name: secretIds[i],
+			property_util.DRIVER_PROTOCOL.Name:           "mysql",
 		}
 		mockPluginServices[i] = beforeAwsSecretsManagerConnectionPluginTests(props[i])
 	}

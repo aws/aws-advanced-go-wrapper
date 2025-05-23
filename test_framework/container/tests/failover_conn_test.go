@@ -79,6 +79,103 @@ func TestFailoverWriter(t *testing.T) {
 	assert.NotEqual(t, instanceId, newInstanceId)
 
 	wrapperDriver.ReleaseResources()
+	test_utils.BasicCleanup(t.Name())
+}
+
+func TestFailoverWriterWithTelemetryOtel(t *testing.T) {
+	auroraTestUtility, environment, err := failoverSetup(t)
+	assert.Nil(t, err)
+	bsp, err := test_utils.SetupTelemetry(environment)
+	assert.Nil(t, err)
+	assert.NotNil(t, bsp)
+	defer func() { _ = bsp.Shutdown(context.TODO()) }()
+
+	dsn := test_utils.GetDsn(environment, map[string]string{
+		"host":                    environment.Info().DatabaseInfo.ClusterEndpoint,
+		"port":                    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
+		"plugins":                 "failover",
+		"enableTelemetry":         "true",
+		"telemetryTracesBackend":  "OTLP",
+		"telemetryMetricsBackend": "OTLP",
+	})
+	wrapperDriver := &awsDriver.AwsWrapperDriver{}
+
+	conn, err := wrapperDriver.Open(dsn)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	// Check that we are connected to the writer.
+	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
+	assert.Nil(t, err)
+	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+
+	// Failover and check that it has failed over.
+	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(instanceId, "", "")
+	assert.Nil(t, triggerFailoverError)
+	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
+	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
+	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryError.Error())
+
+	// Assert that we are connected to the new writer after failover.
+	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
+	assert.Nil(t, err)
+	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
+	assert.Nil(t, err)
+	assert.Equal(t, currWriterId, newInstanceId)
+	assert.NotEqual(t, instanceId, newInstanceId)
+
+	wrapperDriver.ReleaseResources()
+	test_utils.BasicCleanup(t.Name())
+}
+
+func TestFailoverWriterWithTelemetryXray(t *testing.T) {
+	auroraTestUtility, environment, err := failoverSetup(t)
+	assert.Nil(t, err)
+	bsp, err := test_utils.SetupTelemetry(environment)
+	assert.Nil(t, err)
+	assert.NotNil(t, bsp)
+	defer func() { _ = bsp.Shutdown(context.TODO()) }()
+
+	dsn := test_utils.GetDsn(environment, map[string]string{
+		"host":                    environment.Info().DatabaseInfo.ClusterEndpoint,
+		"port":                    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
+		"plugins":                 "failover",
+		"enableTelemetry":         "true",
+		"telemetryTracesBackend":  "XRAY",
+		"telemetryMetricsBackend": "OTLP",
+	})
+	wrapperDriver := &awsDriver.AwsWrapperDriver{}
+
+	conn, err := wrapperDriver.Open(dsn)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	// Check that we are connected to the writer.
+	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
+	assert.Nil(t, err)
+	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+
+	// Failover and check that it has failed over.
+	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(instanceId, "", "")
+	assert.Nil(t, triggerFailoverError)
+	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
+	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
+	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryError.Error())
+
+	// Assert that we are connected to the new writer after failover.
+	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
+	assert.Nil(t, err)
+	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
+	assert.Nil(t, err)
+	assert.Equal(t, currWriterId, newInstanceId)
+	assert.NotEqual(t, instanceId, newInstanceId)
+
+	wrapperDriver.ReleaseResources()
+	test_utils.BasicCleanup(t.Name())
 }
 
 func TestFailoverWriterEndpoint(t *testing.T) {
