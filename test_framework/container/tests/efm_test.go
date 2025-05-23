@@ -214,14 +214,15 @@ func getDsnForEfmIntegrationTest(environment *test_utils.TestEnvironment, host s
 		monitoringConnectTimeoutSeconds = monitoringConnectTimeoutSeconds + "s"
 	}
 	return test_utils.GetDsn(environment, map[string]string{
-		"host":                                host,
-		"port":                                strconv.Itoa(environment.Info().ProxyDatabaseInfo.InstanceEndpointPort),
-		"clusterInstanceHostPattern":          "?." + environment.Info().ProxyDatabaseInfo.InstanceEndpointSuffix,
-		"plugins":                             "efm",
-		"failureDetectionEnabled":             "true",
-		"failureDetectionIntervalMs":          strconv.Itoa(TEST_FAILURE_DETECTION_INTERVAL_SECONDS * 1000), // interval between probes to host
-		"failureDetectionCount":               strconv.Itoa(TEST_FAILURE_DETECTION_COUNT),                   // 3 consecutive failures before marks host as dead
-		"failureDetectionTimeMs":              "1000",                                                       // 1 second time before polling starts
-		monitoringConnectTimeoutParameterName: monitoringConnectTimeoutSeconds,                              // each monitoring conenction has 5 seconds to try connecting
+		"host":                       host,
+		"port":                       strconv.Itoa(environment.Info().ProxyDatabaseInfo.InstanceEndpointPort),
+		"clusterInstanceHostPattern": "?." + environment.Info().ProxyDatabaseInfo.InstanceEndpointSuffix,
+		"plugins":                    "efm",
+		"failureDetectionEnabled":    "true",
+		"failureDetectionIntervalMs": strconv.Itoa(TEST_FAILURE_DETECTION_INTERVAL_SECONDS * 1000), // interval between probes to host
+		"failureDetectionCount":      strconv.Itoa(TEST_FAILURE_DETECTION_COUNT),                   // 3 consecutive failures before marks host as dead
+		"failureDetectionTimeMs":     "1000",                                                       // 1 second time before polling starts
+		// each monitoring connection has monitoringConnectTimeoutSeconds seconds to connect
+		monitoringConnectTimeoutParameterName: monitoringConnectTimeoutSeconds,
 	})
 }

@@ -31,6 +31,8 @@ import (
 var hostAvailabilityExpiringCache *utils.CacheMap[host_info_util.HostAvailability] = utils.NewCache[host_info_util.HostAvailability]()
 var DEFAULT_HOST_AVAILABILITY_CACHE_EXPIRE_NANO time.Duration = 5 * time.Minute
 
+// TODO: address currentConnection being a pointer. Required to prevent garbage collection of the pointer
+// weakly referenced by connToAbortRef in MonitorConnectionState.
 type PluginServiceImpl struct {
 	pluginManager             driver_infrastructure.PluginManager
 	props                     map[string]string

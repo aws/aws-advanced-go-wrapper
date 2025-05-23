@@ -28,7 +28,6 @@ import (
 	"math"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 	"weak"
 )
@@ -57,7 +56,8 @@ func NewMonitorImpl(pluginService driver_infrastructure.PluginService, hostInfo 
 		failureDetectionTimeNanos:     time.Millisecond * time.Duration(failureDetectionTimeMillis),
 		failureDetectionIntervalNanos: time.Millisecond * time.Duration(failureDetectionIntervalMillis),
 		failureDetectionCount:         failureDetectionCount,
-		NewStates:                     map[time.Time][]weak.Pointer[MonitorConnectionState]{}}
+		NewStates:                     map[time.Time][]weak.Pointer[MonitorConnectionState]{},
+	}
 
 	monitor.wg.Add(2)
 	go monitor.newStateRun()
@@ -79,25 +79,13 @@ type MonitorImpl struct {
 	ActiveStates                  []weak.Pointer[MonitorConnectionState]
 	NewStates                     map[time.Time][]weak.Pointer[MonitorConnectionState]
 	Stopped                       bool
-	hostUnhealthy                 int32
+	HostUnhealthy                 bool
 	lock                          sync.RWMutex
 	wg                            sync.WaitGroup
 }
 
 func (m *MonitorImpl) CanDispose() bool {
 	return len(m.ActiveStates) == 0 && len(m.NewStates) == 0
-}
-
-func (m *MonitorImpl) SetHostUnhealthy(value bool) {
-	var i int32 = 0
-	if value {
-		i = 1
-	}
-	atomic.StoreInt32(&m.hostUnhealthy, i)
-}
-
-func (m *MonitorImpl) IsHostUnhealthy() bool {
-	return atomic.LoadInt32(&m.hostUnhealthy) == 1
 }
 
 func (m *MonitorImpl) Close() {
@@ -155,7 +143,7 @@ func (m *MonitorImpl) run() {
 	defer m.wg.Done()
 
 	for !m.isStopped() {
-		if len(m.ActiveStates) == 0 && !m.IsHostUnhealthy() {
+		if len(m.ActiveStates) == 0 && !m.HostUnhealthy {
 			time.Sleep(EFM_ROUTINE_SLEEP_DURATION)
 			continue
 		}
@@ -165,7 +153,7 @@ func (m *MonitorImpl) run() {
 		statusCheckEndTime := time.Now()
 		m.UpdateHostHealthStatus(connIsValid, statusCheckStartTime, statusCheckEndTime)
 
-		if m.IsHostUnhealthy() {
+		if m.HostUnhealthy {
 			m.pluginService.SetAvailability(m.hostInfo.AllAliases, host_info_util.UNAVAILABLE)
 		}
 
@@ -180,7 +168,7 @@ func (m *MonitorImpl) run() {
 				continue
 			}
 
-			if m.IsHostUnhealthy() {
+			if m.HostUnhealthy {
 				// Kill connection.
 				monitorState.SetHostUnhealthy(true)
 				connToAbort := monitorState.GetConn()
@@ -220,7 +208,7 @@ func (m *MonitorImpl) UpdateHostHealthStatus(connIsValid bool, statusCheckStartT
 
 		if invalidHostDurationTimeNanos >= maxInvalidDurationTimeNanos {
 			slog.Debug(error_util.GetMessage("MonitorImpl.hostDead", m.hostInfo.Host))
-			m.SetHostUnhealthy(true)
+			m.HostUnhealthy = true
 			return
 		}
 
@@ -235,7 +223,7 @@ func (m *MonitorImpl) UpdateHostHealthStatus(connIsValid bool, statusCheckStartT
 
 	m.FailureCount = 0
 	m.InvalidHostStartTime = time.Time{}
-	m.SetHostUnhealthy(false)
+	m.HostUnhealthy = false
 }
 
 func (m *MonitorImpl) CheckConnectionStatus() bool {
@@ -248,6 +236,7 @@ func (m *MonitorImpl) CheckConnectionStatus() bool {
 		}
 		m.MonitoringConn = newMonitoringConn
 		slog.Debug(error_util.GetMessage("MonitorImpl.openedMonitoringConnection", m.hostInfo.Host))
+		return true
 	}
 
 	// If implemented, validate by driver.Validator. Currently, only mysql Conns support this.

@@ -388,13 +388,13 @@ func TestMonitorUpdateHostHealthStatusValid(t *testing.T) {
 
 	monitor.FailureCount = 1
 	monitor.InvalidHostStartTime = time.Now()
-	monitor.SetHostUnhealthy(true)
+	monitor.HostUnhealthy = true
 
 	monitor.UpdateHostHealthStatus(true, time.Now(), time.Now().Add(5))
 
 	assert.Zero(t, monitor.FailureCount)
 	assert.Zero(t, monitor.InvalidHostStartTime)
-	assert.False(t, monitor.IsHostUnhealthy())
+	assert.False(t, monitor.HostUnhealthy)
 }
 
 func TestMonitorUpdateHostHealthStatusInvalid(t *testing.T) {
@@ -404,12 +404,12 @@ func TestMonitorUpdateHostHealthStatusInvalid(t *testing.T) {
 
 	assert.Zero(t, monitor.FailureCount)
 	assert.Zero(t, monitor.InvalidHostStartTime)
-	assert.False(t, monitor.IsHostUnhealthy())
+	assert.False(t, monitor.HostUnhealthy)
 
 	startTime := time.Now()
 	monitor.UpdateHostHealthStatus(false, startTime, time.Now().Add(5))
 
 	assert.Equal(t, 1, monitor.FailureCount)
 	assert.Equal(t, startTime, monitor.InvalidHostStartTime)
-	assert.True(t, monitor.IsHostUnhealthy())
+	assert.True(t, monitor.HostUnhealthy)
 }
