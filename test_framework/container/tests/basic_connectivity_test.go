@@ -17,36 +17,13 @@
 package test
 
 import (
-	awsDriver "awssql/driver"
 	"awssql/test_framework/container/test_utils"
 	"database/sql"
-	"fmt"
-	"log/slog"
 	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
-
-func basicSetup(name string) (*test_utils.AuroraTestUtility, error) {
-	slog.Info(fmt.Sprintf("Test started: %s.", name))
-	env, err := test_utils.GetCurrentTestEnvironment()
-	if err != nil {
-		return nil, err
-	}
-	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info().Region)
-	test_utils.EnableAllConnectivity()
-	err = test_utils.VerifyClusterStatus()
-	if err != nil {
-		return nil, err
-	}
-	return auroraTestUtility, nil
-}
-
-func basicCleanup(name string) {
-	awsDriver.ClearCaches()
-	slog.Info(fmt.Sprintf("Test finished: %s.", name))
-}
 
 func TestBasicConnectivityWrapper(t *testing.T) {
 	defer test_utils.BasicCleanupAfterBasicSetup(t)
@@ -71,8 +48,8 @@ func TestBasicConnectivityWrapperProxy(t *testing.T) {
 	assert.Nil(t, err)
 	dsn := test_utils.GetDsn(environment, map[string]string{
 		"host":                       environment.Info().ProxyDatabaseInfo.Instances[0].Host(),
-		"port":                       strconv.Itoa(environment.Info().ProxyDatabaseInfo.InstanceEndpointPort()),
-		"clusterInstanceHostPattern": "?." + environment.Info().ProxyDatabaseInfo.InstanceEndpointSuffix(),
+		"port":                       strconv.Itoa(environment.Info().ProxyDatabaseInfo.InstanceEndpointPort),
+		"clusterInstanceHostPattern": "?." + environment.Info().ProxyDatabaseInfo.InstanceEndpointSuffix,
 		"plugins":                    "none",
 	})
 	db, err := sql.Open("awssql", dsn)
@@ -83,13 +60,13 @@ func TestBasicConnectivityWrapperProxy(t *testing.T) {
 	assert.Nil(t, err)
 
 	test_utils.DisableAllConnectivity()
-	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
+	instanceId, err := test_utils.ExecuteInstanceQueryWithTimeout(environment.Info().Request.Engine, environment.Info().Request.Deployment, db, 10)
 	assert.NotNil(t, err)
 	assert.Zero(t, instanceId)
 	defer db.Close()
 
-	test_utils.EnableAllConnectivity()
-	instanceId, err2 := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
+	test_utils.EnableAllConnectivity(true)
+	instanceId, err2 := test_utils.ExecuteInstanceQueryWithTimeout(environment.Info().Request.Engine, environment.Info().Request.Deployment, db, 10)
 	assert.Nil(t, err2)
 	assert.NotZero(t, instanceId)
 }

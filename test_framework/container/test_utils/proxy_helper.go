@@ -67,21 +67,28 @@ func initProxies(environment *TestEnvironment) error {
 	return nil
 }
 
-func EnableAllConnectivity() {
+func EnableAllConnectivity(logErrors bool) {
 	env, err := GetCurrentTestEnvironment()
 	if err == nil {
 		for _, proxy := range env.proxies {
-			EnableProxyConnectivity(proxy)
+			EnableProxyConnectivity(proxy, logErrors)
 		}
 	}
 }
 
-func EnableProxyConnectivity(proxyInfo ProxyInfo) {
+func EnableProxyConnectivity(proxyInfo ProxyInfo, logErrors bool) {
 	proxy := proxyInfo.proxy
 	if proxy != nil {
-		err := proxy.Enable()
-		if err != nil {
-			slog.Debug(fmt.Sprintf("Error enabling proxy %s:%d: %s.", proxyInfo.controlHost, proxyInfo.controlPort, err.Error()))
+		// Try to remove upstream toxic
+		err := proxy.RemoveToxic("UP-STREAM")
+		if err != nil && logErrors {
+			slog.Debug(fmt.Sprintf("Error enabling proxy up-stream %s:%d: %s.", proxyInfo.controlHost, proxyInfo.controlPort, err.Error()))
+		}
+
+		// Try to remove downstream toxic
+		err = proxy.RemoveToxic("DOWN-STREAM")
+		if err != nil && logErrors {
+			slog.Debug(fmt.Sprintf("Error enabling proxy down-stream %s:%d: %s.", proxyInfo.controlHost, proxyInfo.controlPort, err.Error()))
 		}
 	}
 }
@@ -98,9 +105,26 @@ func DisableAllConnectivity() {
 func DisableProxyConnectivity(proxyInfo ProxyInfo) {
 	proxy := proxyInfo.proxy
 	if proxy != nil {
-		err := proxy.Disable()
-		if err != nil {
-			slog.Debug(fmt.Sprintf("Error disabling proxy %s:%d: %s.", proxyInfo.controlHost, proxyInfo.controlPort, err.Error()))
+		// Add downstream toxic with 0 bandwidth.
+		if _, err := proxy.AddToxic(
+			"DOWN-STREAM",
+			"bandwidth",
+			"downstream",
+			1.0,
+			toxiproxy.Attributes{"rate": 0},
+		); err != nil {
+			slog.Debug(fmt.Sprintf("Error disabling proxy down-stream %s:%d: %s.", proxyInfo.controlHost, proxyInfo.controlPort, err.Error()))
+		}
+
+		// Add upstream toxic with 0 bandwidth.
+		if _, err := proxy.AddToxic(
+			"UP-STREAM",
+			"bandwidth",
+			"upstream",
+			1.0,
+			toxiproxy.Attributes{"rate": 0},
+		); err != nil {
+			slog.Debug(fmt.Sprintf("Error disabling proxy up-stream %s:%d: %s.", proxyInfo.controlHost, proxyInfo.controlPort, err.Error()))
 		}
 	}
 }

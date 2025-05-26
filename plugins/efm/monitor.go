@@ -56,7 +56,8 @@ func NewMonitorImpl(pluginService driver_infrastructure.PluginService, hostInfo 
 		failureDetectionTimeNanos:     time.Millisecond * time.Duration(failureDetectionTimeMillis),
 		failureDetectionIntervalNanos: time.Millisecond * time.Duration(failureDetectionIntervalMillis),
 		failureDetectionCount:         failureDetectionCount,
-		NewStates:                     map[time.Time][]weak.Pointer[MonitorConnectionState]{}}
+		NewStates:                     map[time.Time][]weak.Pointer[MonitorConnectionState]{},
+	}
 
 	monitor.wg.Add(2)
 	go monitor.newStateRun()
@@ -156,7 +157,7 @@ func (m *MonitorImpl) run() {
 			m.pluginService.SetAvailability(m.hostInfo.AllAliases, host_info_util.UNAVAILABLE)
 		}
 
-		var tmpActiveStates []weak.Pointer[MonitorConnectionState]
+		tmpActiveStates := []weak.Pointer[MonitorConnectionState]{}
 		for _, monitorStateWeakRef := range m.ActiveStates {
 			if m.isStopped() {
 				break
@@ -180,6 +181,7 @@ func (m *MonitorImpl) run() {
 			}
 		}
 		// Update activeStates to those that are still active.
+		slog.Debug(error_util.GetMessage("MonitorImpl.updatingActiveStates", m.hostInfo.Host, len(m.ActiveStates), len(tmpActiveStates)))
 		m.ActiveStates = tmpActiveStates
 		delayDurationNanos := m.failureDetectionIntervalNanos - (statusCheckEndTime.Sub(statusCheckStartTime))
 		if delayDurationNanos < EFM_ROUTINE_SLEEP_DURATION {

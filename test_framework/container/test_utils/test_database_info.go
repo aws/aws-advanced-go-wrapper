@@ -29,17 +29,9 @@ type TestDatabaseInfo struct {
 	clusterEndpointPort         int
 	ClusterReadOnlyEndpoint     string
 	clusterReadOnlyEndpointPort int
-	instanceEndpointSuffix      string
-	instanceEndpointPort        int
+	InstanceEndpointSuffix      string
+	InstanceEndpointPort        int
 	Instances                   []TestInstanceInfo
-}
-
-func (t TestDatabaseInfo) InstanceEndpointPort() int {
-	return t.instanceEndpointPort
-}
-
-func (t TestDatabaseInfo) InstanceEndpointSuffix() string {
-	return t.instanceEndpointSuffix
 }
 
 func (t TestDatabaseInfo) WriterInstanceEndpoint() string {
@@ -111,8 +103,8 @@ func NewTestDatabaseInfo(databaseInfoMap map[string]any) (databaseInfo TestDatab
 			clusterEndpointPort:         int(clusterEndpointPort),
 			ClusterReadOnlyEndpoint:     clusterReadOnlyEndpoint,
 			clusterReadOnlyEndpointPort: int(clusterReadOnlyEndpointPort),
-			instanceEndpointSuffix:      instanceEndpointSuffix,
-			instanceEndpointPort:        int(instanceEndpointPort),
+			InstanceEndpointSuffix:      instanceEndpointSuffix,
+			InstanceEndpointPort:        int(instanceEndpointPort),
 			Instances:                   instances,
 		}, nil
 	}

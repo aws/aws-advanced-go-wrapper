@@ -90,7 +90,7 @@ func TestIamUsingIpAddress(t *testing.T) {
 	)
 
 	clusterEndpoint := testEnvironment.Info().DatabaseInfo.ClusterEndpoint
-	port := testEnvironment.Info().DatabaseInfo.InstanceEndpointPort()
+	port := testEnvironment.Info().DatabaseInfo.InstanceEndpointPort
 
 	hostIp, err := hostToIp(clusterEndpoint)
 	assert.NoError(t, err)

@@ -26,6 +26,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 )
 
 func LogTopology(hosts []*host_info_util.HostInfo, msgPrefix string) string {
@@ -143,11 +144,13 @@ func AllKeys[T comparable, V any](mapOfKeysAndValues map[T]V) []T {
 }
 
 func IsConnectionLost(conn driver.Conn) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	connectionPinger, ok := conn.(driver.Pinger)
 	if ok {
-		err := connectionPinger.Ping(context.Background())
+		err := connectionPinger.Ping(ctx)
 		if err != nil {
-			// Unable to ping connection, return that connection is lost.
+			// Unable to ping connection in 5 seconds, return that connection is lost.
 			return true
 		}
 	}

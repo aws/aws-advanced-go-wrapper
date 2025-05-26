@@ -108,7 +108,7 @@ func (b *HostMonitorConnectionPlugin) Execute(
 	if err == nil {
 		slog.Debug(error_util.GetMessage("HostMonitoringConnectionPlugin.activatedMonitoring", methodName))
 		monitorState, err = b.monitorService.StartMonitoring(
-			b.pluginService.GetCurrentConnection(), monitoringHostInfo, b.props,
+			b.pluginService.GetCurrentConnectionRef(), monitoringHostInfo, b.props,
 			failureDetectionTimeMillis, failureDetectionIntervalMillis, failureDetectionCount)
 		if err != nil {
 			slog.Warn(err.Error())

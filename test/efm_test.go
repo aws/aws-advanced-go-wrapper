@@ -34,7 +34,8 @@ import (
 )
 
 func TestMonitorConnectionState(t *testing.T) {
-	state := efm.NewMonitorConnectionState(MockDriverConn{})
+	var conn driver.Conn = &MockDriverConn{}
+	state := efm.NewMonitorConnectionState(&conn)
 
 	assert.NotNil(t, state.GetConn())
 	assert.True(t, state.IsActive())
@@ -61,7 +62,7 @@ func TestMonitorServiceImpl(t *testing.T) {
 
 	pluginService := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
 	monitorService := efm.NewMonitorServiceImpl(pluginService)
-	testConn := &MockDriverConnection{}
+	var testConn driver.Conn = &MockDriverConnection{}
 
 	assert.NotNil(t, efm.EFM_MONITORS)
 	assert.Zero(t, efm.EFM_MONITORS.Size())
@@ -70,12 +71,12 @@ func TestMonitorServiceImpl(t *testing.T) {
 	// Monitoring with an invalid conn should fail.
 	assert.True(t, strings.Contains(err.Error(), "conn"))
 
-	_, err = monitorService.StartMonitoring(testConn, nil, nil, 0, 0, 0)
+	_, err = monitorService.StartMonitoring(&testConn, nil, nil, 0, 0, 0)
 	// Monitoring with an invalid monitoring HostInfo should fail.
 	assert.True(t, strings.Contains(err.Error(), "hostInfo"))
 
 	// Monitoring with correct parameters should create a new monitor.
-	state, err := monitorService.StartMonitoring(testConn, mockHostInfo, nil, 0, 0, 0)
+	state, err := monitorService.StartMonitoring(&testConn, mockHostInfo, nil, 0, 0, 0)
 	monitorKey := fmt.Sprintf("%d:%d:%d:%s", 0, 0, 0, mockHostInfo.GetUrl())
 
 	assert.Nil(t, err)
@@ -85,7 +86,7 @@ func TestMonitorServiceImpl(t *testing.T) {
 	assert.True(t, ok)
 	assert.NotNil(t, val)
 
-	state2, err := monitorService.StartMonitoring(testConn, mockHostInfo, nil, 0, 0, 0)
+	state2, err := monitorService.StartMonitoring(&testConn, mockHostInfo, nil, 0, 0, 0)
 	assert.Nil(t, err)
 	// Monitoring on the same host should not increase the cache size.
 	assert.Equal(t, efm.EFM_MONITORS.Size(), 1)
@@ -293,7 +294,8 @@ func TestMonitorCanDispose(t *testing.T) {
 	pluginService := &plugin_helpers.PluginServiceImpl{}
 	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0)
 	monitor.MonitoringConn = &MockDriverConnection{}
-	state := efm.NewMonitorConnectionState(MockDriverConn{})
+	var conn driver.Conn = &MockDriverConn{}
+	state := efm.NewMonitorConnectionState(&conn)
 
 	// If there are no states, monitor can be disposed.
 	assert.True(t, monitor.CanDispose())

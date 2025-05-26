@@ -31,10 +31,12 @@ import (
 var hostAvailabilityExpiringCache *utils.CacheMap[host_info_util.HostAvailability] = utils.NewCache[host_info_util.HostAvailability]()
 var DEFAULT_HOST_AVAILABILITY_CACHE_EXPIRE_NANO time.Duration = 5 * time.Minute
 
+// TODO: address currentConnection being a pointer. Required to prevent garbage collection of the pointer
+// weakly referenced by connToAbortRef in MonitorConnectionState.
 type PluginServiceImpl struct {
 	pluginManager             driver_infrastructure.PluginManager
 	props                     map[string]string
-	currentConnection         driver.Conn
+	currentConnection         *driver.Conn
 	hostListProvider          driver_infrastructure.HostListProvider
 	currentHostInfo           *host_info_util.HostInfo
 	dialect                   driver_infrastructure.DatabaseDialect
@@ -111,6 +113,13 @@ func (p *PluginServiceImpl) UpdateDialect(conn driver.Conn) {
 }
 
 func (p *PluginServiceImpl) GetCurrentConnection() driver.Conn {
+	if p.currentConnection == nil {
+		return nil
+	}
+	return *p.currentConnection
+}
+
+func (p *PluginServiceImpl) GetCurrentConnectionRef() *driver.Conn {
 	return p.currentConnection
 }
 
@@ -126,7 +135,7 @@ func (p *PluginServiceImpl) SetCurrentConnection(
 	}
 	if p.currentConnection == nil {
 		// Setting up an initial connection.
-		p.currentConnection = conn
+		p.currentConnection = &conn
 		p.currentHostInfo = hostInfo
 
 		if p.initialHostInfo == nil {
@@ -138,11 +147,11 @@ func (p *PluginServiceImpl) SetCurrentConnection(
 		}
 		p.pluginManager.NotifyConnectionChanged(changes, skipNotificationForThisPlugin)
 	} else {
-		changes := p.compare(p.currentConnection, p.currentHostInfo, conn, hostInfo)
+		changes := p.compare(*p.currentConnection, p.currentHostInfo, conn, hostInfo)
 		if len(changes) > 0 {
-			oldConnection := p.currentConnection
+			oldConnection := *p.currentConnection
 
-			p.currentConnection = conn
+			p.currentConnection = &conn
 			p.currentHostInfo = hostInfo
 			p.SetInTransaction(false)
 
@@ -481,7 +490,7 @@ func (p *PluginServiceImpl) IsLoginError(err error) bool {
 func (p *PluginServiceImpl) ReleaseResources() {
 	slog.Debug(error_util.GetMessage("PluginServiceImpl.releaseResources"))
 	if p.currentConnection != nil {
-		p.currentConnection.Close() // Ignore any error.
+		(*p.currentConnection).Close() // Ignore any error.
 		p.currentConnection = nil
 	}
 

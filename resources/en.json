@@ -106,6 +106,7 @@
 	"MonitorImpl.hostNotResponding": "Host %v is not responding.",
 	"MonitorImpl.hostDead": "Host %v is dead.",
 	"MonitorImpl.hostAlive": "Host %v is alive.",
+	"MonitorImpl.updatingActiveStates": "Updating active states for %v. Going from %v state(s) to %v.",
 	"MonitorServiceImpl.errorAbortingConn": "An error was thrown when aborting monitoring Conn: %v.",
 	"MonitorServiceImpl.illegalArgumentException": "Illegal argument for '%v' was given to MonitorServiceImpl.",
 	"OktaAuthPlugin.httpNon200StatusCode": "Did not get a 200 response from http request to '%v'. Received the following status code: '%v'.",
