@@ -98,6 +98,7 @@ type PluginManager interface {
 	GetTelemetryContext() context.Context
 	GetTelemetryFactory() telemetry.TelemetryFactory
 	SetTelemetryContext(ctx context.Context)
+	ReleaseResources()
 }
 
 type CanReleaseResources interface {

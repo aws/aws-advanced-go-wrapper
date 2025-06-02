@@ -318,7 +318,9 @@ func (pluginManager *PluginManagerImpl) NotifySubscribedPlugins(
 
 		if isSubscribed {
 			_, _, _, err := pluginFunc(currentPlugin, func() (any, any, bool, error) { return nil, nil, true, nil })
-			return err
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
