@@ -23,6 +23,7 @@ import (
 	"awssql/property_util"
 	"awssql/test_framework/container/test_utils"
 	"awssql/utils"
+	"database/sql"
 	"database/sql/driver"
 	"fmt"
 	"log/slog"
@@ -39,6 +40,7 @@ var perfTestEnvironment *test_utils.TestEnvironment
 var perfDataList []test_utils.PerfStat
 
 const PERF_TEST_DEFAULT_REPEAT_TIMES = 5
+const USE_SQL_DB_DEFAULT = true
 const PERF_TEST_CONNECT_TIMEOUT = 3
 const PERF_FAILOVER_TIMEOUT_MS = 120000
 
@@ -70,8 +72,14 @@ func TestPerformanceFailureDetectionTimeEfmEnabled(t *testing.T) {
 	perfDataList = make([]test_utils.PerfStat, 0)
 	var err error
 	perfTestEnvironment, err = test_utils.GetCurrentTestEnvironment()
-
 	assert.NoError(t, err)
+
+	useSqlDb := USE_SQL_DB_DEFAULT
+	envValue := os.Getenv("USE_SQL_DB")
+
+	if envValue != "" {
+		useSqlDb = strings.EqualFold(envValue, "true") || strings.EqualFold(envValue, "1") || strings.EqualFold(envValue, "yes")
+	}
 
 	for i := 0; i < len(failureDetectionTimeParams); i++ {
 		slog.Info(fmt.Sprintf("Testing EFM only Perf with the following parameters: '%v', '%v', '%v', '%v'",
@@ -84,14 +92,23 @@ func TestPerformanceFailureDetectionTimeEfmEnabled(t *testing.T) {
 			failureDetectionTimeParams[i][1],
 			failureDetectionTimeParams[i][2],
 			failureDetectionTimeParams[i][3],
+			useSqlDb,
 		)
 	}
 
+	// Write report to xlsx file
 	engine := perfTestEnvironment.Info().Request.Engine
 	numInstances := len(perfTestEnvironment.Info().DatabaseInfo.Instances)
+	fileName := fmt.Sprintf("EnhancedMonitoringOnly_Db_%v_Instances_%v_Plugins_efm.xlsx", engine, numInstances)
+	sheetName := "EfmOnly"
+	if !useSqlDb {
+		fileName = "Wrapper_Conn_" + fileName
+		sheetName = "Wrapper_Conn_" + sheetName
+	}
+
 	err = test_utils.WritePerfDataToFile(perfDataList,
-		fmt.Sprintf("EnhancedMonitoringOnly_Db_%v_Instances_%v_Plugins_efm.xlsx", engine, numInstances),
-		"EfmOnly",
+		fileName,
+		sheetName,
 	)
 	if err != nil {
 		slog.Error("Could not write results to xlsx file")
@@ -114,6 +131,13 @@ func TestPerformanceFailureDetectionTimeEfmAndFailoverEnabled(t *testing.T) {
 	perfTestEnvironment, err = test_utils.GetCurrentTestEnvironment()
 	assert.NoError(t, err)
 
+	useSqlDb := USE_SQL_DB_DEFAULT
+	envValue := os.Getenv("USE_SQL_DB")
+
+	if envValue != "" {
+		useSqlDb = strings.EqualFold(envValue, "true") || strings.EqualFold(envValue, "1") || strings.EqualFold(envValue, "yes")
+	}
+
 	for i := 0; i < len(failureDetectionTimeParams); i++ {
 		slog.Info(fmt.Sprintf("Testing EFM + Failover Perf with the following parameters: '%v', '%v', '%v', '%v'",
 			failureDetectionTimeParams[i][0],
@@ -125,13 +149,24 @@ func TestPerformanceFailureDetectionTimeEfmAndFailoverEnabled(t *testing.T) {
 			failureDetectionTimeParams[i][1],
 			failureDetectionTimeParams[i][2],
 			failureDetectionTimeParams[i][3],
+			useSqlDb,
 		)
 	}
+
+	// Write report to xlsx file
 	engine := perfTestEnvironment.Info().Request.Engine
 	numInstances := len(perfTestEnvironment.Info().DatabaseInfo.Instances)
+	fileName := fmt.Sprintf("FailoverWithEnhancedMonitoring_Db_%v_Instances_%v_Plugins_efm_failover.xlsx", engine, numInstances)
+	sheetName := "FailoverWithEfm"
+
+	if !useSqlDb {
+		fileName = "Wrapper_Conn_" + fileName
+		sheetName = "Wrapper_Conn_" + sheetName
+	}
+
 	err = test_utils.WritePerfDataToFile(perfDataList,
-		fmt.Sprintf("FailoverWithEnhancedMonitoring_Db_%v_Instances_%v_Plugins_efm.xlsx", engine, numInstances),
-		"FailoverWithEfm",
+		fileName,
+		sheetName,
 	)
 	if err != nil {
 		slog.Error("Could not write results to xlsx file")
@@ -155,11 +190,34 @@ func connectWithRetry(dsn string) (driver.Conn, error) {
 	return nil, err
 }
 
+func connectWithRetryDb(dsn string) (*sql.DB, error) {
+	maxRetries := 10
+	var err error = nil
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+
+		db, err := sql.Open("awssql", dsn)
+
+		if err != nil {
+			slog.Debug(fmt.Sprintf("Could not connect on attempt # '%v'. Received an error '%v'", attempt, err.Error()))
+			time.Sleep(time.Duration(1) * time.Second)
+			continue
+		}
+		err = db.Ping()
+		if err == nil {
+			return db, nil
+		}
+		slog.Debug(fmt.Sprintf("Could not connect on attempt # '%v'. Received an error '%v'", attempt, err.Error()))
+		time.Sleep(time.Duration(1) * time.Second)
+	}
+	return nil, err
+}
+
 func executeFailureDetectionTimeEfmEnabled(
 	detectionTimeMs int64,
 	detectionIntervalMs int64,
 	detectionCount int64,
 	sleepDelayMs int64,
+	useSqlDb bool,
 ) {
 	testEnvironment, _ := test_utils.GetCurrentTestEnvironment()
 
@@ -170,7 +228,7 @@ func executeFailureDetectionTimeEfmEnabled(
 	property_util.FAILURE_DETECTION_INTERVAL_MS.Set(props, strconv.FormatInt(detectionIntervalMs, 10))
 	property_util.FAILURE_DETECTION_COUNT.Set(props, strconv.FormatInt(detectionCount, 10))
 
-	executePerformanceTest(props, detectionTimeMs, detectionIntervalMs, detectionCount, sleepDelayMs)
+	executePerformanceTest(props, detectionTimeMs, detectionIntervalMs, detectionCount, sleepDelayMs, useSqlDb)
 }
 
 func executeFailureDetectionTimeEfmAndFailoverEnabled(
@@ -178,6 +236,7 @@ func executeFailureDetectionTimeEfmAndFailoverEnabled(
 	detectionIntervalMs int64,
 	detectionCount int64,
 	sleepDelayMs int64,
+	useSqlDb bool,
 ) {
 	testEnvironment, _ := test_utils.GetCurrentTestEnvironment()
 
@@ -190,7 +249,7 @@ func executeFailureDetectionTimeEfmAndFailoverEnabled(
 	property_util.FAILOVER_TIMEOUT_MS.Set(props, strconv.FormatInt(PERF_FAILOVER_TIMEOUT_MS, 10))
 	property_util.FAILOVER_MODE.Set(props, "strict-reader")
 
-	executePerformanceTest(props, detectionTimeMs, detectionIntervalMs, detectionCount, sleepDelayMs)
+	executePerformanceTest(props, detectionTimeMs, detectionIntervalMs, detectionCount, sleepDelayMs, useSqlDb)
 }
 
 func initPerfProps(testEnvironment *test_utils.TestEnvironment) map[string]string {
@@ -218,8 +277,6 @@ func initPerfProps(testEnvironment *test_utils.TestEnvironment) map[string]strin
 		monitoringConnectTimeoutParameterName:            monitoringConnectTimeoutSeconds,
 	}
 
-	slog.Debug(fmt.Sprintf("THIS IS THE PROPS USED: '%v'", props))
-
 	return props
 }
 
@@ -229,6 +286,7 @@ func executePerformanceTest(
 	detectionIntervalMs int64,
 	detectionCount int64,
 	sleepDelayMs int64,
+	useSqlDb bool,
 ) {
 	data := PerfStatMonitoring{
 		paramDetectionTime:            detectionTimeMs,
@@ -245,13 +303,20 @@ func executePerformanceTest(
 			repeatTimes = val
 		}
 	}
-	doMeasurePerformance(sleepDelayMs, repeatTimes, &data, props)
+
+	if useSqlDb {
+		slog.Debug("Testing with SQL Db")
+		doMeasurePerformanceDb(sleepDelayMs, repeatTimes, &data, props)
+	} else {
+		slog.Debug("Testing without SQL Db")
+		doMeasurePerformance(sleepDelayMs, repeatTimes, &data, props)
+	}
 
 	slog.Debug(fmt.Sprintf("Run completed. Got the following data: '%v'", data))
 	perfDataList = append(perfDataList, data)
 }
 
-func caclulateStats(nums []int64) (min, max, avg int64) {
+func calculateStats(nums []int64) (min, max, avg int64) {
 	min, max = int64(nums[0]), int64(nums[0])
 	var sum int64
 
@@ -319,7 +384,62 @@ func doMeasurePerformance(
 		test_utils.EnableAllConnectivity(true)
 	}
 	slog.Debug(fmt.Sprintf("Elapsed time for run: '%v'", elapsedTimeMs))
-	min, max, avg := caclulateStats(elapsedTimeMs)
+	min, max, avg := calculateStats(elapsedTimeMs)
+	data.minFailureDetectionTimeMillis = min
+	data.maxFailureDetectionTimeMillis = max
+	data.avgFailureDetectionTimeMillis = avg
+}
+
+func doMeasurePerformanceDb(
+	sleepDelayMs int64,
+	repeatTimes int,
+	data *PerfStatMonitoring,
+	props map[string]string,
+) {
+	var elapsedTimeMs []int64
+	dsn := test_utils.GetDsn(perfTestEnvironment, props)
+	engine := perfTestEnvironment.Info().Request.Engine
+	deployment := perfTestEnvironment.Info().Request.Deployment
+	sleepDurationBetweenRepeats := time.Duration(25) * time.Second
+
+	for i := 0; i < repeatTimes; i++ {
+		// Let monitoring threads recover from previous network outage
+		time.Sleep(sleepDurationBetweenRepeats)
+
+		conn, _ := connectWithRetryDb(dsn)
+		defer conn.Close()
+
+		instanceId, _ := test_utils.ExecuteInstanceQueryDB(engine, deployment, conn)
+
+		downTimeStartCh := make(chan time.Time)
+		// Disable connectivity in another thread after sleep delay
+		go func() {
+			time.Sleep(time.Duration(sleepDelayMs) * time.Millisecond)
+			proxyInfo := perfTestEnvironment.ProxyInfos()[instanceId]
+			test_utils.DisableProxyConnectivity(proxyInfo)
+			slog.Info(fmt.Sprintf("Disabled connectivity and sent down time to channel at: '%v'", time.Now()))
+			downTimeStartCh <- time.Now()
+			close(downTimeStartCh)
+		}()
+
+		_, err := test_utils.ExecuteQueryDB(engine, conn, test_utils.GetSleepSql(engine, 70), 1200)
+
+		if err == nil {
+			slog.Error("Did not receive error while executing query. Skipping results")
+			test_utils.EnableAllConnectivity(true)
+			continue
+		}
+
+		slog.Info(fmt.Sprintf("Waiting to receive from channel at: '%v'", time.Now()))
+		downTimeStart := <-downTimeStartCh
+		slog.Info(fmt.Sprintf("Received from channel at: '%v'", time.Now()))
+
+		failureTimeMs := time.Since(downTimeStart).Milliseconds()
+		elapsedTimeMs = append(elapsedTimeMs, failureTimeMs)
+		test_utils.EnableAllConnectivity(true)
+	}
+	slog.Debug(fmt.Sprintf("Elapsed time for run: '%v'", elapsedTimeMs))
+	min, max, avg := calculateStats(elapsedTimeMs)
 	data.minFailureDetectionTimeMillis = min
 	data.maxFailureDetectionTimeMillis = max
 	data.avgFailureDetectionTimeMillis = avg

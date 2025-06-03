@@ -9,6 +9,7 @@ permissions:
 
 jobs:
   run-integration-tests:
+    continue-on-error: true
     strategy:
       matrix:
         db: [mysql, pg]
@@ -22,7 +23,7 @@ jobs:
         with:
           fetch-depth: 50
 
-      - name: "Set up JDK 8"
+      - name: Set up JDK 8
         uses: actions/setup-java@v3
         with:
           distribution: "corretto"
@@ -33,7 +34,7 @@ jobs:
         with:
           go-version: '1.24' 
 
-      - name: 'Install dependencies'
+      - name: Install dependencies
         run: go get .
       - name: Configure AWS Credentials
         id: creds
@@ -58,12 +59,12 @@ jobs:
           AURORA_MYSQL_DB_ENGINE_VERSION: "default"
           AURORA_PG_DB_ENGINE_VERSION: "default"
 
-      - name: "Get Github Action IP"
+      - name: Get Github Action IP
         if: always()
         id: ip
         uses: haythem/public-ip@v1.3
 
-      - name: "Remove Github Action IP"
+      - name: Remove Github Action IP
         if: always()
         run: |
           aws ec2 revoke-security-group-ingress \

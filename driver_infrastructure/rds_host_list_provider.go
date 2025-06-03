@@ -103,7 +103,7 @@ func (r *RdsHostListProvider) init() {
 	}
 
 	if clusterInstancePattern != "" {
-		r.clusterInstanceTemplate, err = utils.ParseHostPortPair(clusterInstancePattern)
+		r.clusterInstanceTemplate, err = utils.ParseHostPortPair(clusterInstancePattern, r.initialHostInfo.Port)
 	}
 	if err == nil && !r.clusterInstanceTemplate.IsNil() {
 		rdsUrlType := utils.IdentifyRdsUrlType(r.clusterInstanceTemplate.Host)

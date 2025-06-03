@@ -89,19 +89,20 @@ func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []*host_i
 	return
 }
 
-func ParseHostPortPair(dsn string) (*host_info_util.HostInfo, error) {
-	hostPortPair := strings.Split(dsn, ":")
+func ParseHostPortPair(instanceClusterTemplate string, defaultPort int) (*host_info_util.HostInfo, error) {
+	hostPortPair := strings.Split(instanceClusterTemplate, ":")
 
 	host := hostPortPair[0]
 	urlType := IdentifyRdsUrlType(host)
-	port := 0
+
+	port := defaultPort
 	var err error
+
 	if len(hostPortPair) >= 2 {
 		port, err = strconv.Atoi(hostPortPair[1])
-	}
-
-	if err != nil {
-		return nil, err
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	hostRole := host_info_util.WRITER

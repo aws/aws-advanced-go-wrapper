@@ -64,7 +64,6 @@ func (p *PgxErrorHandler) IsNetworkError(err error) bool {
 			return true
 		}
 	}
-
 	return false
 }
 
