@@ -65,7 +65,7 @@ func TestGetOktaAuthPlugin(t *testing.T) {
 func TestOktaAuthPluginConnect(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{nil, nil, nil, nil, true, 0, 0}, nil }
+	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
@@ -82,7 +82,7 @@ func TestOktaAuthPluginConnect(t *testing.T) {
 func TestOktaAuthPluginForceConnect(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{nil, nil, nil, nil, true, 0, 0}, nil }
+	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
@@ -99,7 +99,7 @@ func TestOktaAuthPluginForceConnect(t *testing.T) {
 func TestOktaAuthPluginInvalidRegion(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.invalid-region.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{nil, nil, nil, nil, true, 0, 0}, nil }
+	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
@@ -114,7 +114,7 @@ func TestOktaAuthPluginInvalidRegion(t *testing.T) {
 func TestOktaAuthPluginValidRegionThroughIam(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.invalid-region.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{nil, nil, nil, nil, true, 0, 0}, nil }
+	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
@@ -134,7 +134,7 @@ func TestOktaAuthPluginCachedToken(t *testing.T) {
 	port := 1234
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost(host).SetPort(port).Build()
 	assert.NoError(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{nil, nil, nil, nil, true, 0, 0}, nil }
+	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
@@ -161,7 +161,7 @@ func TestOktaAuthPluginCachedIamHostToken(t *testing.T) {
 	port := 1234
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost(host).SetPort(port).Build()
 	assert.NoError(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{nil, nil, nil, nil, true, 0, 0}, nil }
+	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 	iamHost := "iamHost"
 	iamPort := 543
 	iamRegion := "us-east-1"
@@ -194,7 +194,7 @@ func TestOktaAuthPluginExpiredTokenWithIamHost(t *testing.T) {
 	port := 1234
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost(host).SetPort(port).Build()
 	assert.NoError(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{nil, nil, nil, nil, true, 0, 0}, nil }
+	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 
 	iamHost := "iamHost"
 	iamRegion := "us-east-1"
@@ -227,7 +227,7 @@ func TestOktaAuthGenerateTokenFailure(t *testing.T) {
 	port := 1234
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost(host).SetPort(port).Build()
 	assert.NoError(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{nil, nil, nil, nil, true, 0, 0}, nil }
+	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",

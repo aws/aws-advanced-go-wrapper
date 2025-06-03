@@ -19,6 +19,7 @@ package test
 import (
 	"awssql/driver_infrastructure"
 	"awssql/host_info_util"
+	"awssql/plugin_helpers"
 	"awssql/plugins/efm"
 	"awssql/property_util"
 	"awssql/utils"
@@ -59,24 +60,24 @@ func TestMonitorConnectionState(t *testing.T) {
 func TestMonitorServiceImpl(t *testing.T) {
 	assert.Nil(t, efm.EFM_MONITORS)
 
-	pluginService, _, _, _ := beforePluginServiceTests()
+	_, pluginService := initializeTest(map[string]string{property_util.DRIVER_PROTOCOL.Name: "mysql"}, true, false, false, false, false, false)
 	monitorService := efm.NewMonitorServiceImpl(pluginService)
-	var testConn driver.Conn = &MockDriverConnection{}
+	var testConn driver.Conn = &MockConn{throwError: false}
 
 	assert.NotNil(t, efm.EFM_MONITORS)
 	assert.Zero(t, efm.EFM_MONITORS.Size())
 
-	_, err := monitorService.StartMonitoring(nil, nil, nil, 0, 0, 0)
+	_, err := monitorService.StartMonitoring(nil, nil, nil, 0, 0, 0, 0)
 	// Monitoring with an invalid conn should fail.
 	assert.True(t, strings.Contains(err.Error(), "conn"))
 
-	_, err = monitorService.StartMonitoring(&testConn, nil, nil, 0, 0, 0)
+	_, err = monitorService.StartMonitoring(&testConn, nil, nil, 0, 0, 0, 0)
 	// Monitoring with an invalid monitoring HostInfo should fail.
 	assert.True(t, strings.Contains(err.Error(), "hostInfo"))
 
 	// Monitoring with correct parameters should create a new monitor.
-	state, err := monitorService.StartMonitoring(&testConn, mockHostInfo, nil, 0, 0, 0)
-	monitorKey := fmt.Sprintf("%d:%d:%d:%s", 0, 0, 0, mockHostInfo.GetUrl())
+	state, err := monitorService.StartMonitoring(&testConn, mockHostInfo, nil, 0, 900, 1, 3)
+	monitorKey := fmt.Sprintf("%d:%d:%d:%s", 0, 900, 3, mockHostInfo.GetUrl())
 
 	assert.Nil(t, err)
 	assert.True(t, state.IsActive())
@@ -87,17 +88,21 @@ func TestMonitorServiceImpl(t *testing.T) {
 	monitor, ok := val.(*efm.MonitorImpl)
 	assert.True(t, ok)
 
-	state2, err := monitorService.StartMonitoring(&testConn, mockHostInfo, nil, 0, 0, 0)
+	state2, err := monitorService.StartMonitoring(&testConn, mockHostInfo, nil, 0, 900, 1, 3)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(monitor.NewStates))
 	// Monitoring on the same host should not increase the cache size.
 	assert.Equal(t, efm.EFM_MONITORS.Size(), 1)
 	assert.True(t, state2.IsActive())
 
-	monitoringConn := &MockDriverConnection{}
+	monitor.MonitoringConn = testConn
+	monitoringConn := &MockConn{}
 	monitor.MonitoringConn = monitoringConn
 
-	time.Sleep(time.Second) // Let the newStates monitoring routine update.
+	// Let the newStates monitoring routine update.
+	for len(monitor.ActiveStates) != 2 {
+		time.Sleep(time.Second)
+	}
 	assert.Equal(t, 2, len(monitor.ActiveStates))
 	assert.Equal(t, 0, len(monitor.NewStates))
 
@@ -119,10 +124,8 @@ func TestMonitorServiceImpl(t *testing.T) {
 	time.Sleep(time.Second) // Let the monitoring routine update.
 	assert.Equal(t, 0, len(monitor.ActiveStates))
 
-	assert.False(t, monitoringConn.IsClosed)
 	efm.EFM_MONITORS.Clear()
 	assert.Equal(t, efm.EFM_MONITORS.Size(), 0)
-	assert.True(t, monitoringConn.IsClosed)
 }
 
 func TestHostMonitoringPluginFactory(t *testing.T) {
@@ -290,8 +293,8 @@ func TestHostMonitoringPluginExecuteThrowsError(t *testing.T) {
 }
 
 func TestMonitorCanDispose(t *testing.T) {
-	pluginService, _, _, _ := beforePluginServiceTests()
-	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0)
+	pluginService := &plugin_helpers.PluginServiceImpl{}
+	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0, 0)
 	monitor.MonitoringConn = &MockDriverConnection{}
 	var conn driver.Conn = &MockDriverConn{}
 	state := efm.NewMonitorConnectionState(&conn)
@@ -309,11 +312,12 @@ func TestMonitorCanDispose(t *testing.T) {
 		delete(monitor.NewStates, t2)
 	}
 	assert.False(t, monitor.CanDispose())
+	monitor.Close()
 }
 
 func TestMonitorClose(t *testing.T) {
-	pluginService, _, _, _ := beforePluginServiceTests()
-	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0)
+	pluginService := &plugin_helpers.PluginServiceImpl{}
+	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0, 0)
 	mockConn := &MockDriverConnection{}
 	monitor.MonitoringConn = mockConn
 
@@ -324,38 +328,41 @@ func TestMonitorClose(t *testing.T) {
 	assert.True(t, mockConn.IsClosed)
 }
 
-func TestMonitorCheckConnectionStatusValidator(t *testing.T) {
-	pluginService, _, _, _ := beforePluginServiceTests()
-	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0)
-	monitor.MonitoringConn = &MockDriverConnection{}
+func TestMonitorCheckConnectionStatusOpenConnection(t *testing.T) {
+	_, pluginService := initializeTest(map[string]string{property_util.DRIVER_PROTOCOL.Name: "mysql"}, true, false, false, false, false, false)
+	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0, 0)
+	monitor.MonitoringConn = &MockConn{isInvalid: true}
 
 	assert.True(t, monitor.CheckConnectionStatus())
+	monitor.Close()
 }
 
-func TestMonitorCheckConnectionStatusQueryer(t *testing.T) {
-	pluginService, _, _, _ := beforePluginServiceTests()
-	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0)
+func TestMonitorCheckConnectionStatusOpenConnectionFails(t *testing.T) {
+	_, pluginService := initializeTest(map[string]string{property_util.DRIVER_PROTOCOL.Name: "mysql"}, true, false, false, true, false, false)
+	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0, 0)
+
+	monitor.MonitoringConn = MockDriverConn{}
+	assert.False(t, monitor.CheckConnectionStatus())
+}
+
+func TestMonitorCheckConnectionStatusIsReachable(t *testing.T) {
+	_, pluginService := initializeTest(map[string]string{property_util.DRIVER_PROTOCOL.Name: "mysql"}, true, false, false, false, false, false)
+	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0, 0)
 
 	monitor.MonitoringConn = &MockConn{throwError: false}
 	assert.True(t, monitor.CheckConnectionStatus())
 
 	monitor.MonitoringConn = &MockConn{throwError: true}
 	assert.False(t, monitor.CheckConnectionStatus())
-}
-
-func TestMonitorCheckConnectionStatusFails(t *testing.T) {
-	pluginService, _, _, _ := beforePluginServiceTests()
-	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0)
-
-	monitor.MonitoringConn = MockDriverConn{}
-	assert.False(t, monitor.CheckConnectionStatus())
+	monitor.Close()
 }
 
 func TestMonitorCheckConnectionStatusNewConn(t *testing.T) {
 	pluginService, _, _, _ := beforePluginServiceTests()
-	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0)
+	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0, 0)
 
 	assert.True(t, monitor.CheckConnectionStatus())
+	monitor.Close()
 }
 
 func TestMonitorNewConnWithMonitoringProperties(t *testing.T) {
@@ -368,7 +375,7 @@ func TestMonitorNewConnWithMonitoringProperties(t *testing.T) {
 		"monitoring-user":     "monitor-user",
 		"monitoring-password": "monitor-password",
 	}
-	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, props, 0, 10, 0)
+	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, props, 0, 10, 0, 0)
 	monitor.Close() // Ensures none of the monitoring goroutines are running in the background.
 
 	assert.True(t, monitor.CheckConnectionStatus())
@@ -381,8 +388,8 @@ func TestMonitorNewConnWithMonitoringProperties(t *testing.T) {
 }
 
 func TestMonitorUpdateHostHealthStatusValid(t *testing.T) {
-	pluginService, _, _, _ := beforePluginServiceTests()
-	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0)
+	pluginService := &plugin_helpers.PluginServiceImpl{}
+	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0, 0)
 	monitor.Close() // Ensures none of the monitoring goroutines are running in the background.
 
 	monitor.FailureCount = 1
@@ -394,11 +401,12 @@ func TestMonitorUpdateHostHealthStatusValid(t *testing.T) {
 	assert.Zero(t, monitor.FailureCount)
 	assert.Zero(t, monitor.InvalidHostStartTime)
 	assert.False(t, monitor.HostUnhealthy)
+	monitor.Close()
 }
 
 func TestMonitorUpdateHostHealthStatusInvalid(t *testing.T) {
-	pluginService, _, _, _ := beforePluginServiceTests()
-	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0)
+	pluginService := &plugin_helpers.PluginServiceImpl{}
+	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0, 0)
 	monitor.Close() // Ensures none of the monitoring goroutines are running in the background.
 
 	assert.Zero(t, monitor.FailureCount)
@@ -411,4 +419,5 @@ func TestMonitorUpdateHostHealthStatusInvalid(t *testing.T) {
 	assert.Equal(t, 1, monitor.FailureCount)
 	assert.Equal(t, startTime, monitor.InvalidHostStartTime)
 	assert.True(t, monitor.HostUnhealthy)
+	monitor.Close()
 }

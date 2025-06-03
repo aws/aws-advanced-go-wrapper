@@ -196,6 +196,7 @@ func TestEfmDisableAllInstancesDB(t *testing.T) {
 	close(queryChan)
 	require.NotNil(t, queryErr)
 	slog.Debug(fmt.Sprintf("Sleep query fails with error: %s.", queryErr.Error()))
+	assert.False(t, errors.Is(queryErr, context.DeadlineExceeded), "Sleep query should have failed due to connectivity loss")
 
 	// Re-enable connectivity
 	slog.Debug("Re-enabling all connectivity.")

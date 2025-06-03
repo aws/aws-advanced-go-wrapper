@@ -160,7 +160,7 @@ func (p *PluginServiceImpl) SetCurrentConnection(
 			_, connectionObjectHasChanged := changes[driver_infrastructure.CONNECTION_OBJECT_CHANGED]
 			_, preserve := pluginOpinions[driver_infrastructure.PRESERVE]
 
-			shouldCloseConnection := connectionObjectHasChanged && !utils.IsConnectionLost(oldConnection) && !preserve
+			shouldCloseConnection := connectionObjectHasChanged && !p.GetTargetDriverDialect().IsClosed(oldConnection) && !preserve
 			if shouldCloseConnection {
 				oldConnection.Close()
 			}

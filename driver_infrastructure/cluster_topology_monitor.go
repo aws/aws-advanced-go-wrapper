@@ -336,7 +336,7 @@ func (c *ClusterTopologyMonitorImpl) delay(useHighRefreshRate bool) {
 }
 
 func (c *ClusterTopologyMonitorImpl) closeConnection(conn driver.Conn) {
-	if conn != nil && !utils.IsConnectionLost(conn) {
+	if conn != nil && !c.pluginService.GetTargetDriverDialect().IsClosed(conn) {
 		_ = conn.Close()
 	}
 }

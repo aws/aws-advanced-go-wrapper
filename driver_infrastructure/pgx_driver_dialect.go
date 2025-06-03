@@ -70,6 +70,15 @@ func (p PgxDriverDialect) IsLoginError(err error) bool {
 	return p.errorHandler.IsLoginError(err)
 }
 
+func (p PgxDriverDialect) IsClosed(conn driver.Conn) bool {
+	stdLibConn, ok := conn.(*stdlib.Conn)
+	if ok {
+		return stdLibConn.Conn().IsClosed()
+	}
+	// This should not be reached.
+	return false
+}
+
 func (p PgxDriverDialect) IsDriverRegistered(drivers map[string]driver.Driver) bool {
 	_, existsV4 := drivers[PGX_DRIVER_REGISTRATION_NAME]
 	_, existsV5 := drivers[PGX_V5_DRIVER_REGISTRATION_NAME]

@@ -97,6 +97,7 @@ func (b *HostMonitorConnectionPlugin) Execute(
 
 	failureDetectionTimeMillis := property_util.GetVerifiedWrapperPropertyValue[int](b.props, property_util.FAILURE_DETECTION_TIME_MS)
 	failureDetectionIntervalMillis := property_util.GetVerifiedWrapperPropertyValue[int](b.props, property_util.FAILURE_DETECTION_INTERVAL_MS)
+	failureDetectionProbeTimeoutMillis := property_util.GetVerifiedWrapperPropertyValue[int](b.props, property_util.FAILURE_DETECTION_PROBE_TIMEOUT_MS)
 	failureDetectionCount := property_util.GetVerifiedWrapperPropertyValue[int](b.props, property_util.FAILURE_DETECTION_COUNT)
 
 	b.initMonitorService()
@@ -109,7 +110,7 @@ func (b *HostMonitorConnectionPlugin) Execute(
 		slog.Debug(error_util.GetMessage("HostMonitoringConnectionPlugin.activatedMonitoring", methodName))
 		monitorState, err = b.monitorService.StartMonitoring(
 			b.pluginService.GetCurrentConnectionRef(), monitoringHostInfo, b.props,
-			failureDetectionTimeMillis, failureDetectionIntervalMillis, failureDetectionCount)
+			failureDetectionTimeMillis, failureDetectionIntervalMillis, failureDetectionProbeTimeoutMillis, failureDetectionCount)
 		if err != nil {
 			slog.Warn(err.Error())
 			wrappedErr = err
