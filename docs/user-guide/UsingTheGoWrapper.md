@@ -1,6 +1,6 @@
 # Using the AWS Advanced Go Wrapper
 
-The AWS Advanced Go Wrapper leverages community database clients and enables support of AWS and Aurora functionalities.
+The AWS Advanced Go Wrapper leverages community database clients and enables support of AWS RDS and Aurora functionalities.
 Currently, the [pgx - PostgreSQL Driver and Toolkit](https://github.com/jackc/pgx) and
 the [Go-MySQL-Driver](https://github.com/go-sql-driver/mysql) are supported.
 
@@ -15,7 +15,7 @@ have been enabled by default. Plugin compatibility can be verified in the [plugi
 ## Getting a Connection
 
 The AWS Advanced Go Wrapper is an implementation of Go's database/sql/driver interface. You only need to import the
-driver and can use the full database/sql API then.
+wrapper and can use the full database/sql API then.
 
 Use `"awssql"` as `driverName` and a valid DSN as `dataSourceName`.
 
