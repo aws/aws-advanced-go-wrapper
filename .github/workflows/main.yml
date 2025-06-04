@@ -21,25 +21,50 @@ jobs:
         with:
           use-quiet-mode: 'yes'
           folder-path: 'docs'
-  build:
+  get-list-of-go-modules:
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.find-go-modules.outputs.matrix }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: Find Go modules
+        id: find-go-modules
+        run: |
+          modules=$(find . -type f -name 'go.mod' -exec dirname {} \; | while read dir; do
+            if [ -f "$dir/go.sum" ]; then
+              echo "\"${dir#./}\""
+            fi
+          done | jq -cs .)
+          echo "matrix={\"modules\":$modules}" 
+          echo "matrix={\"modules\":$modules}" >> $GITHUB_OUTPUT
+  linting:
+    needs: get-list-of-go-modules
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{fromJson(needs.get-list-of-go-modules.outputs.matrix)}}
     steps:
       - name: 'Clone repository'
         uses: actions/checkout@v4
       - name: 'Run golangci-lint - linting'
         uses: golangci/golangci-lint-action@v6
         with:
+          working-directory: ${{ matrix.modules }}
           version: v1.64.8
           args: --timeout=5m
-      - name: 'Install dependencies'
-        run: go get .
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Clone repository'
+        uses: actions/checkout@v4
       - name: 'Test with Go'
-        run: go test . ./test -json > TestResults.json
+        working-directory: ${{ github.workspace }}/.test
+        run: go test ./test/... -json > TestResults.json
       - name: 'Upload Go test results'
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: Go-results
-          path: TestResults.json
+          path: ${{ github.workspace }}/.test/TestResults.json
           retention-days: 5
           
