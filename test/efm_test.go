@@ -84,19 +84,19 @@ func TestMonitorServiceImpl(t *testing.T) {
 	val, ok := efm.EFM_MONITORS.Get(monitorKey, time.Minute)
 	assert.True(t, ok)
 	assert.NotNil(t, val)
+	monitor, ok := val.(*efm.MonitorImpl)
+	assert.True(t, ok)
 
 	state2, err := monitorService.StartMonitoring(&testConn, mockHostInfo, nil, 0, 0, 0)
 	assert.Nil(t, err)
+	assert.Equal(t, 2, len(monitor.NewStates))
 	// Monitoring on the same host should not increase the cache size.
 	assert.Equal(t, efm.EFM_MONITORS.Size(), 1)
 	assert.True(t, state2.IsActive())
 
-	monitor, ok := val.(*efm.MonitorImpl)
-	assert.True(t, ok)
 	monitoringConn := &MockDriverConnection{}
 	monitor.MonitoringConn = monitoringConn
 
-	assert.Equal(t, 2, len(monitor.NewStates))
 	time.Sleep(time.Second) // Let the newStates monitoring routine update.
 	assert.Equal(t, 2, len(monitor.ActiveStates))
 	assert.Equal(t, 0, len(monitor.NewStates))

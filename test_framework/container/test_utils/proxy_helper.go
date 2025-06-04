@@ -129,6 +129,44 @@ func DisableProxyConnectivity(proxyInfo ProxyInfo) {
 	}
 }
 
+func DisableAllProxies() {
+	env, err := GetCurrentTestEnvironment()
+	if err == nil {
+		for _, proxy := range env.proxies {
+			DisableProxy(proxy)
+		}
+	}
+}
+
+func DisableProxy(proxyInfo ProxyInfo) {
+	proxy := proxyInfo.proxy
+	if proxy != nil {
+		err := proxy.Disable()
+		if err != nil {
+			slog.Debug(fmt.Sprintf("Error disabling proxy %s:%d: %s.", proxyInfo.controlHost, proxyInfo.controlPort, err.Error()))
+		}
+	}
+}
+
+func EnableAllProxies() {
+	env, err := GetCurrentTestEnvironment()
+	if err == nil {
+		for _, proxy := range env.proxies {
+			EnableProxy(proxy)
+		}
+	}
+}
+
+func EnableProxy(proxyInfo ProxyInfo) {
+	proxy := proxyInfo.proxy
+	if proxy != nil {
+		err := proxy.Enable()
+		if err != nil {
+			slog.Debug(fmt.Sprintf("Error enabling proxy %s:%d: %s.", proxyInfo.controlHost, proxyInfo.controlPort, err.Error()))
+		}
+	}
+}
+
 func createProxyUrl(host string, port int) string {
 	return fmt.Sprintf("http://%s:%d", host, port)
 }

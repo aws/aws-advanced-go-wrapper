@@ -18,11 +18,18 @@ package driver_infrastructure
 
 import (
 	"errors"
-	"github.com/go-sql-driver/mysql"
 	"strings"
+
+	"github.com/go-sql-driver/mysql"
 )
 
 const SqlStateAccessError = "28000"
+
+var MySqlNetworkErrorMessages = []string{
+	"invalid connection",
+	"bad connection",
+	"broken pipe",
+}
 
 type MySQLErrorHandler struct {
 }
@@ -33,8 +40,10 @@ func (m MySQLErrorHandler) IsNetworkError(err error) bool {
 		return true
 	}
 
-	if strings.Contains(err.Error(), "invalid connection") {
-		return true
+	for _, networkError := range MySqlNetworkErrorMessages {
+		if strings.Contains(err.Error(), networkError) {
+			return true
+		}
 	}
 
 	return false
