@@ -17,7 +17,10 @@ have been enabled by default. Plugin compatibility can be verified in the [plugi
 The AWS Advanced Go Wrapper is an implementation of Go's database/sql/driver interface. You only need to import the
 driver and can use the full database/sql API then.
 
-Use `"awssql"` as `driverName` and a valid DSN as `dataSourceName`:
+Use `"awssql"` as `driverName` and a valid DSN as `dataSourceName`.
+
+> [!NOTE]
+> The formatting of a valid DSN for a [MySQL](https://github.com/go-sql-driver/mysql?tab=readme-ov-file#dsn-data-source-name) and [PostgreSQL](https://github.com/jackc/pgx?tab=readme-ov-file#example-usage) connection differs, please provide a valid DSN for the intended underlying driver.
 
 ```go
 import (
@@ -26,7 +29,11 @@ import (
 	_ "github.com/aws/aws-advanced-go-wrapper/awssql"
 )
 
-db, err := sql.Open("awssql", "host=host user=user dbname=database password=password")
+pgDsnExample := "host=host port=port user=username dbname=database password=password"
+pgDsnExample2 := "postgres://username:password@host:port/database"
+mySqlDsnExample := "username:password@net(host:port)/database"
+
+db, err := sql.Open("awssql", pgDsnExample)
 if err != nil {
 	panic(err)
 }
@@ -44,16 +51,12 @@ import (
 
 wrapperDriver := &awsDriver.AwsWrapperDriver{}
 
-conn, err := wrapperDriver.Open("host=host user=user dbname=database password=password")
+conn, err := wrapperDriver.Open(pgDsnExample)
 if err != nil {
 	panic(err)
 }
 defer conn.Close()
 ```
-
-> [!NOTE]
-> The formatting of a valid DSN for a MySQL and PostgreSQL connection differs, please provide a valid DSN for the
-> intended underlying driver.
 
 ## Logging
 
@@ -120,7 +123,7 @@ Plugins are loaded and managed through the Connection Plugin Manager and may be 
 | `plugins`             | `string` | No       | Comma separated list of connection plugin codes.                                                                                                            | `failover,efm` |
 | `autoSortPluginOrder` | `bool`   | No       | Allows the AWS Advanced Go Wrapper to sort connection plugins to prevent plugin misconfiguration. Allows a user to provide a custom plugin order if needed. | `true`         |
 
-To use a built-in plugin, specify its relevant plugin code for the `plugins` .
+To use a built-in plugin, specify its relevant plugin code in the `plugins` parameter.
 The default value for `plugins` is `failover,efm`. These plugins are enabled by default. To read more about these
 plugins, see the [List of Available Plugins](#list-of-available-plugins) section.
 To override the default plugins, simply provide a new value for `plugins`.
@@ -132,7 +135,7 @@ db, err := sql.Open("awssql", "host=host user=user dbname=database password=pass
 ```
 
 > [!NOTE]
-> The plugins will be initialized and executed in the order they have been specified.
+> If `autoSortPluginOrder` has been set to false, the plugins will be initialized and executed in the order they have been specified.
 
 Provide the string `"none"` to disable all plugins:
 
