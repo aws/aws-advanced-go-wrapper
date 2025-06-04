@@ -32,9 +32,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.24' 
-      - name: 'Install dependencies'
-        run: go get .
+          go-version: '1.24'
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -44,7 +42,7 @@ jobs:
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
       - name: Run Integration Tests
         run: |
-          cd test_framework/host && ./gradlew --no-parallel --no-daemon test-aurora-${{ matrix.dbEngine }} --info
+          cd .test/test_framework/host && ./gradlew --no-parallel --no-daemon test-aurora-${{ matrix.dbEngine }} --info
         env:
           RDS_DB_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
           AURORA_MYSQL_DB_ENGINE_VERSION: "default"
@@ -68,5 +66,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: integration-report-default-${{ matrix.dbEngine }}
-          path: ./test_framework/container/reports
+          path: ./.test/test_framework/container/reports
           retention-days: 5

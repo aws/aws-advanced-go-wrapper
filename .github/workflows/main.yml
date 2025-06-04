@@ -21,25 +21,45 @@ jobs:
         with:
           use-quiet-mode: 'yes'
           folder-path: 'docs'
-  build:
+  linting:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        modules: [
+          ".test",
+          "auth-helpers",
+          "aws-secrets-manager",
+          "awssql",
+          "federated-auth",
+          "iam",
+          "mysql-driver",
+          "okta",
+          "otel",
+          "pgx-driver",
+          "xray"
+        ]
     steps:
       - name: 'Clone repository'
         uses: actions/checkout@v4
       - name: 'Run golangci-lint - linting'
         uses: golangci/golangci-lint-action@v6
         with:
+          working-directory: ${{ matrix.modules }}
           version: v1.64.8
           args: --timeout=5m
-      - name: 'Install dependencies'
-        run: go get .
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Clone repository'
+        uses: actions/checkout@v4
       - name: 'Test with Go'
-        run: go test . ./test -json > TestResults.json
+        working-directory: ${{ github.workspace }}/.test
+        run: go test ./test/... -json > TestResults.json
       - name: 'Upload Go test results'
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: Go-results
-          path: TestResults.json
+          path: ${{ github.workspace }}/.test/TestResults.json
           retention-days: 5
           
