@@ -1,3 +1,3 @@
-# Development Guide
+# Contributor Guide
 
 ### Running the Tests

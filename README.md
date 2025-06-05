@@ -22,13 +22,13 @@ Although Aurora is able to provide maximum availability through the use of failo
 
 Since a database failover is usually identified by reaching a network or a connection timeout, the AWS Advanced Go Wrapper introduces an enhanced and customizable manner to faster identify a database outage.
 
-Enhanced Failure Monitoring (EFM) is a feature available from the [Host Monitoring Connection Plugin](./docs/using_the_go_wrapper/using_plugins/UsingTheHostMonitoringPlugin.md#enhanced-failure-monitoring) that periodically checks the connected database instance's health and availability. If a database instance is determined to be unhealthy, the connection is aborted (and potentially routed to another healthy instance in the cluster).
+Enhanced Failure Monitoring (EFM) is a feature available from the [Host Monitoring Connection Plugin](docs/user-guide/using-plugins/UsingTheHostMonitoringPlugin.md#enhanced-failure-monitoring) that periodically checks the connected database instance's health and availability. If a database instance is determined to be unhealthy, the connection is aborted (and potentially routed to another healthy instance in the cluster).
 
 ### Using the AWS Advanced Go Wrapper with plain RDS databases
 
 The AWS Advanced Go Wrapper also works with RDS provided databases that are not Aurora.
 
-Please visit [this page](./docs/using_the_go_wrapper/UsingTheGoWrapper.md#using-the-aws-advanced-go-wrapper-with-plain-rds-databases) for more information.
+Please visit [this page](docs/user-guide/UsingTheGoWrapper.md#using-the-aws-advanced-go-wrapper-with-plain-rds-databases) for more information.
 
 ## Getting Started
 
@@ -74,12 +74,12 @@ For all other questions, please use [GitHub discussions](https://github.com/aws/
 
 ## How to Contribute
 
-1. Set up your environment by following the directions in the [Development Guide](docs/development_guide/DevelopmentGuide.md).
+1. Set up your environment by following the directions in the [Contributor Guide](docs/contributor-guide/DevelopmentGuide.md).
 2. To contribute, first make a fork of this project.
 3. Make any changes on your fork. Make sure you are aware of the requirements for the project.
 4. Create a pull request from your fork.
 5. Pull requests need to be approved and merged by maintainers into the main branch. <br />
-   **Note:** Before making a pull request, [run all tests](docs/development_guide/DevelopmentGuide.md#running-the-tests) and verify everything is passing.
+   **Note:** Before making a pull request, [run all tests](docs/contributor-guide/DevelopmentGuide.md#running-the-tests) and verify everything is passing.
 
 ## Releases
 
