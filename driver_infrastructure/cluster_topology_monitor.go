@@ -288,12 +288,14 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 }
 
 func (c *ClusterTopologyMonitorImpl) Close() {
-	c.stop.Store(true)
-	c.hostRoutinesStop.Store(true)
-
 	// Break waiting/sleeping cycles in monitoring routines.
 	c.requestToUpdateTopology.Store(true)
 	c.notifyChannel(c.requestToUpdateTopologyChannel)
+	c.notifyChannel(c.topologyUpdatedChannel)
+
+	// Signal for monitoring loop to exit.
+	c.stop.Store(true)
+	c.hostRoutinesStop.Store(true)
 
 	// Waiting to give routines enough time to exit the monitoring loop and close database connections.
 	time.Sleep(time.Second * 5)
@@ -385,9 +387,11 @@ func (c *ClusterTopologyMonitorImpl) getHostEndpoint(hostName string) string {
 }
 
 func (c *ClusterTopologyMonitorImpl) notifyChannel(channel chan bool) {
-	select {
-	case channel <- true:
-	default:
+	if !c.stop.Load() {
+		select {
+		case channel <- true:
+		default:
+		}
 	}
 }
 
