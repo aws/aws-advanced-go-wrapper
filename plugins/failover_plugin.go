@@ -581,7 +581,7 @@ func (p *FailoverPlugin) InvalidateCurrentConnection() {
 		utils.Rollback(conn, p.pluginService.GetCurrentTx())
 	}
 
-	if !utils.IsConnectionLost(conn) {
+	if !p.pluginService.GetTargetDriverDialect().IsClosed(conn) {
 		_ = conn.Close()
 	}
 }

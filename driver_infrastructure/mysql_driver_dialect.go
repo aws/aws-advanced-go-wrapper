@@ -61,6 +61,15 @@ func (m MySQLDriverDialect) IsLoginError(err error) bool {
 	return m.errorHandler.IsLoginError(err)
 }
 
+func (m MySQLDriverDialect) IsClosed(conn driver.Conn) bool {
+	validator, ok := conn.(driver.Validator)
+	if ok {
+		return !validator.IsValid()
+	}
+	// This should not be reached.
+	return false
+}
+
 func (m MySQLDriverDialect) IsDriverRegistered(drivers map[string]driver.Driver) bool {
 	_, exists := drivers[MYSQL_DRIVER_REGISTRATION_NAME]
 	return exists

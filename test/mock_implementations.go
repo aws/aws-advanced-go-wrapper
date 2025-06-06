@@ -164,10 +164,6 @@ func (m *MockDriverConnection) Begin() (driver.Tx, error) {
 	return nil, nil
 }
 
-func (m *MockDriverConnection) IsValid() bool {
-	return true
-}
-
 func CreateTestPlugin(calls *[]string, id int, connection driver.Conn, err error, isBefore bool) driver_infrastructure.ConnectionPlugin {
 	if calls == nil {
 		calls = &[]string{}
@@ -234,6 +230,7 @@ type MockConn struct {
 	throwError         bool
 	closeCounter       int
 	execContextCounter int
+	isInvalid          bool
 }
 
 func (m *MockConn) Close() error {
@@ -258,7 +255,14 @@ func (m *MockConn) QueryContext(ctx context.Context, query string, args []driver
 
 func (m *MockConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
 	m.execContextCounter++
-	return m.execResult, nil
+	if !m.throwError {
+		return m.execResult, nil
+	}
+	return nil, errors.New("test error")
+}
+
+func (m *MockConn) IsValid() bool {
+	return !m.isInvalid
 }
 
 func (m *MockConn) updateQueryRow(columns []string, row []driver.Value) {
