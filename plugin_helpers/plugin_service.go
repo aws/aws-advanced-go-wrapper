@@ -55,7 +55,7 @@ func NewPluginServiceImpl(
 	pluginManager driver_infrastructure.PluginManager,
 	driverDialect driver_infrastructure.DriverDialect,
 	props map[string]string,
-	dsn string) (*PluginServiceImpl, error) {
+	dsn string) (driver_infrastructure.PluginService, error) {
 	dialectProvider := driver_infrastructure.DialectManager{}
 	dialect, err := dialectProvider.GetDialect(dsn, props)
 	if err != nil {

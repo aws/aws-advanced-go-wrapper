@@ -54,6 +54,10 @@ type PluginService interface {
 	SetInTransaction(inTransaction bool)
 	GetCurrentTx() driver.Tx
 	SetCurrentTx(driver.Tx)
+	CreateHostListProvider(props map[string]string, dsn string) HostListProvider
+	SetHostListProvider(hostListProvider HostListProvider)
+	SetInitialConnectionHostInfo(info *host_info_util.HostInfo)
+	IsStaticHostListProvider() bool
 	GetHostListProvider() HostListProvider
 	RefreshHostList(conn driver.Conn) error
 	ForceRefreshHostList(conn driver.Conn) error
@@ -62,6 +66,7 @@ type PluginService interface {
 	Connect(hostInfo *host_info_util.HostInfo, props map[string]string) (driver.Conn, error)
 	ForceConnect(hostInfo *host_info_util.HostInfo, props map[string]string) (driver.Conn, error)
 	GetDialect() DatabaseDialect
+	SetDialect(dialect DatabaseDialect)
 	UpdateDialect(conn driver.Conn)
 	GetTargetDriverDialect() DriverDialect
 	IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error)
@@ -74,6 +79,12 @@ type PluginService interface {
 	GetTelemetryFactory() telemetry.TelemetryFactory
 	SetTelemetryContext(ctx context.Context)
 }
+
+type PluginServiceProvider func(
+	pluginManager PluginManager,
+	driverDialect DriverDialect,
+	props map[string]string,
+	dsn string) (PluginService, error)
 
 type PluginManager interface {
 	Init(pluginService PluginService, plugins []ConnectionPlugin) error
@@ -100,6 +111,12 @@ type PluginManager interface {
 	SetTelemetryContext(ctx context.Context)
 	ReleaseResources()
 }
+
+type PluginManagerProvider func(
+	targetDriver driver.Driver,
+	props map[string]string,
+	connProviderManager ConnectionProviderManager,
+	telemetryFactory telemetry.TelemetryFactory) PluginManager
 
 type CanReleaseResources interface {
 	ReleaseResources()

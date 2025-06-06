@@ -37,7 +37,12 @@ type AwsWrapperDriver struct {
 }
 
 func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
-	wrapperContainer, containerErr := container.NewContainer(dsn)
+	wrapperContainer, containerErr := container.NewContainer(
+		dsn,
+		plugin_helpers.NewPluginManagerImpl,
+		plugin_helpers.NewPluginServiceImpl,
+	)
+
 	if containerErr != nil || wrapperContainer.PluginService == nil || wrapperContainer.PluginManager == nil {
 		return nil, containerErr
 	}

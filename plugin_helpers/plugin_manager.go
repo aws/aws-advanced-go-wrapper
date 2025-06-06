@@ -104,7 +104,7 @@ func NewPluginManagerImpl(
 	targetDriver driver.Driver,
 	props map[string]string,
 	connProviderManager driver_infrastructure.ConnectionProviderManager,
-	telemetryFactory telemetry.TelemetryFactory) *PluginManagerImpl {
+	telemetryFactory telemetry.TelemetryFactory) driver_infrastructure.PluginManager {
 	pluginFuncMap := make(map[string]PluginChain)
 	return &PluginManagerImpl{
 		targetDriver:        targetDriver,

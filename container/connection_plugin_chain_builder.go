@@ -48,7 +48,11 @@ var pluginFactoryFuncByCode = map[string]PluginFactoryFunc{
 	"okta":              federated_auth.NewOktaAuthPluginFactory,
 	"awsSecretsManager": aws_secrets_manager.NewAwsSecretsManagerPluginFactory,
 	"federatedAuth":     federated_auth.NewFederatedAuthPluginFactory,
+<<<<<<< HEAD
 	"limitless":         limitless.NewLimitlessPluginFactory,
+=======
+	"executionTime":     plugins.NewExecutionTimePluginFactory,
+>>>>>>> dd5afc7 (Add telemetry benchmarks)
 }
 
 var pluginWeightByCode = map[string]int{
@@ -59,6 +63,7 @@ var pluginWeightByCode = map[string]int{
 	"awsSecretsManager": 1100,
 	"federatedAuth":     1200,
 	"okta":              1300,
+	"executionTime":     WEIGHT_RELATIVE_TO_PRIOR_PLUGIN,
 }
 
 type ConnectionPluginChainBuilder struct {

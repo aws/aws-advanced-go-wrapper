@@ -21,6 +21,7 @@ import (
 	"awssql/host_info_util"
 	"awssql/plugin_helpers"
 	"awssql/region_util"
+	"awssql/utils/telemetry"
 	"context"
 	"database/sql/driver"
 	"errors"
@@ -215,7 +216,7 @@ func (m *MockHostListProvider) Refresh(conn driver.Conn) ([]*host_info_util.Host
 }
 
 type MockPluginManager struct {
-	*plugin_helpers.PluginManagerImpl
+	driver_infrastructure.PluginManager
 	Changes           map[string]map[driver_infrastructure.HostChangeOptions]bool
 	ForceConnectProps map[string]string
 }
@@ -342,10 +343,13 @@ func (a MockTx) Rollback() error {
 	return errors.New("MockTx error")
 }
 
-type MockPluginService struct{}
+type MockPluginService struct {
+	conn          driver.Conn
+	PluginManager driver_infrastructure.PluginManager
+}
 
 func (m *MockPluginService) GetCurrentConnection() driver.Conn {
-	return nil
+	return m.conn
 }
 
 func (m *MockPluginService) GetCurrentConnectionRef() *driver.Conn {
@@ -357,6 +361,7 @@ func (m *MockPluginService) SetCurrentConnection(
 	hostInfo *host_info_util.HostInfo,
 	skipNotificationForThisPlugin driver_infrastructure.ConnectionPlugin,
 ) error {
+	m.conn = conn
 	return nil
 }
 
@@ -376,16 +381,12 @@ func (m *MockPluginService) AcceptsStrategy(role host_info_util.HostRole, strate
 	return false
 }
 
-func (m *MockPluginService) GetHostInfoByStrategy(
-	role host_info_util.HostRole,
-	strategy string,
-	hosts []*host_info_util.HostInfo,
-) (*host_info_util.HostInfo, error) {
+func (m *MockPluginService) GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
 	return nil, nil
 }
 
 func (m *MockPluginService) GetHostRole(conn driver.Conn) host_info_util.HostRole {
-	return host_info_util.HostRole("") // or whatever default is appropriate
+	return host_info_util.HostRole("") // replace with a default if available
 }
 
 func (m *MockPluginService) SetAvailability(hostAliases map[string]bool, availability host_info_util.HostAvailability) {
@@ -402,6 +403,19 @@ func (m *MockPluginService) GetCurrentTx() driver.Tx {
 }
 
 func (m *MockPluginService) SetCurrentTx(tx driver.Tx) {}
+
+func (m *MockPluginService) CreateHostListProvider(props map[string]string, dsn string) driver_infrastructure.HostListProvider {
+	return nil
+}
+
+func (m *MockPluginService) SetHostListProvider(hostListProvider driver_infrastructure.HostListProvider) {
+}
+
+func (m *MockPluginService) SetInitialConnectionHostInfo(info *host_info_util.HostInfo) {}
+
+func (m *MockPluginService) IsStaticHostListProvider() bool {
+	return false
+}
 
 func (m *MockPluginService) GetHostListProvider() driver_infrastructure.HostListProvider {
 	return nil
@@ -435,6 +449,8 @@ func (m *MockPluginService) GetDialect() driver_infrastructure.DatabaseDialect {
 	return nil
 }
 
+func (m *MockPluginService) SetDialect(dialect driver_infrastructure.DatabaseDialect) {}
+
 func (m *MockPluginService) UpdateDialect(conn driver.Conn) {}
 
 func (m *MockPluginService) GetTargetDriverDialect() driver_infrastructure.DriverDialect {
@@ -461,6 +477,18 @@ func (m *MockPluginService) IsNetworkError(err error) bool {
 
 func (m *MockPluginService) IsLoginError(err error) bool {
 	return false
+}
+
+func (m *MockPluginService) GetTelemetryContext() context.Context {
+	return m.PluginManager.GetTelemetryContext()
+}
+
+func (m *MockPluginService) GetTelemetryFactory() telemetry.TelemetryFactory {
+	return m.PluginManager.GetTelemetryFactory()
+}
+
+func (m *MockPluginService) SetTelemetryContext(ctx context.Context) {
+	m.PluginManager.SetTelemetryContext(ctx)
 }
 
 type MockDriverConn struct {

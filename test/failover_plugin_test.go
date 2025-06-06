@@ -115,9 +115,10 @@ func newMockPluginServiceImpl(
 	forceRefreshFails bool,
 	isCurrentConnNil bool) *MockPluginServiceImpl {
 	pluginService, _ := plugin_helpers.NewPluginServiceImpl(pluginManager, driverDialect, props, dsn)
+	pluginServiceImpl, _ := pluginService.(*plugin_helpers.PluginServiceImpl)
 	return &MockPluginServiceImpl{
 		inTransactionResult: inTransactionResult,
-		PluginServiceImpl:   pluginService,
+		PluginServiceImpl:   pluginServiceImpl,
 		isCurrentHostNil:    isCurrentHostNil,
 		forceRefreshFails:   forceRefreshFails,
 		isCurrentConnNil:    isCurrentConnNil,

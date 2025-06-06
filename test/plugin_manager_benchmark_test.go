@@ -22,22 +22,27 @@ import (
 	"awssql/host_info_util"
 	"awssql/plugin_helpers"
 	"awssql/property_util"
+	"awssql/utils/telemetry"
 	"testing"
 )
 
 var BENCHMARK_DEFAULT_NUM_PLUGINS int = 10
 
 func initPluginManagerWithPlugins(numPlugins int,
-	pluginService driver_infrastructure.PluginService,
 	props map[string]string) driver_infrastructure.PluginManager {
-	benchmarkPluginFactory := BenchmarkPluginFactory{}
-
 	property_util.PLUGINS.Set(props, "")
+	property_util.ENABLE_TELEMETRY.Set(props, "true")
+	property_util.TELEMETRY_TRACES_BACKEND.Set(props, "none")
+	property_util.TELEMETRY_METRICS_BACKEND.Set(props, "none")
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+
+	benchmarkPluginFactory := BenchmarkPluginFactory{}
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{DefaultProvider: &MockConnectionProvider{}}
-	pluginManager := plugin_helpers.NewPluginManagerImpl(MockTargetDriver{}, props, connectionProviderManager)
+	pluginManager := plugin_helpers.NewPluginManagerImpl(MockTargetDriver{}, props, connectionProviderManager, telemetryFactory)
+	pluginService := &MockPluginService{}
+
 	pluginChainBuilder := container.ConnectionPluginChainBuilder{}
 	plugins, _ := pluginChainBuilder.GetPlugins(pluginService, pluginManager, props)
-
 	for i := 0; i < numPlugins; i++ {
 		plugin, _ := benchmarkPluginFactory.GetInstance(pluginService, props)
 		plugins = append(plugins, plugin)
@@ -46,15 +51,21 @@ func initPluginManagerWithPlugins(numPlugins int,
 	if err != nil {
 		return nil
 	}
+	pluginService.PluginManager = pluginManager
 	return pluginManager
 }
 
 func initPluginManagerWithNoPlugins(
-	pluginService driver_infrastructure.PluginService,
 	props map[string]string) driver_infrastructure.PluginManager {
 	property_util.PLUGINS.Set(props, "")
+	property_util.ENABLE_TELEMETRY.Set(props, "true")
+	property_util.TELEMETRY_TRACES_BACKEND.Set(props, "none")
+	property_util.TELEMETRY_METRICS_BACKEND.Set(props, "none")
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{DefaultProvider: &MockConnectionProvider{}}
-	pluginManager := plugin_helpers.NewPluginManagerImpl(MockTargetDriver{}, props, connectionProviderManager)
+	pluginManager := plugin_helpers.NewPluginManagerImpl(MockTargetDriver{}, props, connectionProviderManager, telemetryFactory)
+	pluginService := &MockPluginService{}
+
 	pluginChainBuilder := container.ConnectionPluginChainBuilder{}
 	plugins, _ := pluginChainBuilder.GetPlugins(pluginService, pluginManager, props)
 
@@ -62,12 +73,13 @@ func initPluginManagerWithNoPlugins(
 	if err != nil {
 		return nil
 	}
+	pluginService.PluginManager = pluginManager
 	return pluginManager
 }
 
 func BenchmarkConnectWithPlugins(b *testing.B) {
 	props := make(map[string]string)
-	pluginManager := initPluginManagerWithPlugins(BENCHMARK_DEFAULT_NUM_PLUGINS, &MockPluginService{}, props)
+	pluginManager := initPluginManagerWithPlugins(BENCHMARK_DEFAULT_NUM_PLUGINS, props)
 	host, _ := host_info_util.NewHostInfoBuilder().SetHost("host").SetPort(1234).Build()
 
 	for i := 0; i < b.N; i++ {
@@ -82,7 +94,7 @@ func BenchmarkConnectWithPlugins(b *testing.B) {
 
 func BenchmarkConnectWithNoPlugins(b *testing.B) {
 	props := make(map[string]string)
-	pluginManager := initPluginManagerWithNoPlugins(&MockPluginService{}, props)
+	pluginManager := initPluginManagerWithNoPlugins(props)
 	host, _ := host_info_util.NewHostInfoBuilder().SetHost("host").SetPort(1234).Build()
 
 	for i := 0; i < b.N; i++ {
@@ -97,7 +109,7 @@ func BenchmarkConnectWithNoPlugins(b *testing.B) {
 
 func BenchmarkExecuteWithPlugins(b *testing.B) {
 	props := make(map[string]string)
-	pluginManager := initPluginManagerWithPlugins(BENCHMARK_DEFAULT_NUM_PLUGINS, &MockPluginService{}, props)
+	pluginManager := initPluginManagerWithPlugins(BENCHMARK_DEFAULT_NUM_PLUGINS, props)
 	var calls []string
 	execFunc := func() (any, any, bool, error) {
 		calls = append(calls, "targetCall")
@@ -117,7 +129,7 @@ func BenchmarkExecuteWithPlugins(b *testing.B) {
 
 func BenchmarkExecuteWithNoPlugins(b *testing.B) {
 	props := make(map[string]string)
-	pluginManager := initPluginManagerWithNoPlugins(&MockPluginService{}, props)
+	pluginManager := initPluginManagerWithNoPlugins(props)
 	var calls []string
 	execFunc := func() (any, any, bool, error) {
 		calls = append(calls, "targetCall")
@@ -137,7 +149,7 @@ func BenchmarkExecuteWithNoPlugins(b *testing.B) {
 
 func BenchmarkInitHostProviderWithPlugins(b *testing.B) {
 	props := make(map[string]string)
-	pluginManager := initPluginManagerWithPlugins(BENCHMARK_DEFAULT_NUM_PLUGINS, &MockPluginService{}, props)
+	pluginManager := initPluginManagerWithPlugins(BENCHMARK_DEFAULT_NUM_PLUGINS, props)
 
 	for i := 0; i < b.N; i++ {
 		//nolint:errcheck
@@ -151,7 +163,7 @@ func BenchmarkInitHostProviderWithPlugins(b *testing.B) {
 
 func BenchmarkInitHostProviderWithNoPlugins(b *testing.B) {
 	props := make(map[string]string)
-	pluginManager := initPluginManagerWithNoPlugins(&MockPluginService{}, props)
+	pluginManager := initPluginManagerWithNoPlugins(props)
 
 	for i := 0; i < b.N; i++ {
 		//nolint:errcheck
@@ -165,7 +177,7 @@ func BenchmarkInitHostProviderWithNoPlugins(b *testing.B) {
 
 func BenchmarkNotifyConnectionChangedWithPlugins(b *testing.B) {
 	props := make(map[string]string)
-	pluginManager := initPluginManagerWithPlugins(BENCHMARK_DEFAULT_NUM_PLUGINS, &MockPluginService{}, props)
+	pluginManager := initPluginManagerWithPlugins(BENCHMARK_DEFAULT_NUM_PLUGINS, props)
 
 	hostChanged := map[driver_infrastructure.HostChangeOptions]bool{
 		driver_infrastructure.HOST_CHANGED: true,
@@ -182,7 +194,7 @@ func BenchmarkNotifyConnectionChangedWithPlugins(b *testing.B) {
 
 func BenchmarkNotifyConnectionChangedWithNoPlugins(b *testing.B) {
 	props := make(map[string]string)
-	pluginManager := initPluginManagerWithNoPlugins(&MockPluginService{}, props)
+	pluginManager := initPluginManagerWithNoPlugins(props)
 
 	hostChanged := map[driver_infrastructure.HostChangeOptions]bool{
 		driver_infrastructure.HOST_CHANGED: true,
@@ -199,7 +211,7 @@ func BenchmarkNotifyConnectionChangedWithNoPlugins(b *testing.B) {
 
 func BenchmarkReleaseResourcesWithPlugins(b *testing.B) {
 	props := make(map[string]string)
-	pluginManager := initPluginManagerWithPlugins(BENCHMARK_DEFAULT_NUM_PLUGINS, &MockPluginService{}, props)
+	pluginManager := initPluginManagerWithPlugins(BENCHMARK_DEFAULT_NUM_PLUGINS, props)
 
 	for i := 0; i < b.N; i++ {
 		pluginManager.ReleaseResources()
@@ -208,7 +220,7 @@ func BenchmarkReleaseResourcesWithPlugins(b *testing.B) {
 
 func BenchmarkReleaseResourcesWithNoPlugins(b *testing.B) {
 	props := make(map[string]string)
-	pluginManager := initPluginManagerWithNoPlugins(&MockPluginService{}, props)
+	pluginManager := initPluginManagerWithNoPlugins(props)
 
 	for i := 0; i < b.N; i++ {
 		pluginManager.ReleaseResources()
