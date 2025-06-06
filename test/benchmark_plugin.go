@@ -74,7 +74,7 @@ func (b *BenchmarkPlugin) Execute(
 	return executeFunc()
 }
 
-func (b *BenchmarkPlugin) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
+func (b *BenchmarkPlugin) AcceptsStrategy(strategy string) bool {
 	return false
 }
 func (b *BenchmarkPlugin) GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {

@@ -348,6 +348,10 @@ type MockPluginService struct {
 	PluginManager driver_infrastructure.PluginManager
 }
 
+func (m *MockPluginService) GetHostSelectorStrategy(strategy string) (hostSelector driver_infrastructure.HostSelector, err error) {
+	return nil, nil
+}
+
 func (m *MockPluginService) GetCurrentConnection() driver.Conn {
 	return m.conn
 }
@@ -377,7 +381,7 @@ func (m *MockPluginService) GetHosts() []*host_info_util.HostInfo {
 	return nil
 }
 
-func (m *MockPluginService) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
+func (m *MockPluginService) AcceptsStrategy(strategy string) bool {
 	return false
 }
 
@@ -695,8 +699,12 @@ func (m *MockConnectionProvider) AcceptsUrl(hostInfo host_info_util.HostInfo, pr
 	return false
 }
 
-func (m *MockConnectionProvider) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
+func (m *MockConnectionProvider) AcceptsStrategy(strategy string) bool {
 	return false
+}
+
+func (m *MockConnectionProvider) GetHostSelectorStrategy(strategy string) (driver_infrastructure.HostSelector, error) {
+	return nil, nil
 }
 
 func (m *MockConnectionProvider) GetHostInfoByStrategy(

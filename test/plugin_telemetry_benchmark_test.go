@@ -43,7 +43,6 @@ func getDefaultProps() map[string]string {
 	return props
 }
 
-// TODO add telemetry.
 func getPropsExecute() map[string]string {
 	props := getDefaultProps()
 	property_util.PLUGINS.Set(props, "executionTime")
@@ -99,7 +98,6 @@ func BenchmarkInitAndReleaseBaseline(b *testing.B) {
 }
 
 func BenchmarkInitAndReleaseExecutionTime(b *testing.B) {
-	// slog.SetLogLoggerLevel(slog.LevelDebug)
 	props := getPropsExecute()
 	manager, service, managerProvider, serviceProvider, dsn := initResources(props)
 

@@ -254,6 +254,7 @@ func (p *PluginServiceImpl) GetHostInfoByStrategy(
 func (p *PluginServiceImpl) GetHostSelectorStrategy(strategy string) (hostSelector driver_infrastructure.HostSelector, err error) {
 	return p.pluginManager.GetHostSelectorStrategy(strategy)
 }
+
 func (p *PluginServiceImpl) GetHostRole(conn driver.Conn) host_info_util.HostRole {
 	return p.hostListProvider.GetHostRole(conn)
 }

@@ -25,9 +25,10 @@ import (
 	"awssql/utils/telemetry"
 	"database/sql/driver"
 	"errors"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var pgLimitlessTestDsn = "user=someUser password=somePassword host=mydb-1-db-shard-group-1.shardgrp-xyz.us-east-2.rds.amazonaws.com port=5432 database=postgres_limitless " +
@@ -41,7 +42,8 @@ func beforeLimitlessPluginConnectTest(props map[string]string) *plugin_helpers.P
 			mockTargetDriver,
 			props, driver_infrastructure.ConnectionProviderManager{},
 			telemetryFactory))
-	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, driver_infrastructure.NewPgxDriverDialect(), props, pgLimitlessTestDsn)
+	pluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, driver_infrastructure.NewPgxDriverDialect(), props, pgLimitlessTestDsn)
+	pluginServiceImpl, _ := pluginService.(*plugin_helpers.PluginServiceImpl)
 	pluginServiceImpl.SetDialect(&driver_infrastructure.AuroraPgDatabaseDialect{})
 
 	return pluginServiceImpl

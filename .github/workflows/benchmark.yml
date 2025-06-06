@@ -1,0 +1,26 @@
+name: Benchmark Tests
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Clone repository'
+        uses: actions/checkout@v4
+      - name: 'Install dependencies'
+        run: go get .
+      - name: 'Test with Go'
+        run: go test ./test -benchmem -bench=Benchmark -run=^$ > BenchmarkResults.json
+      - name: 'Upload Go test results'
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Go-Benchmarks
+          path: BenchmarkResults.json
+          retention-days: 5
+          
