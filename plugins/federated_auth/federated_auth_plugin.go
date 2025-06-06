@@ -128,7 +128,7 @@ func (f *FederatedAuthPlugin) connectInternal(
 	property_util.USER.Set(props, property_util.DB_USER.Get(props))
 
 	result, err := connectFunc()
-	if err != nil {
+	if err != nil && f.pluginService.IsLoginError(err) && isCachedToken {
 		updateErr := f.updateAuthenticationToken(props, region, cacheKey, host, port)
 		if updateErr != nil {
 			return nil, updateErr
