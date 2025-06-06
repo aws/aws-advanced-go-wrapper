@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func newOktaAuthPluginTest(
@@ -154,6 +155,94 @@ func TestOktaAuthPluginCachedToken(t *testing.T) {
 	assert.Equal(t, "cachedPassword", props[property_util.PASSWORD.Name])
 	assert.Equal(t, "jane_doe", props[property_util.USER.Name])
 	assert.Equal(t, 1, federated_auth.OktaTokenCache.Size())
+}
+
+func TestOktaAuthPluginConnectWithRetry(t *testing.T) {
+	host := "database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com"
+	port := 1234
+	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost(host).SetPort(port).Build()
+	assert.NoError(t, err)
+	props := map[string]string{
+		property_util.DRIVER_PROTOCOL.Name: "postgresql",
+		property_util.DB_USER.Name:         "jane_doe",
+	}
+	_, _, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
+
+	cacheKey := iam.GetCacheKey(
+		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.DB_USER),
+		host,
+		port,
+		"us-east-2")
+	federated_auth.OktaTokenCache.Put(cacheKey, "cachedToken", time.Minute)
+	connAttempts := 0
+	mockConnFunc := func() (driver.Conn, error) {
+		connAttempts++
+		cachedToken, ok := federated_auth.OktaTokenCache.Get(cacheKey)
+		if ok && cachedToken == "cachedToken" {
+			// Fails using cached token.
+			return nil, errors.New(driver_infrastructure.AccessErrors[0])
+		}
+		// Succeeds on retry attempt with a new token.
+		return &MockConn{}, nil
+	}
+	_, err = oktaAuthConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
+
+	// Retry connection with a new token when the cached token fails with a login error.
+	assert.NoError(t, err)
+	assert.Equal(t, "someToken", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "jane_doe", props[property_util.USER.Name])
+	assert.Equal(t, 1, federated_auth.OktaTokenCache.Size())
+	assert.Equal(t, 2, connAttempts)
+}
+
+func TestOktaAuthPluginDoesNotRetryConnect(t *testing.T) {
+	host := "database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com"
+	port := 1234
+	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost(host).SetPort(port).Build()
+	assert.NoError(t, err)
+	props := map[string]string{
+		property_util.DRIVER_PROTOCOL.Name: "postgresql",
+		property_util.DB_USER.Name:         "jane_doe",
+	}
+	_, _, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
+
+	cacheKey := iam.GetCacheKey(
+		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.DB_USER),
+		host,
+		port,
+		"us-east-2")
+	testErr := errors.New("test")
+	connAttempts := 0
+	mockConnFunc := func() (driver.Conn, error) {
+		connAttempts++
+		cachedPassword, ok := federated_auth.OktaTokenCache.Get(cacheKey)
+		if ok && cachedPassword == "oldPassword" {
+			// Fails with a non-login error when using cached password.
+			return nil, errors.New(driver_infrastructure.NetworkErrors[0])
+		}
+		// Fails with a login error when using newly generated token.
+		return nil, errors.New(driver_infrastructure.AccessErrors[0])
+	}
+	_, err = oktaAuthConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
+
+	// Should only generate a new token once, if it fails does not retry.
+	require.Error(t, err)
+	assert.Equal(t, driver_infrastructure.AccessErrors[0], err.Error())
+	assert.Equal(t, "someToken", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "jane_doe", props[property_util.USER.Name])
+	assert.Equal(t, 1, federated_auth.OktaTokenCache.Size())
+	assert.Equal(t, 1, connAttempts)
+
+	federated_auth.OktaTokenCache.Put(cacheKey, "oldPassword", time.Minute)
+	connAttempts = 0
+	_, err = oktaAuthConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
+
+	// Should not retry if the error is not a login error.
+	assert.NotEqual(t, testErr, err)
+	assert.Equal(t, "oldPassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "jane_doe", props[property_util.USER.Name])
+	assert.Equal(t, 1, federated_auth.OktaTokenCache.Size())
+	assert.Equal(t, 1, connAttempts)
 }
 
 func TestOktaAuthPluginCachedIamHostToken(t *testing.T) {

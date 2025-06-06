@@ -129,7 +129,7 @@ func (o *OktaAuthPlugin) connectInternal(
 
 	conn, err := connectFunc()
 
-	if err != nil && (o.pluginService.IsLoginError(err) && isCachedToken) {
+	if err != nil && o.pluginService.IsLoginError(err) && isCachedToken {
 		err = o.updateAuthenticationToken(props, region, cacheKey, host, port)
 		if err != nil {
 			return nil, err

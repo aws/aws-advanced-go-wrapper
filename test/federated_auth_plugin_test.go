@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var federatedAuthTestToken = "someToken"
@@ -74,6 +75,78 @@ func TestCachedToken(t *testing.T) {
 
 	assert.Equal(t, federatedAuthDbUser, props[property_util.USER.Name])
 	assert.Equal(t, federatedAuthTestToken, props[property_util.PASSWORD.Name])
+}
+
+func TestFederatedAuthConnectWithRetry(t *testing.T) {
+	props := map[string]string{
+		property_util.DRIVER_PROTOCOL.Name: "postgresql",
+		property_util.DB_USER.Name:         federatedAuthDbUser,
+	}
+
+	key := "us-east-2:pg.testdb.us-east-2.rds.amazonaws.com:1234:iamUser"
+	plugin := setup(props)
+	federated_auth.TokenCache.Put(key, "cachedToken", time.Minute)
+	connAttempts := 0
+	mockConnFunc := func() (driver.Conn, error) {
+		connAttempts++
+		cachedToken, ok := federated_auth.TokenCache.Get(key)
+		if ok && cachedToken == "cachedToken" {
+			// Fails using cached token.
+			return nil, errors.New(driver_infrastructure.AccessErrors[0])
+		}
+		// Succeeds on retry attempt with a new token.
+		return &MockConn{}, nil
+	}
+
+	_, err := plugin.Connect(federatedAuthHostInfo1, props, true, mockConnFunc)
+
+	assert.NoError(t, err)
+	assert.Equal(t, federatedAuthDbUser, props[property_util.USER.Name])
+	assert.Equal(t, federatedAuthTestToken, props[property_util.PASSWORD.Name])
+	assert.Equal(t, 1, federated_auth.TokenCache.Size())
+	assert.Equal(t, 2, connAttempts)
+}
+
+func TestFederatedAuthDoesNotRetryConnect(t *testing.T) {
+	props := map[string]string{
+		property_util.DRIVER_PROTOCOL.Name: "postgresql",
+		property_util.DB_USER.Name:         federatedAuthDbUser,
+	}
+
+	key := "us-east-2:pg.testdb.us-east-2.rds.amazonaws.com:1234:iamUser"
+	plugin := setup(props)
+	testErr := errors.New("test")
+	connAttempts := 0
+	mockConnFunc := func() (driver.Conn, error) {
+		connAttempts++
+		cachedPassword, ok := federated_auth.TokenCache.Get(key)
+		if ok && cachedPassword == "oldPassword" {
+			// Fails with a non-login error when using cached password.
+			return nil, errors.New(driver_infrastructure.NetworkErrors[0])
+		}
+		// Fails with a login error when using newly generated token.
+		return nil, errors.New(driver_infrastructure.AccessErrors[0])
+	}
+	_, err := plugin.Connect(federatedAuthHostInfo1, props, false, mockConnFunc)
+
+	// Should only generate a new token once, if it fails does not retry.
+	require.Error(t, err)
+	assert.Equal(t, driver_infrastructure.AccessErrors[0], err.Error())
+	assert.Equal(t, federatedAuthDbUser, props[property_util.USER.Name])
+	assert.Equal(t, federatedAuthTestToken, props[property_util.PASSWORD.Name])
+	assert.Equal(t, 1, federated_auth.TokenCache.Size())
+	assert.Equal(t, 1, connAttempts)
+
+	federated_auth.TokenCache.Put(key, "oldPassword", time.Minute)
+	connAttempts = 0
+	_, err = plugin.Connect(federatedAuthHostInfo1, props, false, mockConnFunc)
+
+	// Should not retry if the error is not a login error.
+	assert.NotEqual(t, testErr, err)
+	assert.Equal(t, "oldPassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, federatedAuthDbUser, props[property_util.USER.Name])
+	assert.Equal(t, 1, federated_auth.TokenCache.Size())
+	assert.Equal(t, 1, connAttempts)
 }
 
 func TestExpiredCachedToken(t *testing.T) {
