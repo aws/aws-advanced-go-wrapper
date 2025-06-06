@@ -19,6 +19,8 @@ package test
 import (
 	awsDriver "awssql/driver"
 	"context"
+	"log/slog"
+	"time"
 
 	"awssql/error_util"
 	"awssql/test_framework/container/test_utils"
@@ -300,7 +302,7 @@ func TestFailoverWriterInTransactionWithSQL(t *testing.T) {
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":    environment.Info().DatabaseInfo.ClusterEndpoint,
+		"host":    environment.Info().DatabaseInfo.WriterInstanceEndpoint(),
 		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
 		"plugins": "failover",
 	})
@@ -312,14 +314,13 @@ func TestFailoverWriterInTransactionWithSQL(t *testing.T) {
 	}
 	defer conn.Close()
 
-	// Verify connection works.
-	ctx := context.TODO()
-	pinger, ok := conn.(driver.Pinger)
-	assert.True(t, ok)
-	err = pinger.Ping(ctx)
-	require.NoError(t, err, "Failed to open database connection.")
+	// Check that we are connected to the writer.
+	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
+	assert.Nil(t, err)
+	require.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Create a test table to verify transaction rollback
+	ctx := context.TODO()
 	execer, ok := conn.(driver.ExecerContext)
 	assert.True(t, ok)
 	_, err = execer.ExecContext(ctx, "DROP TABLE IF EXISTS test_failover_tx_rollback", []driver.NamedValue{})
@@ -345,9 +346,61 @@ func TestFailoverWriterInTransactionWithSQL(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 0, count, "Transaction should have been rolled back, table should be empty.")
 
+	// Check that we are connected to the writer.
+	instanceId, err = test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
+	assert.Nil(t, err)
+	require.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+
 	// Clean up the test table
 	_, err = execer.ExecContext(ctx, "DROP TABLE IF EXISTS test_failover_tx_rollback", []driver.NamedValue{})
 	assert.Nil(t, err)
 
 	wrapperDriver.ReleaseResources()
+}
+
+func TestFailoverEfmDisableInstance(t *testing.T) {
+	_, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
+	assert.Nil(t, err)
+	dsn := getDsnForTestsWithProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "efm,failover")
+	wrapperDriver := &awsDriver.AwsWrapperDriver{}
+
+	conn, err := wrapperDriver.Open(dsn)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	// Get initial instance ID
+	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
+	assert.Nil(t, err)
+	assert.NotZero(t, instanceId)
+
+	// Start a long-running query in a goroutine
+	queryChan := make(chan error)
+	go func() {
+		// Execute a sleep query that will run for 10 seconds
+		sleepQuery := test_utils.GetSleepSql(environment.Info().Request.Engine, TEST_SLEEP_QUERY_SECONDS)
+
+		_, err := test_utils.ExecuteQuery(environment.Info().Request.Engine, conn, sleepQuery, TEST_SLEEP_QUERY_TIMEOUT_SECONDS)
+		queryChan <- err
+	}()
+
+	// Wait a bit to ensure the query has started
+	time.Sleep(5 * time.Second)
+
+	// Disable connectivity while the sleep query is running
+	proxyInfo := environment.GetProxy(instanceId)
+	slog.Debug("Disabling proxy connectivity.")
+	test_utils.DisableProxyConnectivity(proxyInfo)
+
+	// Wait for the query to complete and check the error
+	queryErr := <-queryChan
+	close(queryChan)
+	require.NotNil(t, queryErr)
+	assert.Equal(t, error_util.GetMessage("Failover.unableToRefreshHostList"), queryErr.Error())
+
+	// Re-enable connectivity
+	slog.Debug("Re-enabling proxy connectivity.")
+	test_utils.EnableProxyConnectivity(proxyInfo, true)
 }

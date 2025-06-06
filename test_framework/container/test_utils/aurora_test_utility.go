@@ -230,32 +230,42 @@ func (a AuroraTestUtility) FailoverClusterAndWaitTillWriterChanged(initialWriter
 		return failoverErr
 	}
 
-	clusterAddress, err := retrieveIpAddress(clusterEndpoint)
-	if err != nil {
-		return err
-	}
-	stopTime := time.Now().Add(time.Duration(writerChangeTimeout) * time.Minute)
-	slog.Debug(fmt.Sprintf("Waiting for ip address of %s to change after trigging failover for %d minutes.", clusterEndpoint, writerChangeTimeout))
-	for clusterAddress == initialAddress && time.Now().Before(stopTime) {
-		time.Sleep(time.Second)
-		clusterAddress, err = retrieveIpAddress(clusterEndpoint)
+	ipChangeChan := make(chan error)
+
+	go func() {
+		clusterAddress, err := retrieveIpAddress(clusterEndpoint)
 		if err != nil {
-			return err
+			ipChangeChan <- err
+			return
 		}
-	}
-	if !time.Now().Before(stopTime) {
-		slog.Info("check for updated IP address timed out after 10 minutes")
-		return fmt.Errorf("ip did not change in %d minutes following failover command", writerChangeTimeout)
-	}
-	slog.Debug(fmt.Sprintf("Ip address of %s has updated after failover.", clusterEndpoint))
+		stopTime := time.Now().Add(time.Duration(writerChangeTimeout) * time.Minute)
+		slog.Debug(fmt.Sprintf("Waiting for ip address of %s to change after trigging failover for %d minutes.", clusterEndpoint, writerChangeTimeout))
+		for clusterAddress == initialAddress && time.Now().Before(stopTime) {
+			time.Sleep(time.Second)
+			clusterAddress, err = retrieveIpAddress(clusterEndpoint)
+			if err != nil {
+				ipChangeChan <- err
+				return
+			}
+		}
+		if !time.Now().Before(stopTime) {
+			slog.Error(fmt.Sprintf("Ip address did not change in %d minutes following failover command.", writerChangeTimeout))
+		} else {
+			slog.Debug(fmt.Sprintf("Ip address of %s has updated after failover.", clusterEndpoint))
+		}
+		ipChangeChan <- nil
+	}()
 
 	slog.Debug(fmt.Sprintf("Waiting for writer %s to change for %d minutes.", initialWriter, writerChangeTimeout))
 	if !a.writerChanged(initialWriter, clusterId, writerChangeTimeout) {
-		return fmt.Errorf("writer did not change in %d minutes following failover command", writerChangeTimeout)
+		return fmt.Errorf("Writer did not change in %d minutes following failover command.", writerChangeTimeout)
 	}
 	slog.Debug(fmt.Sprintf("Writer of cluster %s has updated after failover.", clusterId))
 
-	return nil
+	ipChangeErr := <-ipChangeChan
+	close(ipChangeChan)
+
+	return ipChangeErr
 }
 
 func (a AuroraTestUtility) failoverClusterToTarget(clusterId string, targetWriterId *string) error {

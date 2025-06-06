@@ -76,6 +76,7 @@ func TestEfmDisableInstance(t *testing.T) {
 
 	// Wait for the query to complete and check the error
 	queryErr := <-queryChan
+	close(queryChan)
 	require.NotNil(t, queryErr)
 	slog.Debug(fmt.Sprintf("Sleep query fails with error: %s.", queryErr.Error()))
 	assert.False(t, errors.Is(queryErr, context.DeadlineExceeded), "Sleep query should have failed due to connectivity loss")
@@ -134,6 +135,7 @@ func TestEfmDisableAllInstances(t *testing.T) {
 
 	// Wait for the query to complete and check the error
 	queryErr := <-queryChan
+	close(queryChan)
 	require.NotNil(t, queryErr)
 	slog.Debug(fmt.Sprintf("Sleep query fails with error: %s.", queryErr.Error()))
 	assert.False(t, errors.Is(queryErr, context.DeadlineExceeded), "Sleep query should have failed due to connectivity loss")
@@ -191,6 +193,7 @@ func TestEfmDisableAllInstancesDB(t *testing.T) {
 
 	// Wait for the query to complete and check the error
 	queryErr := <-queryChan
+	close(queryChan)
 	require.NotNil(t, queryErr)
 	slog.Debug(fmt.Sprintf("Sleep query fails with error: %s.", queryErr.Error()))
 
@@ -204,6 +207,10 @@ func TestEfmDisableAllInstancesDB(t *testing.T) {
 }
 
 func getDsnForEfmIntegrationTest(environment *test_utils.TestEnvironment, host string) string {
+	return getDsnForTestsWithProxy(environment, host, "efm")
+}
+
+func getDsnForTestsWithProxy(environment *test_utils.TestEnvironment, host string, plugins string) string {
 	monitoringConnectTimeoutSeconds := strconv.Itoa(TEST_FAILURE_DETECTION_INTERVAL_SECONDS - 1)
 	monitoringConnectTimeoutParameterName := property_util.MONITORING_PROPERTY_PREFIX
 	switch environment.Info().Request.Engine {
@@ -217,11 +224,12 @@ func getDsnForEfmIntegrationTest(environment *test_utils.TestEnvironment, host s
 		"host":                       host,
 		"port":                       strconv.Itoa(environment.Info().ProxyDatabaseInfo.InstanceEndpointPort),
 		"clusterInstanceHostPattern": "?." + environment.Info().ProxyDatabaseInfo.InstanceEndpointSuffix,
-		"plugins":                    "efm",
+		"plugins":                    plugins,
 		"failureDetectionEnabled":    "true",
 		"failureDetectionIntervalMs": strconv.Itoa(TEST_FAILURE_DETECTION_INTERVAL_SECONDS * 1000), // interval between probes to host
 		"failureDetectionCount":      strconv.Itoa(TEST_FAILURE_DETECTION_COUNT),                   // 3 consecutive failures before marks host as dead
 		"failureDetectionTimeMs":     "1000",                                                       // 1 second time before polling starts
+		"failoverTimeoutMs":          strconv.Itoa(TEST_FAILURE_DETECTION_COUNT * TEST_FAILURE_DETECTION_INTERVAL_SECONDS * 1000),
 		// each monitoring connection has monitoringConnectTimeoutSeconds seconds to connect
 		monitoringConnectTimeoutParameterName: monitoringConnectTimeoutSeconds,
 	})
