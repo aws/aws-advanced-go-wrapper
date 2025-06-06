@@ -21,8 +21,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-xray-sdk-go/strategy/sampling"
+	"github.com/aws/aws-xray-sdk-go/xray"
+	"github.com/aws/aws-xray-sdk-go/xraylog"
+	xray2 "go.opentelemetry.io/contrib/propagators/aws/xray"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/sdk/trace"
 	"log/slog"
 	"net"
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -303,6 +315,90 @@ func retrieveIpAddress(clusterEndpoint string) (string, error) {
 		return "", errors.New("unable to lookup current ip address")
 	}
 	return clusterAddresses[0], nil
+}
+
+func SetupTelemetry(env *TestEnvironment) (trace.SpanProcessor, error) {
+	slog.SetLogLoggerLevel(slog.LevelDebug)
+	ctx := context.Background()
+
+	endpoint := env.Info().OtelTracesTelemetryInfo.Endpoint + ":" + env.Info().OtelTracesTelemetryInfo.EndpointPort
+
+	traceExporter, err := otlptracegrpc.New(
+		ctx,
+		otlptracegrpc.WithEndpoint(endpoint),
+		otlptracegrpc.WithInsecure(),
+	)
+	if err != nil {
+		return nil, errors.New("unable to create otlp trace exporter")
+	}
+
+	bsp := trace.NewBatchSpanProcessor(traceExporter,
+		trace.WithMaxQueueSize(10_000),
+		trace.WithMaxExportBatchSize(10_000))
+
+	metricsExporter, err := otlpmetricgrpc.New(
+		ctx,
+		otlpmetricgrpc.WithEndpoint(env.Info().MetricsTelemetryInfo.Endpoint+":"+env.Info().MetricsTelemetryInfo.EndpointPort),
+		otlpmetricgrpc.WithInsecure(),
+		otlpmetricgrpc.WithTemporalitySelector(metric.DefaultTemporalitySelector),
+	)
+	if err != nil {
+		return nil, errors.New("unable to create otlp metrics exporter")
+	}
+
+	reader := metric.NewPeriodicReader(
+		metricsExporter,
+		metric.WithInterval(1*time.Second),
+	)
+
+	resource, err := resource.New(ctx,
+		resource.WithFromEnv(),
+		resource.WithTelemetrySDK(),
+		resource.WithHost(),
+		resource.WithAttributes(
+			attribute.String("service.name", "aws-advanced-go-wrapper-integration-tests"),
+			attribute.String("service.version", "1.0.0"),
+		))
+	if err != nil {
+		return nil, err
+	}
+
+	tracerProvider := trace.NewTracerProvider(
+		trace.WithSampler(trace.AlwaysSample()),
+		trace.WithResource(resource),
+		trace.WithIDGenerator(xray2.NewIDGenerator()),
+	)
+	tracerProvider.RegisterSpanProcessor(bsp)
+
+	otel.SetTracerProvider(tracerProvider)
+
+	provider := metric.NewMeterProvider(
+		metric.WithReader(reader),
+		metric.WithResource(resource),
+	)
+	otel.SetMeterProvider(provider)
+
+	xray.SetLogger(xraylog.NewDefaultLogger(os.Stdout, xraylog.LogLevelDebug))
+	strategy, err := sampling.NewCentralizedStrategyWithFilePath("../resources/sampling_rules.json")
+	if err != nil {
+		return nil, err
+	}
+	err = xray.Configure(
+		xray.Config{
+			DaemonAddr:       env.Info().XrayTracesTelemetryInfo.Endpoint + ":" + env.Info().XrayTracesTelemetryInfo.EndpointPort,
+			SamplingStrategy: strategy,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	err = os.Setenv("AWS_XRAY_NOOP_ID", "FALSE")
+	if err != nil {
+		return nil, err
+	}
+
+	return bsp, nil
 }
 
 func BasicCleanupAfterBasicSetup(t *testing.T) func() {

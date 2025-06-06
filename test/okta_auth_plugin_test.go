@@ -25,6 +25,7 @@ import (
 	"awssql/plugins/iam"
 	"awssql/property_util"
 	"awssql/region_util"
+	"awssql/utils/telemetry"
 	"database/sql/driver"
 	"errors"
 	"strconv"
@@ -34,21 +35,30 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func newOktaAuthPluginTest(props map[string]string) (*MockCredentialsProviderFactory, *MockIamTokenUtility, *federated_auth.OktaAuthPlugin) {
+func newOktaAuthPluginTest(
+	props map[string]string) (
+	*MockCredentialsProviderFactory,
+	*MockIamTokenUtility,
+	*federated_auth.OktaAuthPlugin,
+	driver_infrastructure.PluginService) {
 	federated_auth.OktaTokenCache.Clear()
 	mockTargetDriver := &MockTargetDriver{}
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}))
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	mockPluginManager := driver_infrastructure.PluginManager(
+		plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, driver_infrastructure.NewPgxDriverDialect(), props, pgTestDsn)
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 	iamTokenUtility := &MockIamTokenUtility{}
 	mockCredProviderFactory := &MockCredentialsProviderFactory{}
-	return mockCredProviderFactory, iamTokenUtility, federated_auth.NewOktaAuthPlugin(mockPluginService, mockCredProviderFactory, iamTokenUtility)
+	oktaPlugin, _ := federated_auth.NewOktaAuthPlugin(mockPluginService, mockCredProviderFactory, iamTokenUtility)
+	return mockCredProviderFactory, iamTokenUtility, oktaPlugin, pluginServiceImpl
 }
 
 func TestGetOktaAuthPlugin(t *testing.T) {
-	props := map[string]string{}
+	props := map[string]string{property_util.DRIVER_PROTOCOL.Name: "postgresql"}
+	_, _, _, pluginService := newOktaAuthPluginTest(props)
 	pluginFactory := federated_auth.NewOktaAuthPluginFactory()
-	_, err := pluginFactory.GetInstance(&MockPluginServiceImpl{}, props)
+	_, err := pluginFactory.GetInstance(pluginService, props)
 	assert.NoError(t, err)
 }
 
@@ -61,7 +71,7 @@ func TestOktaAuthPluginConnect(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
 		property_util.DB_USER.Name:         "jane_doe",
 	}
-	_, _, oktaAuthConnectionPlugin := newOktaAuthPluginTest(props)
+	_, _, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
 
 	_, err = oktaAuthConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
 	assert.NoError(t, err)
@@ -78,7 +88,7 @@ func TestOktaAuthPluginForceConnect(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
 		property_util.DB_USER.Name:         "jane_doe",
 	}
-	_, _, oktaAuthConnectionPlugin := newOktaAuthPluginTest(props)
+	_, _, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
 
 	_, err = oktaAuthConnectionPlugin.ForceConnect(hostInfo, props, false, mockConnFunc)
 	assert.NoError(t, err)
@@ -95,7 +105,7 @@ func TestOktaAuthPluginInvalidRegion(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
 		property_util.DB_USER.Name:         "jane_doe",
 	}
-	_, _, oktaAuthConnectionPlugin := newOktaAuthPluginTest(props)
+	_, _, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
 
 	_, err = oktaAuthConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
 	assert.Equal(t, error_util.GetMessage("OktaAuthPlugin.unableToDetermineRegion", property_util.IAM_REGION.Name), err.Error())
@@ -111,7 +121,7 @@ func TestOktaAuthPluginValidRegionThroughIam(t *testing.T) {
 		property_util.DB_USER.Name:         "jane_doe",
 		property_util.IAM_REGION.Name:      "us-west-2",
 	}
-	_, mockIamToken, oktaAuthConnectionPlugin := newOktaAuthPluginTest(props)
+	_, mockIamToken, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
 
 	_, err = oktaAuthConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
 	assert.NoError(t, err)
@@ -130,7 +140,7 @@ func TestOktaAuthPluginCachedToken(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
 		property_util.DB_USER.Name:         "jane_doe",
 	}
-	_, _, oktaAuthConnectionPlugin := newOktaAuthPluginTest(props)
+	_, _, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
 	cacheKey := iam.GetCacheKey(
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.DB_USER),
 		host,
@@ -163,7 +173,7 @@ func TestOktaAuthPluginCachedIamHostToken(t *testing.T) {
 		property_util.IAM_REGION.Name:       iamRegion,
 		property_util.IAM_DEFAULT_PORT.Name: strconv.FormatInt(int64(iamPort), 10),
 	}
-	_, _, oktaAuthConnectionPlugin := newOktaAuthPluginTest(props)
+	_, _, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
 	cacheKey := iam.GetCacheKey(
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.DB_USER),
 		iamHost,
@@ -197,7 +207,7 @@ func TestOktaAuthPluginExpiredTokenWithIamHost(t *testing.T) {
 		property_util.IAM_REGION.Name:       iamRegion,
 		property_util.IAM_DEFAULT_PORT.Name: strconv.FormatInt(int64(iamPort), 10),
 	}
-	_, mockIamToken, oktaAuthConnectionPlugin := newOktaAuthPluginTest(props)
+	_, mockIamToken, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
 	cacheKey := iam.GetCacheKey(
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.DB_USER),
 		iamHost,
@@ -223,7 +233,7 @@ func TestOktaAuthGenerateTokenFailure(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
 		property_util.DB_USER.Name:         "jane_doe",
 	}
-	_, mockIamToken, oktaAuthConnectionPlugin := newOktaAuthPluginTest(props)
+	_, mockIamToken, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
 
 	errMsg := "Generated token error"
 	mockIamToken.GenerateTokenError = errors.New(errMsg)
@@ -238,7 +248,7 @@ func TestOktaAuthPluginGetAwsCredentialsProviderError(t *testing.T) {
 		property_util.DB_USER.Name:         "jane_doe",
 	}
 
-	mockCredFactory, _, plugin := newOktaAuthPluginTest(props)
+	mockCredFactory, _, plugin, _ := newOktaAuthPluginTest(props)
 	mockCredFactory.getAwsCredentialsProviderError = errors.New("getAwsCredentialsProviderError")
 	_, err := plugin.Connect(federatedAuthHostInfo1, props, true, connectFunc)
 

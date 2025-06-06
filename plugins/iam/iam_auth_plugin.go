@@ -25,6 +25,7 @@ import (
 	"awssql/property_util"
 	"awssql/region_util"
 	"awssql/utils"
+	"awssql/utils/telemetry"
 	"database/sql/driver"
 	"errors"
 	"log/slog"
@@ -34,7 +35,7 @@ import (
 type IamAuthPluginFactory struct{}
 
 func (factory IamAuthPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService, props map[string]string) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewIamAuthPlugin(pluginService, RegularIamTokenUtility{}, props), nil
+	return NewIamAuthPlugin(pluginService, RegularIamTokenUtility{}, props)
 }
 
 func NewIamAuthPluginFactory() driver_infrastructure.ConnectionPluginFactory {
@@ -45,17 +46,23 @@ var TokenCache = utils.NewCache[string]()
 
 type IamAuthPlugin struct {
 	plugins.BaseConnectionPlugin
-	pluginService   driver_infrastructure.PluginService
-	iamTokenUtility IamTokenUtility
-	props           map[string]string
+	pluginService     driver_infrastructure.PluginService
+	iamTokenUtility   IamTokenUtility
+	props             map[string]string
+	fetchTokenCounter telemetry.TelemetryCounter
 }
 
-func NewIamAuthPlugin(pluginService driver_infrastructure.PluginService, iamTokenUtility IamTokenUtility, props map[string]string) *IamAuthPlugin {
-	return &IamAuthPlugin{
-		pluginService:   pluginService,
-		props:           props,
-		iamTokenUtility: iamTokenUtility,
+func NewIamAuthPlugin(pluginService driver_infrastructure.PluginService, iamTokenUtility IamTokenUtility, props map[string]string) (*IamAuthPlugin, error) {
+	fetchTokenCounter, err := pluginService.GetTelemetryFactory().CreateCounter("iam.fetchToken.count")
+	if err != nil {
+		return nil, err
 	}
+	return &IamAuthPlugin{
+		pluginService:     pluginService,
+		props:             props,
+		iamTokenUtility:   iamTokenUtility,
+		fetchTokenCounter: fetchTokenCounter,
+	}, nil
 }
 
 func (iamAuthPlugin *IamAuthPlugin) GetSubscribedMethods() []string {
@@ -145,12 +152,14 @@ func (iamAuthPlugin *IamAuthPlugin) fetchAndSetToken(
 		slog.Error(error_util.GetMessage("IamAuthPlugin.errorGettingAwsCredentialsProvider", err))
 		return err
 	}
+	iamAuthPlugin.fetchTokenCounter.Inc(iamAuthPlugin.pluginService.GetTelemetryContext())
 	token, err := iamAuthPlugin.iamTokenUtility.GenerateAuthenticationToken(
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.USER),
 		host,
 		port,
 		region,
-		awsCredentialsProvider)
+		awsCredentialsProvider,
+		iamAuthPlugin.pluginService)
 	if err != nil || token == "" {
 		slog.Debug(error_util.GetMessage("IamAuthPlugin.errorGeneratingNewToken", err))
 		return err

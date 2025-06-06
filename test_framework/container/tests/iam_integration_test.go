@@ -24,11 +24,10 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"github.com/stretchr/testify/assert"
 	"net"
 	"strconv"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 // Attempt to connect using the wrong database username.
@@ -151,7 +150,7 @@ func TestIamValidConnectionPropertiesNoPassword(t *testing.T) {
 }
 
 // Attempt to connect with a conn object.
-func TestIamValidConnectionConObject(t *testing.T) {
+func TestIamValidConnectionConnObject(t *testing.T) {
 	iam.ClearCaches()
 	testEnvironment, err := test_utils.GetCurrentTestEnvironment()
 	assert.NoError(t, err)
@@ -160,6 +159,73 @@ func TestIamValidConnectionConObject(t *testing.T) {
 		"anypassword",
 		testEnvironment,
 	)
+	dsn := test_utils.GetDsn(testEnvironment, props)
+
+	wrapperDriver := &awsDriver.AwsWrapperDriver{}
+
+	conn, err := wrapperDriver.Open(dsn)
+	assert.NoError(t, err)
+	defer conn.Close()
+
+	queryer, ok := conn.(driver.QueryerContext)
+	assert.True(t, ok)
+
+	// Execute the query
+	rows, err := queryer.QueryContext(context.Background(), "SELECT 1", nil)
+	assert.NoError(t, err)
+	defer rows.Close()
+}
+
+func TestIamValidConnectionConnObjectWithTelemetryOtel(t *testing.T) {
+	iam.ClearCaches()
+	testEnvironment, err := test_utils.GetCurrentTestEnvironment()
+	assert.NoError(t, err)
+	bsp, err := test_utils.SetupTelemetry(testEnvironment)
+	assert.NoError(t, err)
+	assert.NotNil(t, bsp)
+	defer func() { _ = bsp.Shutdown(context.TODO()) }()
+
+	props := initIamProps(
+		testEnvironment.Info().IamUsername,
+		"anypassword",
+		testEnvironment,
+	)
+	props["enableTelemetry"] = "true"
+	props["telemetryTracesBackend"] = "OTLP"
+	props["telemetryMetricsBackend"] = "OTLP"
+	dsn := test_utils.GetDsn(testEnvironment, props)
+
+	wrapperDriver := &awsDriver.AwsWrapperDriver{}
+
+	conn, err := wrapperDriver.Open(dsn)
+	assert.NoError(t, err)
+	defer conn.Close()
+
+	queryer, ok := conn.(driver.QueryerContext)
+	assert.True(t, ok)
+
+	// Execute the query
+	rows, err := queryer.QueryContext(context.Background(), "SELECT 1", nil)
+	assert.NoError(t, err)
+	defer rows.Close()
+}
+
+func TestIamValidConnectionConnObjectWithTelemetryXray(t *testing.T) {
+	iam.ClearCaches()
+	testEnvironment, err := test_utils.GetCurrentTestEnvironment()
+	assert.NoError(t, err)
+	bsp, err := test_utils.SetupTelemetry(testEnvironment)
+	assert.NoError(t, err)
+	assert.NotNil(t, bsp)
+	defer func() { _ = bsp.Shutdown(context.TODO()) }()
+	props := initIamProps(
+		testEnvironment.Info().IamUsername,
+		"anypassword",
+		testEnvironment,
+	)
+	props["enableTelemetry"] = "true"
+	props["telemetryTracesBackend"] = "XRAY"
+	props["telemetryMetricsBackend"] = "OTLP"
 	dsn := test_utils.GetDsn(testEnvironment, props)
 
 	wrapperDriver := &awsDriver.AwsWrapperDriver{}

@@ -21,6 +21,7 @@ import (
 	"awssql/error_util"
 	"awssql/property_util"
 	"awssql/utils"
+	"awssql/utils/telemetry"
 	"log/slog"
 	"net/http"
 	"net/http/cookiejar"
@@ -33,12 +34,16 @@ import (
 type AdfsCredentialsProviderFactory struct {
 	SamlCredentialsProviderFactory
 	httpClientProvider HttpClientProvider
+	pluginService      driver_infrastructure.PluginService
 }
 
 func NewAdfsCredentialsProviderFactory(
 	httpClientProvider HttpClientProvider,
-	awsStsClientProvider driver_infrastructure.AwsStsClientProvider) *AdfsCredentialsProviderFactory {
-	providerFactory := &AdfsCredentialsProviderFactory{}
+	awsStsClientProvider driver_infrastructure.AwsStsClientProvider,
+	pluginService driver_infrastructure.PluginService) *AdfsCredentialsProviderFactory {
+	providerFactory := &AdfsCredentialsProviderFactory{
+		pluginService: pluginService,
+	}
 	providerFactory.GetSamlAssertionFunc = providerFactory.GetSamlAssertion
 	providerFactory.httpClientProvider = httpClientProvider
 	providerFactory.AwsStsClientProvider = awsStsClientProvider
@@ -46,17 +51,30 @@ func NewAdfsCredentialsProviderFactory(
 }
 
 func (a *AdfsCredentialsProviderFactory) GetSamlAssertion(props map[string]string) (string, error) {
+	parentCtx := a.pluginService.GetTelemetryContext()
+	telemetryCtx, ctx := a.pluginService.GetTelemetryFactory().OpenTelemetryContext(telemetry.TELEMETRY_FETCH_SAML_ADFS, telemetry.NESTED, parentCtx)
+	a.pluginService.SetTelemetryContext(ctx)
+	defer func() {
+		telemetryCtx.CloseContext()
+		a.pluginService.SetTelemetryContext(parentCtx)
+	}()
+
 	signInPageUrl := a.GetSignInPageUrl(props)
 	uri, params, err := a.GetUriAndParamsFromSignInPage(signInPageUrl, props)
 	if err != nil {
+		telemetryCtx.SetSuccess(false)
+		telemetryCtx.SetError(err)
 		return "", err
 	}
 
 	samlAssertion, err := a.getSamlAssertionFromPost(uri, params, props)
 	if err != nil {
+		telemetryCtx.SetSuccess(false)
+		telemetryCtx.SetError(err)
 		return "", err
 	}
 
+	telemetryCtx.SetSuccess(true)
 	return samlAssertion, nil
 }
 

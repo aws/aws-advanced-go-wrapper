@@ -21,6 +21,7 @@ import (
 	"awssql/error_util"
 	"awssql/host_info_util"
 	"awssql/utils"
+	"awssql/utils/telemetry"
 	"context"
 	"database/sql/driver"
 	"log/slog"
@@ -477,6 +478,18 @@ func (p *PluginServiceImpl) GetProperties() map[string]string {
 
 func (p *PluginServiceImpl) SetInitialConnectionHostInfo(hostInfo *host_info_util.HostInfo) {
 	p.initialHostInfo = hostInfo
+}
+
+func (p *PluginServiceImpl) GetTelemetryContext() context.Context {
+	return p.pluginManager.GetTelemetryContext()
+}
+
+func (p *PluginServiceImpl) GetTelemetryFactory() telemetry.TelemetryFactory {
+	return p.pluginManager.GetTelemetryFactory()
+}
+
+func (p *PluginServiceImpl) SetTelemetryContext(ctx context.Context) {
+	p.pluginManager.SetTelemetryContext(ctx)
 }
 
 func (p *PluginServiceImpl) IsNetworkError(err error) bool {

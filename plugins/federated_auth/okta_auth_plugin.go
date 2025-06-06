@@ -26,6 +26,7 @@ import (
 	"awssql/property_util"
 	"awssql/region_util"
 	"awssql/utils"
+	"awssql/utils/telemetry"
 	"database/sql/driver"
 	"log/slog"
 	"time"
@@ -37,9 +38,9 @@ func (o OktaAuthPluginFactory) GetInstance(
 	pluginService driver_infrastructure.PluginService,
 	props map[string]string,
 ) (driver_infrastructure.ConnectionPlugin, error) {
-	providerFactory := NewOktaCredentialsProviderFactory(GetBasicHttpClient, driver_infrastructure.NewAwsStsClient)
+	providerFactory := NewOktaCredentialsProviderFactory(GetBasicHttpClient, driver_infrastructure.NewAwsStsClient, pluginService)
 
-	return NewOktaAuthPlugin(pluginService, providerFactory, iam.RegularIamTokenUtility{}), nil
+	return NewOktaAuthPlugin(pluginService, providerFactory, iam.RegularIamTokenUtility{})
 }
 
 func NewOktaAuthPluginFactory() driver_infrastructure.ConnectionPluginFactory {
@@ -52,14 +53,24 @@ type OktaAuthPlugin struct {
 	pluginService              driver_infrastructure.PluginService
 	credentialsProviderFactory CredentialsProviderFactory
 	iamTokenUtility            iam.IamTokenUtility
+	fetchTokenCounter          telemetry.TelemetryCounter
 	plugins.BaseConnectionPlugin
 }
 
 func NewOktaAuthPlugin(
 	pluginService driver_infrastructure.PluginService,
 	credentialsProviderFactory CredentialsProviderFactory,
-	iamTokenUtility iam.IamTokenUtility) *OktaAuthPlugin {
-	return &OktaAuthPlugin{pluginService: pluginService, credentialsProviderFactory: credentialsProviderFactory, iamTokenUtility: iamTokenUtility}
+	iamTokenUtility iam.IamTokenUtility) (*OktaAuthPlugin, error) {
+	fetchTokenCounter, err := pluginService.GetTelemetryFactory().CreateCounter("oktaAuth.fetchToken.count")
+	if err != nil {
+		return nil, err
+	}
+	return &OktaAuthPlugin{
+		pluginService:              pluginService,
+		credentialsProviderFactory: credentialsProviderFactory,
+		iamTokenUtility:            iamTokenUtility,
+		fetchTokenCounter:          fetchTokenCounter,
+	}, nil
 }
 
 func (o *OktaAuthPlugin) GetSubscribedMethods() []string {
@@ -142,7 +153,8 @@ func (o *OktaAuthPlugin) updateAuthenticationToken(
 		return err
 	}
 
-	token, err := o.iamTokenUtility.GenerateAuthenticationToken(property_util.DB_USER.Get(props), host, port, region, credentialsProvider)
+	o.fetchTokenCounter.Inc(o.pluginService.GetTelemetryContext())
+	token, err := o.iamTokenUtility.GenerateAuthenticationToken(property_util.DB_USER.Get(props), host, port, region, credentialsProvider, o.pluginService)
 	if err != nil {
 		return err
 	}

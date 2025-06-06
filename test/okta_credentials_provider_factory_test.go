@@ -53,7 +53,7 @@ func TestOktaCredentialsProviderGetSamlAssertion(t *testing.T) {
 		property_util.IDP_PASSWORD.Name:    "oktapassword",
 		property_util.APP_ID.Name:          "myapp",
 	}
-	oktaCredentialsProviderFactory := federated_auth.NewOktaCredentialsProviderFactory(getOktaTestHttpClientFunc, NewMockAwsStsClient)
+	oktaCredentialsProviderFactory := federated_auth.NewOktaCredentialsProviderFactory(getOktaTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	content := readFile(t, "./resources/okta/okta-saml-value-expected.txt")
 	expectedSamlAssertion := strings.ReplaceAll(strings.ReplaceAll(string(content), "\n", ""), "\r", "")
@@ -82,7 +82,7 @@ func TestOktaAuthPluginSessionTokenPageError(t *testing.T) {
 		property_util.IDP_PASSWORD.Name:    "oktapassword",
 		property_util.APP_ID.Name:          "myapp",
 	}
-	oktaCredentialsProviderFactory := federated_auth.NewOktaCredentialsProviderFactory(getOktaTestHttpClientFunc, NewMockAwsStsClient)
+	oktaCredentialsProviderFactory := federated_auth.NewOktaCredentialsProviderFactory(getOktaTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	samlUrl := "https://dev-1234.okta.com/api/v1/authn"
 	samlAssertion, err := oktaCredentialsProviderFactory.GetSamlAssertion(props)
@@ -110,7 +110,7 @@ func TestOktaGetSessionToken(t *testing.T) {
 		property_util.IDP_PASSWORD.Name:    "oktapassword",
 		property_util.APP_ID.Name:          "myapp",
 	}
-	oktaCredentialsProviderFactory := federated_auth.NewOktaCredentialsProviderFactory(getOktaTestHttpClientFunc, NewMockAwsStsClient)
+	oktaCredentialsProviderFactory := federated_auth.NewOktaCredentialsProviderFactory(getOktaTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	content := readFile(t, "./resources/okta/okta-expected-session-token.txt")
 	expectedSessionToken := strings.ReplaceAll(strings.ReplaceAll(string(content), "\n", ""), "\r", "")
@@ -139,7 +139,7 @@ func TestOktaAuthPluginEmptySessionTokenError(t *testing.T) {
 		property_util.IDP_PASSWORD.Name:    "oktapassword",
 		property_util.APP_ID.Name:          "myapp",
 	}
-	oktaCredentialsProviderFactory := federated_auth.NewOktaCredentialsProviderFactory(getOktaTestHttpClientFunc, NewMockAwsStsClient)
+	oktaCredentialsProviderFactory := federated_auth.NewOktaCredentialsProviderFactory(getOktaTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	samlAssertion, err := oktaCredentialsProviderFactory.GetSamlAssertion(props)
 	assert.Error(t, err)
@@ -167,7 +167,7 @@ func TestOktaAuthPluginHttpClientError(t *testing.T) {
 		property_util.IDP_PASSWORD.Name:    "oktapassword",
 		property_util.APP_ID.Name:          "myapp",
 	}
-	oktaCredentialsProviderFactory := federated_auth.NewOktaCredentialsProviderFactory(getOktaTestHttpClientFunc, NewMockAwsStsClient)
+	oktaCredentialsProviderFactory := federated_auth.NewOktaCredentialsProviderFactory(getOktaTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	samlAssertion, err := oktaCredentialsProviderFactory.GetSamlAssertion(props)
 	assert.Error(t, err)
@@ -198,7 +198,7 @@ func TestOktaAuthPluginHttpErrorOnSamlRequest(t *testing.T) {
 		property_util.IDP_PASSWORD.Name:    "oktapassword",
 		property_util.APP_ID.Name:          "myapp",
 	}
-	oktaCredentialsProviderFactory := federated_auth.NewOktaCredentialsProviderFactory(getOktaTestHttpClientFunc, NewMockAwsStsClient)
+	oktaCredentialsProviderFactory := federated_auth.NewOktaCredentialsProviderFactory(getOktaTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	content := readFile(t, "./resources/okta/okta-expected-session-token.txt")
 	expectedSessionToken := strings.ReplaceAll(strings.ReplaceAll(string(content), "\n", ""), "\r", "")

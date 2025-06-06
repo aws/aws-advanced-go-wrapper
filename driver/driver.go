@@ -25,6 +25,7 @@ import (
 	"awssql/plugins/efm"
 	"awssql/plugins/iam"
 	"awssql/utils"
+	"awssql/utils/telemetry"
 	"context"
 	"database/sql"
 	"database/sql/driver"
@@ -39,6 +40,19 @@ func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 	wrapperContainer, containerErr := container.NewContainer(dsn)
 	if containerErr != nil || wrapperContainer.PluginService == nil || wrapperContainer.PluginManager == nil {
 		return nil, containerErr
+	}
+
+	pluginManager := wrapperContainer.PluginManager
+	telemetryCtx, ctx := pluginManager.GetTelemetryFactory().OpenTelemetryContext(telemetry.TELEMETRY_OPEN_CONNECTION, telemetry.TOP_LEVEL, nil)
+	pluginManager.SetTelemetryContext(ctx)
+	defer func() {
+		telemetryCtx.CloseContext()
+		pluginManager.SetTelemetryContext(context.TODO())
+	}()
+
+	err := pluginManager.InitHostProvider(dsn, wrapperContainer.Props, wrapperContainer.HostListProviderService)
+	if err != nil {
+		return nil, err
 	}
 
 	pluginService := wrapperContainer.PluginService

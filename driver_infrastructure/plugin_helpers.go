@@ -18,6 +18,8 @@ package driver_infrastructure
 
 import (
 	"awssql/host_info_util"
+	"awssql/utils/telemetry"
+	"context"
 	"database/sql/driver"
 )
 
@@ -67,6 +69,9 @@ type PluginService interface {
 	GetProperties() map[string]string
 	IsNetworkError(err error) bool
 	IsLoginError(err error) bool
+	GetTelemetryContext() context.Context
+	GetTelemetryFactory() telemetry.TelemetryFactory
+	SetTelemetryContext(ctx context.Context)
 }
 
 type PluginManager interface {
@@ -88,6 +93,9 @@ type PluginManager interface {
 	GetDefaultConnectionProvider() ConnectionProvider
 	GetEffectiveConnectionProvider() ConnectionProvider
 	GetConnectionProviderManager() ConnectionProviderManager
+	GetTelemetryContext() context.Context
+	GetTelemetryFactory() telemetry.TelemetryFactory
+	SetTelemetryContext(ctx context.Context)
 }
 
 type CanReleaseResources interface {

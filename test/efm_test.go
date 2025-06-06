@@ -19,7 +19,6 @@ package test
 import (
 	"awssql/driver_infrastructure"
 	"awssql/host_info_util"
-	"awssql/plugin_helpers"
 	"awssql/plugins/efm"
 	"awssql/property_util"
 	"awssql/utils"
@@ -60,7 +59,7 @@ func TestMonitorConnectionState(t *testing.T) {
 func TestMonitorServiceImpl(t *testing.T) {
 	assert.Nil(t, efm.EFM_MONITORS)
 
-	pluginService := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
+	pluginService, _, _, _ := beforePluginServiceTests()
 	monitorService := efm.NewMonitorServiceImpl(pluginService)
 	var testConn driver.Conn = &MockDriverConnection{}
 
@@ -133,7 +132,7 @@ func TestHostMonitoringPluginFactory(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.True(t, strings.Contains(err.Error(), "pluginService"))
 
-	pluginService := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
+	pluginService, _, _, _ := beforePluginServiceTests()
 	_, err = factory.GetInstance(pluginService, nil)
 	// Plugin factory should not return an instance when props is nil.
 	assert.NotNil(t, err)
@@ -274,7 +273,7 @@ func TestHostMonitoringPluginExecuteMonitoringEnabled(t *testing.T) {
 
 func TestHostMonitoringPluginExecuteThrowsError(t *testing.T) {
 	factory := efm.HostMonitoringPluginFactory{}
-	pluginService := &plugin_helpers.PluginServiceImpl{}
+	pluginService, _, _, _ := beforePluginServiceTests()
 	plugin, _ := factory.GetInstance(pluginService, map[string]string{"a": "1"})
 	// Reset caches and query counter.
 	efm.ClearCaches()
@@ -291,7 +290,7 @@ func TestHostMonitoringPluginExecuteThrowsError(t *testing.T) {
 }
 
 func TestMonitorCanDispose(t *testing.T) {
-	pluginService := &plugin_helpers.PluginServiceImpl{}
+	pluginService, _, _, _ := beforePluginServiceTests()
 	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0)
 	monitor.MonitoringConn = &MockDriverConnection{}
 	var conn driver.Conn = &MockDriverConn{}
@@ -313,7 +312,7 @@ func TestMonitorCanDispose(t *testing.T) {
 }
 
 func TestMonitorClose(t *testing.T) {
-	pluginService := &plugin_helpers.PluginServiceImpl{}
+	pluginService, _, _, _ := beforePluginServiceTests()
 	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0)
 	mockConn := &MockDriverConnection{}
 	monitor.MonitoringConn = mockConn
@@ -326,7 +325,7 @@ func TestMonitorClose(t *testing.T) {
 }
 
 func TestMonitorCheckConnectionStatusValidator(t *testing.T) {
-	pluginService := &plugin_helpers.PluginServiceImpl{}
+	pluginService, _, _, _ := beforePluginServiceTests()
 	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0)
 	monitor.MonitoringConn = &MockDriverConnection{}
 
@@ -334,7 +333,7 @@ func TestMonitorCheckConnectionStatusValidator(t *testing.T) {
 }
 
 func TestMonitorCheckConnectionStatusQueryer(t *testing.T) {
-	pluginService := &plugin_helpers.PluginServiceImpl{}
+	pluginService, _, _, _ := beforePluginServiceTests()
 	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0)
 
 	monitor.MonitoringConn = &MockConn{throwError: false}
@@ -345,7 +344,7 @@ func TestMonitorCheckConnectionStatusQueryer(t *testing.T) {
 }
 
 func TestMonitorCheckConnectionStatusFails(t *testing.T) {
-	pluginService := &plugin_helpers.PluginServiceImpl{}
+	pluginService, _, _, _ := beforePluginServiceTests()
 	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0)
 
 	monitor.MonitoringConn = MockDriverConn{}
@@ -382,7 +381,7 @@ func TestMonitorNewConnWithMonitoringProperties(t *testing.T) {
 }
 
 func TestMonitorUpdateHostHealthStatusValid(t *testing.T) {
-	pluginService := &plugin_helpers.PluginServiceImpl{}
+	pluginService, _, _, _ := beforePluginServiceTests()
 	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0)
 	monitor.Close() // Ensures none of the monitoring goroutines are running in the background.
 
@@ -398,7 +397,7 @@ func TestMonitorUpdateHostHealthStatusValid(t *testing.T) {
 }
 
 func TestMonitorUpdateHostHealthStatusInvalid(t *testing.T) {
-	pluginService := &plugin_helpers.PluginServiceImpl{}
+	pluginService, _, _, _ := beforePluginServiceTests()
 	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, nil, 0, 10, 0)
 	monitor.Close() // Ensures none of the monitoring goroutines are running in the background.
 

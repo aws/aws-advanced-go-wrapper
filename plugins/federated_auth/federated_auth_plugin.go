@@ -26,6 +26,7 @@ import (
 	"awssql/property_util"
 	"awssql/region_util"
 	"awssql/utils"
+	"awssql/utils/telemetry"
 	"database/sql/driver"
 	"log/slog"
 	"time"
@@ -36,8 +37,8 @@ var TokenCache = utils.NewCache[string]()
 type FederatedAuthPluginFactory struct{}
 
 func (f FederatedAuthPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService, props map[string]string) (driver_infrastructure.ConnectionPlugin, error) {
-	providerFactory := NewAdfsCredentialsProviderFactory(GetBasicHttpClient, driver_infrastructure.NewAwsStsClient)
-	return NewFederatedAuthPlugin(pluginService, providerFactory, iam.RegularIamTokenUtility{}), nil
+	providerFactory := NewAdfsCredentialsProviderFactory(GetBasicHttpClient, driver_infrastructure.NewAwsStsClient, pluginService)
+	return NewFederatedAuthPlugin(pluginService, providerFactory, iam.RegularIamTokenUtility{})
 }
 
 func NewFederatedAuthPluginFactory() driver_infrastructure.ConnectionPluginFactory {
@@ -48,14 +49,24 @@ type FederatedAuthPlugin struct {
 	pluginService              driver_infrastructure.PluginService
 	credentialsProviderFactory CredentialsProviderFactory
 	iamTokenUtility            iam.IamTokenUtility
+	fetchTokenCounter          telemetry.TelemetryCounter
 	plugins.BaseConnectionPlugin
 }
 
 func NewFederatedAuthPlugin(
 	pluginService driver_infrastructure.PluginService,
 	providerFactory CredentialsProviderFactory,
-	iamTokenUtility iam.IamTokenUtility) *FederatedAuthPlugin {
-	return &FederatedAuthPlugin{pluginService: pluginService, credentialsProviderFactory: providerFactory, iamTokenUtility: iamTokenUtility}
+	iamTokenUtility iam.IamTokenUtility) (*FederatedAuthPlugin, error) {
+	fetchTokenCounter, err := pluginService.GetTelemetryFactory().CreateCounter("federatedAuth.fetchToken.count")
+	if err != nil {
+		return nil, err
+	}
+	return &FederatedAuthPlugin{
+		pluginService:              pluginService,
+		credentialsProviderFactory: providerFactory,
+		iamTokenUtility:            iamTokenUtility,
+		fetchTokenCounter:          fetchTokenCounter,
+	}, nil
 }
 
 func (f *FederatedAuthPlugin) GetSubscribedMethods() []string {
@@ -140,7 +151,8 @@ func (f *FederatedAuthPlugin) updateAuthenticationToken(
 		return err
 	}
 
-	token, err := f.iamTokenUtility.GenerateAuthenticationToken(property_util.DB_USER.Get(props), host, port, region, credentialsProvider)
+	f.fetchTokenCounter.Inc(f.pluginService.GetTelemetryContext())
+	token, err := f.iamTokenUtility.GenerateAuthenticationToken(property_util.DB_USER.Get(props), host, port, region, credentialsProvider, f.pluginService)
 	if err != nil {
 		return err
 	}

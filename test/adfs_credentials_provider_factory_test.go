@@ -53,7 +53,7 @@ func TestAdfsCredProviderGetSamlAssertion(t *testing.T) {
 		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
 		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
 	}
-	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient)
+	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	content := readFile(t, "./resources/saml-assertion.txt")
 	expectedSamlAssertion := strings.ReplaceAll(strings.ReplaceAll(string(content), "\n", ""), "\r", "")
@@ -84,7 +84,7 @@ func TestAdfsCredProviderGetSignInPageFailure(t *testing.T) {
 		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
 		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
 	}
-	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient)
+	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	samlAssertion, err := adfsCredentialsProviderFactory.GetSamlAssertion(props)
 	assert.Error(t, err)
@@ -114,7 +114,7 @@ func TestAdfsCredProviderGetSignInPageError(t *testing.T) {
 		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
 		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
 	}
-	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient)
+	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	samlAssertion, err := adfsCredentialsProviderFactory.GetSamlAssertion(props)
 	assert.Equal(t, errors.New("HTTP Error"), err)
@@ -142,7 +142,7 @@ func TestAdfsCredProviderGetSamlAssertionLoginFailure(t *testing.T) {
 		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
 		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
 	}
-	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient)
+	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	samlAssertion, err := adfsCredentialsProviderFactory.GetSamlAssertion(props)
 	assert.Error(t, err)
@@ -171,7 +171,7 @@ func TestAdfsCredProviderGetSamlAssertionPostFailure(t *testing.T) {
 		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
 		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
 	}
-	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient)
+	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	samlAssertion, err := adfsCredentialsProviderFactory.GetSamlAssertion(props)
 	assert.Error(t, err)
@@ -201,7 +201,7 @@ func TestAdfsCredProviderGetSamlAssertionPostError(t *testing.T) {
 		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
 		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
 	}
-	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient)
+	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	samlAssertion, err := adfsCredentialsProviderFactory.GetSamlAssertion(props)
 	assert.Equal(t, errors.New("HTTP Error"), err)
@@ -229,7 +229,7 @@ func TestAdfsCredProviderGetUriAndParametersFromSignInPage(t *testing.T) {
 		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
 		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
 	}
-	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient)
+	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 	uri, params, err := adfsCredentialsProviderFactory.GetUriAndParamsFromSignInPage("https://ec2amaz-ab3cdef.example.com", props)
 	assert.Nil(t, err)
 	assert.Equal(
@@ -263,7 +263,7 @@ func TestAdfsCredProviderMissingInputTags(t *testing.T) {
 		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
 		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
 	}
-	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient)
+	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	_, params, err := adfsCredentialsProviderFactory.GetUriAndParamsFromSignInPage("https://ec2amaz-ab3cdef.example.com", props)
 	assert.Equal(t, 0, len(params))

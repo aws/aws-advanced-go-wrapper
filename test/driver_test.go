@@ -23,6 +23,7 @@ import (
 	"awssql/error_util"
 	"awssql/host_info_util"
 	"awssql/plugin_helpers"
+	"awssql/utils/telemetry"
 	"context"
 	"database/sql/driver"
 	"strings"
@@ -185,7 +186,9 @@ func TestIsDialectMySQL(t *testing.T) {
 
 func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
 	props := map[string]string{"protocol": "mysql"}
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}))
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	mockPluginManager := driver_infrastructure.PluginManager(
+		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, driver_infrastructure.MySQLDriverDialect{}, props, mysqlTestDsn)
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 	plugins := []driver_infrastructure.ConnectionPlugin{
@@ -230,7 +233,9 @@ func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
 
 func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
 	props := map[string]string{"protocol": "postgres"}
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}))
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	mockPluginManager := driver_infrastructure.PluginManager(
+		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 	plugins := []driver_infrastructure.ConnectionPlugin{
@@ -277,7 +282,9 @@ func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
 
 func TestWrapperUtilsExecWithPlugins(t *testing.T) {
 	props := map[string]string{"protocol": "postgres"}
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}))
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	mockPluginManager := driver_infrastructure.PluginManager(
+		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 	plugins := []driver_infrastructure.ConnectionPlugin{
@@ -309,7 +316,9 @@ func TestWrapperUtilsExecWithPlugins(t *testing.T) {
 
 func TestWrapperUtilsBeginWithPlugins(t *testing.T) {
 	props := map[string]string{"protocol": "postgres"}
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}))
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	mockPluginManager := driver_infrastructure.PluginManager(
+		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 	plugins := []driver_infrastructure.ConnectionPlugin{
@@ -341,7 +350,9 @@ func TestWrapperUtilsBeginWithPlugins(t *testing.T) {
 
 func TestWrapperUtilsPrepareWithPlugins(t *testing.T) {
 	props := map[string]string{"protocol": "postgres"}
-	mockPluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}))
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	mockPluginManager := driver_infrastructure.PluginManager(
+		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 	plugins := []driver_infrastructure.ConnectionPlugin{

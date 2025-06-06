@@ -22,7 +22,9 @@ import (
 	"awssql/host_info_util"
 	"awssql/plugin_helpers"
 	"awssql/utils"
+	"awssql/utils/telemetry"
 	"database/sql/driver"
+	"fmt"
 )
 
 type DefaultPlugin struct {
@@ -87,6 +89,15 @@ func (d *DefaultPlugin) connectInternal(
 	props map[string]string,
 	connProvider driver_infrastructure.ConnectionProvider,
 	isInitialConnection bool) (driver.Conn, error) {
+	parentCtx := d.PluginService.GetTelemetryContext()
+	telemetryCtx, ctx := d.PluginService.GetTelemetryFactory().OpenTelemetryContext(
+		fmt.Sprintf(telemetry.TELEMETRY_CONNECT_INTERNAL, utils.GetStructName(connProvider)), telemetry.NESTED, parentCtx)
+	d.PluginService.SetTelemetryContext(ctx)
+	defer func() {
+		telemetryCtx.CloseContext()
+		d.PluginService.SetTelemetryContext(parentCtx)
+	}()
+
 	conn, err := connProvider.Connect(hostInfo, props, d.PluginService)
 	if err == nil {
 		d.PluginService.SetAvailability(hostInfo.AllAliases, host_info_util.AVAILABLE)

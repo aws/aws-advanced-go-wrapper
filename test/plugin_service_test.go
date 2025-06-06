@@ -20,6 +20,7 @@ import (
 	"awssql/driver_infrastructure"
 	"awssql/host_info_util"
 	"awssql/plugin_helpers"
+	"awssql/utils/telemetry"
 	"database/sql/driver"
 	"testing"
 
@@ -29,7 +30,9 @@ import (
 func beforePluginServiceTests() (*plugin_helpers.PluginServiceImpl, *MockPluginManager, *host_info_util.HostInfoBuilder, error) {
 	props := map[string]string{"protocol": "postgresql"}
 	mockTargetDriver := &MockTargetDriver{}
-	mockPluginManager := &MockPluginManager{plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}), nil, nil}
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	mockPluginManager := &MockPluginManager{
+		plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory), nil, nil}
 	target, err := plugin_helpers.NewPluginServiceImpl(mockPluginManager, &driver_infrastructure.PgxDriverDialect{}, props, pgTestDsn)
 	return target, mockPluginManager, host_info_util.NewHostInfoBuilder(), err
 }

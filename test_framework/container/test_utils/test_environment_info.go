@@ -21,14 +21,17 @@ import (
 )
 
 type TestEnvironmentInfo struct {
-	Request               TestEnvironmentRequest
-	Region                string
-	auroraClusterName     string
-	databaseEngineVersion string
-	databaseEngine        string
-	DatabaseInfo          TestDatabaseInfo
-	ProxyDatabaseInfo     TestProxyDatabaseInfo
-	IamUsername           string
+	Request                 TestEnvironmentRequest
+	Region                  string
+	auroraClusterName       string
+	databaseEngineVersion   string
+	databaseEngine          string
+	DatabaseInfo            TestDatabaseInfo
+	ProxyDatabaseInfo       TestProxyDatabaseInfo
+	IamUsername             string
+	OtelTracesTelemetryInfo *TestTelemetryInfo
+	XrayTracesTelemetryInfo *TestTelemetryInfo
+	MetricsTelemetryInfo    *TestTelemetryInfo
 }
 
 func NewTestEnvironmentInfo(testInfo map[string]any) (info TestEnvironmentInfo, err error) {
@@ -70,15 +73,45 @@ func NewTestEnvironmentInfo(testInfo map[string]any) (info TestEnvironmentInfo, 
 		return
 	}
 
+	otelTracesTelemetryInfoMap, ok := testInfo["otelTracesTelemetryInfo"].(map[string]any)
+	if !ok {
+		return TestEnvironmentInfo{}, errors.New("unable to cast otelTracesTelemetryInfo value to usable map")
+	}
+	otelTracesTelemetryInfo, err := NewTestTelemetryInfo(otelTracesTelemetryInfoMap)
+	if err != nil {
+		return
+	}
+
+	xrayTracesTelemetryInfoMap, ok := testInfo["xrayTracesTelemetryInfo"].(map[string]any)
+	if !ok {
+		return TestEnvironmentInfo{}, errors.New("unable to cast xrayTracesTelemetryInfo value to usable map")
+	}
+	xrayTracesTelemetryInfo, err := NewTestTelemetryInfo(xrayTracesTelemetryInfoMap)
+	if err != nil {
+		return
+	}
+
+	metricsTelemetryInfoMap, ok := testInfo["metricsTelemetryInfo"].(map[string]any)
+	if !ok {
+		return TestEnvironmentInfo{}, errors.New("unable to cast metricsTelemetryInfo value to usable map")
+	}
+	metricsTelemetryInfo, err := NewTestTelemetryInfo(metricsTelemetryInfoMap)
+	if err != nil {
+		return
+	}
+
 	return TestEnvironmentInfo{
-		Request:               request,
-		Region:                region,
-		auroraClusterName:     auroraClusterName,
-		DatabaseInfo:          databaseInfo,
-		ProxyDatabaseInfo:     proxyDatabaseInfo,
-		databaseEngine:        databaseEngine,
-		databaseEngineVersion: databaseEngineVersion,
-		IamUsername:           iamUser,
+		Request:                 request,
+		Region:                  region,
+		auroraClusterName:       auroraClusterName,
+		DatabaseInfo:            databaseInfo,
+		ProxyDatabaseInfo:       proxyDatabaseInfo,
+		databaseEngine:          databaseEngine,
+		databaseEngineVersion:   databaseEngineVersion,
+		IamUsername:             iamUser,
+		OtelTracesTelemetryInfo: otelTracesTelemetryInfo,
+		XrayTracesTelemetryInfo: xrayTracesTelemetryInfo,
+		MetricsTelemetryInfo:    metricsTelemetryInfo,
 	}, nil
 }
 

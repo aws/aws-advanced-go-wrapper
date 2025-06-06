@@ -25,12 +25,15 @@ import (
 	"awssql/property_util"
 	"awssql/region_util"
 	"awssql/utils"
+	"awssql/utils/telemetry"
 	"database/sql/driver"
 	"errors"
 	"log/slog"
 	"net/url"
 	"time"
 )
+
+var fetchCredentialsCounterName = "secretsManager.fetchCredentials.count"
 
 type AwsSecretsManagerPluginFactory struct{}
 
@@ -56,6 +59,7 @@ type AwsSecretsManagerPlugin struct {
 	endpoint                        string
 	awsSecretsManagerClientProvider driver_infrastructure.NewAwsSecretsManagerClientProvider
 	secretExpirationTimeSec         time.Duration
+	fetchCredentialsCounter         telemetry.TelemetryCounter
 }
 
 func NewAwsSecretsManagerPlugin(pluginService driver_infrastructure.PluginService,
@@ -78,6 +82,11 @@ func NewAwsSecretsManagerPlugin(pluginService driver_infrastructure.PluginServic
 		}
 	}
 
+	fetchCredentialsCounter, err := pluginService.GetTelemetryFactory().CreateCounter(fetchCredentialsCounterName)
+	if err != nil {
+		return nil, err
+	}
+
 	return &AwsSecretsManagerPlugin{
 		pluginService: pluginService,
 		props:         props,
@@ -88,6 +97,7 @@ func NewAwsSecretsManagerPlugin(pluginService driver_infrastructure.PluginServic
 		endpoint:                        secretsEndpoint,
 		awsSecretsManagerClientProvider: awsSecretsManagerClientProvider,
 		secretExpirationTimeSec:         time.Second * time.Duration(property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.SECRETS_MANAGER_EXPIRATION_SEC)),
+		fetchCredentialsCounter:         fetchCredentialsCounter,
 	}, err
 }
 
@@ -154,6 +164,15 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) updateSecrets(
 	hostInfo *host_info_util.HostInfo,
 	props map[string]string,
 	forceReFetch bool) (bool, error) {
+	parentCtx := awsSecretsManagerPlugin.pluginService.GetTelemetryContext()
+	telemetryCtx, ctx := awsSecretsManagerPlugin.pluginService.GetTelemetryFactory().OpenTelemetryContext(telemetry.TELEMETRY_UPDATE_SECRETS, telemetry.NESTED, parentCtx)
+	awsSecretsManagerPlugin.pluginService.SetTelemetryContext(ctx)
+	defer func() {
+		telemetryCtx.CloseContext()
+		awsSecretsManagerPlugin.pluginService.SetTelemetryContext(parentCtx)
+	}()
+	awsSecretsManagerPlugin.fetchCredentialsCounter.Inc(awsSecretsManagerPlugin.pluginService.GetTelemetryContext())
+
 	fetched := false
 	var err error
 
@@ -167,10 +186,13 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) updateSecrets(
 			SecretsCache.Put(awsSecretsManagerPlugin.SecretsCacheKey, secret, awsSecretsManagerPlugin.secretExpirationTimeSec)
 		} else {
 			slog.Error(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.failedToFetchDbCredentials"))
+			telemetryCtx.SetSuccess(false)
+			telemetryCtx.SetError(err)
 			return fetched, err
 		}
 	}
 
+	telemetryCtx.SetSuccess(true)
 	awsSecretsManagerPlugin.secret = secret
 	return fetched, nil
 }

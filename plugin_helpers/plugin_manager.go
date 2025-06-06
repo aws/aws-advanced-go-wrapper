@@ -20,9 +20,13 @@ import (
 	"awssql/driver_infrastructure"
 	"awssql/error_util"
 	"awssql/host_info_util"
+	"awssql/utils"
+	"awssql/utils/telemetry"
+	"context"
 	"database/sql/driver"
 	"log/slog"
 	"slices"
+	"sync"
 )
 
 const (
@@ -90,18 +94,23 @@ type PluginManagerImpl struct {
 	props               map[string]string
 	pluginFuncMap       map[string]PluginChain
 	plugins             []driver_infrastructure.ConnectionPlugin
+	telemetryFactory    telemetry.TelemetryFactory
+	telemetryCtx        context.Context
+	telemetryCtxLock    sync.Mutex
 }
 
 func NewPluginManagerImpl(
 	targetDriver driver.Driver,
 	props map[string]string,
-	connProviderManager driver_infrastructure.ConnectionProviderManager) *PluginManagerImpl {
+	connProviderManager driver_infrastructure.ConnectionProviderManager,
+	telemetryFactory telemetry.TelemetryFactory) *PluginManagerImpl {
 	pluginFuncMap := make(map[string]PluginChain)
 	return &PluginManagerImpl{
 		targetDriver:        targetDriver,
 		props:               props,
 		connProviderManager: connProviderManager,
 		pluginFuncMap:       pluginFuncMap,
+		telemetryFactory:    telemetryFactory,
 	}
 }
 
@@ -117,6 +126,14 @@ func (pluginManager *PluginManagerImpl) InitHostProvider(
 	initialUrl string,
 	props map[string]string,
 	hostListProviderService driver_infrastructure.HostListProviderService) error {
+	parentCtx := pluginManager.GetTelemetryContext()
+	telemetryCtx, ctx := pluginManager.telemetryFactory.OpenTelemetryContext(telemetry.TELEMETRY_INIT_HOST_PROVIDER, telemetry.NESTED, parentCtx)
+	pluginManager.SetTelemetryContext(ctx)
+	defer func() {
+		telemetryCtx.CloseContext()
+		pluginManager.SetTelemetryContext(parentCtx)
+	}()
+
 	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (any, any, bool, error)) (any, any, bool, error) {
 		initFunc := func() error {
 			_, _, _, err := targetFunc()
@@ -143,7 +160,22 @@ func (pluginManager *PluginManagerImpl) Connect(
 	hostInfo *host_info_util.HostInfo,
 	props map[string]string,
 	isInitialConnection bool) (driver.Conn, error) {
+	parentCtx := pluginManager.GetTelemetryContext()
+	telemetryCtx, ctx := pluginManager.telemetryFactory.OpenTelemetryContext(telemetry.TELEMETRY_CONNECT, telemetry.NESTED, parentCtx)
+	pluginManager.SetTelemetryContext(ctx)
+	defer func() {
+		telemetryCtx.CloseContext()
+		pluginManager.SetTelemetryContext(parentCtx)
+	}()
+
 	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (driver.Conn, error)) (driver.Conn, error) {
+		parentCtx1 := pluginManager.GetTelemetryContext()
+		telemetryCtx1, ctx1 := pluginManager.telemetryFactory.OpenTelemetryContext(utils.GetStructName(plugin), telemetry.NESTED, parentCtx1)
+		pluginManager.SetTelemetryContext(ctx1)
+		defer func() {
+			telemetryCtx1.CloseContext()
+			pluginManager.SetTelemetryContext(parentCtx1)
+		}()
 		return plugin.Connect(hostInfo, props, isInitialConnection, targetFunc)
 	}
 	targetFunc := func() (driver.Conn, error) {
@@ -170,9 +202,26 @@ func (pluginManager *PluginManagerImpl) Execute(
 	executeFunc driver_infrastructure.ExecuteFunc,
 	methodArgs ...any) (any, any, bool, error) {
 	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (any, any, bool, error)) (any, any, bool, error) {
+		parentCtx := pluginManager.GetTelemetryContext()
+		telemetryCtx, ctx := pluginManager.telemetryFactory.OpenTelemetryContext(utils.GetStructName(plugin), telemetry.NESTED, parentCtx)
+		pluginManager.SetTelemetryContext(ctx)
+		defer func() {
+			telemetryCtx.CloseContext()
+			pluginManager.SetTelemetryContext(parentCtx)
+		}()
 		return plugin.Execute(methodName, targetFunc, methodArgs...)
 	}
-	return pluginManager.executeWithSubscribedPlugins(methodName, pluginFunc, executeFunc)
+	executeFuncWithTelemetry := func() (any, any, bool, error) {
+		parentCtx := pluginManager.GetTelemetryContext()
+		telemetryCtx, ctx := pluginManager.telemetryFactory.OpenTelemetryContext(methodName, telemetry.NESTED, parentCtx)
+		pluginManager.SetTelemetryContext(ctx)
+		defer func() {
+			telemetryCtx.CloseContext()
+			pluginManager.SetTelemetryContext(parentCtx)
+		}()
+		return executeFunc()
+	}
+	return pluginManager.executeWithSubscribedPlugins(methodName, pluginFunc, executeFuncWithTelemetry)
 }
 
 func (pluginManager *PluginManagerImpl) executeWithSubscribedPlugins(
@@ -327,4 +376,20 @@ func (pluginManager *PluginManagerImpl) ReleaseResources() {
 	if ok {
 		canReleaseResources.ReleaseResources()
 	}
+}
+
+func (pluginManager *PluginManagerImpl) GetTelemetryContext() context.Context {
+	pluginManager.telemetryCtxLock.Lock()
+	defer pluginManager.telemetryCtxLock.Unlock()
+	return pluginManager.telemetryCtx
+}
+
+func (pluginManager *PluginManagerImpl) GetTelemetryFactory() telemetry.TelemetryFactory {
+	return pluginManager.telemetryFactory
+}
+
+func (pluginManager *PluginManagerImpl) SetTelemetryContext(ctx context.Context) {
+	pluginManager.telemetryCtxLock.Lock()
+	defer pluginManager.telemetryCtxLock.Unlock()
+	pluginManager.telemetryCtx = ctx
 }
