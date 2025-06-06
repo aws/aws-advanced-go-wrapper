@@ -96,6 +96,7 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	SINGLE_WRITER_DSN.Name:                       true,
 	PLUGINS.Name:                                 true,
 	AUTO_SORT_PLUGIN_ORDER.Name:                  true,
+	DIALECT.Name:                                 true,
 	TARGET_DRIVER_DIALECT.Name:                   true,
 	TARGET_DRIVER_AUTO_REGISTER.Name:             true,
 	CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name:        true,
@@ -202,6 +203,12 @@ var AUTO_SORT_PLUGIN_ORDER = AwsWrapperProperty{
 		"risk or if you really need plugins to be executed in a particular order.",
 	defaultValue:        "true",
 	wrapperPropertyType: WRAPPER_TYPE_BOOL,
+}
+
+var DIALECT = AwsWrapperProperty{
+	Name:                "databaseDialect",
+	description:         "A unique identifier for the supported database dialect.",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
 var TARGET_DRIVER_DIALECT = AwsWrapperProperty{

@@ -27,7 +27,7 @@ import (
 	"time"
 )
 
-var knownDialectsByCode = map[string]DatabaseDialect{
+var KnownDialectsByCode = map[string]DatabaseDialect{
 	MYSQL_DIALECT:        &MySQLDatabaseDialect{},
 	PG_DIALECT:           &PgDatabaseDialect{},
 	RDS_MYSQL_DIALECT:    &RdsMySQLDatabaseDialect{},
@@ -51,15 +51,20 @@ type DialectManager struct {
 }
 
 func (d *DialectManager) GetDialect(dsn string, props map[string]string) (DatabaseDialect, error) {
-	dialectCode, ok := knownEndpointDialectsCache.Get(dsn)
+	dialectCode := property_util.DIALECT.Get(props)
+	ok := true
+	if dialectCode == "" {
+		dialectCode, ok = knownEndpointDialectsCache.Get(dsn)
+	}
 	if ok && dialectCode != "" {
-		userDialect := knownDialectsByCode[dialectCode]
+		userDialect := KnownDialectsByCode[dialectCode]
 		if userDialect != nil {
 			d.dialectCode = dialectCode
 			d.dialect = userDialect
 			d.logCurrentDialect()
 			return userDialect, nil
 		}
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DatabaseDialectManager.unknownDialectCode", dialectCode))
 	}
 
 	driverProtocol := property_util.DRIVER_PROTOCOL.Get(props)
@@ -74,7 +79,7 @@ func (d *DialectManager) GetDialect(dsn string, props map[string]string) (Databa
 		if rdsUrlType.IsRdsCluster {
 			d.canUpdate = false
 			d.dialectCode = AURORA_MYSQL_DIALECT
-			d.dialect = knownDialectsByCode[AURORA_MYSQL_DIALECT]
+			d.dialect = KnownDialectsByCode[AURORA_MYSQL_DIALECT]
 			knownEndpointDialectsCache.Put(dsn, AURORA_MYSQL_DIALECT, ENDPOINT_CACHE_EXPIRATION)
 			d.logCurrentDialect()
 			return d.dialect, nil
@@ -82,13 +87,13 @@ func (d *DialectManager) GetDialect(dsn string, props map[string]string) (Databa
 		if rdsUrlType.IsRds {
 			d.canUpdate = true
 			d.dialectCode = RDS_MYSQL_DIALECT
-			d.dialect = knownDialectsByCode[RDS_MYSQL_DIALECT]
+			d.dialect = KnownDialectsByCode[RDS_MYSQL_DIALECT]
 			d.logCurrentDialect()
 			return d.dialect, nil
 		}
 		d.canUpdate = true
 		d.dialectCode = MYSQL_DIALECT
-		d.dialect = knownDialectsByCode[MYSQL_DIALECT]
+		d.dialect = KnownDialectsByCode[MYSQL_DIALECT]
 		d.logCurrentDialect()
 		return d.dialect, nil
 	}
@@ -96,7 +101,7 @@ func (d *DialectManager) GetDialect(dsn string, props map[string]string) (Databa
 		if rdsUrlType.IsRdsCluster {
 			d.canUpdate = false
 			d.dialectCode = AURORA_PG_DIALECT
-			d.dialect = knownDialectsByCode[AURORA_PG_DIALECT]
+			d.dialect = KnownDialectsByCode[AURORA_PG_DIALECT]
 			knownEndpointDialectsCache.Put(dsn, AURORA_PG_DIALECT, ENDPOINT_CACHE_EXPIRATION)
 			d.logCurrentDialect()
 			return d.dialect, nil
@@ -104,13 +109,13 @@ func (d *DialectManager) GetDialect(dsn string, props map[string]string) (Databa
 		if rdsUrlType.IsRds {
 			d.canUpdate = true
 			d.dialectCode = RDS_PG_DIALECT
-			d.dialect = knownDialectsByCode[RDS_PG_DIALECT]
+			d.dialect = KnownDialectsByCode[RDS_PG_DIALECT]
 			d.logCurrentDialect()
 			return d.dialect, nil
 		}
 		d.canUpdate = true
 		d.dialectCode = PG_DIALECT
-		d.dialect = knownDialectsByCode[PG_DIALECT]
+		d.dialect = KnownDialectsByCode[PG_DIALECT]
 		d.logCurrentDialect()
 		return d.dialect, nil
 	}
@@ -124,7 +129,7 @@ func (d *DialectManager) GetDialectForUpdate(conn driver.Conn, originalHost stri
 	dialectCandidateCodes := d.dialect.GetDialectUpdateCandidates()
 	for i := 0; i < len(dialectCandidateCodes); i++ {
 		candidateCode := dialectCandidateCodes[i]
-		dialectCandidate := knownDialectsByCode[candidateCode]
+		dialectCandidate := KnownDialectsByCode[candidateCode]
 		if dialectCandidate != nil && dialectCandidate.IsDialect(conn) {
 			d.canUpdate = false
 			d.dialectCode = candidateCode
