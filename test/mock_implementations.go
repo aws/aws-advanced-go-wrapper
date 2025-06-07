@@ -107,7 +107,7 @@ func (t TestPlugin) ForceConnect(
 	return conn, err
 }
 
-func (t TestPlugin) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
+func (t TestPlugin) AcceptsStrategy(strategy string) bool {
 	return false
 }
 
@@ -117,6 +117,10 @@ func (t TestPlugin) GetHostInfoByStrategy(
 	hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:before GetHostInfoByStrategy", reflect.TypeOf(t), t.id))
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:after GetHostInfoByStrategy", reflect.TypeOf(t), t.id))
+	return nil, nil
+}
+
+func (t TestPlugin) GetHostSelectorStrategy(strategy string) (driver_infrastructure.HostSelector, error) {
 	return nil, nil
 }
 
@@ -172,7 +176,9 @@ func CreateTestPlugin(calls *[]string, id int, connection driver.Conn, err error
 	return testPlugin
 }
 
-type MockHostListProvider struct{}
+type MockHostListProvider struct {
+	clusterId string
+}
 
 func (m *MockHostListProvider) CreateHost(hostName string, role host_info_util.HostRole, lag float64, cpu float64, lastUpdateTime time.Time) *host_info_util.HostInfo {
 	return nil
@@ -182,8 +188,12 @@ func (m *MockHostListProvider) ForceRefresh(conn driver.Conn) ([]*host_info_util
 	return nil, nil
 }
 
-func (m *MockHostListProvider) GetClusterId() string {
-	return ""
+func (m *MockHostListProvider) GetClusterId() (string, error) {
+	return m.clusterId, nil
+}
+
+func (m *MockHostListProvider) SetClusterId(clusterId string) {
+	m.clusterId = clusterId
 }
 
 func (m *MockHostListProvider) GetHostRole(conn driver.Conn) host_info_util.HostRole {

@@ -26,6 +26,7 @@ import (
 
 const DEFAULT_PLUGINS = "failover,efm"
 const MONITORING_PROPERTY_PREFIX = "monitoring-"
+const LIMITLESS_PROPERTY_PREFIX = "limitless"
 const INTERNAL_CONNECT_PROPERTY_NAME string = "76c06979-49c4-4c86-9600-a63605b83f50"
 
 type WrapperPropertyType int
@@ -86,59 +87,67 @@ func GetVerifiedWrapperPropertyValue[T any](props map[string]string, property Aw
 }
 
 var ALL_WRAPPER_PROPERTIES = map[string]bool{
-	USER.Name:                                    true,
-	PASSWORD.Name:                                true,
-	HOST.Name:                                    true,
-	PORT.Name:                                    true,
-	DATABASE.Name:                                true,
-	DRIVER_PROTOCOL.Name:                         true,
-	NET.Name:                                     true,
-	SINGLE_WRITER_DSN.Name:                       true,
-	PLUGINS.Name:                                 true,
-	AUTO_SORT_PLUGIN_ORDER.Name:                  true,
-	DIALECT.Name:                                 true,
-	TARGET_DRIVER_DIALECT.Name:                   true,
-	TARGET_DRIVER_AUTO_REGISTER.Name:             true,
-	CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name:        true,
-	CLUSTER_ID.Name:                              true,
-	CLUSTER_INSTANCE_HOST_PATTERN.Name:           true,
-	IAM_HOST.Name:                                true,
-	IAM_EXPIRATION.Name:                          true,
-	IAM_REGION.Name:                              true,
-	IAM_DEFAULT_PORT.Name:                        true,
-	SECRETS_MANAGER_SECRET_ID.Name:               true,
-	SECRETS_MANAGER_REGION.Name:                  true,
-	SECRETS_MANAGER_ENDPOINT.Name:                true,
-	SECRETS_MANAGER_EXPIRATION_SEC.Name:          true,
-	FAILURE_DETECTION_ENABLED.Name:               true,
-	FAILURE_DETECTION_TIME_MS.Name:               true,
-	FAILURE_DETECTION_INTERVAL_MS.Name:           true,
-	FAILURE_DETECTION_PROBE_TIMEOUT_MS.Name:      true,
-	FAILURE_DETECTION_COUNT.Name:                 true,
-	MONITOR_DISPOSAL_TIME_MS.Name:                true,
-	FAILOVER_TIMEOUT_MS.Name:                     true,
-	FAILOVER_MODE.Name:                           true,
-	FAILOVER_READER_HOST_SELECTOR_STRATEGY.Name:  true,
-	ENABLE_CONNECT_FAILOVER.Name:                 true,
-	CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS.Name:   true,
-	WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS.Name:       true,
-	IAM_TOKEN_EXPIRATION.Name:                    true,
-	IDP_USERNAME.Name:                            true,
-	IDP_PASSWORD.Name:                            true,
-	IDP_PORT.Name:                                true,
-	IAM_ROLE_ARN.Name:                            true,
-	IAM_IDP_ARN.Name:                             true,
-	IDP_ENDPOINT.Name:                            true,
-	RELAYING_PARTY_ID.Name:                       true,
-	DB_USER.Name:                                 true,
-	APP_ID.Name:                                  true,
-	HTTP_TIMEOUT_MS.Name:                         true,
-	SSL_INSECURE.Name:                            true,
-	ENABLE_TELEMETRY.Name:                        true,
-	TELEMETRY_SUBMIT_TOP_LEVEL.Name:              true,
-	TELEMETRY_TRACES_BACKEND.Name:                true,
-	TELEMETRY_METRICS_BACKEND.Name:               true,
-	TELEMETRY_FAILOVER_ADDITIONAL_TOP_TRACE.Name: true,
+	USER.Name:                                       true,
+	PASSWORD.Name:                                   true,
+	HOST.Name:                                       true,
+	PORT.Name:                                       true,
+	DATABASE.Name:                                   true,
+	DRIVER_PROTOCOL.Name:                            true,
+	NET.Name:                                        true,
+	SINGLE_WRITER_DSN.Name:                          true,
+	PLUGINS.Name:                                    true,
+	AUTO_SORT_PLUGIN_ORDER.Name:                     true,
+	DIALECT.Name:                                    true,
+	TARGET_DRIVER_DIALECT.Name:                      true,
+	TARGET_DRIVER_AUTO_REGISTER.Name:                true,
+	CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name:           true,
+	CLUSTER_ID.Name:                                 true,
+	CLUSTER_INSTANCE_HOST_PATTERN.Name:              true,
+	IAM_HOST.Name:                                   true,
+	IAM_EXPIRATION.Name:                             true,
+	IAM_REGION.Name:                                 true,
+	IAM_DEFAULT_PORT.Name:                           true,
+	SECRETS_MANAGER_SECRET_ID.Name:                  true,
+	SECRETS_MANAGER_REGION.Name:                     true,
+	SECRETS_MANAGER_ENDPOINT.Name:                   true,
+	SECRETS_MANAGER_EXPIRATION_SEC.Name:             true,
+	FAILURE_DETECTION_ENABLED.Name:                  true,
+	FAILURE_DETECTION_TIME_MS.Name:                  true,
+	FAILURE_DETECTION_INTERVAL_MS.Name:              true,
+	FAILURE_DETECTION_PROBE_TIMEOUT_MS.Name:         true,
+	FAILURE_DETECTION_COUNT.Name:                    true,
+	MONITOR_DISPOSAL_TIME_MS.Name:                   true,
+	FAILOVER_TIMEOUT_MS.Name:                        true,
+	FAILOVER_MODE.Name:                              true,
+	FAILOVER_READER_HOST_SELECTOR_STRATEGY.Name:     true,
+	ENABLE_CONNECT_FAILOVER.Name:                    true,
+	CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS.Name:      true,
+	WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS.Name:          true,
+	IAM_TOKEN_EXPIRATION.Name:                       true,
+	IDP_USERNAME.Name:                               true,
+	IDP_PASSWORD.Name:                               true,
+	IDP_PORT.Name:                                   true,
+	IAM_ROLE_ARN.Name:                               true,
+	IAM_IDP_ARN.Name:                                true,
+	IDP_ENDPOINT.Name:                               true,
+	RELAYING_PARTY_ID.Name:                          true,
+	DB_USER.Name:                                    true,
+	APP_ID.Name:                                     true,
+	HTTP_TIMEOUT_MS.Name:                            true,
+	SSL_INSECURE.Name:                               true,
+	ENABLE_TELEMETRY.Name:                           true,
+	TELEMETRY_SUBMIT_TOP_LEVEL.Name:                 true,
+	TELEMETRY_TRACES_BACKEND.Name:                   true,
+	TELEMETRY_METRICS_BACKEND.Name:                  true,
+	TELEMETRY_FAILOVER_ADDITIONAL_TOP_TRACE.Name:    true,
+	LIMITLESS_MONITORING_INTERVAL_MS.Name:           true,
+	LIMITLESS_MONITORING_DISPOSAL_TIME_MS.Name:      true,
+	LIMITLESS_ROUTER_CACHE_EXPIRATIONL_TIME_MS.Name: true,
+	LIMITLESS_WAIT_FOR_ROUTER_INFO.Name:             true,
+	LIMITLESS_GET_ROUTER_MAX_RETRIES.Name:           true,
+	LIMITLESS_GET_ROUTER_RETRY_INTERVAL_MS.Name:     true,
+	LIMITLESS_MAX_CONN_RETRIES.Name:                 true,
+	LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name:          true,
 }
 
 var USER = AwsWrapperProperty{
@@ -513,12 +522,71 @@ var TELEMETRY_FAILOVER_ADDITIONAL_TOP_TRACE = AwsWrapperProperty{
 	wrapperPropertyType: WRAPPER_TYPE_BOOL,
 }
 
+var LIMITLESS_MONITORING_INTERVAL_MS = AwsWrapperProperty{
+	Name:                "limitlessMonitoringIntervalMs",
+	description:         "Interval in milliseconds between polling for Limitless Transaction Routers to the database.",
+	defaultValue:        "7500",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var LIMITLESS_MONITORING_DISPOSAL_TIME_MS = AwsWrapperProperty{
+	Name:                "limitlessTransactionRouterMonitorDisposalTimeMs",
+	description:         "Interval in milliseconds for a Limitless router monitor to be considered inactive and to be disposed.",
+	defaultValue:        "600000",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var LIMITLESS_ROUTER_CACHE_EXPIRATIONL_TIME_MS = AwsWrapperProperty{
+	Name:                "limitlessTransactionRouterCacheExpirationTimeMs",
+	description:         "Expiration in milliseconds for the Limitless router cache.",
+	defaultValue:        "600000",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var LIMITLESS_WAIT_FOR_ROUTER_INFO = AwsWrapperProperty{
+	Name: "limitlessWaitForTransactionRouterInfo",
+	description: "If the cache of transaction router info is empty and a new connection is made, this property " +
+		"toggles whether the plugin will wait and synchronously fetch transaction router info before selecting a " +
+		"transaction router to connect to, or to fall back to using the provided DB Shard Group endpoint URL.",
+	defaultValue:        "true",
+	wrapperPropertyType: WRAPPER_TYPE_BOOL,
+}
+
+var LIMITLESS_GET_ROUTER_MAX_RETRIES = AwsWrapperProperty{
+	Name:                "limitlessGetTransactionRouterInfoMaxRetries",
+	description:         "Max number of connection retries fetching Limitless Transaction Router information.",
+	defaultValue:        "5",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var LIMITLESS_GET_ROUTER_RETRY_INTERVAL_MS = AwsWrapperProperty{
+	Name:                "limitlessGetTransactionRouterInfoRetryIntervalMs",
+	description:         "Interval in milliseconds between retries fetching Limitless Transaction Router information.",
+	defaultValue:        "500",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var LIMITLESS_MAX_CONN_RETRIES = AwsWrapperProperty{
+	Name:                "limitlessConnectMaxRetries",
+	description:         "Max number of connection retries the Limitless Plugin will attempt.",
+	defaultValue:        "5",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var LIMITLESS_ROUTER_QUERY_TIMEOUT_MS = AwsWrapperProperty{
+	Name:                "limitlessTransactionRouterFetchTimeout",
+	description:         "The timeout in milliseconds for fetching available Limitless transaction routers.",
+	defaultValue:        "5000",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
 func RemoveInternalAwsWrapperProperties(props map[string]string) map[string]string {
 	copyProps := map[string]string{}
 
 	for key, value := range props {
 		// Monitoring properties and the internal connect property flag are not included in copy.
-		if !strings.HasPrefix(key, MONITORING_PROPERTY_PREFIX) && key != INTERNAL_CONNECT_PROPERTY_NAME {
+		if !strings.HasPrefix(key, MONITORING_PROPERTY_PREFIX) && !strings.HasPrefix(key, LIMITLESS_PROPERTY_PREFIX) &&
+			key != INTERNAL_CONNECT_PROPERTY_NAME {
 			copyProps[key] = value
 		}
 	}

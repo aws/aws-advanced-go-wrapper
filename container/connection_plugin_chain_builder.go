@@ -24,6 +24,7 @@ import (
 	"awssql/plugins/efm"
 	"awssql/plugins/federated_auth"
 	"awssql/plugins/iam"
+	"awssql/plugins/limitless"
 	"awssql/property_util"
 	"fmt"
 	"log/slog"
@@ -47,11 +48,13 @@ var pluginFactoryFuncByCode = map[string]PluginFactoryFunc{
 	"okta":              federated_auth.NewOktaAuthPluginFactory,
 	"awsSecretsManager": aws_secrets_manager.NewAwsSecretsManagerPluginFactory,
 	"federatedAuth":     federated_auth.NewFederatedAuthPluginFactory,
+	"limitless":         limitless.NewLimitlessPluginFactory,
 }
 
 var pluginWeightByCode = map[string]int{
 	"failover":          700,
 	"efm":               800,
+	"limitless":         950,
 	"iam":               1000,
 	"awsSecretsManager": 1100,
 	"federatedAuth":     1200,

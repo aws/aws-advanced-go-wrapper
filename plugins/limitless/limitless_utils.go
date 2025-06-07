@@ -14,17 +14,11 @@
   limitations under the License.
 */
 
-package driver_infrastructure
+package limitless
 
-import (
-	"awssql/host_info_util"
-	"database/sql/driver"
-)
+import "awssql/driver_infrastructure"
 
-type ConnectionProvider interface {
-	AcceptsUrl(hostInfo host_info_util.HostInfo, props map[string]string) bool
-	AcceptsStrategy(strategy string) bool
-	GetHostInfoByStrategy(hosts []*host_info_util.HostInfo, role host_info_util.HostRole, strategy string, props map[string]string) (*host_info_util.HostInfo, error)
-	GetHostSelectorStrategy(strategy string) (HostSelector, error)
-	Connect(hostInfo *host_info_util.HostInfo, props map[string]string, pluginService PluginService) (driver.Conn, error)
+func IsDialectLimitless(databasedialect driver_infrastructure.DatabaseDialect) bool {
+	_, isDialectLimitless := databasedialect.(driver_infrastructure.AuroraLimitlessDialect)
+	return isDialectLimitless
 }

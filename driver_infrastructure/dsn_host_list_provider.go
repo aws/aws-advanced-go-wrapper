@@ -22,6 +22,7 @@ import (
 	"awssql/property_util"
 	"awssql/utils"
 	"database/sql/driver"
+	"errors"
 	"log/slog"
 	"math"
 	"time"
@@ -89,9 +90,8 @@ func (c *DsnHostListProvider) IdentifyConnection(conn driver.Conn) (*host_info_u
 	return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DsnHostListProvider.unsupportedIdentifyConnection"))
 }
 
-func (c *DsnHostListProvider) GetClusterId() (clusterId string) {
-	slog.Warn(error_util.GetMessage("DsnHostListProvider.unsupportedGetClusterId"))
-	return
+func (c *DsnHostListProvider) GetClusterId() (clusterId string, err error) {
+	return "", errors.New(error_util.GetMessage("DsnHostListProvider.unsupportedGetClusterId"))
 }
 
 func (c *DsnHostListProvider) CreateHost(hostName string, hostRole host_info_util.HostRole, lag float64, cpu float64, lastUpdateTime time.Time) *host_info_util.HostInfo {

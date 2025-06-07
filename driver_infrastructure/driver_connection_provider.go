@@ -20,7 +20,6 @@ import (
 	"awssql/error_util"
 	"awssql/host_info_util"
 	"database/sql/driver"
-	"reflect"
 )
 
 type DriverConnectionProvider struct {
@@ -30,6 +29,7 @@ type DriverConnectionProvider struct {
 
 func NewDriverConnectionProvider(targetDriver driver.Driver) *DriverConnectionProvider {
 	acceptedStrategies := make(map[string]HostSelector)
+	acceptedStrategies[SELECTOR_HIGHEST_WEIGHT] = &HighestWeightHostSelector{}
 	acceptedStrategies[SELECTOR_RANDOM] = &RandomHostSelector{}
 	acceptedStrategies[SELECTOR_WEIGHTED_RANDOM] = &WeightedRandomHostSelector{}
 	return &DriverConnectionProvider{acceptedStrategies, targetDriver}
@@ -39,7 +39,7 @@ func (d DriverConnectionProvider) AcceptsUrl(hostInfo host_info_util.HostInfo, p
 	return true
 }
 
-func (d DriverConnectionProvider) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
+func (d DriverConnectionProvider) AcceptsStrategy(strategy string) bool {
 	_, ok := d.acceptedStrategies[strategy]
 	return ok
 }
@@ -52,10 +52,19 @@ func (d DriverConnectionProvider) GetHostInfoByStrategy(
 	acceptedStrategy, ok := d.acceptedStrategies[strategy]
 	if !ok {
 		return nil, error_util.NewUnsupportedStrategyError(
-			error_util.GetMessage("ConnectionProvider.unsupportedHostSelectorStrategy", strategy, reflect.TypeOf(d).String()))
+			error_util.GetMessage("ConnectionProvider.unsupportedHostSelectorStrategy", strategy, d))
 	}
 
 	return acceptedStrategy.GetHost(hosts, role, props)
+}
+
+func (d DriverConnectionProvider) GetHostSelectorStrategy(strategy string) (HostSelector, error) {
+	acceptedStrategy, ok := d.acceptedStrategies[strategy]
+	if !ok {
+		return nil, error_util.NewUnsupportedStrategyError(
+			error_util.GetMessage("ConnectionProvider.unsupportedHostSelectorStrategy", strategy, d))
+	}
+	return acceptedStrategy, nil
 }
 
 func (d DriverConnectionProvider) Connect(hostInfo *host_info_util.HostInfo, props map[string]string, pluginService PluginService) (driver.Conn, error) {

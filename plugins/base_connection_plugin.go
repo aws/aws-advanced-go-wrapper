@@ -54,12 +54,16 @@ func (b BaseConnectionPlugin) ForceConnect(
 	return connectFunc()
 }
 
-func (b BaseConnectionPlugin) AcceptsStrategy(role host_info_util.HostRole, strategy string) bool {
+func (b BaseConnectionPlugin) AcceptsStrategy(strategy string) bool {
 	return false
 }
 
 func (b BaseConnectionPlugin) GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
 	return nil, error_util.NewUnsupportedMethodError("GetHostInfoByStrategy", fmt.Sprintf("%T", b))
+}
+
+func (b BaseConnectionPlugin) GetHostSelectorStrategy(strategy string) (driver_infrastructure.HostSelector, error) {
+	return nil, error_util.NewUnsupportedMethodError("GetHostSelectorStrategy", fmt.Sprintf("%T", b))
 }
 
 func (b BaseConnectionPlugin) NotifyConnectionChanged(changes map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {

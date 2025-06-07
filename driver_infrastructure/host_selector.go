@@ -26,6 +26,7 @@ import (
 )
 
 const (
+	SELECTOR_HIGHEST_WEIGHT  = "highestWeight"
 	SELECTOR_RANDOM          = "random"
 	SELECTOR_WEIGHTED_RANDOM = "weightedRandom"
 )

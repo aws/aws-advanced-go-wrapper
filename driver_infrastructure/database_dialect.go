@@ -37,3 +37,8 @@ type TopologyAwareDialect interface {
 	GetWriterHostName(conn driver.Conn) (string, error)
 	DatabaseDialect
 }
+
+type AuroraLimitlessDialect interface {
+	GetLimitlessRouterEndpointQuery() string
+	DatabaseDialect
+}

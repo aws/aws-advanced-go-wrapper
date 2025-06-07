@@ -159,9 +159,9 @@ func (r *RdsHostListProvider) ForceRefresh(conn driver.Conn) ([]*host_info_util.
 	return hosts, nil
 }
 
-func (r *RdsHostListProvider) GetClusterId() string {
+func (r *RdsHostListProvider) GetClusterId() (string, error) {
 	r.init()
-	return r.clusterId
+	return r.clusterId, nil
 }
 
 func (r *RdsHostListProvider) GetHostRole(conn driver.Conn) host_info_util.HostRole {

@@ -27,7 +27,7 @@ type HostListProvider interface {
 	ForceRefresh(conn driver.Conn) ([]*host_info_util.HostInfo, error)
 	GetHostRole(conn driver.Conn) host_info_util.HostRole
 	IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error)
-	GetClusterId() string
+	GetClusterId() (string, error)
 	IsStaticHostListProvider() bool
 	CreateHost(hostName string, role host_info_util.HostRole, lag float64, cpu float64, lastUpdateTime time.Time) *host_info_util.HostInfo
 }
