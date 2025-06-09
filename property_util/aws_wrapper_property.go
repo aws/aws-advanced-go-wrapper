@@ -114,7 +114,6 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	FAILURE_DETECTION_ENABLED.Name:                  true,
 	FAILURE_DETECTION_TIME_MS.Name:                  true,
 	FAILURE_DETECTION_INTERVAL_MS.Name:              true,
-	FAILURE_DETECTION_PROBE_TIMEOUT_MS.Name:         true,
 	FAILURE_DETECTION_COUNT.Name:                    true,
 	MONITOR_DISPOSAL_TIME_MS.Name:                   true,
 	FAILOVER_TIMEOUT_MS.Name:                        true,
@@ -278,13 +277,6 @@ var FAILURE_DETECTION_INTERVAL_MS = AwsWrapperProperty{
 	Name:                "failureDetectionIntervalMs",
 	description:         "Interval in millis between probes to database host.",
 	defaultValue:        "5000",
-	wrapperPropertyType: WRAPPER_TYPE_INT,
-}
-
-var FAILURE_DETECTION_PROBE_TIMEOUT_MS = AwsWrapperProperty{
-	Name:                "failureDetectionProbeTimeoutMs",
-	description:         "Timeout in millis for the probe to check connection status. Connection check fails when times out.",
-	defaultValue:        "1000",
 	wrapperPropertyType: WRAPPER_TYPE_INT,
 }
 

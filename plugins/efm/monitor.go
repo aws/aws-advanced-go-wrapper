@@ -42,7 +42,7 @@ type Monitor interface {
 }
 
 func NewMonitorImpl(pluginService driver_infrastructure.PluginService, hostInfo *host_info_util.HostInfo, props map[string]string,
-	failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionProbeTimeoutMillis int, failureDetectionCount int) *MonitorImpl {
+	failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionCount int) *MonitorImpl {
 	monitoringConnectionProps := props
 	for propKey, propValue := range props {
 		if strings.HasPrefix(propKey, property_util.MONITORING_PROPERTY_PREFIX) {
@@ -51,14 +51,13 @@ func NewMonitorImpl(pluginService driver_infrastructure.PluginService, hostInfo 
 		}
 	}
 	monitor := &MonitorImpl{
-		hostInfo:                          hostInfo,
-		monitoringProps:                   monitoringConnectionProps,
-		pluginService:                     pluginService,
-		failureDetectionTimeNanos:         time.Millisecond * time.Duration(failureDetectionTimeMillis),
-		failureDetectionIntervalNanos:     time.Millisecond * time.Duration(failureDetectionIntervalMillis),
-		failureDetectionProbeTimeoutNanos: time.Millisecond * time.Duration(failureDetectionProbeTimeoutMillis),
-		failureDetectionCount:             failureDetectionCount,
-		NewStates:                         map[time.Time][]weak.Pointer[MonitorConnectionState]{},
+		hostInfo:                      hostInfo,
+		monitoringProps:               monitoringConnectionProps,
+		pluginService:                 pluginService,
+		failureDetectionTimeNanos:     time.Millisecond * time.Duration(failureDetectionTimeMillis),
+		failureDetectionIntervalNanos: time.Millisecond * time.Duration(failureDetectionIntervalMillis),
+		failureDetectionCount:         failureDetectionCount,
+		NewStates:                     map[time.Time][]weak.Pointer[MonitorConnectionState]{},
 	}
 
 	monitor.wg.Add(2)
@@ -69,22 +68,21 @@ func NewMonitorImpl(pluginService driver_infrastructure.PluginService, hostInfo 
 }
 
 type MonitorImpl struct {
-	hostInfo                          *host_info_util.HostInfo
-	MonitoringConn                    driver.Conn
-	pluginService                     driver_infrastructure.PluginService
-	monitoringProps                   map[string]string
-	failureDetectionTimeNanos         time.Duration
-	failureDetectionIntervalNanos     time.Duration
-	failureDetectionProbeTimeoutNanos time.Duration
-	FailureCount                      int
-	failureDetectionCount             int
-	InvalidHostStartTime              time.Time
-	ActiveStates                      []weak.Pointer[MonitorConnectionState]
-	NewStates                         map[time.Time][]weak.Pointer[MonitorConnectionState]
-	Stopped                           bool
-	HostUnhealthy                     bool
-	lock                              sync.RWMutex
-	wg                                sync.WaitGroup
+	hostInfo                      *host_info_util.HostInfo
+	MonitoringConn                driver.Conn
+	pluginService                 driver_infrastructure.PluginService
+	monitoringProps               map[string]string
+	failureDetectionTimeNanos     time.Duration
+	failureDetectionIntervalNanos time.Duration
+	FailureCount                  int
+	failureDetectionCount         int
+	InvalidHostStartTime          time.Time
+	ActiveStates                  []weak.Pointer[MonitorConnectionState]
+	NewStates                     map[time.Time][]weak.Pointer[MonitorConnectionState]
+	Stopped                       bool
+	HostUnhealthy                 bool
+	lock                          sync.RWMutex
+	wg                            sync.WaitGroup
 }
 
 func (m *MonitorImpl) CanDispose() bool {
@@ -251,7 +249,8 @@ func (m *MonitorImpl) CheckConnectionStatus() bool {
 		return true
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), m.failureDetectionProbeTimeoutNanos)
+	timeout := m.failureDetectionIntervalNanos - EFM_ROUTINE_SLEEP_DURATION
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	return utils.IsReachable(m.MonitoringConn, ctx)
 }
