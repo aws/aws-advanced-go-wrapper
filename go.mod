@@ -68,7 +68,7 @@ require (
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Shopify/toxiproxy v2.1.4+incompatible
-	github.com/aws/aws-sdk-go-v2/service/rds v1.96.0
+	github.com/aws/aws-sdk-go-v2/service/rds v1.97.0
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgpassfile v1.0.0 // indirect
