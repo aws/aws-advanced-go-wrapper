@@ -5,3 +5,6 @@
 
 # integration test output
 test_framework/host/build/
+
+# performance test reports
+test_framework/container/tests/reports

@@ -145,7 +145,7 @@ func IsRdsDns(host string) bool {
 		return false
 	}
 
-	dnsGroup := cachedDnsRegexp.FindStringSubmatch(host)[cachedDnsRegexp.SubexpIndex(DNS_GROUP)]
+	dnsGroup := cachedDnsRegexp.FindStringSubmatch(preparedHost)[cachedDnsRegexp.SubexpIndex(DNS_GROUP)]
 	if dnsGroup != "" {
 		cachedDnsPatterns.Store(preparedHost, dnsGroup)
 	}

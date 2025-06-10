@@ -772,7 +772,8 @@ public class TestEnvironmentConfig implements AutoCloseable {
 
   public void runTests(String folderName) throws IOException, InterruptedException {
     final ContainerHelper containerHelper = new ContainerHelper();
-    containerHelper.runTest(this.testContainer, folderName, this);
+    boolean isPerformanceTest = info.getRequest().getFeatures().contains(TestEnvironmentFeatures.PERFORMANCE);
+    containerHelper.runTest(this.testContainer, folderName, this, isPerformanceTest);
   }
 
   public void debugTests(String folderName) throws IOException, InterruptedException {

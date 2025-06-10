@@ -34,7 +34,7 @@ var EFM_MONITORS *utils.SlidingExpirationCache[Monitor]
 
 type MonitorService interface {
 	StartMonitoring(conn *driver.Conn, hostInfo *host_info_util.HostInfo, props map[string]string,
-		failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionProbeTimeoutMillis int, failureDetectionCount int) (*MonitorConnectionState, error)
+		failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionCount int) (*MonitorConnectionState, error)
 	StopMonitoring(state *MonitorConnectionState, connToAbort driver.Conn)
 }
 
@@ -65,14 +65,14 @@ func ClearCaches() {
 }
 
 func (m *MonitorServiceImpl) StartMonitoring(conn *driver.Conn, hostInfo *host_info_util.HostInfo, props map[string]string,
-	failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionProbeTimeoutMillis int, failureDetectionCount int) (*MonitorConnectionState, error) {
+	failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionCount int) (*MonitorConnectionState, error) {
 	if conn == nil {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("MonitorServiceImpl.illegalArgumentError", "conn"))
 	}
 	if hostInfo.IsNil() {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("MonitorServiceImpl.illegalArgumentError", "hostInfo"))
 	}
-	monitor := m.getMonitor(hostInfo, props, failureDetectionTimeMillis, failureDetectionIntervalMillis, failureDetectionProbeTimeoutMillis, failureDetectionCount)
+	monitor := m.getMonitor(hostInfo, props, failureDetectionTimeMillis, failureDetectionIntervalMillis, failureDetectionCount)
 	state := NewMonitorConnectionState(conn)
 	monitor.StartMonitoring(state)
 	return state, nil
@@ -91,14 +91,14 @@ func (m *MonitorServiceImpl) StopMonitoring(state *MonitorConnectionState, connT
 }
 
 func (m *MonitorServiceImpl) getMonitor(hostInfo *host_info_util.HostInfo, props map[string]string, failureDetectionTimeMillis int,
-	failureDetectionIntervalMillis int, failureDetectionProbeTimeoutMillis int, failureDetectionCount int) Monitor {
+	failureDetectionIntervalMillis int, failureDetectionCount int) Monitor {
 	monitorKey := fmt.Sprintf("%d:%d:%d:%s", failureDetectionTimeMillis, failureDetectionIntervalMillis, failureDetectionCount, hostInfo.GetUrl())
 	cacheExpirationNano := time.Millisecond * time.Duration(property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.MONITOR_DISPOSAL_TIME_MS))
 	return EFM_MONITORS.ComputeIfAbsent(
 		monitorKey,
 		func() Monitor {
 			return NewMonitorImpl(m.pluginService, hostInfo, props, failureDetectionTimeMillis,
-				failureDetectionIntervalMillis, failureDetectionProbeTimeoutMillis, failureDetectionCount)
+				failureDetectionIntervalMillis, failureDetectionCount)
 		},
 		cacheExpirationNano)
 }
