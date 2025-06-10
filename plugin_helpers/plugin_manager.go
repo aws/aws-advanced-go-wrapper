@@ -104,7 +104,7 @@ func NewPluginManagerImpl(
 	targetDriver driver.Driver,
 	props map[string]string,
 	connProviderManager driver_infrastructure.ConnectionProviderManager,
-	telemetryFactory telemetry.TelemetryFactory) *PluginManagerImpl {
+	telemetryFactory telemetry.TelemetryFactory) driver_infrastructure.PluginManager {
 	pluginFuncMap := make(map[string]PluginChain)
 	return &PluginManagerImpl{
 		targetDriver:        targetDriver,
@@ -318,7 +318,9 @@ func (pluginManager *PluginManagerImpl) NotifySubscribedPlugins(
 
 		if isSubscribed {
 			_, _, _, err := pluginFunc(currentPlugin, func() (any, any, bool, error) { return nil, nil, true, nil })
-			return err
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil

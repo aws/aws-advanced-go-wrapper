@@ -55,7 +55,7 @@ func NewPluginServiceImpl(
 	pluginManager driver_infrastructure.PluginManager,
 	driverDialect driver_infrastructure.DriverDialect,
 	props map[string]string,
-	dsn string) (*PluginServiceImpl, error) {
+	dsn string) (driver_infrastructure.PluginService, error) {
 	dialectProvider := driver_infrastructure.DialectManager{}
 	dialect, err := dialectProvider.GetDialect(dsn, props)
 	if err != nil {
@@ -254,6 +254,7 @@ func (p *PluginServiceImpl) GetHostInfoByStrategy(
 func (p *PluginServiceImpl) GetHostSelectorStrategy(strategy string) (hostSelector driver_infrastructure.HostSelector, err error) {
 	return p.pluginManager.GetHostSelectorStrategy(strategy)
 }
+
 func (p *PluginServiceImpl) GetHostRole(conn driver.Conn) host_info_util.HostRole {
 	return p.hostListProvider.GetHostRole(conn)
 }

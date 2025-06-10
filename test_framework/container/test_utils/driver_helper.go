@@ -17,6 +17,7 @@
 package test_utils
 
 import (
+	"awssql/property_util"
 	"context"
 	"database/sql"
 	"database/sql/driver"
@@ -190,25 +191,31 @@ func ConfigureProps(environment *TestEnvironment, props map[string]string) map[s
 	if props["failureDetectionTimeMs"] == "" {
 		props["failureDetectionTimeMs"] = "1000"
 	}
-	if _, ok := props["user"]; !ok {
-		props["user"] = environment.Info().DatabaseInfo.Username
+	if _, ok := props[property_util.USER.Name]; !ok {
+		props[property_util.USER.Name] = environment.Info().DatabaseInfo.Username
 	}
-	if _, ok := props["host"]; !ok {
-		props["host"] = environment.Info().DatabaseInfo.ClusterEndpoint
+	if _, ok := props[property_util.HOST.Name]; !ok {
+		props[property_util.HOST.Name] = environment.Info().DatabaseInfo.ClusterEndpoint
 	}
-	if _, ok := props["dbname"]; !ok {
-		props["dbname"] = environment.Info().DatabaseInfo.DefaultDbName
+	if _, ok := props[property_util.DATABASE.Name]; !ok {
+		props[property_util.DATABASE.Name] = environment.Info().DatabaseInfo.DefaultDbName
 	}
-	if _, ok := props["password"]; !ok {
-		props["password"] = environment.Info().DatabaseInfo.Password
+	if _, ok := props[property_util.PASSWORD.Name]; !ok {
+		props[property_util.PASSWORD.Name] = environment.Info().DatabaseInfo.Password
 	}
-	if _, ok := props["port"]; !ok {
-		props["port"] = strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort)
+	if _, ok := props[property_util.PORT.Name]; !ok {
+		props[property_util.PORT.Name] = strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort)
 	}
 	return props
 }
 
-var requiredProps = []string{"user", "password", "host", "port", "dbname"}
+var requiredProps = []string{
+	property_util.USER.Name,
+	property_util.PASSWORD.Name,
+	property_util.HOST.Name,
+	property_util.PORT.Name,
+	property_util.DATABASE.Name,
+}
 
 func ConstructDsn(engine DatabaseEngine, props map[string]string) (dsn string) {
 	switch engine {
@@ -217,7 +224,12 @@ func ConstructDsn(engine DatabaseEngine, props map[string]string) (dsn string) {
 			dsn = dsn + fmt.Sprintf("%s=%s ", propKey, propValue)
 		}
 	case MYSQL:
-		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?", props["user"], props["password"], props["host"], props["port"], props["dbname"])
+		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?",
+			props[property_util.USER.Name],
+			props[property_util.PASSWORD.Name],
+			props[property_util.HOST.Name],
+			props[property_util.PORT.Name],
+			props[property_util.DATABASE.Name])
 		for propKey, propValue := range props {
 			if !slices.Contains(requiredProps, propKey) {
 				dsn = dsn + fmt.Sprintf("%s=%s&", propKey, propValue)

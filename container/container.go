@@ -18,7 +18,6 @@ package container
 
 import (
 	"awssql/driver_infrastructure"
-	"awssql/plugin_helpers"
 	"awssql/utils"
 	"awssql/utils/telemetry"
 )
@@ -30,7 +29,11 @@ type Container struct {
 	Props                   map[string]string
 }
 
-func NewContainer(dsn string) (Container, error) {
+func NewContainer(
+	dsn string,
+	pluginManagerProvider driver_infrastructure.PluginManagerProvider,
+	pluginServiceProvider driver_infrastructure.PluginServiceProvider,
+) (Container, error) {
 	props, parseErr := utils.ParseDsn(dsn)
 	if parseErr != nil {
 		return Container{}, parseErr
@@ -53,8 +56,9 @@ func NewContainer(dsn string) (Container, error) {
 	if err != nil {
 		return Container{}, err
 	}
-	pluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(targetDriver, props, connectionProviderManager, telemetryFactory))
-	pluginServiceImpl, err := plugin_helpers.NewPluginServiceImpl(pluginManager, targetDriverDialect, props, dsn)
+	pluginManager := pluginManagerProvider(targetDriver, props, connectionProviderManager, telemetryFactory)
+
+	pluginServiceImpl, err := pluginServiceProvider(pluginManager, targetDriverDialect, props, dsn)
 	if err != nil {
 		return Container{}, err
 	}

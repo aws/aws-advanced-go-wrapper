@@ -34,7 +34,8 @@ func beforePluginServiceTests() (*plugin_helpers.PluginServiceImpl, *MockPluginM
 	mockPluginManager := &MockPluginManager{
 		plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory), nil, nil}
 	target, err := plugin_helpers.NewPluginServiceImpl(mockPluginManager, &driver_infrastructure.PgxDriverDialect{}, props, pgTestDsn)
-	return target, mockPluginManager, host_info_util.NewHostInfoBuilder(), err
+	impl, _ := target.(*plugin_helpers.PluginServiceImpl)
+	return impl, mockPluginManager, host_info_util.NewHostInfoBuilder(), err
 }
 
 func TestGetCurrentHostInfo(t *testing.T) {
