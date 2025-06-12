@@ -19,15 +19,17 @@ package test
 import (
 	"context"
 	"database/sql/driver"
+	"strings"
+	"testing"
+
 	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	"github.com/aws/aws-advanced-go-wrapper/mysql-driver"
-	"strings"
-	"testing"
+	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
+	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -204,13 +206,12 @@ func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	mockPluginManager := driver_infrastructure.PluginManager(
 		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
-	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.MySQLDriverDialect{}, props, mysqlTestDsn)
-	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
+	mockPluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.MySQLDriverDialect{}, props, mysqlTestDsn)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
-	_ = mockPluginManager.Init(nil, plugins)
-	baseAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.MYSQL)
+	_ = mockPluginManager.Init(mockPluginService, plugins)
+	baseAwsWrapperConn := *awsDriver.NewAwsWrapperConn(nil, mockPluginManager, mockPluginService, driver_infrastructure.MYSQL)
 	res, err := baseAwsWrapperConn.QueryContext(context.Background(), "", nil)
 	if res != nil ||
 		!strings.Contains(
@@ -221,7 +222,7 @@ func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
 
 	mockUnderlyingConn := &MockConn{}
 	mockUnderlyingConn.updateQueryRow([]string{"column"}, []driver.Value{"test"})
-	mockAwsWrapperConn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.MYSQL)
+	mockAwsWrapperConn := awsDriver.NewAwsWrapperConn(mockUnderlyingConn, mockPluginManager, mockPluginService, driver_infrastructure.MYSQL)
 	err = mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
 	assert.Nil(t, err)
 	res, err = mockAwsWrapperConn.QueryContext(context.Background(), "", nil)
@@ -250,14 +251,13 @@ func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	mockPluginManager := driver_infrastructure.PluginManager(
 		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
-	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
-	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
+	mockPluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
-	_ = mockPluginManager.Init(nil, plugins)
+	_ = mockPluginManager.Init(mockPluginService, plugins)
 
-	baseAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.PG)
+	baseAwsWrapperConn := *awsDriver.NewAwsWrapperConn(nil, mockPluginManager, mockPluginService, driver_infrastructure.PG)
 	res, err := baseAwsWrapperConn.QueryContext(context.Background(), "", nil)
 	if res != nil ||
 		!strings.Contains(
@@ -271,7 +271,7 @@ func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
 	assert.Nil(t, err)
 
 	mockUnderlyingConn.updateQueryRow([]string{"column"}, []driver.Value{"test"})
-	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.PG)
+	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockUnderlyingConn, mockPluginManager, mockPluginService, driver_infrastructure.PG)
 	res, err = mockAwsWrapperConn.QueryContext(context.Background(), "", nil)
 	if err != nil || res.Columns()[0] != "column" {
 		t.Errorf("An AWS Wrapper Conn with an underlying connection that does support QueryContext should return a result.")
@@ -298,17 +298,16 @@ func TestWrapperUtilsExecWithPlugins(t *testing.T) {
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	mockPluginManager := driver_infrastructure.PluginManager(
 		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
-	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
-	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
+	mockPluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
-	_ = mockPluginManager.Init(nil, plugins)
+	_ = mockPluginManager.Init(mockPluginService, plugins)
 
 	mockUnderlyingConn := &MockConn{execResult: MockResult{}}
 	err := mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
 	assert.Nil(t, err)
-	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.PG)
+	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockUnderlyingConn, mockPluginManager, mockPluginService, driver_infrastructure.PG)
 
 	res, err := mockAwsWrapperConn.ExecContext(context.Background(), "", nil)
 	if err != nil || res == nil {
@@ -331,17 +330,16 @@ func TestWrapperUtilsBeginWithPlugins(t *testing.T) {
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	mockPluginManager := driver_infrastructure.PluginManager(
 		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
-	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
-	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
+	mockPluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
-	_ = mockPluginManager.Init(nil, plugins)
+	_ = mockPluginManager.Init(mockPluginService, plugins)
 
 	mockUnderlyingConn := &MockConn{beginResult: MockTx{}}
 	err := mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
 	assert.Nil(t, err)
-	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.PG)
+	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockUnderlyingConn, mockPluginManager, mockPluginService, driver_infrastructure.PG)
 
 	tx, err := mockAwsWrapperConn.Begin()
 	if err != nil || tx == nil {
@@ -364,17 +362,16 @@ func TestWrapperUtilsPrepareWithPlugins(t *testing.T) {
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	mockPluginManager := driver_infrastructure.PluginManager(
 		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
-	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
-	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
+	mockPluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
-	_ = mockPluginManager.Init(nil, plugins)
+	_ = mockPluginManager.Init(mockPluginService, plugins)
 
 	mockUnderlyingConn := &MockConn{prepareResult: MockStmt{}}
 	err := mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
 	assert.Nil(t, err)
-	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.PG)
+	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockUnderlyingConn, mockPluginManager, mockPluginService, driver_infrastructure.PG)
 
 	res, err := mockAwsWrapperConn.Prepare("")
 	if err != nil || res == nil {
@@ -397,5 +394,72 @@ func TestWrapperUtilsPrepareWithPlugins(t *testing.T) {
 			err.Error(),
 			"The underlying driver statement does not implement the required interface 'driver.StmtExecContext'.") {
 		t.Errorf("The returned stmt should attempt optional interfaces that are supported by both pgx and mysql drivers.")
+	}
+}
+
+func TestMethodInvokedOnOldConnection(t *testing.T) {
+	props := map[string]string{"protocol": "postgres"}
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	mockPluginManager := driver_infrastructure.PluginManager(
+		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
+	mockPluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, pgx_driver.PgxDriverDialect{}, props, pgTestDsn)
+	plugins := []driver_infrastructure.ConnectionPlugin{
+		CreateTestPlugin(nil, 1, nil, nil, false),
+	}
+	_ = mockPluginManager.Init(mockPluginService, plugins)
+
+	mockUnderlyingConn := &MockConn{execResult: MockResult{}, beginResult: MockTx{}, prepareResult: MockStmt{}}
+	mockUnderlyingConn.updateQueryRow([]string{"column"}, []driver.Value{"test"})
+	err := mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
+	assert.Nil(t, err)
+	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockUnderlyingConn, mockPluginManager, mockPluginService, driver_infrastructure.PG)
+
+	rows, err := mockAwsWrapperConn.QueryContext(context.Background(), "", nil)
+	if err != nil || rows.Columns()[0] != "column" {
+		t.Errorf("An AWS Wrapper Conn with an underlying connection that does support QueryContext should return a result.")
+	}
+
+	res, err := mockAwsWrapperConn.ExecContext(context.Background(), "", nil)
+	if err != nil || res == nil {
+		t.Errorf("An AWS Wrapper Conn with an underlying connection that does support ExecContext should return a result.")
+	}
+
+	tx, err := mockAwsWrapperConn.Begin()
+	if err != nil || tx == nil {
+		t.Errorf("An AWS Wrapper Conn with an underlying connection should return a result to Begin.")
+	}
+
+	stmt, err := mockAwsWrapperConn.Prepare("")
+	if err != nil || stmt == nil {
+		t.Errorf("An AWS Wrapper Conn with an underlying connection should return a result to Prepare.")
+	}
+
+	err = mockPluginService.SetCurrentConnection(&MockConn{}, mockHostInfo, nil)
+	assert.Nil(t, err)
+
+	err = mockAwsWrapperConn.Ping(context.TODO())
+	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since Conn was created") {
+		t.Errorf("After internal connection has changed, methods on Conn should fail to execute.")
+	}
+
+	err = rows.Next([]driver.Value{})
+	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since Rows was created") {
+		t.Errorf("After internal connection has changed, methods on Rows should fail to execute.")
+	}
+
+	_, err = res.RowsAffected()
+	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since Result was created") {
+		t.Errorf("After internal connection has changed, methods on Result should fail to execute.")
+	}
+
+	err = tx.Commit()
+	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since Tx was created") {
+		t.Errorf("After internal connection has changed, methods on Tx should fail to execute.")
+	}
+
+	//nolint:all
+	_, err = stmt.Exec(nil)
+	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since Stmt was created") {
+		t.Errorf("After internal connection has changed, methods on Stmt should fail to execute.")
 	}
 }

@@ -120,6 +120,7 @@ func BenchmarkExecuteWith10Plugins(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		//nolint:errcheck
 		pluginManager.Execute(
+			nil,
 			"callA",
 			execFunc,
 			10,
@@ -140,6 +141,7 @@ func BenchmarkExecuteWithNoPlugins(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		//nolint:errcheck
 		pluginManager.Execute(
+			nil,
 			"callA",
 			execFunc,
 			10,

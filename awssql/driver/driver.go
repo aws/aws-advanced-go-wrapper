@@ -20,6 +20,8 @@ import (
 	"context"
 	"database/sql/driver"
 	"errors"
+	"reflect"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
@@ -28,7 +30,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	"reflect"
 )
 
 var pluginFactoryByCode = map[string]driver_infrastructure.ConnectionPluginFactory{
@@ -127,7 +128,7 @@ func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 		}
 	}
 
-	return NewAwsWrapperConn(pluginManager, pluginService, dbEngine), nil
+	return NewAwsWrapperConn(conn, pluginManager, pluginService, dbEngine), nil
 }
 
 func (d *AwsWrapperDriver) ReleaseResources() {
@@ -152,16 +153,18 @@ func ClearCaches() {
 }
 
 type AwsWrapperConn struct {
-	pluginManager driver_infrastructure.PluginManager
-	pluginService driver_infrastructure.PluginService
-	engine        driver_infrastructure.DatabaseEngine
+	underlyingConn driver.Conn
+	pluginManager  driver_infrastructure.PluginManager
+	pluginService  driver_infrastructure.PluginService
+	engine         driver_infrastructure.DatabaseEngine
 }
 
 func NewAwsWrapperConn(
+	underlyingConn driver.Conn,
 	pluginManager driver_infrastructure.PluginManager,
 	pluginService driver_infrastructure.PluginService,
 	engine driver_infrastructure.DatabaseEngine) *AwsWrapperConn {
-	return &AwsWrapperConn{pluginManager, pluginService, engine}
+	return &AwsWrapperConn{underlyingConn, pluginManager, pluginService, engine}
 }
 
 func (c *AwsWrapperConn) Prepare(query string) (driver.Stmt, error) {
@@ -169,7 +172,7 @@ func (c *AwsWrapperConn) Prepare(query string) (driver.Stmt, error) {
 		result, err := c.pluginService.GetCurrentConnection().Prepare(query)
 		return result, nil, false, err
 	}
-	return prepareWithPlugins(c.pluginManager, utils.CONN_PREPARE, prepareFunc, *c, query)
+	return prepareWithPlugins(c.underlyingConn, c.pluginManager, utils.CONN_PREPARE, prepareFunc, *c, query)
 }
 
 func (c *AwsWrapperConn) PrepareContext(ctx context.Context, query string) (driver.Stmt, error) {
@@ -181,12 +184,12 @@ func (c *AwsWrapperConn) PrepareContext(ctx context.Context, query string) (driv
 		result, err := prepareCtx.PrepareContext(ctx, query)
 		return result, nil, false, err
 	}
-	return prepareWithPlugins(c.pluginManager, utils.CONN_PREPARE_CONTEXT, prepareFunc, *c, query)
+	return prepareWithPlugins(c.underlyingConn, c.pluginManager, utils.CONN_PREPARE_CONTEXT, prepareFunc, *c, query)
 }
 
 func (c *AwsWrapperConn) Close() error {
 	closeFunc := func() (any, any, bool, error) { return nil, nil, false, c.pluginService.GetCurrentConnection().Close() }
-	_, _, _, err := ExecuteWithPlugins(c.pluginManager, utils.CONN_CLOSE, closeFunc)
+	_, _, _, err := ExecuteWithPlugins(c.underlyingConn, c.pluginManager, utils.CONN_CLOSE, closeFunc)
 	pluginManager, ok := c.pluginManager.(driver_infrastructure.CanReleaseResources)
 	if ok {
 		pluginManager.ReleaseResources()
@@ -199,7 +202,7 @@ func (c *AwsWrapperConn) Begin() (driver.Tx, error) {
 		result, err := c.pluginService.GetCurrentConnection().Begin() //nolint:all
 		return result, nil, false, err
 	}
-	return beginWithPlugins(c.pluginManager, c.pluginService, utils.CONN_BEGIN, beginFunc)
+	return beginWithPlugins(c.underlyingConn, c.pluginManager, c.pluginService, utils.CONN_BEGIN, beginFunc)
 }
 
 func (c *AwsWrapperConn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
@@ -211,7 +214,7 @@ func (c *AwsWrapperConn) BeginTx(ctx context.Context, opts driver.TxOptions) (dr
 		result, err := beginTx.BeginTx(ctx, opts)
 		return result, nil, false, err
 	}
-	return beginWithPlugins(c.pluginManager, c.pluginService, utils.CONN_BEGIN_TX, beginFunc)
+	return beginWithPlugins(c.underlyingConn, c.pluginManager, c.pluginService, utils.CONN_BEGIN_TX, beginFunc)
 }
 
 func (c *AwsWrapperConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
@@ -223,7 +226,7 @@ func (c *AwsWrapperConn) QueryContext(ctx context.Context, query string, args []
 		result, err := queryerCtx.QueryContext(ctx, query, args)
 		return result, nil, false, err
 	}
-	return queryWithPlugins(c.pluginManager, utils.CONN_QUERY_CONTEXT, queryFunc, c.engine, query)
+	return queryWithPlugins(c.underlyingConn, c.pluginManager, utils.CONN_QUERY_CONTEXT, queryFunc, c.engine, query)
 }
 
 func (c *AwsWrapperConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
@@ -235,7 +238,7 @@ func (c *AwsWrapperConn) ExecContext(ctx context.Context, query string, args []d
 		result, err := execerCtx.ExecContext(ctx, query, args)
 		return result, nil, false, err
 	}
-	return execWithPlugins(c.pluginManager, utils.CONN_EXEC_CONTEXT, execFunc, query)
+	return execWithPlugins(c.underlyingConn, c.pluginManager, utils.CONN_EXEC_CONTEXT, execFunc, query)
 }
 
 func (c *AwsWrapperConn) Ping(ctx context.Context) error {
@@ -246,7 +249,7 @@ func (c *AwsWrapperConn) Ping(ctx context.Context) error {
 		}
 		return nil, nil, false, pinger.Ping(ctx)
 	}
-	_, _, _, err := ExecuteWithPlugins(c.pluginManager, utils.CONN_PING, pingFunc)
+	_, _, _, err := ExecuteWithPlugins(c.underlyingConn, c.pluginManager, utils.CONN_PING, pingFunc)
 	return err
 }
 
@@ -258,7 +261,7 @@ func (c *AwsWrapperConn) IsValid() bool {
 		}
 		return nil, nil, true, nil
 	}
-	_, _, result, _ := ExecuteWithPlugins(c.pluginManager, utils.CONN_IS_VALID, isValidFunc)
+	_, _, result, _ := ExecuteWithPlugins(c.underlyingConn, c.pluginManager, utils.CONN_IS_VALID, isValidFunc)
 	return result
 }
 
@@ -270,7 +273,7 @@ func (c *AwsWrapperConn) ResetSession(ctx context.Context) error {
 		}
 		return nil, nil, false, resetter.ResetSession(ctx)
 	}
-	_, _, _, err := ExecuteWithPlugins(c.pluginManager, utils.CONN_RESET_SESSION, resetSessionFunc)
+	_, _, _, err := ExecuteWithPlugins(c.underlyingConn, c.pluginManager, utils.CONN_RESET_SESSION, resetSessionFunc)
 	return err
 }
 
@@ -282,7 +285,7 @@ func (c *AwsWrapperConn) CheckNamedValue(val *driver.NamedValue) error {
 		}
 		return nil, nil, false, namedValueChecker.CheckNamedValue(val)
 	}
-	_, _, _, err := ExecuteWithPlugins(c.pluginManager, utils.CONN_CHECK_NAMED_VALUE, checkNamedValueFunc)
+	_, _, _, err := ExecuteWithPlugins(c.underlyingConn, c.pluginManager, utils.CONN_CHECK_NAMED_VALUE, checkNamedValueFunc)
 	return err
 }
 
@@ -294,7 +297,7 @@ type AwsWrapperStmt struct {
 
 func (a *AwsWrapperStmt) Close() error {
 	closeFunc := func() (any, any, bool, error) { return nil, nil, false, a.underlyingStmt.Close() }
-	_, _, _, err := ExecuteWithPlugins(a.pluginManager, utils.STMT_CLOSE, closeFunc)
+	_, _, _, err := ExecuteWithPlugins(a.conn.underlyingConn, a.pluginManager, utils.STMT_CLOSE, closeFunc)
 	return err
 }
 
@@ -303,7 +306,7 @@ func (a *AwsWrapperStmt) Exec(args []driver.Value) (driver.Result, error) {
 		result, err := a.underlyingStmt.Exec(args) //nolint:all
 		return result, nil, false, err
 	}
-	return execWithPlugins(a.pluginManager, utils.STMT_EXEC, execFunc)
+	return execWithPlugins(a.conn.underlyingConn, a.pluginManager, utils.STMT_EXEC, execFunc)
 }
 
 func (a *AwsWrapperStmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
@@ -315,12 +318,12 @@ func (a *AwsWrapperStmt) ExecContext(ctx context.Context, args []driver.NamedVal
 		result, err := execerCtx.ExecContext(ctx, args)
 		return result, nil, false, err
 	}
-	return execWithPlugins(a.pluginManager, utils.STMT_EXEC_CONTEXT, execFunc)
+	return execWithPlugins(a.conn.underlyingConn, a.pluginManager, utils.STMT_EXEC_CONTEXT, execFunc)
 }
 
 func (a *AwsWrapperStmt) NumInput() int {
 	numInputFunc := func() (any, any, bool, error) { return a.underlyingStmt.NumInput(), nil, false, nil }
-	result, _, _, _ := ExecuteWithPlugins(a.pluginManager, utils.STMT_NUM_INPUT, numInputFunc)
+	result, _, _, _ := ExecuteWithPlugins(a.conn.underlyingConn, a.pluginManager, utils.STMT_NUM_INPUT, numInputFunc)
 	num, ok := result.(int)
 	if ok {
 		return num
@@ -333,7 +336,7 @@ func (a *AwsWrapperStmt) Query(args []driver.Value) (driver.Rows, error) {
 		result, err := a.underlyingStmt.Query(args) //nolint:all
 		return result, nil, false, err
 	}
-	return queryWithPlugins(a.pluginManager, utils.STMT_QUERY, queryFunc, a.conn.engine)
+	return queryWithPlugins(a.conn.underlyingConn, a.pluginManager, utils.STMT_QUERY, queryFunc, a.conn.engine)
 }
 
 func (a *AwsWrapperStmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
@@ -345,7 +348,7 @@ func (a *AwsWrapperStmt) QueryContext(ctx context.Context, args []driver.NamedVa
 		result, err := queryerCtx.QueryContext(ctx, args)
 		return result, nil, false, err
 	}
-	return queryWithPlugins(a.pluginManager, utils.STMT_QUERY_CONTEXT, queryFunc, a.conn.engine)
+	return queryWithPlugins(a.conn.underlyingConn, a.pluginManager, utils.STMT_QUERY_CONTEXT, queryFunc, a.conn.engine)
 }
 
 func (a *AwsWrapperStmt) CheckNamedValue(val *driver.NamedValue) error {
@@ -355,11 +358,12 @@ func (a *AwsWrapperStmt) CheckNamedValue(val *driver.NamedValue) error {
 		return a.conn.CheckNamedValue(val)
 	}
 	checkNamedValueFunc := func() (any, any, bool, error) { return nil, nil, false, namedValueChecker.CheckNamedValue(val) }
-	_, _, _, err := ExecuteWithPlugins(a.pluginManager, utils.STMT_CHECK_NAMED_VALUE, checkNamedValueFunc)
+	_, _, _, err := ExecuteWithPlugins(a.conn.underlyingConn, a.pluginManager, utils.STMT_CHECK_NAMED_VALUE, checkNamedValueFunc)
 	return err
 }
 
 type AwsWrapperResult struct {
+	underlyingConn   driver.Conn
 	underlyingResult driver.Result
 	pluginManager    driver_infrastructure.PluginManager
 }
@@ -369,7 +373,7 @@ func (a *AwsWrapperResult) LastInsertId() (int64, error) {
 		result, err := a.underlyingResult.LastInsertId()
 		return result, nil, false, err
 	}
-	result, _, _, err := ExecuteWithPlugins(a.pluginManager, utils.RESULT_LAST_INSERT_ID, execFunc)
+	result, _, _, err := ExecuteWithPlugins(a.underlyingConn, a.pluginManager, utils.RESULT_LAST_INSERT_ID, execFunc)
 	if err == nil {
 		num, ok := result.(int64)
 		if ok {
@@ -385,7 +389,7 @@ func (a *AwsWrapperResult) RowsAffected() (int64, error) {
 		result, err := a.underlyingResult.RowsAffected()
 		return result, nil, false, err
 	}
-	result, _, _, err := ExecuteWithPlugins(a.pluginManager, utils.RESULT_ROWS_AFFECTED, execFunc)
+	result, _, _, err := ExecuteWithPlugins(a.underlyingConn, a.pluginManager, utils.RESULT_ROWS_AFFECTED, execFunc)
 	if err == nil {
 		num, ok := result.(int64)
 		if ok {
@@ -397,39 +401,41 @@ func (a *AwsWrapperResult) RowsAffected() (int64, error) {
 }
 
 type AwsWrapperTx struct {
-	underlyingTx  driver.Tx
-	pluginManager driver_infrastructure.PluginManager
-	pluginService driver_infrastructure.PluginService
+	underlyingConn driver.Conn
+	underlyingTx   driver.Tx
+	pluginManager  driver_infrastructure.PluginManager
+	pluginService  driver_infrastructure.PluginService
 }
 
 func (a *AwsWrapperTx) Commit() error {
 	commitFunc := func() (any, any, bool, error) { return nil, nil, false, a.underlyingTx.Commit() }
-	_, _, _, err := ExecuteWithPlugins(a.pluginManager, utils.TX_COMMIT, commitFunc)
+	_, _, _, err := ExecuteWithPlugins(a.underlyingConn, a.pluginManager, utils.TX_COMMIT, commitFunc)
 	a.pluginService.SetCurrentTx(nil)
 	return err
 }
 
 func (a *AwsWrapperTx) Rollback() error {
 	rollbackFunc := func() (any, any, bool, error) { return nil, nil, false, a.underlyingTx.Rollback() }
-	_, _, _, err := ExecuteWithPlugins(a.pluginManager, utils.TX_ROLLBACK, rollbackFunc)
+	_, _, _, err := ExecuteWithPlugins(a.underlyingConn, a.pluginManager, utils.TX_ROLLBACK, rollbackFunc)
 	a.pluginService.SetCurrentTx(nil)
 	return err
 }
 
 type AwsWrapperRows struct {
+	underlyingConn driver.Conn
 	underlyingRows driver.Rows
 	pluginManager  driver_infrastructure.PluginManager
 }
 
 func (a *AwsWrapperRows) Close() error {
 	closeFunc := func() (any, any, bool, error) { return nil, nil, false, a.underlyingRows.Close() }
-	_, _, _, err := ExecuteWithPlugins(a.pluginManager, utils.ROWS_CLOSE, closeFunc)
+	_, _, _, err := ExecuteWithPlugins(a.underlyingConn, a.pluginManager, utils.ROWS_CLOSE, closeFunc)
 	return err
 }
 
 func (a *AwsWrapperRows) Columns() []string {
 	columnsFunc := func() (any, any, bool, error) { return a.underlyingRows.Columns(), nil, false, nil }
-	result, _, _, _ := ExecuteWithPlugins(a.pluginManager, utils.ROWS_COLUMNS, columnsFunc)
+	result, _, _, _ := ExecuteWithPlugins(a.underlyingConn, a.pluginManager, utils.ROWS_COLUMNS, columnsFunc)
 	cols, ok := result.([]string)
 	if ok {
 		return cols
@@ -439,7 +445,7 @@ func (a *AwsWrapperRows) Columns() []string {
 
 func (a *AwsWrapperRows) Next(dest []driver.Value) error {
 	nextFunc := func() (any, any, bool, error) { return nil, nil, false, a.underlyingRows.Next(dest) }
-	_, _, _, err := ExecuteWithPlugins(a.pluginManager, utils.ROWS_NEXT, nextFunc)
+	_, _, _, err := ExecuteWithPlugins(a.underlyingConn, a.pluginManager, utils.ROWS_NEXT, nextFunc)
 	return err
 }
 
@@ -450,7 +456,7 @@ func (a *AwsWrapperRows) ColumnTypePrecisionScale(index int) (int64, int64, bool
 			result1, result2, boolean := rowInterface.ColumnTypePrecisionScale(index)
 			return result1, result2, boolean, nil
 		}
-		p, s, ok, _ := ExecuteWithPlugins(a.pluginManager, utils.ROWS_COLUMN_TYPE_PRECISION_SCALE, rowFunc)
+		p, s, ok, _ := ExecuteWithPlugins(a.underlyingConn, a.pluginManager, utils.ROWS_COLUMN_TYPE_PRECISION_SCALE, rowFunc)
 		precision, pOk := p.(int64)
 		scale, sOk := s.(int64)
 		if sOk && pOk {
@@ -464,7 +470,7 @@ func (a *AwsWrapperRows) ColumnTypeDatabaseTypeName(index int) string {
 	rowInterface, ok := a.underlyingRows.(driver.RowsColumnTypeDatabaseTypeName)
 	if ok {
 		rowFunc := func() (any, any, bool, error) { return rowInterface.ColumnTypeDatabaseTypeName(index), nil, false, nil }
-		result, _, _, _ := ExecuteWithPlugins(a.pluginManager, utils.ROWS_COLUMN_TYPE_DATABASE_TYPE_NAME, rowFunc)
+		result, _, _, _ := ExecuteWithPlugins(a.underlyingConn, a.pluginManager, utils.ROWS_COLUMN_TYPE_DATABASE_TYPE_NAME, rowFunc)
 		str, ok := result.(string)
 		if ok {
 			return str
@@ -484,7 +490,7 @@ func (a *AwsWrapperPgRows) ColumnTypeLength(index int) (int64, bool) {
 			result, boolean := rowInterface.ColumnTypeLength(index)
 			return result, nil, boolean, nil
 		}
-		result, _, ok, _ := ExecuteWithPlugins(a.pluginManager, utils.ROWS_COLUMN_TYPE_LENGTH, rowFunc)
+		result, _, ok, _ := ExecuteWithPlugins(a.underlyingConn, a.pluginManager, utils.ROWS_COLUMN_TYPE_LENGTH, rowFunc)
 		num, numOk := result.(int64)
 		if numOk {
 			return num, ok
@@ -503,7 +509,7 @@ func (a *AwsWrapperMySQLRows) HasNextResultSet() bool {
 		return false
 	}
 	rowFunc := func() (any, any, bool, error) { return nil, nil, rowInterface.HasNextResultSet(), nil }
-	_, _, ok, _ = ExecuteWithPlugins(a.pluginManager, utils.ROWS_HAS_NEXT_RESULT_SET, rowFunc)
+	_, _, ok, _ = ExecuteWithPlugins(a.underlyingConn, a.pluginManager, utils.ROWS_HAS_NEXT_RESULT_SET, rowFunc)
 	return ok
 }
 
@@ -513,7 +519,7 @@ func (a *AwsWrapperMySQLRows) NextResultSet() error {
 		return errors.New(error_util.GetMessage("AwsWrapperRows.underlyingRowsDoNotImplementRequiredInterface", "driver.RowsNextResultSet"))
 	}
 	rowFunc := func() (any, any, bool, error) { return nil, nil, false, rowInterface.NextResultSet() }
-	_, _, _, err := ExecuteWithPlugins(a.pluginManager, utils.ROWS_NEXT_RESULT_SET, rowFunc)
+	_, _, _, err := ExecuteWithPlugins(a.underlyingConn, a.pluginManager, utils.ROWS_NEXT_RESULT_SET, rowFunc)
 	return err
 }
 
@@ -521,7 +527,7 @@ func (a *AwsWrapperMySQLRows) ColumnTypeScanType(index int) reflect.Type {
 	rowInterface, ok := a.underlyingRows.(driver.RowsColumnTypeScanType)
 	if ok {
 		rowFunc := func() (any, any, bool, error) { return rowInterface.ColumnTypeScanType(index), nil, false, nil }
-		result, _, _, _ := ExecuteWithPlugins(a.pluginManager, utils.ROWS_COLUMN_TYPE_SCAN_TYPE, rowFunc)
+		result, _, _, _ := ExecuteWithPlugins(a.underlyingConn, a.pluginManager, utils.ROWS_COLUMN_TYPE_SCAN_TYPE, rowFunc)
 		reflectType, ok := result.(reflect.Type)
 		if ok {
 			return reflectType
@@ -537,7 +543,7 @@ func (a *AwsWrapperMySQLRows) ColumnTypeNullable(index int) (bool, bool) {
 			boolean1, boolean2 := rowInterface.ColumnTypeNullable(index)
 			return nil, boolean1, boolean2, nil
 		}
-		_, result, ok, _ := ExecuteWithPlugins(a.pluginManager, utils.ROWS_COLUMN_TYPE_NULLABLE, rowFunc)
+		_, result, ok, _ := ExecuteWithPlugins(a.underlyingConn, a.pluginManager, utils.ROWS_COLUMN_TYPE_NULLABLE, rowFunc)
 		nullable, boolOk := result.(bool)
 		if boolOk {
 			return nullable, ok
