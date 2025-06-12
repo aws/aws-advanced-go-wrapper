@@ -51,12 +51,14 @@ const (
 type DialectCode string
 
 const (
-	AURORA_MYSQL_DIALECT string = "aurora-mysql"
-	RDS_MYSQL_DIALECT    string = "rds-mysql"
-	MYSQL_DIALECT        string = "mysql"
-	AURORA_PG_DIALECT    string = "aurora-pg"
-	RDS_PG_DIALECT       string = "rds-pg"
-	PG_DIALECT           string = "pg"
+	AURORA_MYSQL_DIALECT               string = "aurora-mysql"
+	RDS_MYSQL_DIALECT                  string = "rds-mysql"
+	MYSQL_DIALECT                      string = "mysql"
+	RDS_MYSQL_MULTI_AZ_CLUSTER_DIALECT string = "rds-multi-az-mysql-cluster"
+	AURORA_PG_DIALECT                  string = "aurora-pg"
+	RDS_PG_DIALECT                     string = "rds-pg"
+	PG_DIALECT                         string = "pg"
+	RDS_PG_MULTI_AZ_CLUSTER_DIALECT    string = "rds-multi-az-pg-cluster"
 )
 
 type DatabaseEngine string

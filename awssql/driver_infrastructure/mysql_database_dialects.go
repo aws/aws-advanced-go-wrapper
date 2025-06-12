@@ -19,20 +19,23 @@ package driver_infrastructure
 import (
 	"context"
 	"database/sql/driver"
+	"fmt"
+	"log/slog"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"log/slog"
-	"strings"
-	"time"
 )
 
 type MySQLDatabaseDialect struct {
 }
 
 func (m *MySQLDatabaseDialect) GetDialectUpdateCandidates() []string {
-	return []string{AURORA_MYSQL_DIALECT, RDS_MYSQL_DIALECT}
+	return []string{RDS_MYSQL_MULTI_AZ_CLUSTER_DIALECT, AURORA_MYSQL_DIALECT, RDS_MYSQL_DIALECT}
 }
 
 func (m *MySQLDatabaseDialect) GetDefaultPort() int {
@@ -74,7 +77,7 @@ type RdsMySQLDatabaseDialect struct {
 }
 
 func (m *RdsMySQLDatabaseDialect) GetDialectUpdateCandidates() []string {
-	return []string{AURORA_MYSQL_DIALECT}
+	return []string{RDS_MYSQL_MULTI_AZ_CLUSTER_DIALECT, AURORA_MYSQL_DIALECT}
 }
 
 func (m *RdsMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
@@ -91,21 +94,39 @@ func (m *RdsMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	return false
 }
 
-type AuroraMySQLDatabaseDialect struct {
+type MySQLTopologyAwareDatabaseDialect struct {
 	MySQLDatabaseDialect
 }
 
-func (m *AuroraMySQLDatabaseDialect) GetDialectUpdateCandidates() []string {
-	return []string{}
+func (m *MySQLTopologyAwareDatabaseDialect) GetTopology(
+	conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
+	return nil, nil
 }
 
-func (m *AuroraMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
-	row := utils.GetFirstRowFromQueryAsString(conn, "SHOW VARIABLES LIKE 'aurora_version'")
-	// If a variable with such name is presented then it means it's an Aurora cluster.
-	return row != nil
+func (m *MySQLTopologyAwareDatabaseDialect) GetHostRole(conn driver.Conn) host_info_util.HostRole {
+	isReaderQuery := "SELECT @@innodb_read_only"
+	res := utils.GetFirstRowFromQuery(conn, isReaderQuery)
+	if len(res) > 0 {
+		isReader, ok := res[0].(int64)
+		if ok {
+			if isReader == 1 {
+				return host_info_util.READER
+			}
+			return host_info_util.WRITER
+		}
+	}
+	return host_info_util.UNKNOWN
 }
 
-func (m *AuroraMySQLDatabaseDialect) GetHostListProvider(
+func (m *MySQLTopologyAwareDatabaseDialect) GetHostName(conn driver.Conn) string {
+	return ""
+}
+
+func (m *MySQLTopologyAwareDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, error) {
+	return "", nil
+}
+
+func (m *MySQLTopologyAwareDatabaseDialect) GetHostListProvider(
 	props map[string]string,
 	initialDsn string,
 	hostListProviderService HostListProviderService,
@@ -113,12 +134,26 @@ func (m *AuroraMySQLDatabaseDialect) GetHostListProvider(
 	pluginsProp := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PLUGINS)
 
 	if strings.Contains(pluginsProp, "failover") {
-		slog.Debug("Failover is enabled. Using MonitoringRdsHostListProvider")
+		slog.Debug(error_util.GetMessage("DatabaseDialect.usingMonitoringHostListProvider"))
 		return HostListProvider(NewMonitoringRdsHostListProvider(hostListProviderService, m, props, initialDsn, pluginService))
 	}
 
-	slog.Debug("Failover NOT enabled. Using RdsHostListProvider")
+	slog.Debug(error_util.GetMessage("DatabaseDialect.usingRdsHostListProvider"))
 	return HostListProvider(NewRdsHostListProvider(hostListProviderService, m, props, initialDsn, nil, nil))
+}
+
+type AuroraMySQLDatabaseDialect struct {
+	MySQLTopologyAwareDatabaseDialect
+}
+
+func (m *AuroraMySQLDatabaseDialect) GetDialectUpdateCandidates() []string {
+	return []string{RDS_MYSQL_MULTI_AZ_CLUSTER_DIALECT}
+}
+
+func (m *AuroraMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
+	row := utils.GetFirstRowFromQueryAsString(conn, "SHOW VARIABLES LIKE 'aurora_version'")
+	// If a variable with such name is presented then it means it's an Aurora cluster.
+	return row != nil
 }
 
 func (m *AuroraMySQLDatabaseDialect) GetHostName(conn driver.Conn) string {
@@ -142,22 +177,6 @@ func (m *AuroraMySQLDatabaseDialect) GetWriterHostName(conn driver.Conn) (string
 		return res[0], nil
 	}
 	return "", nil
-}
-
-func (m *AuroraMySQLDatabaseDialect) GetHostRole(conn driver.Conn) host_info_util.HostRole {
-	isReaderQuery := "SELECT @@innodb_read_only"
-	res := utils.GetFirstRowFromQuery(conn, isReaderQuery)
-	if len(res) > 0 {
-		isReader, ok := res[0].(int64)
-		if ok {
-			if isReader == 1 {
-				return host_info_util.READER
-			}
-			return host_info_util.WRITER
-		}
-	}
-
-	return host_info_util.UNKNOWN
 }
 
 func (m *AuroraMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
@@ -218,4 +237,184 @@ func (m *AuroraMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider Host
 		err = rows.Next(row)
 	}
 	return hosts, nil
+}
+
+type RdsMultiAzDbClusterMySQLDialect struct {
+	MySQLTopologyAwareDatabaseDialect
+}
+
+func (r *RdsMultiAzDbClusterMySQLDialect) IsDialect(conn driver.Conn) bool {
+	// We need to check that
+	// 1. rds_topology table exists
+	// 2. we can query the topology table
+	// 3. That it reports the host variable and gets the ip address
+
+	topologyTableExistQuery := "SELECT 1 AS tmp FROM information_schema.tables WHERE table_schema = 'mysql' AND table_name = 'rds_topology'"
+	topologyQuery := "SELECT id, endpoint, port FROM mysql.rds_topology"
+	reportHostQuery := "SHOW VARIABLES LIKE 'report_host'"
+
+	// Verify topology table exists
+	row := utils.GetFirstRowFromQueryAsString(conn, topologyTableExistQuery)
+	if row == nil {
+		return false
+	}
+
+	// Verify that topology table is not empty
+	row = utils.GetFirstRowFromQueryAsString(conn, topologyQuery)
+	if row == nil {
+		return false
+	}
+
+	// Verify that report host variable gets ip address
+	row = utils.GetFirstRowFromQueryAsString(conn, reportHostQuery)
+	if len(row) > 1 {
+		return row[1] != ""
+	}
+
+	return false
+}
+
+func (r *RdsMultiAzDbClusterMySQLDialect) GetDialectUpdateCandidates() []string {
+	return nil
+}
+
+func (r *RdsMultiAzDbClusterMySQLDialect) GetTopology(conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
+	topologyQuery := "SELECT id, endpoint FROM mysql.rds_topology"
+	writerHostId := r.getWriterHostId(conn)
+
+	if writerHostId == "" {
+		writerHostId = r.getHostIdOfCurrentConnection(conn)
+	}
+
+	queryerCtx, ok := conn.(driver.QueryerContext)
+	if !ok {
+		// Unable to query, conn does not implement QueryerContext.
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("Conn.doesNotImplementRequiredInterface", "driver.QueryerContext"))
+	}
+
+	rows, err := queryerCtx.QueryContext(context.Background(), topologyQuery, nil)
+	if err != nil {
+		// Query failed.
+		return nil, err
+	}
+	defer rows.Close()
+
+	return r.processTopologyQueryResults(provider, writerHostId, rows), nil
+}
+
+func (r *RdsMultiAzDbClusterMySQLDialect) processTopologyQueryResults(
+	provider HostListProvider,
+	writerHostId string,
+	rows driver.Rows) []*host_info_util.HostInfo {
+	hosts := []*host_info_util.HostInfo{}
+	row := make([]driver.Value, len(rows.Columns()))
+	err := rows.Next(row)
+	for err == nil && len(row) > 1 {
+		id, ok1 := row[0].(int64)
+		endpoint, ok2 := row[1].([]uint8)
+		if !ok1 || !ok2 {
+			// Unable to use information from row to create a host.
+			err = rows.Next(row)
+			continue
+		}
+		idString := strconv.FormatInt(id, 10)
+		endpointString := string(endpoint)
+		hostRole := host_info_util.READER
+
+		if writerHostId == idString {
+			hostRole = host_info_util.WRITER
+		}
+
+		hostName := utils.GetHostNameFromEndpoint(endpointString)
+		hosts = append(hosts, provider.CreateHost(hostName, hostRole, 0, 0, time.Now()))
+		err = rows.Next(row)
+	}
+	return hosts
+}
+
+func (r *RdsMultiAzDbClusterMySQLDialect) GetHostName(conn driver.Conn) string {
+	hostNameQuery := "SELECT endpoint from mysql.rds_topology as top where top.id = (SELECT @@server_id)"
+	row := utils.GetFirstRowFromQueryAsString(conn, hostNameQuery)
+
+	if len(row) > 0 {
+		return utils.GetHostNameFromEndpoint(row[0])
+	}
+
+	return ""
+}
+
+func (r *RdsMultiAzDbClusterMySQLDialect) getWriterHostId(conn driver.Conn) string {
+	fetchWriterHostQuery := "SHOW REPLICA STATUS"
+	queryerCtx, ok := conn.(driver.QueryerContext)
+	if !ok {
+		// Unable to query, conn does not implement QueryerContext.
+		return ""
+	}
+
+	rows, err := queryerCtx.QueryContext(context.Background(), fetchWriterHostQuery, nil)
+	if err != nil {
+		return ""
+	}
+	defer rows.Close()
+
+	// Get column names
+	columnNames := rows.Columns()
+
+	// Read first row. If there is nothing,
+	//  then we should return the current server id
+	values := make([]driver.Value, len(columnNames))
+	if err := rows.Next(values); err != nil {
+		return r.getHostIdOfCurrentConnection(conn)
+	}
+
+	var sourceIndex int = -1
+	for i, name := range columnNames {
+		if name == "Source_Server_Id" {
+			sourceIndex = i
+			break
+		}
+	}
+	if sourceIndex == -1 {
+		return ""
+	}
+
+	writerHostId := values[sourceIndex]
+	writerHostIdInt, ok := writerHostId.(int64)
+	if !ok {
+		return ""
+	}
+	return strconv.FormatInt(writerHostIdInt, 10)
+}
+
+func (r *RdsMultiAzDbClusterMySQLDialect) GetWriterHostName(conn driver.Conn) (string, error) {
+	writerId := r.getWriterHostId(conn)
+	if writerId == "" {
+		return "", error_util.NewGenericAwsWrapperError("Could not determine writer host name.")
+	}
+
+	fetchEndpointQuery := fmt.Sprintf("SELECT endpoint from mysql.rds_topology as top where top.id = '%v' and top.id = (SELECT @@server_id)", writerId)
+	res := utils.GetFirstRowFromQuery(conn, fetchEndpointQuery)
+	if res == nil {
+		return "", error_util.NewGenericAwsWrapperError("Could not determine writer host name.")
+	}
+
+	if len(res) > 0 {
+		instanceId, ok := (res[0]).([]uint8)
+
+		if ok {
+			return utils.GetHostNameFromEndpoint(string(instanceId)), nil
+		}
+	}
+	return "", nil
+}
+
+func (r *RdsMultiAzDbClusterMySQLDialect) getHostIdOfCurrentConnection(conn driver.Conn) string {
+	serverIdQuery := "SELECT @@server_id"
+	row := utils.GetFirstRowFromQueryAsString(conn, serverIdQuery)
+
+	if len(row) > 0 {
+		return row[0]
+	}
+
+	return ""
 }

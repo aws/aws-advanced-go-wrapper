@@ -18,14 +18,17 @@ package test
 
 import (
 	"database/sql/driver"
-	"github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager"
+
+	aws_secrets_manager "github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	"github.com/aws/aws-advanced-go-wrapper/mysql-driver"
+	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 	"github.com/aws/aws-advanced-go-wrapper/okta"
 	"github.com/aws/aws-advanced-go-wrapper/otel"
-	"github.com/aws/aws-advanced-go-wrapper/pgx-driver"
+	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 	"github.com/aws/aws-advanced-go-wrapper/xray"
+
+	"testing"
 
 	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
@@ -33,21 +36,27 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/efm"
-	"github.com/aws/aws-advanced-go-wrapper/federated-auth"
+	federated_auth "github.com/aws/aws-advanced-go-wrapper/federated-auth"
 	"github.com/aws/aws-advanced-go-wrapper/iam"
-	"testing"
 )
 
 func TestImplementations(t *testing.T) {
 	// Check for correct implementations of interfaces on left.
+
+	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.RdsMultiAzDbClusterMySQLDialect)(nil)
+	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.RdsMultiAzDbClusterPgDialect)(nil)
 	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.MySQLDatabaseDialect)(nil)
 	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.RdsMySQLDatabaseDialect)(nil)
 	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.AuroraMySQLDatabaseDialect)(nil)
 	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.PgDatabaseDialect)(nil)
 	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.RdsPgDatabaseDialect)(nil)
 	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.AuroraPgDatabaseDialect)(nil)
+	var _ driver_infrastructure.TopologyAwareDialect = (*driver_infrastructure.MySQLTopologyAwareDatabaseDialect)(nil)
+	var _ driver_infrastructure.TopologyAwareDialect = (*driver_infrastructure.PgTopologyAwareDatabaseDialect)(nil)
 	var _ driver_infrastructure.TopologyAwareDialect = (*driver_infrastructure.AuroraMySQLDatabaseDialect)(nil)
 	var _ driver_infrastructure.TopologyAwareDialect = (*driver_infrastructure.AuroraPgDatabaseDialect)(nil)
+	var _ driver_infrastructure.TopologyAwareDialect = (*driver_infrastructure.RdsMultiAzDbClusterPgDialect)(nil)
+	var _ driver_infrastructure.TopologyAwareDialect = (*driver_infrastructure.RdsMultiAzDbClusterMySQLDialect)(nil)
 	var _ driver_infrastructure.DialectProvider = (*driver_infrastructure.DialectManager)(nil)
 	var _ driver_infrastructure.PluginManager = (*plugin_helpers.PluginManagerImpl)(nil)
 	var _ driver_infrastructure.PluginService = (*plugin_helpers.PluginServiceImpl)(nil)

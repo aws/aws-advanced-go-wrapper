@@ -19,20 +19,21 @@ package driver_infrastructure
 import (
 	"context"
 	"database/sql/driver"
+	"log/slog"
+	"strings"
+	"time"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"log/slog"
-	"strings"
-	"time"
 )
 
 type PgDatabaseDialect struct {
 }
 
 func (p *PgDatabaseDialect) GetDialectUpdateCandidates() []string {
-	return []string{AURORA_PG_DIALECT, RDS_PG_DIALECT}
+	return []string{RDS_PG_MULTI_AZ_CLUSTER_DIALECT, AURORA_PG_DIALECT, RDS_PG_DIALECT}
 }
 
 func (p *PgDatabaseDialect) GetDefaultPort() int {
@@ -66,7 +67,7 @@ type RdsPgDatabaseDialect struct {
 }
 
 func (m *RdsPgDatabaseDialect) GetDialectUpdateCandidates() []string {
-	return []string{AURORA_PG_DIALECT}
+	return []string{RDS_PG_MULTI_AZ_CLUSTER_DIALECT, AURORA_PG_DIALECT, RDS_PG_DIALECT}
 }
 
 func (m *RdsPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
@@ -81,43 +82,16 @@ func (m *RdsPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 		hasExtensions[1] == false // If aurora_stat_utils is present then it should be treated as an Aurora cluster, not an RDS cluster.
 }
 
-type AuroraPgDatabaseDialect struct {
+type PgTopologyAwareDatabaseDialect struct {
 	PgDatabaseDialect
 }
 
-func (m *AuroraPgDatabaseDialect) GetDialectUpdateCandidates() []string {
-	return []string{}
+func (m *PgTopologyAwareDatabaseDialect) GetTopology(
+	conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
+	return nil, nil
 }
 
-func (m *AuroraPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
-	if !m.PgDatabaseDialect.IsDialect(conn) {
-		return false
-	}
-	hasExtensions := utils.GetFirstRowFromQuery(
-		conn,
-		"SELECT (setting LIKE '%aurora_stat_utils%') AS aurora_stat_utils FROM pg_settings WHERE name='rds.extensions'")
-	hasTopology := utils.GetFirstRowFromQuery(conn, "SELECT 1 FROM aurora_replica_status() LIMIT 1")
-	// If both variables with such name are presented then it means it's an Aurora cluster.
-	return hasExtensions != nil && hasExtensions[0] == true && hasTopology != nil
-}
-
-func (m *AuroraPgDatabaseDialect) GetHostListProvider(
-	props map[string]string,
-	initialDsn string,
-	hostListProviderService HostListProviderService,
-	pluginService PluginService) HostListProvider {
-	pluginsProp := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PLUGINS)
-
-	if strings.Contains(pluginsProp, "failover") {
-		slog.Debug("Failover is enabled. Using MonitoringRdsHostListProvider")
-		return HostListProvider(NewMonitoringRdsHostListProvider(hostListProviderService, m, props, initialDsn, pluginService))
-	}
-
-	slog.Debug("Failover NOT enabled. Using RdsHostListProvider")
-	return HostListProvider(NewRdsHostListProvider(hostListProviderService, m, props, initialDsn, nil, nil))
-}
-
-func (m *AuroraPgDatabaseDialect) GetHostRole(conn driver.Conn) host_info_util.HostRole {
+func (m *PgTopologyAwareDatabaseDialect) GetHostRole(conn driver.Conn) host_info_util.HostRole {
 	isReaderQuery := "SELECT pg_is_in_recovery()"
 	res := utils.GetFirstRowFromQuery(conn, isReaderQuery)
 	if len(res) > 0 {
@@ -130,6 +104,49 @@ func (m *AuroraPgDatabaseDialect) GetHostRole(conn driver.Conn) host_info_util.H
 		}
 	}
 	return host_info_util.UNKNOWN
+}
+
+func (m *PgTopologyAwareDatabaseDialect) GetHostName(conn driver.Conn) string {
+	return ""
+}
+func (m *PgTopologyAwareDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, error) {
+	return "", nil
+}
+
+func (m *PgTopologyAwareDatabaseDialect) GetHostListProvider(
+	props map[string]string,
+	initialDsn string,
+	hostListProviderService HostListProviderService,
+	pluginService PluginService) HostListProvider {
+	pluginsProp := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PLUGINS)
+
+	if strings.Contains(pluginsProp, "failover") {
+		slog.Debug(error_util.GetMessage("DatabaseDialect.usingMonitoringHostListProvider"))
+		return HostListProvider(NewMonitoringRdsHostListProvider(hostListProviderService, m, props, initialDsn, pluginService))
+	}
+
+	slog.Debug(error_util.GetMessage("DatabaseDialect.usingRdsHostListProvider"))
+	return HostListProvider(NewRdsHostListProvider(hostListProviderService, m, props, initialDsn, nil, nil))
+}
+
+type AuroraPgDatabaseDialect struct {
+	PgTopologyAwareDatabaseDialect
+}
+
+func (m *AuroraPgDatabaseDialect) GetDialectUpdateCandidates() []string {
+	return []string{RDS_PG_MULTI_AZ_CLUSTER_DIALECT}
+}
+
+func (m *AuroraPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
+	if !m.PgDatabaseDialect.IsDialect(conn) {
+		return false
+	}
+	hasExtensions := utils.GetFirstRowFromQuery(
+		conn,
+		"SELECT (setting LIKE '%aurora_stat_utils%') AS aurora_stat_utils FROM pg_settings WHERE name='rds.extensions'")
+	hasTopology := utils.GetFirstRowFromQuery(conn, "SELECT 1 FROM aurora_replica_status() LIMIT 1")
+	// If both variables with such name are presented then it means it's an Aurora cluster.
+	return hasExtensions != nil && hasExtensions[0] == true && hasTopology != nil
 }
 
 func (m *AuroraPgDatabaseDialect) GetTopology(conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
@@ -171,6 +188,7 @@ func (m *AuroraPgDatabaseDialect) GetTopology(conn driver.Conn, provider HostLis
 		lastUpdateTime, ok5 := row[4].(time.Time)
 		if !ok1 || !ok2 || !ok3 || !ok4 {
 			// Unable to use information from row to create a host.
+			err = rows.Next(row)
 			continue
 		}
 		if !ok5 {
@@ -217,4 +235,145 @@ func (m *AuroraPgDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, e
 
 func (m *AuroraPgDatabaseDialect) GetLimitlessRouterEndpointQuery() string {
 	return "select router_endpoint, load from aurora_limitless_router_endpoints()"
+}
+
+type RdsMultiAzDbClusterPgDialect struct {
+	PgTopologyAwareDatabaseDialect
+}
+
+func (r *RdsMultiAzDbClusterPgDialect) IsDialect(conn driver.Conn) bool {
+	writerNodeFuncExistQuery := "SELECT 1 AS tmp FROM information_schema.routines WHERE routine_schema='rds_tools' " +
+		"AND routine_name='multi_az_db_cluster_source_dbi_resource_id'"
+	nodeIdFuncExistQuery := "SELECT 1 AS tmp FROM information_schema.routines WHERE routine_schema='rds_tools' " +
+		"AND routine_name='dbi_resource_id'"
+
+	// Verify writer node exists.
+	row := utils.GetFirstRowFromQueryAsString(conn, writerNodeFuncExistQuery)
+	if row == nil {
+		return false
+	}
+
+	// Verify that Node exist
+	row = utils.GetFirstRowFromQueryAsString(conn, nodeIdFuncExistQuery)
+	return row != nil
+}
+
+func (r *RdsMultiAzDbClusterPgDialect) GetDialectUpdateCandidates() []string {
+	return []string{}
+}
+
+func (r *RdsMultiAzDbClusterPgDialect) GetTopology(conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
+	topologyQuery := "SELECT id, endpoint FROM rds_tools.show_topology('aws-advanced-go-wrapper')"
+	writerHostId := r.getWriterHostId(conn)
+
+	if writerHostId == "" {
+		writerHostId = r.getHostIdOfCurrentConnection(conn)
+	}
+
+	queryerCtx, ok := conn.(driver.QueryerContext)
+	if !ok {
+		// Unable to query, conn does not implement QueryerContext.
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("Conn.doesNotImplementRequiredInterface", "driver.QueryerContext"))
+	}
+
+	rows, err := queryerCtx.QueryContext(context.Background(), topologyQuery, nil)
+	if err != nil {
+		// Query failed.
+		return nil, err
+	}
+	defer rows.Close()
+
+	return r.processTopologyQueryResults(provider, writerHostId, rows), nil
+}
+
+func (r *RdsMultiAzDbClusterPgDialect) processTopologyQueryResults(
+	provider HostListProvider,
+	writerHostId string,
+	rows driver.Rows) []*host_info_util.HostInfo {
+	hosts := []*host_info_util.HostInfo{}
+	row := make([]driver.Value, len(rows.Columns()))
+	err := rows.Next(row)
+	for err == nil && len(row) > 1 {
+		id, ok1 := row[0].(string)
+		endpoint, ok2 := row[1].(string)
+		if !ok1 || !ok2 {
+			// Unable to use information from row to create a host.
+			err = rows.Next(row)
+			continue
+		}
+		hostRole := host_info_util.READER
+
+		if writerHostId == id {
+			hostRole = host_info_util.WRITER
+		}
+
+		hostName := utils.GetHostNameFromEndpoint(endpoint)
+		if hostName == "" {
+			// Unable to use information from row to create a host
+			continue
+		}
+		hosts = append(hosts, provider.CreateHost(hostName, hostRole, 0, 0, time.Now()))
+		err = rows.Next(row)
+	}
+
+	return hosts
+}
+
+func (r *RdsMultiAzDbClusterPgDialect) getHostIdOfCurrentConnection(conn driver.Conn) string {
+	hostIdQuery := "SELECT dbi_resource_id FROM rds_tools.dbi_resource_id()"
+
+	row := utils.GetFirstRowFromQueryAsString(conn, hostIdQuery)
+
+	if len(row) > 0 {
+		return row[0]
+	}
+
+	return ""
+}
+
+func (r *RdsMultiAzDbClusterPgDialect) GetHostName(conn driver.Conn) string {
+	hostNameQuery := "SELECT serverid FROM rds_tools.db_instance_identifier()"
+	row := utils.GetFirstRowFromQueryAsString(conn, hostNameQuery)
+
+	if len(row) > 0 {
+		return row[0]
+	}
+
+	return ""
+}
+
+func (r *RdsMultiAzDbClusterPgDialect) getWriterHostId(conn driver.Conn) string {
+	fetchWriterHostQuery := "SELECT multi_az_db_cluster_source_dbi_resource_id " +
+		"FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()"
+
+	row := utils.GetFirstRowFromQueryAsString(conn, fetchWriterHostQuery)
+	if len(row) > 0 {
+		return row[0]
+	}
+
+	return ""
+}
+
+func (r *RdsMultiAzDbClusterPgDialect) GetWriterHostName(conn driver.Conn) (string, error) {
+	fetchWriterHostNameQuery := "SELECT endpoint FROM rds_tools.show_topology('aws-advanced-go-wrapper') as topology " +
+		"WHERE topology.id = (SELECT multi_az_db_cluster_source_dbi_resource_id FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()) " +
+		"AND topology.id = (SELECT dbi_resource_id FROM rds_tools.dbi_resource_id())"
+
+	res := utils.GetFirstRowFromQuery(conn, fetchWriterHostNameQuery)
+	if res == nil {
+		return "", error_util.NewGenericAwsWrapperError("Could not determine writer host name.")
+	}
+
+	if len(res) > 0 {
+		endpoint, ok := (res[0]).(string)
+		if !ok {
+			return "", nil
+		}
+
+		hostName := utils.GetHostNameFromEndpoint(endpoint)
+		if hostName != "" {
+			return hostName, nil
+		}
+	}
+	return "", nil
 }

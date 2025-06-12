@@ -19,21 +19,24 @@ package driver_infrastructure
 import (
 	"database/sql/driver"
 	"fmt"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"log/slog"
 	"strings"
 	"time"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 var KnownDialectsByCode = map[string]DatabaseDialect{
-	MYSQL_DIALECT:        &MySQLDatabaseDialect{},
-	PG_DIALECT:           &PgDatabaseDialect{},
-	RDS_MYSQL_DIALECT:    &RdsMySQLDatabaseDialect{},
-	RDS_PG_DIALECT:       &RdsPgDatabaseDialect{},
-	AURORA_MYSQL_DIALECT: &AuroraMySQLDatabaseDialect{},
-	AURORA_PG_DIALECT:    &AuroraPgDatabaseDialect{},
+	MYSQL_DIALECT:                      &MySQLDatabaseDialect{},
+	PG_DIALECT:                         &PgDatabaseDialect{},
+	RDS_MYSQL_DIALECT:                  &RdsMySQLDatabaseDialect{},
+	RDS_PG_DIALECT:                     &RdsPgDatabaseDialect{},
+	AURORA_MYSQL_DIALECT:               &AuroraMySQLDatabaseDialect{},
+	AURORA_PG_DIALECT:                  &AuroraPgDatabaseDialect{},
+	RDS_MYSQL_MULTI_AZ_CLUSTER_DIALECT: &RdsMultiAzDbClusterMySQLDialect{},
+	RDS_PG_MULTI_AZ_CLUSTER_DIALECT:    &RdsMultiAzDbClusterPgDialect{},
 }
 
 var knownEndpointDialectsCache *utils.CacheMap[string] = utils.NewCache[string]()
@@ -77,7 +80,7 @@ func (d *DialectManager) GetDialect(dsn string, props map[string]string) (Databa
 	rdsUrlType := utils.IdentifyRdsUrlType(hostString)
 	if strings.Contains(driverProtocol, "mysql") {
 		if rdsUrlType.IsRdsCluster {
-			d.canUpdate = false
+			d.canUpdate = true
 			d.dialectCode = AURORA_MYSQL_DIALECT
 			d.dialect = KnownDialectsByCode[AURORA_MYSQL_DIALECT]
 			knownEndpointDialectsCache.Put(dsn, AURORA_MYSQL_DIALECT, ENDPOINT_CACHE_EXPIRATION)
@@ -99,7 +102,7 @@ func (d *DialectManager) GetDialect(dsn string, props map[string]string) (Databa
 	}
 	if strings.Contains(driverProtocol, "postgres") {
 		if rdsUrlType.IsRdsCluster {
-			d.canUpdate = false
+			d.canUpdate = true
 			d.dialectCode = AURORA_PG_DIALECT
 			d.dialect = KnownDialectsByCode[AURORA_PG_DIALECT]
 			knownEndpointDialectsCache.Put(dsn, AURORA_PG_DIALECT, ENDPOINT_CACHE_EXPIRATION)

@@ -34,6 +34,8 @@
 	"Conn.invalidTransactionIsolationLevel": "An invalid transaction isolation level was provided: '%v'.",
 	"ConnectionPluginManager.unknownPluginCode": "Unknown plugin code: '%s'. Please ensure all plugin codes are valid and any required plugin modules have been imported.",
 	"ConnectionProvider.unsupportedHostSelectorStrategy": "Unsupported host selection strategy '%v' specified for this connection provider '%T'. Please visit the documentation for all supported strategies.",
+	"DatabaseDialect.usingMonitoringHostListProvider": "Failver is enabled. Using MonitoringRdsHostListProvider",
+	"DatabaseDialect.usingRdsHostListProvider": "Failver is not enabled. Using RdsHostListProvider",
 	"DatabaseDialectManager.unknownDialectCode": "Unknown database dialect code: %v.",
 	"DatabaseDialectManager.getDialectError": "Was not able to get a database dialect.",
 	"DatabaseDialectManager.invalidDriverProtocol": "Invalid driver protocol from properties: %v.",
