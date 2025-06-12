@@ -21,23 +21,30 @@ jobs:
         with:
           use-quiet-mode: 'yes'
           folder-path: 'docs'
+
+  get-list-of-go-modules:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.find-go-modules.outputs.matrix }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Find Go modules
+        id: find-go-modules
+        run: |
+          modules=$(find . -type f -name 'go.mod' -exec dirname {} \; | while read dir; do
+            if [ -f "$dir/go.sum" ]; then
+              echo "\"${dir#./}\""
+            fi
+          done | jq -cs .)
+          echo "matrix={\"modules\":$modules}" 
+          echo "matrix={\"modules\":$modules}" >> $GITHUB_OUTPUT
   linting:
+    needs: get-list-of-go-modules
     runs-on: ubuntu-latest
     strategy:
-      matrix:
-        modules: [
-          ".test",
-          "auth-helpers",
-          "aws-secrets-manager",
-          "awssql",
-          "federated-auth",
-          "iam",
-          "mysql-driver",
-          "okta",
-          "otel",
-          "pgx-driver",
-          "xray"
-        ]
+      matrix: ${{fromJson(needs.get-list-of-go-modules.outputs.matrix)}}
     steps:
       - name: 'Clone repository'
         uses: actions/checkout@v4
