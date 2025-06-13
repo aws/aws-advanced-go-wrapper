@@ -18,14 +18,15 @@ package efm
 
 import (
 	"database/sql/driver"
+	"log/slog"
+	"slices"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"log/slog"
-	"slices"
 )
 
 type HostMonitoringPluginFactory struct {
@@ -95,9 +96,7 @@ func (b *HostMonitorConnectionPlugin) Execute(
 	methodName string,
 	executeFunc driver_infrastructure.ExecuteFunc,
 	methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
-	isEnabled := property_util.GetVerifiedWrapperPropertyValue[bool](b.props, property_util.FAILURE_DETECTION_ENABLED)
-
-	if !isEnabled || !slices.Contains(utils.NETWORK_BOUND_METHODS, methodName) {
+	if !slices.Contains(utils.NETWORK_BOUND_METHODS, methodName) {
 		return executeFunc()
 	}
 

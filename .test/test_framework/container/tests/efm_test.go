@@ -224,7 +224,6 @@ func getDsnForTestsWithProxy(environment *test_utils.TestEnvironment, host strin
 		"port":                       strconv.Itoa(environment.Info().ProxyDatabaseInfo.InstanceEndpointPort),
 		"clusterInstanceHostPattern": "?." + environment.Info().ProxyDatabaseInfo.InstanceEndpointSuffix,
 		"plugins":                    plugins,
-		"failureDetectionEnabled":    "true",
 		"failureDetectionIntervalMs": strconv.Itoa(TEST_FAILURE_DETECTION_INTERVAL_SECONDS * 1000), // interval between probes to host
 		"failureDetectionCount":      strconv.Itoa(TEST_FAILURE_DETECTION_COUNT),                   // 3 consecutive failures before marks host as dead
 		"failureDetectionTimeMs":     "1000",                                                       // 1 second time before polling starts
