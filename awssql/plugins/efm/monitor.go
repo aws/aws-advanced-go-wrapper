@@ -19,18 +19,19 @@ package efm
 import (
 	"context"
 	"database/sql/driver"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	"log/slog"
 	"math"
 	"strings"
 	"sync"
 	"time"
 	"weak"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 )
 
 var EFM_ROUTINE_SLEEP_DURATION = 100 * time.Millisecond
@@ -250,6 +251,12 @@ func (m *MonitorImpl) CheckConnectionStatus() bool {
 	}
 
 	timeout := m.failureDetectionIntervalNanos - EFM_ROUTINE_SLEEP_DURATION
+
+	// Ensure it can never be <= 0
+	if timeout < EFM_ROUTINE_SLEEP_DURATION {
+		timeout = EFM_ROUTINE_SLEEP_DURATION
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	return utils.IsReachable(m.MonitoringConn, ctx)
