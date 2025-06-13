@@ -1,0 +1,994 @@
+/*
+  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License").
+  You may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
+package test
+
+import (
+	"database/sql/driver"
+	"testing"
+	"time"
+
+	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
+	mock_database_sql_driver "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/database_sql_driver"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestPgDatabaseDialect_GetDialectUpdateCandidates(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.PgDatabaseDialect{}
+
+	expectedCandidates := []string{
+		driver_infrastructure.RDS_PG_MULTI_AZ_CLUSTER_DIALECT,
+		driver_infrastructure.AURORA_PG_DIALECT,
+		driver_infrastructure.RDS_PG_DIALECT}
+	assert.ElementsMatch(t, expectedCandidates, testDatabaseDialect.GetDialectUpdateCandidates())
+}
+
+func TestPgDatabaseDialect_GetDefaultPort(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.PgDatabaseDialect{}
+	expectedDefaultPort := 5432
+	assert.Equal(t, testDatabaseDialect.GetDefaultPort(), expectedDefaultPort)
+}
+
+func TestPgDatabaseDialect_GetHostAlias(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.PgDatabaseDialect{}
+	expectedHostAliasQuery := "SELECT CONCAT(inet_server_addr(), ':', inet_server_port())"
+	assert.Equal(t, expectedHostAliasQuery, testDatabaseDialect.GetHostAliasQuery())
+}
+
+func TestPgDatabaseDialect_GetServerVersion(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.PgDatabaseDialect{}
+	expectedGetServerVersionQuery := "SELECT 'version', VERSION()"
+	assert.Equal(t, expectedGetServerVersionQuery, testDatabaseDialect.GetServerVersionQuery())
+}
+
+func TestPgDatabaseDialect(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.PgDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	expectedIsDialectQuery := "SELECT 1 FROM pg_proc LIMIT 1"
+
+	// IsDialect - true
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedIsDialectQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{"dummy"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = 1
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	assert.True(t, testDatabaseDialect.IsDialect(conn), "Expected PgDatabaseDialect.IsDialect to be true")
+
+	// IsDialect - false
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedIsDialectQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{})
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrBadConn)
+	mockRows.EXPECT().Close().Return(nil)
+
+	assert.False(t, testDatabaseDialect.IsDialect(conn), "Expected PgDatabaseDialect.IsDialect to be false")
+}
+
+func TestPgDatabaseDialect_GetHostListProvider(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.PgDatabaseDialect{}
+	hostListProvider := testDatabaseDialect.GetHostListProvider(
+		make(map[string]string),
+		"dsn",
+		nil,
+		nil)
+
+	dsnHostListProvider, ok := hostListProvider.(*driver_infrastructure.DsnHostListProvider)
+	assert.True(t, ok, "expected a DsnHostListProvider to be returned")
+	assert.NotNil(t, dsnHostListProvider)
+}
+
+func TestRdsPgDatabaseDialect_GetDialectUpdateCandidates(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsPgDatabaseDialect{}
+	expectedCandidates := []string{
+		driver_infrastructure.RDS_PG_MULTI_AZ_CLUSTER_DIALECT,
+		driver_infrastructure.AURORA_PG_DIALECT,
+		driver_infrastructure.RDS_PG_DIALECT}
+
+	assert.ElementsMatch(t, expectedCandidates, testDatabaseDialect.GetDialectUpdateCandidates())
+}
+
+func TestRdsPgDatabaseDialect_GetDefaultPort(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsPgDatabaseDialect{}
+	expectedDefaultPort := 5432
+
+	assert.Equal(t, testDatabaseDialect.GetDefaultPort(), expectedDefaultPort)
+}
+
+func TestRdsPgDatabaseDialect_GetHostAliasQuery(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsPgDatabaseDialect{}
+	expectedHostAliasQuery := "SELECT CONCAT(inet_server_addr(), ':', inet_server_port())"
+
+	assert.Equal(t, expectedHostAliasQuery, testDatabaseDialect.GetHostAliasQuery())
+}
+func TestRdsPgDatabaseDialect_GetServerVersion(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsPgDatabaseDialect{}
+	expectedGetServerVersionQuery := "SELECT 'version', VERSION()"
+
+	assert.Equal(t, expectedGetServerVersionQuery, testDatabaseDialect.GetServerVersionQuery())
+}
+
+func TestRdsPgDatabaseDialect_IsDialect(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsPgDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+	expectedPgIsDialectQuery := "SELECT 1 FROM pg_proc LIMIT 1"
+	expectedRdsPgIsDialectQuery := "SELECT (setting LIKE '%rds_tools%') AS rds_tools, (setting LIKE '%aurora_stat_utils%') " +
+		"AS aurora_stat_utils FROM pg_settings " +
+		"WHERE name='rds.extensions'"
+
+	// Call to GetFirstRowFromQuery within embedded structure PgDialect.IsDialect.
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedPgIsDialectQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"something"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = 1
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	// Second call to GetFirstRowFromQuery.
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedRdsPgIsDialectQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"true", "false"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = true
+		dest[1] = false
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	assert.True(t, testDatabaseDialect.IsDialect(conn), "Expected RdsPgDatabaseDialect.IsDialect to be true")
+
+	// IsDialect - false.
+
+	// First call to GetFirstRowFromQuery, but NOT pg dialect
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedPgIsDialectQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{})
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrBadConn)
+	mockRows.EXPECT().Close().Return(nil)
+
+	assert.False(t, testDatabaseDialect.IsDialect(conn), "Expected RdsPgDatabaseDialect.IsDialect to be false")
+
+	// Call to GetFirstRowFromQuery within embedded structure PgDialect.IsDialect.
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedPgIsDialectQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"something"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = 1
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	// Second call to query but it is aurora
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedRdsPgIsDialectQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"rds_tools", "aurora_stat_util"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = true
+		dest[1] = true
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	assert.False(t, testDatabaseDialect.IsDialect(conn), "Expected RdsPgDatabaseDialect.IsDialect to be true")
+}
+
+func TestRdsPgDatabaseDialect_GetHostListProvider(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsPgDatabaseDialect{}
+	hostListProvider := testDatabaseDialect.GetHostListProvider(
+		make(map[string]string),
+		"dsn",
+		nil,
+		nil)
+
+	dsnHostListProvider, ok := hostListProvider.(*driver_infrastructure.DsnHostListProvider)
+	assert.True(t, ok, "expected a DsnHostListProvider to be returned")
+	assert.NotNil(t, dsnHostListProvider)
+}
+
+func TestAuroraRdsPgDatabaseDialect_GetDialectUpdateCandidates(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
+	expectedCandidates := []string{
+		driver_infrastructure.RDS_PG_MULTI_AZ_CLUSTER_DIALECT,
+	}
+
+	assert.ElementsMatch(t, expectedCandidates, testDatabaseDialect.GetDialectUpdateCandidates())
+}
+
+func TestAuroraRdsPgDatabaseDialect_GetDefaultPort(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
+	expectedDefaultPort := 5432
+
+	assert.Equal(t, testDatabaseDialect.GetDefaultPort(), expectedDefaultPort)
+}
+
+func TestAuroraRdsPgDatabaseDialect_GetHostAliasQuery(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
+	expectedHostAliasQuery := "SELECT CONCAT(inet_server_addr(), ':', inet_server_port())"
+
+	assert.Equal(t, expectedHostAliasQuery, testDatabaseDialect.GetHostAliasQuery())
+}
+
+func TestAuroraRdsPgDatabaseDialect_GetServerVersion(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
+	expectedGetServerVersionQuery := "SELECT 'version', VERSION()"
+
+	assert.Equal(t, expectedGetServerVersionQuery, testDatabaseDialect.GetServerVersionQuery())
+}
+
+func TestAuroraRdsPgDatabaseDialect_IsDialect(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+	expectedPgIsDialectQuery := "SELECT 1 FROM pg_proc LIMIT 1"
+	expectedRdsPgIsDialectQuery := "SELECT (setting LIKE '%aurora_stat_utils%') " +
+		"AS aurora_stat_utils FROM pg_settings WHERE name='rds.extensions'"
+
+	expectedTopologyQuery := "SELECT 1 FROM aurora_replica_status() LIMIT 1"
+
+	// Call to GetFirstRowFromQuery within embedded structure PgDialect.IsDialect.
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedPgIsDialectQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"something"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = 1
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	// Second call to GetFirstRowFromQuery.
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedRdsPgIsDialectQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"true", "false"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = true
+		dest[1] = false
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	// Third call to GetFirstRowFromQuery.
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedTopologyQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"1"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = 1
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	assert.True(t, testDatabaseDialect.IsDialect(conn), "Expected RdsPgDatabaseDialect.IsDialect to be true")
+
+	// IsDialect - false.
+
+	// First call to GetFirstRowFromQuery, but NOT pg dialect
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedPgIsDialectQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{})
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrBadConn)
+	mockRows.EXPECT().Close().Return(nil)
+
+	assert.False(t, testDatabaseDialect.IsDialect(conn), "Expected RdsPgDatabaseDialect.IsDialect to be false")
+
+	// Call to GetFirstRowFromQuery within embedded structure PgDialect.IsDialect.
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedPgIsDialectQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"something"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = 1
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	// Second call to query but it is aurora
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedRdsPgIsDialectQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"rds_tools"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = false // should cause IsDialect to be false
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	// Third call to GetFirstRowFromQuery.
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedTopologyQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"1"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = 1
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	assert.False(t, testDatabaseDialect.IsDialect(conn), "Expected RdsPgDatabaseDialect.IsDialect to be true")
+
+	// First call to GetFirstRowFromQuery, but NOT pg dialect
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedPgIsDialectQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{})
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrBadConn)
+	mockRows.EXPECT().Close().Return(nil)
+
+	assert.False(t, testDatabaseDialect.IsDialect(conn), "Expected RdsPgDatabaseDialect.IsDialect to be false")
+
+	// Call to GetFirstRowFromQuery within embedded structure PgDialect.IsDialect.
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedPgIsDialectQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"something"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = 1
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	// Second call to query but it is aurora
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedRdsPgIsDialectQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"rds_tools"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = true
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	// Third call to GetFirstRowFromQuery.
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedTopologyQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"1"})
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrBadConn)
+	mockRows.EXPECT().Close().Return(nil)
+
+	assert.False(t, testDatabaseDialect.IsDialect(conn), "Expected RdsPgDatabaseDialect.IsDialect to be true")
+}
+
+func TestAuroraRdsPgDatabaseDialect_GetHostListProvider(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
+
+	propsNoFailover := make(map[string]string)
+	property_util.PLUGINS.Set(propsNoFailover, "efm")
+	hostListProvider := testDatabaseDialect.GetHostListProvider(
+		propsNoFailover,
+		"dsn",
+		nil,
+		nil)
+
+	rdsHostListProvider, ok := hostListProvider.(*driver_infrastructure.RdsHostListProvider)
+	assert.True(t, ok, "expected an RdsHostListProvider to be returned")
+	assert.NotNil(t, rdsHostListProvider)
+
+	propsWithFailover := make(map[string]string)
+	property_util.PLUGINS.Set(propsWithFailover, "failover")
+	hostListProvider = testDatabaseDialect.GetHostListProvider(
+		propsWithFailover,
+		"dsn",
+		nil,
+		nil)
+
+	monitoringHostListProvider, ok := hostListProvider.(*driver_infrastructure.MonitoringRdsHostListProvider)
+	assert.True(t, ok, "expected a MonitoringRdsHostListProvider to be returned")
+	assert.NotNil(t, monitoringHostListProvider)
+}
+
+func TestAuroraRdsPgDatabaseDialect_GetHostRole(t *testing.T) {
+	isReaderQuery := "SELECT pg_is_in_recovery()"
+	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	// writer
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), isReaderQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"true"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = false
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	assert.Equal(t, host_info_util.WRITER, testDatabaseDialect.GetHostRole(conn))
+
+	// reader
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), isReaderQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"false"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = true
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	assert.Equal(t, host_info_util.READER, testDatabaseDialect.GetHostRole(conn))
+
+	// unknown
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), isReaderQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"false"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = "unknown"
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	assert.Equal(t, host_info_util.UNKNOWN, testDatabaseDialect.GetHostRole(conn))
+}
+
+func TestAuroraRdsPgDatabaseDialect_GetTopology(t *testing.T) {
+	topologyQuery := "SELECT server_id, CASE WHEN SESSION_ID = 'MASTER_SESSION_ID' THEN TRUE ELSE FALSE END AS is_writer, " +
+		"CPU, COALESCE(REPLICA_LAG_IN_MSEC, 0) AS lag, LAST_UPDATE_TIMESTAMP " +
+		"FROM aurora_replica_status() " +
+		// Filter out hosts that haven't been updated in the last 5 minutes.
+		"WHERE EXTRACT(EPOCH FROM(NOW() - LAST_UPDATE_TIMESTAMP)) <= 300 OR SESSION_ID = 'MASTER_SESSION_ID' " +
+		"OR LAST_UPDATE_TIMESTAMP IS NULL"
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Mocks
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+	mockProvider := mock_driver_infrastructure.NewMockHostListProvider(ctrl)
+
+	// Expected values
+	currentTime := time.Now()
+	columnNames := []string{"server_id", "is_writer", "CPU", "lag", "LAST_UPDATE_TIMESTAMP"}
+	rowData := []driver.Value{"host1", true, 2.5, 100.0, currentTime}
+	rowData2 := []driver.Value{"host2", false, 3.5, 50.0, currentTime}
+
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), topologyQuery, gomock.Any()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().
+		Columns().
+		Return(columnNames)
+
+	mockRows.EXPECT().
+		Next(gomock.Any()).
+		DoAndReturn(func(dest []driver.Value) error {
+			copy(dest, rowData)
+			return nil
+		})
+	mockRows.EXPECT().
+		Next(gomock.Any()).
+		DoAndReturn(func(dest []driver.Value) error {
+			copy(dest, rowData2)
+			return nil
+		})
+	mockRows.EXPECT().
+		Next(gomock.Any()).
+		Return(driver.ErrSkip)
+
+	mockRows.EXPECT().Close().Return(nil)
+
+	mockProvider.EXPECT().
+		CreateHost("host1", host_info_util.WRITER, 100.0, 2.5, gomock.Any()).
+		Return(&host_info_util.HostInfo{
+			Host:           "host1",
+			Role:           host_info_util.WRITER,
+			Weight:         10,
+			LastUpdateTime: currentTime,
+		})
+
+	mockProvider.EXPECT().
+		CreateHost("host2", host_info_util.READER, 50.0, 3.5, gomock.Any()).
+		Return(&host_info_util.HostInfo{
+			Host:           "host2",
+			Role:           host_info_util.READER,
+			Weight:         20,
+			LastUpdateTime: currentTime,
+		})
+
+	// Test the actual function
+	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+	hosts, err := testDatabaseDialect.GetTopology(conn, mockProvider)
+
+	assert.NoError(t, err)
+	assert.Len(t, hosts, 2)
+	assert.Equal(t, "host1", hosts[0].Host)
+	assert.Equal(t, host_info_util.WRITER, hosts[0].Role)
+	assert.Equal(t, "host2", hosts[1].Host)
+	assert.Equal(t, host_info_util.READER, hosts[1].Role)
+}
+
+func TestAuroraRdsPgDatabaseDialect_GetHostName(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
+	hostIdQuery := "SELECT aurora_db_instance_identifier()"
+	instanceId := "myinstance"
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	// Success
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), hostIdQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{instanceId})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = instanceId
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	assert.Equal(t, instanceId, testDatabaseDialect.GetHostName(conn))
+
+	// No Success
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), hostIdQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	assert.Equal(t, "", testDatabaseDialect.GetHostName(conn))
+}
+
+func TestAuroraRdsPgDatabaseDialect_GetWriterHostName(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
+	hostIdQuery := "SELECT server_id FROM aurora_replica_status() " +
+		"WHERE SESSION_ID = 'MASTER_SESSION_ID' AND SERVER_ID = aurora_db_instance_identifier()"
+	instanceId := "myinstance"
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	// Success
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), hostIdQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{instanceId})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = instanceId
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	result, err := testDatabaseDialect.GetWriterHostName(conn)
+	assert.NoError(t, err)
+	assert.Equal(t, instanceId, result)
+
+	// No Success
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), hostIdQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	result, err = testDatabaseDialect.GetWriterHostName(conn)
+	assert.NoError(t, err)
+	assert.Equal(t, "", result)
+}
+
+func TestAuroraRdsPgDatabaseDialect_GetLimitlessRouterEndpointQuery(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
+	expectedLimitlessQuery := "select router_endpoint, load from aurora_limitless_router_endpoints()"
+	assert.Equal(t, expectedLimitlessQuery, testDatabaseDialect.GetLimitlessRouterEndpointQuery())
+}
+
+func TestRdsMultiAzDbClusterPgDialect_GetDialectUpdateCandidates(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterPgDialect{}
+	expectedCandidates := []string{}
+
+	assert.ElementsMatch(t, expectedCandidates, testDatabaseDialect.GetDialectUpdateCandidates())
+}
+
+func TestRdsMultiAzDbClusterPgDialect_GetDefaultPort(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterPgDialect{}
+	expectedDefaultPort := 5432
+
+	assert.Equal(t, testDatabaseDialect.GetDefaultPort(), expectedDefaultPort)
+}
+
+func TestRdsMultiAzDbClusterPgDialect_GetHostAliasQuery(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterPgDialect{}
+	expectedHostAliasQuery := "SELECT CONCAT(inet_server_addr(), ':', inet_server_port())"
+
+	assert.Equal(t, expectedHostAliasQuery, testDatabaseDialect.GetHostAliasQuery())
+}
+
+func TestRdsMultiAzDbClusterPgDialect_GetServerVersion(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterPgDialect{}
+	expectedGetServerVersionQuery := "SELECT 'version', VERSION()"
+
+	assert.Equal(t, expectedGetServerVersionQuery, testDatabaseDialect.GetServerVersionQuery())
+}
+
+func TestRdsMultiAzDbClusterPgDialect_GetHostListProvider(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterPgDialect{}
+
+	propsNoFailover := make(map[string]string)
+	property_util.PLUGINS.Set(propsNoFailover, "efm")
+	hostListProvider := testDatabaseDialect.GetHostListProvider(
+		propsNoFailover,
+		"dsn",
+		nil,
+		nil)
+
+	rdsHostListProvider, ok := hostListProvider.(*driver_infrastructure.RdsHostListProvider)
+	assert.True(t, ok, "expected an RdsHostListProvider to be returned")
+	assert.NotNil(t, rdsHostListProvider)
+
+	propsWithFailover := make(map[string]string)
+	property_util.PLUGINS.Set(propsWithFailover, "failover")
+	hostListProvider = testDatabaseDialect.GetHostListProvider(
+		propsWithFailover,
+		"dsn",
+		nil,
+		nil)
+
+	monitoringHostListProvider, ok := hostListProvider.(*driver_infrastructure.MonitoringRdsHostListProvider)
+	assert.True(t, ok, "expected a MonitoringRdsHostListProvider to be returned")
+	assert.NotNil(t, monitoringHostListProvider)
+}
+
+func TestRdsMultiAzDbClusterPgDialect_GetHostRole(t *testing.T) {
+	isReaderQuery := "SELECT pg_is_in_recovery()"
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterPgDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	// writer
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), isReaderQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"true"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = false
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	assert.Equal(t, host_info_util.WRITER, testDatabaseDialect.GetHostRole(conn))
+
+	// reader
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), isReaderQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"false"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = true
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	assert.Equal(t, host_info_util.READER, testDatabaseDialect.GetHostRole(conn))
+
+	// unknown
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), isReaderQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"false"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = "unknown"
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	assert.Equal(t, host_info_util.UNKNOWN, testDatabaseDialect.GetHostRole(conn))
+}
+
+func TestRdsMultiAzDbClusterPgDialect_GetHostName(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterPgDialect{}
+	hostIdQuery := "SELECT serverid FROM rds_tools.db_instance_identifier()"
+	instanceId := "myinstance"
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	// Success
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), hostIdQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{instanceId})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = instanceId
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	assert.Equal(t, instanceId, testDatabaseDialect.GetHostName(conn))
+
+	// No Success
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), hostIdQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	assert.Equal(t, "", testDatabaseDialect.GetHostName(conn))
+}
+
+func TestRdsMultiAzDbClusterPgDialect_GetWriterHostName(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterPgDialect{}
+	hostIdQuery := "SELECT endpoint FROM rds_tools.show_topology('aws-advanced-go-wrapper') as topology " +
+		"WHERE topology.id = (SELECT multi_az_db_cluster_source_dbi_resource_id FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()) " +
+		"AND topology.id = (SELECT dbi_resource_id FROM rds_tools.dbi_resource_id())"
+
+	instanceId := "myinstance"
+	instanceEndpoint := instanceId + ".com"
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	// Success
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), hostIdQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{instanceEndpoint})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = instanceEndpoint
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	result, err := testDatabaseDialect.GetWriterHostName(conn)
+	assert.NoError(t, err)
+	assert.Equal(t, instanceId, result)
+
+	// No Success
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), hostIdQuery, gomock.Nil()).
+		Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	result, err = testDatabaseDialect.GetWriterHostName(conn)
+	assert.NoError(t, err)
+	assert.Equal(t, "", result)
+}
+
+func TestRdsMultiAzDbClusterPgDialect_GetTopology(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockProvider := mock_driver_infrastructure.NewMockHostListProvider(ctrl)
+	mockTopologyRows := mock_database_sql_driver.NewMockRows(ctrl)
+	mockHostIdRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	dialect := &driver_infrastructure.RdsMultiAzDbClusterPgDialect{}
+	expectedWriterHostName := "writer-host"
+	expectedReaderHostName := "reader-host"
+	expectedWriterEndpoint := expectedWriterHostName + ".com"
+	expectedReaderEndpoint := expectedReaderHostName + ".com"
+
+	// Mock getting writer host id
+	hostIdQuery := "SELECT multi_az_db_cluster_source_dbi_resource_id " +
+		"FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()"
+
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), hostIdQuery, gomock.Nil()).
+		Return(mockHostIdRows, nil)
+
+	mockHostIdRows.EXPECT().Columns().Return([]string{"dbi_resource_id"})
+	mockHostIdRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = expectedWriterHostName
+		return nil
+	})
+	mockHostIdRows.EXPECT().Close().Return(nil)
+
+	// Mock Topology query
+	topologyQuery := "SELECT id, endpoint FROM rds_tools.show_topology('aws-advanced-go-wrapper')"
+
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), topologyQuery, gomock.Nil()).
+		Return(mockTopologyRows, nil)
+
+	mockTopologyRows.EXPECT().Columns().Return([]string{"id", "endpoint"})
+
+	mockTopologyRows.EXPECT().
+		Next(gomock.Any()).
+		DoAndReturn(func(dest []driver.Value) error {
+			dest[0] = expectedWriterHostName
+			dest[1] = expectedWriterEndpoint
+			return nil
+		})
+	mockTopologyRows.EXPECT().
+		Next(gomock.Any()).
+		DoAndReturn(func(dest []driver.Value) error {
+			dest[0] = expectedReaderHostName
+			dest[1] = expectedReaderEndpoint
+			return nil
+		})
+	mockTopologyRows.EXPECT().
+		Next(gomock.Any()).
+		Return(driver.ErrSkip)
+
+	mockTopologyRows.EXPECT().Close().Return(nil)
+
+	mockProvider.EXPECT().
+		CreateHost(expectedWriterHostName, host_info_util.WRITER, 0.0, 0.0, gomock.Any()).
+		Return(&host_info_util.HostInfo{
+			Host: expectedWriterHostName,
+			Role: host_info_util.WRITER,
+		})
+
+	mockProvider.EXPECT().
+		CreateHost(expectedReaderHostName, host_info_util.READER, 0.0, 0.0, gomock.Any()).
+		Return(&host_info_util.HostInfo{
+			Host: expectedReaderHostName,
+			Role: host_info_util.READER,
+		})
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	// Call Get Topology
+	hosts, err := dialect.GetTopology(conn, mockProvider)
+	assert.NoError(t, err)
+	assert.Len(t, hosts, 2)
+	assert.Equal(t, expectedWriterHostName, hosts[0].Host)
+	assert.Equal(t, host_info_util.WRITER, hosts[0].Role)
+	assert.Equal(t, expectedReaderHostName, hosts[1].Host)
+	assert.Equal(t, host_info_util.READER, hosts[1].Role)
+}
