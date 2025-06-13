@@ -19,10 +19,12 @@ package driver_infrastructure
 import (
 	"context"
 	"database/sql/driver"
+	"fmt"
 	"log/slog"
 	"strings"
 	"time"
 
+	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_info"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
@@ -118,15 +120,24 @@ func (m *PgTopologyAwareDatabaseDialect) GetHostListProvider(
 	initialDsn string,
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
+	return m.getTopologyAwareHostListProvider(m, props, initialDsn, hostListProviderService, pluginService)
+}
+
+func (m *PgTopologyAwareDatabaseDialect) getTopologyAwareHostListProvider(
+	dialect TopologyAwareDialect,
+	props map[string]string,
+	initialDsn string,
+	hostListProviderService HostListProviderService,
+	pluginService PluginService) HostListProvider {
 	pluginsProp := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PLUGINS)
 
 	if strings.Contains(pluginsProp, "failover") {
 		slog.Debug(error_util.GetMessage("DatabaseDialect.usingMonitoringHostListProvider"))
-		return HostListProvider(NewMonitoringRdsHostListProvider(hostListProviderService, m, props, initialDsn, pluginService))
+		return HostListProvider(NewMonitoringRdsHostListProvider(hostListProviderService, dialect, props, initialDsn, pluginService))
 	}
 
 	slog.Debug(error_util.GetMessage("DatabaseDialect.usingRdsHostListProvider"))
-	return HostListProvider(NewRdsHostListProvider(hostListProviderService, m, props, initialDsn, nil, nil))
+	return HostListProvider(NewRdsHostListProvider(hostListProviderService, dialect, props, initialDsn, nil, nil))
 }
 
 type AuroraPgDatabaseDialect struct {
@@ -233,6 +244,14 @@ func (m *AuroraPgDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, e
 	return "", nil
 }
 
+func (m *AuroraPgDatabaseDialect) GetHostListProvider(
+	props map[string]string,
+	initialDsn string,
+	hostListProviderService HostListProviderService,
+	pluginService PluginService) HostListProvider {
+	return m.getTopologyAwareHostListProvider(m, props, initialDsn, hostListProviderService, pluginService)
+}
+
 func (m *AuroraPgDatabaseDialect) GetLimitlessRouterEndpointQuery() string {
 	return "select router_endpoint, load from aurora_limitless_router_endpoints()"
 }
@@ -263,7 +282,7 @@ func (r *RdsMultiAzDbClusterPgDialect) GetDialectUpdateCandidates() []string {
 }
 
 func (r *RdsMultiAzDbClusterPgDialect) GetTopology(conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
-	topologyQuery := "SELECT id, endpoint FROM rds_tools.show_topology('aws-advanced-go-wrapper')"
+	topologyQuery := fmt.Sprintf("SELECT id, endpoint FROM rds_tools.show_topology('aws-advanced-go-wrapper-%v')", driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION)
 	writerHostId := r.getWriterHostId(conn)
 
 	if writerHostId == "" {
@@ -376,4 +395,12 @@ func (r *RdsMultiAzDbClusterPgDialect) GetWriterHostName(conn driver.Conn) (stri
 		}
 	}
 	return "", nil
+}
+
+func (r *RdsMultiAzDbClusterPgDialect) GetHostListProvider(
+	props map[string]string,
+	initialDsn string,
+	hostListProviderService HostListProviderService,
+	pluginService PluginService) HostListProvider {
+	return r.getTopologyAwareHostListProvider(r, props, initialDsn, hostListProviderService, pluginService)
 }

@@ -131,15 +131,24 @@ func (m *MySQLTopologyAwareDatabaseDialect) GetHostListProvider(
 	initialDsn string,
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
+	return m.getTopologyAwareHostListProvider(m, props, initialDsn, hostListProviderService, pluginService)
+}
+
+func (m *MySQLTopologyAwareDatabaseDialect) getTopologyAwareHostListProvider(
+	dialect TopologyAwareDialect,
+	props map[string]string,
+	initialDsn string,
+	hostListProviderService HostListProviderService,
+	pluginService PluginService) HostListProvider {
 	pluginsProp := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PLUGINS)
 
 	if strings.Contains(pluginsProp, "failover") {
 		slog.Debug(error_util.GetMessage("DatabaseDialect.usingMonitoringHostListProvider"))
-		return HostListProvider(NewMonitoringRdsHostListProvider(hostListProviderService, m, props, initialDsn, pluginService))
+		return HostListProvider(NewMonitoringRdsHostListProvider(hostListProviderService, dialect, props, initialDsn, pluginService))
 	}
 
 	slog.Debug(error_util.GetMessage("DatabaseDialect.usingRdsHostListProvider"))
-	return HostListProvider(NewRdsHostListProvider(hostListProviderService, m, props, initialDsn, nil, nil))
+	return HostListProvider(NewRdsHostListProvider(hostListProviderService, dialect, props, initialDsn, nil, nil))
 }
 
 type AuroraMySQLDatabaseDialect struct {
@@ -177,6 +186,14 @@ func (m *AuroraMySQLDatabaseDialect) GetWriterHostName(conn driver.Conn) (string
 		return res[0], nil
 	}
 	return "", nil
+}
+
+func (m *AuroraMySQLDatabaseDialect) GetHostListProvider(
+	props map[string]string,
+	initialDsn string,
+	hostListProviderService HostListProviderService,
+	pluginService PluginService) HostListProvider {
+	return m.getTopologyAwareHostListProvider(m, props, initialDsn, hostListProviderService, pluginService)
 }
 
 func (m *AuroraMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
@@ -417,4 +434,12 @@ func (r *RdsMultiAzDbClusterMySQLDialect) getHostIdOfCurrentConnection(conn driv
 	}
 
 	return ""
+}
+
+func (r *RdsMultiAzDbClusterMySQLDialect) GetHostListProvider(
+	props map[string]string,
+	initialDsn string,
+	hostListProviderService HostListProviderService,
+	pluginService PluginService) HostListProvider {
+	return r.getTopologyAwareHostListProvider(r, props, initialDsn, hostListProviderService, pluginService)
 }

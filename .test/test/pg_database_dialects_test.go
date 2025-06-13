@@ -18,11 +18,13 @@ package test
 
 import (
 	"database/sql/driver"
+	"fmt"
 	"testing"
 	"time"
 
 	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
 	mock_database_sql_driver "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/database_sql_driver"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_info"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
@@ -933,7 +935,8 @@ func TestRdsMultiAzDbClusterPgDialect_GetTopology(t *testing.T) {
 	mockHostIdRows.EXPECT().Close().Return(nil)
 
 	// Mock Topology query
-	topologyQuery := "SELECT id, endpoint FROM rds_tools.show_topology('aws-advanced-go-wrapper')"
+	version := driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION
+	topologyQuery := fmt.Sprintf("SELECT id, endpoint FROM rds_tools.show_topology('aws-advanced-go-wrapper-%v')", version)
 
 	mockQueryer.EXPECT().
 		QueryContext(gomock.Any(), topologyQuery, gomock.Nil()).
