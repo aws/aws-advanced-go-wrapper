@@ -79,7 +79,7 @@ For all other questions, please use [GitHub discussions](https://github.com/aws/
 3. Make any changes on your fork. Make sure you are aware of the requirements for the project.
 4. Create a pull request from your fork.
 5. Pull requests need to be approved and merged by maintainers into the main branch. <br />
-   **Note:** Before making a pull request, [run all tests](docs/contributor-guide/DevelopmentGuide.md#running-the-tests) and verify everything is passing.
+**Note:** Before making a pull request, [run all tests](docs/contributor-guide/DevelopmentGuide.md#running-the-tests) and verify everything is passing.
 
 ## Releases
 

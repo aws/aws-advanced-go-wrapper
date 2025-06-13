@@ -4,7 +4,7 @@
 **/.gradle
 
 # integration test output
-test_framework/host/build/
+.test/test_framework/host/build/
 
 # performance test reports
-test_framework/container/tests/reports
+.test/test_framework/container/tests/reports

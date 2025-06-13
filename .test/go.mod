@@ -1,0 +1,112 @@
+module github.com/aws/aws-advanced-go-wrapper/.test
+
+go 1.24
+
+require (
+	github.com/Shopify/toxiproxy v2.1.4+incompatible
+	github.com/aws/aws-advanced-go-wrapper/auth-helpers v0.0.7
+	github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager v0.0.7
+	github.com/aws/aws-advanced-go-wrapper/awssql v0.0.7
+	github.com/aws/aws-advanced-go-wrapper/federated-auth v0.0.7
+	github.com/aws/aws-advanced-go-wrapper/iam v0.0.7
+	github.com/aws/aws-advanced-go-wrapper/mysql-driver v0.0.7
+	github.com/aws/aws-advanced-go-wrapper/okta v0.0.7
+	github.com/aws/aws-advanced-go-wrapper/otel v0.0.7
+	github.com/aws/aws-advanced-go-wrapper/pgx-driver v0.0.7
+	github.com/aws/aws-advanced-go-wrapper/xray v0.0.7
+	github.com/aws/aws-sdk-go-v2 v1.36.4
+	github.com/aws/aws-sdk-go-v2/config v1.29.16
+	github.com/aws/aws-sdk-go-v2/service/rds v1.97.0
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.35.4
+	github.com/aws/aws-sdk-go-v2/service/sts v1.33.21
+	github.com/aws/aws-xray-sdk-go v1.8.5
+	github.com/go-sql-driver/mysql v1.9.2
+	github.com/google/uuid v1.6.0
+	github.com/stretchr/testify v1.10.0
+	github.com/xuri/excelize/v2 v2.9.1
+	go.opentelemetry.io/contrib/propagators/aws v1.36.0
+	go.opentelemetry.io/otel v1.36.0
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.36.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.36.0
+	go.opentelemetry.io/otel/sdk v1.36.0
+	go.opentelemetry.io/otel/sdk/metric v1.36.0
+	go.opentelemetry.io/otel/trace v1.36.0
+)
+
+require (
+	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/PuerkitoBio/goquery v1.10.3 // indirect
+	github.com/andybalholm/brotli v1.1.1 // indirect
+	github.com/andybalholm/cascadia v1.3.3 // indirect
+	github.com/aws/aws-sdk-go v1.55.7 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.17.69 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.31 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/rds/auth v1.5.12 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.35 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.35 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.16 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.25.4 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.30.2 // indirect
+	github.com/aws/smithy-go v1.22.3 // indirect
+	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/go-logr/logr v1.4.2 // indirect
+	github.com/go-logr/stdr v1.2.2 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+	github.com/jackc/pgx/v5 v5.7.5 // indirect
+	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/nicksnyder/go-i18n/v2 v2.6.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/richardlehane/mscfb v1.0.4 // indirect
+	github.com/richardlehane/msoleps v1.0.4 // indirect
+	github.com/rogpeppe/go-internal v1.14.1 // indirect
+	github.com/tiendc/go-deepcopy v1.6.0 // indirect
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	github.com/valyala/fasthttp v1.62.0 // indirect
+	github.com/xuri/efp v0.0.1 // indirect
+	github.com/xuri/nfp v0.0.1 // indirect
+	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.36.0 // indirect
+	go.opentelemetry.io/proto/otlp v1.6.0 // indirect
+	golang.org/x/crypto v0.38.0 // indirect
+	golang.org/x/net v0.40.0 // indirect
+	golang.org/x/sync v0.15.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/text v0.26.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250519155744-55703ea1f237 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250519155744-55703ea1f237 // indirect
+	google.golang.org/grpc v1.72.1 // indirect
+	google.golang.org/protobuf v1.36.6 // indirect
+)
+
+require (
+	go.opentelemetry.io/otel/metric v1.36.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
+
+replace github.com/aws/aws-advanced-go-wrapper/awssql => ../awssql
+
+replace github.com/aws/aws-advanced-go-wrapper/pgx-driver => ./../pgx-driver
+
+replace github.com/aws/aws-advanced-go-wrapper/mysql-driver => ./../mysql-driver
+
+replace github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager => ./../aws-secrets-manager
+
+replace github.com/aws/aws-advanced-go-wrapper/iam => ./../iam
+
+replace github.com/aws/aws-advanced-go-wrapper/federated-auth => ./../federated-auth
+
+replace github.com/aws/aws-advanced-go-wrapper/okta => ./../okta
+
+replace github.com/aws/aws-advanced-go-wrapper/auth-helpers => ./../auth-helpers
+
+replace github.com/aws/aws-advanced-go-wrapper/otel => ./../otel
+
+replace github.com/aws/aws-advanced-go-wrapper/xray => ./../xray

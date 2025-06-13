@@ -34,8 +34,6 @@ jobs:
         with:
           go-version: '1.24' 
 
-      - name: Install dependencies
-        run: go get .
       - name: Configure AWS Credentials
         id: creds
         uses: aws-actions/configure-aws-credentials@v4
@@ -47,7 +45,7 @@ jobs:
           output-credentials: true
 
       - name: Run Integration Tests
-        working-directory: ${{ github.workspace }}/test_framework/host
+        working-directory: ${{ github.workspace }}/.test/test_framework/host
         run: |
           ./gradlew --no-parallel --no-daemon test-aurora-${{ matrix.db }}-performance --info
         env:
@@ -79,5 +77,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.db }}-performance-results
-          path: ${{ github.workspace }}/test_framework/container/tests/reports
+          path: ${{ github.workspace }}/.test/test_framework/container/tests/reports
           retention-days: 5
