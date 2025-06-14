@@ -19,14 +19,15 @@ package plugin_helpers
 import (
 	"context"
 	"database/sql/driver"
+	"log/slog"
+	"slices"
+	"time"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	"log/slog"
-	"slices"
-	"time"
 )
 
 var hostAvailabilityExpiringCache *utils.CacheMap[host_info_util.HostAvailability] = utils.NewCache[host_info_util.HostAvailability]()
@@ -105,7 +106,7 @@ func (p *PluginServiceImpl) UpdateDialect(conn driver.Conn) {
 	if currentHost.IsNil() {
 		currentHost = p.initialHostInfo
 	}
-	newDialect := p.dialectProvider.GetDialectForUpdate(conn, p.initialHostInfo.Host, currentHost.Host)
+	newDialect := p.dialectProvider.GetDialectForUpdate(conn, p.originalDsn, currentHost.Host)
 	if p.dialect == newDialect {
 		return
 	}

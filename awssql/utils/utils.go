@@ -20,12 +20,14 @@ import (
 	"context"
 	"database/sql/driver"
 	"fmt"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"log/slog"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 )
 
 func LogTopology(hosts []*host_info_util.HostInfo, msgPrefix string) string {
@@ -91,12 +93,14 @@ func GetFirstRowFromQueryAsString(conn driver.Conn, query string) []string {
 	}
 	res := make([]string, len(row))
 	for i := 0; i < len(res); i++ {
-		stringAsInt, ok := row[i].([]uint8)
-		if ok {
-			// Can be cast to string.
-			res[i] = string(stringAsInt)
-		} else {
-			res[i] = ""
+		switch possibleString := row[i].(type) {
+		case []uint8:
+			res[i] = string(possibleString)
+		case uint64:
+			res[i] = strconv.FormatUint(possibleString, 10)
+		case string:
+			res[i] = possibleString
+		default:
 		}
 	}
 	return res
@@ -211,4 +215,14 @@ func Rollback(conn driver.Conn, currentTx driver.Tx) {
 
 func GetStructName(v any) string {
 	return strings.ReplaceAll(fmt.Sprintf("%T", v), "*", "")
+}
+
+func GetHostNameFromEndpoint(endpoint string) string {
+	parsedEndpoint := strings.SplitN(endpoint, ".", 2)
+	if len(parsedEndpoint) < 1 {
+		// Unable to use information from row to create a host
+		return ""
+	}
+
+	return parsedEndpoint[0]
 }
