@@ -1,6 +1,46 @@
 version: 2
 updates:
   - package-ecosystem: "gomod"
-    directory: "/"
+    directory: "/.test"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/auth-helpers"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/aws-secrets-manager"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/awssql"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/federated-auth"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/iam"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/mysql-driver"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/okta"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/otel"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/pgx-driver"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/xray"
     schedule:
       interval: "weekly"
