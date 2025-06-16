@@ -18,12 +18,19 @@ package test
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
+	"testing"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/efm"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	"testing"
 )
 
 func getDefaultProps() map[string]string {
@@ -47,6 +54,13 @@ func getPropsExecute() map[string]string {
 	return props
 }
 
+var pluginFactoryByCode = map[string]driver_infrastructure.ConnectionPluginFactory{
+	"failover":      plugins.NewFailoverPluginFactory(),
+	"efm":           efm.NewHostMonitoringPluginFactory(),
+	"limitless":     limitless.NewLimitlessPluginFactory(),
+	"executionTime": plugins.NewExecutionTimePluginFactory(),
+}
+
 func initResources(props map[string]string) (
 	pluginManager driver_infrastructure.PluginManager,
 	pluginService driver_infrastructure.PluginService,
@@ -58,9 +72,21 @@ func initResources(props map[string]string) (
 	mockPluginService.PluginManager = pluginManager
 	pluginService = driver_infrastructure.PluginService(mockPluginService)
 	mockConn := &MockConn{}
+	pluginChainBuilder := driver.ConnectionPluginChainBuilder{}
+	currentPlugins, _ := pluginChainBuilder.GetPlugins(pluginService, pluginManager, props, pluginFactoryByCode)
 
-	//nolint:errcheck
-	pluginService.SetCurrentConnection(mockConn, nil, nil)
+	err := pluginManager.Init(pluginService, currentPlugins)
+	if err != nil {
+		slog.Error(fmt.Sprintf("ERROR: Could not init plugin manager. Got the following error: '%v'.", err))
+		return nil, nil
+	}
+
+	err = pluginService.SetCurrentConnection(mockConn, nil, nil)
+	if err != nil {
+		slog.Error(fmt.Sprintf("ERROR: Could not set the connection for plugin service. Got the following error: '%v'.", err))
+		return nil, nil
+	}
+
 	return
 }
 

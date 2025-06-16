@@ -17,13 +17,14 @@
 package test
 
 import (
+	"testing"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	"testing"
 )
 
 var BENCHMARK_DEFAULT_NUM_PLUGINS int = 10
@@ -77,7 +78,7 @@ func initPluginManagerWithNoPlugins(
 	return pluginManager
 }
 
-func BenchmarkConnectWithPlugins(b *testing.B) {
+func BenchmarkConnectWith10Plugins(b *testing.B) {
 	props := make(map[string]string)
 	pluginManager := initPluginManagerWithPlugins(BENCHMARK_DEFAULT_NUM_PLUGINS, props)
 	host, _ := host_info_util.NewHostInfoBuilder().SetHost("host").SetPort(1234).Build()
@@ -107,7 +108,7 @@ func BenchmarkConnectWithNoPlugins(b *testing.B) {
 	}
 }
 
-func BenchmarkExecuteWithPlugins(b *testing.B) {
+func BenchmarkExecuteWith10Plugins(b *testing.B) {
 	props := make(map[string]string)
 	pluginManager := initPluginManagerWithPlugins(BENCHMARK_DEFAULT_NUM_PLUGINS, props)
 	var calls []string
@@ -147,7 +148,7 @@ func BenchmarkExecuteWithNoPlugins(b *testing.B) {
 	}
 }
 
-func BenchmarkInitHostProviderWithPlugins(b *testing.B) {
+func BenchmarkInitHostProviderWith10Plugins(b *testing.B) {
 	props := make(map[string]string)
 	pluginManager := initPluginManagerWithPlugins(BENCHMARK_DEFAULT_NUM_PLUGINS, props)
 
@@ -175,7 +176,7 @@ func BenchmarkInitHostProviderWithNoPlugins(b *testing.B) {
 	}
 }
 
-func BenchmarkNotifyConnectionChangedWithPlugins(b *testing.B) {
+func BenchmarkNotifyConnectionChangedWith10Plugins(b *testing.B) {
 	props := make(map[string]string)
 	pluginManager := initPluginManagerWithPlugins(BENCHMARK_DEFAULT_NUM_PLUGINS, props)
 
@@ -209,7 +210,7 @@ func BenchmarkNotifyConnectionChangedWithNoPlugins(b *testing.B) {
 	}
 }
 
-func BenchmarkReleaseResourcesWithPlugins(b *testing.B) {
+func BenchmarkReleaseResourcesWith10Plugins(b *testing.B) {
 	props := make(map[string]string)
 	pluginManager := initPluginManagerWithPlugins(BENCHMARK_DEFAULT_NUM_PLUGINS, props)
 
