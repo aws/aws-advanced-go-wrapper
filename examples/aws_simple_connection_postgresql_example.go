@@ -36,7 +36,7 @@ func main() {
 		host, port, user, password, dbName,
 	)
 
-	// alternative connection string for pgx
+	// Alternative connection string for pgx
 	// connStr := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s",
 	// 	user, password, host, port, dbName)
 
