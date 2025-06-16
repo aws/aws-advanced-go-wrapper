@@ -18,7 +18,10 @@ package okta
 
 import (
 	"database/sql/driver"
-	"github.com/aws/aws-advanced-go-wrapper/auth-helpers"
+	"log/slog"
+	"time"
+
+	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
 	awssql "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -29,8 +32,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	"log/slog"
-	"time"
 )
 
 func init() {
@@ -127,7 +128,7 @@ func (o *OktaAuthPlugin) connectInternal(
 	token, isCachedToken := OktaTokenCache.Get(cacheKey)
 
 	if isCachedToken {
-		slog.Debug(error_util.GetMessage("AuthenticationToken.useCachedToken", token))
+		slog.Debug(error_util.GetMessage("AuthenticationToken.useCachedToken"))
 		property_util.PASSWORD.Set(props, token)
 	} else {
 		err := o.updateAuthenticationToken(props, region, cacheKey, host, port)
@@ -170,7 +171,7 @@ func (o *OktaAuthPlugin) updateAuthenticationToken(
 	if err != nil {
 		return err
 	}
-	slog.Debug(error_util.GetMessage("AuthenticationToken.generatedNewToken", token))
+	slog.Debug(error_util.GetMessage("AuthenticationToken.generatedNewToken"))
 	props[property_util.PASSWORD.Name] = token
 	OktaTokenCache.Put(cacheKey, token, time.Second*time.Duration(tokenExpirationSec))
 	return nil

@@ -18,14 +18,15 @@ package utils
 
 import (
 	"errors"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"net"
 	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 )
 
 const (
@@ -153,7 +154,8 @@ func GetProtocol(dsn string) (string, error) {
 		return PGX_DRIVER_PROTOCOL, nil
 	}
 
-	return "", error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.unableToDetermineProtocol", dsn))
+	return "", error_util.NewDsnParsingError(
+		error_util.GetMessage("DsnParser.unableToDetermineProtocol", MaskSensitiveInfoFromDsn(dsn)))
 }
 
 func ParseDsn(dsn string) (map[string]string, error) {
@@ -283,7 +285,8 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 		var key, val string
 		eqIdx := strings.IndexRune(dsn, '=')
 		if eqIdx < 0 {
-			return nil, error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.invalidKeyValue", dsn))
+			return nil, error_util.NewDsnParsingError(
+				error_util.GetMessage("DsnParser.invalidKeyValue", MaskSensitiveInfoFromDsn(dsn)))
 		}
 
 		key = strings.Trim(dsn[:eqIdx], " \t\n\r\v\f")
@@ -299,7 +302,8 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 				if dsn[end] == '\\' {
 					end++
 					if end == len(dsn) {
-						return nil, error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.invalidBackslash", dsn))
+						return nil, error_util.NewDsnParsingError(
+							error_util.GetMessage("DsnParser.invalidBackslash", MaskSensitiveInfoFromDsn(dsn)))
 					}
 				}
 			}
@@ -321,7 +325,8 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 				}
 			}
 			if end == len(dsn) {
-				return nil, error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.unterminatedQuotedString", dsn))
+				return nil, error_util.NewDsnParsingError(
+					error_util.GetMessage("DsnParser.unterminatedQuotedString", MaskSensitiveInfoFromDsn(dsn)))
 			}
 			val = strings.Replace(strings.Replace(dsn[:end], "\\\\", "\\", -1), "\\'", "'", -1)
 			if end == len(dsn) {
@@ -336,7 +341,8 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 		}
 
 		if key == "" {
-			return nil, error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.invalidKeyValue", dsn))
+			return nil, error_util.NewDsnParsingError(
+				error_util.GetMessage("DsnParser.invalidKeyValue", MaskSensitiveInfoFromDsn(dsn)))
 		}
 
 		properties[key] = val
@@ -361,7 +367,8 @@ func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 	lastSlashIndex := strings.LastIndex(dsn[:paramsStartIndex], "/")
 
 	if lastSlashIndex == -1 {
-		return nil, error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.invalidDatabaseNoSlash", dsn))
+		return nil, error_util.NewDsnParsingError(
+			error_util.GetMessage("DsnParser.invalidDatabaseNoSlash", MaskSensitiveInfoFromDsn(dsn)))
 	}
 
 	// [username[:password]@][protocol[(address)]]
@@ -385,9 +392,11 @@ func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 
 		closeParenIndex := strings.LastIndex(dsn[lastAtIndex:lastSlashIndex], ")") + lastAtIndex
 		if closeParenIndex == -1 {
-			return nil, error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.invalidAddress", dsn))
+			return nil, error_util.NewDsnParsingError(
+				error_util.GetMessage("DsnParser.invalidAddress", MaskSensitiveInfoFromDsn(dsn)))
 		} else if closeParenIndex < openParenIndex {
-			return nil, error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.invalidAddress", dsn))
+			return nil, error_util.NewDsnParsingError(
+				error_util.GetMessage("DsnParser.invalidAddress", MaskSensitiveInfoFromDsn(dsn)))
 		}
 		address := dsn[openParenIndex+1 : closeParenIndex]
 		hostPortPair := strings.Split(address, ":")
