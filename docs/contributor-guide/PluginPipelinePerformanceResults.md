@@ -4,7 +4,7 @@
 
 The failure detection performance tests below will execute a long query, and monitoring will not begin until the `FailureDetectionGraceTime` has passed. A network outage will be triggered after the `NetworkOutageDelayMillis` has passed. The `FailureDetectionInterval` multiplied by the `FailureDetectionCount` represents how long the monitor will take to detect a failure once it starts sending probes to the host. This value combined with the time remaining from `FailureDetectionGraceTime` after the network outage is triggered will result in the expected failure detection time.
 
-For more information please refer to the [failover specific performance tests section](DevelopmentGuide.md#failover-specific-performance-tests).
+For more information please refer to the [failover specific performance tests section](ContributorGuide.md#failover-specific-performance-tests).
 
 ### Pgx Enhanced Failure Monitoring Performance with Different Failure Detection Configuration
 
@@ -107,6 +107,36 @@ For more information please refer to the [failover specific performance tests se
 | 6000                      | 1000                     | 1                     | 9000                     | 2285                          | 2360                          | 2327                          |
 | 6000                      | 1000                     | 1                     | 10000                    | 2244                          | 2377                          | 2313                          |
 
-## Benchmarks
+## Plugin Benchmarks
 
-TODO
+The plugin benchmarks measure the performance overhead of different plugin operations with varying numbers of plugins in the pipeline. Each benchmark ran with 0, 1, 2, 5, and 10 plugins to demonstrate how performance scales with plugin count. We have identified that there is a larger overhead than what is desired and we plan on reducing this overhead in the future.
+
+### Plugin Manager Operation Benchmarks
+
+| Operation                       | ns/op  | B/op | allocs/op |
+| ------------------------------- | ------ | ---- | --------- |
+| Connect-0                       | 739.8  | 320  | 8         |
+| Connect-1                       | 1205   | 488  | 11        |
+| Connect-2                       | 1605   | 662  | 14        |
+| Connect-5                       | 2640   | 1208 | 23        |
+| Connect-10                      | 5920   | 2077 | 38        |
+| Execute-0                       | 437.1  | 208  | 5         |
+| Execute-1                       | 855.7  | 387  | 8         |
+| Execute-2                       | 1256   | 544  | 11        |
+| Execute-5                       | 2266   | 1008 | 20        |
+| Execute-10                      | 4218   | 1937 | 35        |
+| InitHostProvider-0              | 125.1  | 64   | 2         |
+| InitHostProvider-1              | 258.7  | 180  | 3         |
+| InitHostProvider-2              | 274.3  | 195  | 3         |
+| InitHostProvider-5              | 267.7  | 195  | 3         |
+| InitHostProvider-10             | 253.5  | 176  | 3         |
+| NotifyConnectionChanged-0       | 227.5  | 272  | 3         |
+| NotifyConnectionChanged-1       | 283.1  | 288  | 4         |
+| NotifyConnectionChanged-2       | 341.4  | 304  | 5         |
+| NotifyConnectionChanged-5       | 532.9  | 352  | 8         |
+| NotifyConnectionChanged-10      | 812.3  | 432  | 13        |
+| ReleaseResources-0              | 396.6  | 48   | 1         |
+| ReleaseResources-1              | 540.9  | 141  | 1         |
+| ReleaseResources-2              | 638.2  | 227  | 1         |
+| ReleaseResources-5              | 891.0  | 534  | 1         |
+| ReleaseResources-10             | 1228   | 928  | 1         |

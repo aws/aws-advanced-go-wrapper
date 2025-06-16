@@ -14,12 +14,12 @@ jobs:
         uses: actions/checkout@v4
       - name: 'Test with Go'
         working-directory: ${{ github.workspace }}/.test
-        run: go test ./test -benchmem -bench=Benchmark -run=^$ > BenchmarkResults.json
+        run: go test ./test -benchmem -bench=Benchmark -run=^$ > BenchmarkResults.txt
       - name: 'Upload Go test results'
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: Go-Benchmarks
-          path: ${{ github.workspace }}/.test/BenchmarkResults.json
+          path: ${{ github.workspace }}/.test/BenchmarkResults.txt
           retention-days: 5
           

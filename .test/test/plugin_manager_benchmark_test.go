@@ -17,6 +17,7 @@
 package test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver"
@@ -28,6 +29,7 @@ import (
 )
 
 var BENCHMARK_DEFAULT_NUM_PLUGINS int = 10
+var PLUGIN_COUNTS = []int{0, 1, 2, 5, 10}
 
 func initPluginManagerWithPlugins(numPlugins int,
 	props map[string]string) driver_infrastructure.PluginManager {
@@ -46,7 +48,7 @@ func initPluginManagerWithPlugins(numPlugins int,
 	plugins, _ := pluginChainBuilder.GetPlugins(pluginService, pluginManager, props, defaultPluginFactoryByCode)
 	for i := 0; i < numPlugins; i++ {
 		plugin, _ := benchmarkPluginFactory.GetInstance(pluginService, props)
-		plugins = append(plugins, plugin)
+		plugins = append([]driver_infrastructure.ConnectionPlugin{plugin}, plugins...)
 	}
 	err := pluginManager.Init(pluginService, plugins)
 	if err != nil {
@@ -56,176 +58,111 @@ func initPluginManagerWithPlugins(numPlugins int,
 	return pluginManager
 }
 
-func initPluginManagerWithNoPlugins(
-	props map[string]string) driver_infrastructure.PluginManager {
-	property_util.PLUGINS.Set(props, "")
-	property_util.ENABLE_TELEMETRY.Set(props, "true")
-	property_util.TELEMETRY_TRACES_BACKEND.Set(props, "none")
-	property_util.TELEMETRY_METRICS_BACKEND.Set(props, "none")
-	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{DefaultProvider: &MockConnectionProvider{}}
-	pluginManager := plugin_helpers.NewPluginManagerImpl(MockTargetDriver{}, props, connectionProviderManager, telemetryFactory)
-	pluginService := &MockPluginService{}
-
-	pluginChainBuilder := driver.ConnectionPluginChainBuilder{}
-	plugins, _ := pluginChainBuilder.GetPlugins(pluginService, pluginManager, props, defaultPluginFactoryByCode)
-
-	err := pluginManager.Init(pluginService, plugins)
-	if err != nil {
-		return nil
-	}
-	pluginService.PluginManager = pluginManager
-	return pluginManager
-}
-
-func BenchmarkConnectWith10Plugins(b *testing.B) {
+func BenchmarkConnectWithPlugins(b *testing.B) {
 	props := make(map[string]string)
-	pluginManager := initPluginManagerWithPlugins(BENCHMARK_DEFAULT_NUM_PLUGINS, props)
 	host, _ := host_info_util.NewHostInfoBuilder().SetHost("host").SetPort(1234).Build()
 
-	for i := 0; i < b.N; i++ {
-		//nolint:errcheck
-		pluginManager.Connect(
-			host,
-			props,
-			true,
-		)
+	for _, count := range PLUGIN_COUNTS {
+		count := count // capture range variable
+		b.Run(fmt.Sprintf("%d_Plugins", count), func(b *testing.B) {
+			pluginManager := initPluginManagerWithPlugins(count, props)
+
+			b.ResetTimer() // reset timer to ignore setup time
+			for i := 0; i < b.N; i++ {
+				//nolint:errcheck
+				pluginManager.Connect(
+					host,
+					props,
+					true,
+				)
+			}
+			pluginManager.ReleaseResources()
+		})
 	}
 }
 
-func BenchmarkConnectWithNoPlugins(b *testing.B) {
+func BenchmarkExecute(b *testing.B) {
 	props := make(map[string]string)
-	pluginManager := initPluginManagerWithNoPlugins(props)
-	host, _ := host_info_util.NewHostInfoBuilder().SetHost("host").SetPort(1234).Build()
 
-	for i := 0; i < b.N; i++ {
-		//nolint:errcheck
-		pluginManager.Connect(
-			host,
-			props,
-			true,
-		)
+	for _, count := range PLUGIN_COUNTS {
+		count := count // capture range variable
+		b.Run(fmt.Sprintf("%d_Plugins", count), func(b *testing.B) {
+			pluginManager := initPluginManagerWithPlugins(count, props)
+
+			b.ResetTimer() // reset timer to ignore setup time
+			for i := 0; i < b.N; i++ {
+				//nolint:errcheck
+				pluginManager.Execute(
+					nil,
+					"callA",
+					execFunc,
+					10,
+					"arg2, 3.33",
+				)
+			}
+			pluginManager.ReleaseResources()
+		})
 	}
 }
 
-func BenchmarkExecuteWith10Plugins(b *testing.B) {
+func BenchmarkInitHostProvider(b *testing.B) {
 	props := make(map[string]string)
-	pluginManager := initPluginManagerWithPlugins(BENCHMARK_DEFAULT_NUM_PLUGINS, props)
-	var calls []string
-	execFunc := func() (any, any, bool, error) {
-		calls = append(calls, "targetCall")
-		return "resultTestValue", nil, true, nil
-	}
 
-	for i := 0; i < b.N; i++ {
-		//nolint:errcheck
-		pluginManager.Execute(
-			nil,
-			"callA",
-			execFunc,
-			10,
-			"arg2, 3.33",
-		)
+	for _, count := range PLUGIN_COUNTS {
+		count := count // capture range variable
+		b.Run(fmt.Sprintf("%d_Plugins", count), func(b *testing.B) {
+			pluginManager := initPluginManagerWithPlugins(count, props)
+
+			b.ResetTimer() // reset timer to ignore setup time
+			for i := 0; i < b.N; i++ {
+				//nolint:errcheck
+				pluginManager.InitHostProvider(
+					mysqlTestDsn,
+					props,
+					&MockRdsHostListProviderService{},
+				)
+			}
+			pluginManager.ReleaseResources()
+		})
 	}
 }
 
-func BenchmarkExecuteWithNoPlugins(b *testing.B) {
+func BenchmarkNotifyConnectionChanged(b *testing.B) {
 	props := make(map[string]string)
-	pluginManager := initPluginManagerWithNoPlugins(props)
-	var calls []string
-	execFunc := func() (any, any, bool, error) {
-		calls = append(calls, "targetCall")
-		return "resultTestValue", nil, true, nil
-	}
-
-	for i := 0; i < b.N; i++ {
-		//nolint:errcheck
-		pluginManager.Execute(
-			nil,
-			"callA",
-			execFunc,
-			10,
-			"arg2, 3.33",
-		)
-	}
-}
-
-func BenchmarkInitHostProviderWith10Plugins(b *testing.B) {
-	props := make(map[string]string)
-	pluginManager := initPluginManagerWithPlugins(BENCHMARK_DEFAULT_NUM_PLUGINS, props)
-
-	for i := 0; i < b.N; i++ {
-		//nolint:errcheck
-		pluginManager.InitHostProvider(
-			mysqlTestDsn,
-			props,
-			&MockRdsHostListProviderService{},
-		)
-	}
-}
-
-func BenchmarkInitHostProviderWithNoPlugins(b *testing.B) {
-	props := make(map[string]string)
-	pluginManager := initPluginManagerWithNoPlugins(props)
-
-	for i := 0; i < b.N; i++ {
-		//nolint:errcheck
-		pluginManager.InitHostProvider(
-			mysqlTestDsn,
-			props,
-			&MockRdsHostListProviderService{},
-		)
-	}
-}
-
-func BenchmarkNotifyConnectionChangedWith10Plugins(b *testing.B) {
-	props := make(map[string]string)
-	pluginManager := initPluginManagerWithPlugins(BENCHMARK_DEFAULT_NUM_PLUGINS, props)
-
 	hostChanged := map[driver_infrastructure.HostChangeOptions]bool{
 		driver_infrastructure.HOST_CHANGED: true,
 	}
+	for _, count := range PLUGIN_COUNTS {
+		count := count // capture range variable
+		b.Run(fmt.Sprintf("%d_Plugins", count), func(b *testing.B) {
+			pluginManager := initPluginManagerWithPlugins(count, props)
 
-	for i := 0; i < b.N; i++ {
-		//nolint:errcheck
-		pluginManager.NotifyConnectionChanged(
-			hostChanged,
-			nil,
-		)
+			b.ResetTimer() // reset timer to ignore setup time
+			for i := 0; i < b.N; i++ {
+				//nolint:errcheck
+				pluginManager.NotifyConnectionChanged(
+					hostChanged,
+					nil,
+				)
+			}
+			pluginManager.ReleaseResources()
+		})
 	}
 }
 
-func BenchmarkNotifyConnectionChangedWithNoPlugins(b *testing.B) {
+func BenchmarkReleaseResources(b *testing.B) {
 	props := make(map[string]string)
-	pluginManager := initPluginManagerWithNoPlugins(props)
+	for _, count := range PLUGIN_COUNTS {
+		count := count // capture range variable
+		b.Run(fmt.Sprintf("%d_Plugins", count), func(b *testing.B) {
+			pluginManager := initPluginManagerWithPlugins(count, props)
 
-	hostChanged := map[driver_infrastructure.HostChangeOptions]bool{
-		driver_infrastructure.HOST_CHANGED: true,
-	}
-
-	for i := 0; i < b.N; i++ {
-		//nolint:errcheck
-		pluginManager.NotifyConnectionChanged(
-			hostChanged,
-			nil,
-		)
-	}
-}
-
-func BenchmarkReleaseResourcesWith10Plugins(b *testing.B) {
-	props := make(map[string]string)
-	pluginManager := initPluginManagerWithPlugins(BENCHMARK_DEFAULT_NUM_PLUGINS, props)
-
-	for i := 0; i < b.N; i++ {
-		pluginManager.ReleaseResources()
-	}
-}
-
-func BenchmarkReleaseResourcesWithNoPlugins(b *testing.B) {
-	props := make(map[string]string)
-	pluginManager := initPluginManagerWithNoPlugins(props)
-
-	for i := 0; i < b.N; i++ {
-		pluginManager.ReleaseResources()
+			b.ResetTimer() // reset timer to ignore setup time
+			for i := 0; i < b.N; i++ {
+				//nolint:errcheck
+				pluginManager.ReleaseResources()
+			}
+			pluginManager.ReleaseResources()
+		})
 	}
 }
