@@ -39,7 +39,7 @@ func main() {
 	// Open the database connection
 	db, err := sql.Open("awssql-mysql", connStr)
 	if err != nil {
-		log.Fatal("Error connecting to the database:", err)
+		log.Fatal("There was an issue opening the database handler:", err)
 	}
 	defer db.Close()
 
