@@ -2,7 +2,7 @@
 
 ## Enhanced Failure Monitoring
 
-The figure that follows shows a simplified Enhanced Failure Monitoring (EFM) workflow. Enhanced Failure Monitoring is a feature available from the Host Monitoring Plugin. The Host Monitoring Plugin periodically checks the connected database instance's health or availability. If a database instance is determined to be unhealthy, the connection will be aborted. The Host Monitoring Plugin uses the [Enhanced Failure Monitoring Parameters](#enhanced-failure-monitoring-parameters) and a database instance's responsiveness to determine whether a instance is healthy.
+The following figure shows a simplified Enhanced Failure Monitoring (EFM) workflow. EFM is a feature available from the Host Monitoring Plugin. The Host Monitoring Plugin periodically checks the connected database instance's health or availability. If a database instance is determined to be unhealthy, the connection will be aborted. The Host Monitoring Plugin uses the [Enhanced Failure Monitoring Parameters](#enhanced-failure-monitoring-parameters) and a database instance's responsiveness to determine whether a instance is healthy.
 
 <div style="text-align:center"><img src="../../images/enhanced_failure_monitoring_diagram.png"/></div>
 
