@@ -127,4 +127,4 @@ func (s *StaleDnsHelper) GetVerifiedConnection(
 	return conn, nil
 }
 
-// TODO: notifyNodeListChanged when needed for AuroraStaleDnsPlugin.
+// TODO: notifyHostListChanged when needed for AuroraStaleDnsPlugin.

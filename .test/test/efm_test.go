@@ -19,6 +19,11 @@ package test
 import (
 	"database/sql/driver"
 	"fmt"
+	"strings"
+	"testing"
+	"time"
+	"weak"
+
 	awssql "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
@@ -26,10 +31,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/efm"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"strings"
-	"testing"
-	"time"
-	"weak"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -40,7 +41,7 @@ func TestMonitorConnectionState(t *testing.T) {
 
 	assert.NotNil(t, state.GetConn())
 	assert.True(t, state.IsActive())
-	// By default nodeUnhealthy is false. When node is healthy should not abort.
+	// By default hostUnhealthy is false. When host is healthy should not abort.
 	assert.False(t, state.ShouldAbort())
 
 	state.SetHostUnhealthy(true)
@@ -232,21 +233,6 @@ func TestHostMonitoringPluginNotifyConnectionChanged(t *testing.T) {
 	action = plugin.NotifyConnectionChanged(hostNameChanged)
 	assert.Nil(t, plugin.GetMonitoringHostInfo())
 	assert.Equal(t, driver_infrastructure.NO_OPINION, action)
-}
-
-func TestHostMonitoringPluginExecuteMonitoringDisabled(t *testing.T) {
-	props := map[string]string{property_util.FAILURE_DETECTION_ENABLED.Name: "false"}
-	plugin, err := mockHostMonitoringPlugin(props)
-	assert.Nil(t, err)
-	assert.Zero(t, efm.EFM_MONITORS.Size())
-	assert.Zero(t, queryCounter)
-
-	_, _, _, err = plugin.Execute(utils.CONN_QUERY_CONTEXT, incrementQueryCounter)
-	assert.Nil(t, err)
-
-	// When monitoring is disabled, function is executed but no monitoring occurs.
-	assert.Zero(t, efm.EFM_MONITORS.Size())
-	assert.Equal(t, 1, queryCounter)
 }
 
 func TestHostMonitoringPluginExecuteMonitoringUnnecessary(t *testing.T) {

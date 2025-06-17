@@ -18,10 +18,11 @@ package property_util
 
 import (
 	"fmt"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"log/slog"
 	"strconv"
 	"strings"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 )
 
 const DEFAULT_PLUGINS = "failover,efm"
@@ -111,7 +112,6 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	SECRETS_MANAGER_REGION.Name:                     true,
 	SECRETS_MANAGER_ENDPOINT.Name:                   true,
 	SECRETS_MANAGER_EXPIRATION_SEC.Name:             true,
-	FAILURE_DETECTION_ENABLED.Name:                  true,
 	FAILURE_DETECTION_TIME_MS.Name:                  true,
 	FAILURE_DETECTION_INTERVAL_MS.Name:              true,
 	FAILURE_DETECTION_COUNT.Name:                    true,
@@ -257,13 +257,6 @@ var CLUSTER_INSTANCE_HOST_PATTERN = AwsWrapperProperty{
 		"This pattern is required to be specified for IP address or custom domain connections to AWS RDS " +
 		"clusters. Otherwise, if unspecified, the pattern will be automatically created for AWS RDS clusters.",
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
-}
-
-var FAILURE_DETECTION_ENABLED = AwsWrapperProperty{
-	Name:                "failureDetectionEnabled",
-	description:         "Enable failure detection logic (aka host monitoring routines).",
-	defaultValue:        "true",
-	wrapperPropertyType: WRAPPER_TYPE_BOOL,
 }
 
 var FAILURE_DETECTION_TIME_MS = AwsWrapperProperty{
