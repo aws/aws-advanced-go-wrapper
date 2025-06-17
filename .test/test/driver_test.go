@@ -27,6 +27,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
@@ -211,7 +212,7 @@ func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}
 	_ = mockPluginManager.Init(mockPluginService, plugins)
-	baseAwsWrapperConn := *awsDriver.NewAwsWrapperConn(nil, mockPluginManager, mockPluginService, driver_infrastructure.MYSQL)
+	baseAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.MYSQL)
 	res, err := baseAwsWrapperConn.QueryContext(context.Background(), "", nil)
 	if res != nil ||
 		!strings.Contains(
@@ -222,7 +223,7 @@ func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
 
 	mockUnderlyingConn := &MockConn{}
 	mockUnderlyingConn.updateQueryRow([]string{"column"}, []driver.Value{"test"})
-	mockAwsWrapperConn := awsDriver.NewAwsWrapperConn(mockUnderlyingConn, mockPluginManager, mockPluginService, driver_infrastructure.MYSQL)
+	mockAwsWrapperConn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.MYSQL)
 	err = mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
 	assert.Nil(t, err)
 	res, err = mockAwsWrapperConn.QueryContext(context.Background(), "", nil)
@@ -257,7 +258,7 @@ func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
 	}
 	_ = mockPluginManager.Init(mockPluginService, plugins)
 
-	baseAwsWrapperConn := *awsDriver.NewAwsWrapperConn(nil, mockPluginManager, mockPluginService, driver_infrastructure.PG)
+	baseAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.PG)
 	res, err := baseAwsWrapperConn.QueryContext(context.Background(), "", nil)
 	if res != nil ||
 		!strings.Contains(
@@ -271,7 +272,7 @@ func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
 	assert.Nil(t, err)
 
 	mockUnderlyingConn.updateQueryRow([]string{"column"}, []driver.Value{"test"})
-	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockUnderlyingConn, mockPluginManager, mockPluginService, driver_infrastructure.PG)
+	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.PG)
 	res, err = mockAwsWrapperConn.QueryContext(context.Background(), "", nil)
 	if err != nil || res.Columns()[0] != "column" {
 		t.Errorf("An AWS Wrapper Conn with an underlying connection that does support QueryContext should return a result.")
@@ -307,7 +308,7 @@ func TestWrapperUtilsExecWithPlugins(t *testing.T) {
 	mockUnderlyingConn := &MockConn{execResult: MockResult{}}
 	err := mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
 	assert.Nil(t, err)
-	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockUnderlyingConn, mockPluginManager, mockPluginService, driver_infrastructure.PG)
+	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.PG)
 
 	res, err := mockAwsWrapperConn.ExecContext(context.Background(), "", nil)
 	if err != nil || res == nil {
@@ -339,7 +340,7 @@ func TestWrapperUtilsBeginWithPlugins(t *testing.T) {
 	mockUnderlyingConn := &MockConn{beginResult: MockTx{}}
 	err := mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
 	assert.Nil(t, err)
-	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockUnderlyingConn, mockPluginManager, mockPluginService, driver_infrastructure.PG)
+	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.PG)
 
 	tx, err := mockAwsWrapperConn.Begin()
 	if err != nil || tx == nil {
@@ -371,7 +372,7 @@ func TestWrapperUtilsPrepareWithPlugins(t *testing.T) {
 	mockUnderlyingConn := &MockConn{prepareResult: MockStmt{}}
 	err := mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
 	assert.Nil(t, err)
-	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockUnderlyingConn, mockPluginManager, mockPluginService, driver_infrastructure.PG)
+	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.PG)
 
 	res, err := mockAwsWrapperConn.Prepare("")
 	if err != nil || res == nil {
@@ -412,7 +413,7 @@ func TestMethodInvokedOnOldConnection(t *testing.T) {
 	mockUnderlyingConn.updateQueryRow([]string{"column"}, []driver.Value{"test"})
 	err := mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
 	assert.Nil(t, err)
-	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockUnderlyingConn, mockPluginManager, mockPluginService, driver_infrastructure.PG)
+	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.PG)
 
 	rows, err := mockAwsWrapperConn.QueryContext(context.Background(), "", nil)
 	if err != nil || rows.Columns()[0] != "column" {
@@ -434,13 +435,14 @@ func TestMethodInvokedOnOldConnection(t *testing.T) {
 		t.Errorf("An AWS Wrapper Conn with an underlying connection should return a result to Prepare.")
 	}
 
-	err = mockPluginService.SetCurrentConnection(&MockConn{}, mockHostInfo, nil)
-	assert.Nil(t, err)
-
-	err = mockAwsWrapperConn.Ping(context.TODO())
+	differentConn := &MockConn{}
+	_, _, _, err = mockPluginManager.Execute(differentConn, utils.CONN_PING, nil)
 	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since Conn was created") {
-		t.Errorf("After internal connection has changed, methods on Conn should fail to execute.")
+		t.Errorf("If executing on a different connection than the internal connection, methods on Conn should fail to execute.")
 	}
+
+	err = mockPluginService.SetCurrentConnection(differentConn, mockHostInfo, nil)
+	assert.Nil(t, err)
 
 	err = rows.Next([]driver.Value{})
 	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since Rows was created") {

@@ -33,7 +33,7 @@ func NewTestConnectionWrapper(
 	dbEngine driver_infrastructure.DatabaseEngine,
 ) *TestConnectionWrapper {
 	return &TestConnectionWrapper{
-		AwsWrapperConn: *driver.NewAwsWrapperConn(nil, pluginManager, pluginService, dbEngine),
+		AwsWrapperConn: *driver.NewAwsWrapperConn(pluginManager, pluginService, dbEngine),
 		PluginManager:  pluginManager,
 		PluginService:  pluginService,
 	}

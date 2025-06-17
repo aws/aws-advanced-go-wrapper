@@ -21,6 +21,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
@@ -108,7 +109,7 @@ func prepareWithPlugins(
 	if err == nil {
 		driverStmt, ok := result.(driver.Stmt)
 		if ok {
-			return &AwsWrapperStmt{driverStmt, pluginManager, conn}, nil
+			return &AwsWrapperStmt{connInvokedOn, driverStmt, pluginManager, conn}, nil
 		}
 		err = errors.New(error_util.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Stmt"))
 	}
