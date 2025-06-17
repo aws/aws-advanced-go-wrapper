@@ -43,6 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{fromJson(needs.get-list-of-go-modules.outputs.matrix)}}
+      fail-fast: false
     steps:
       - name: 'Clone repository'
         uses: actions/checkout@v4
