@@ -17,7 +17,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.36.5
 	github.com/aws/aws-sdk-go-v2/config v1.29.16
 	github.com/aws/aws-sdk-go-v2/service/rds v1.97.3
-	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.35.4
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.35.7
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.21
 	github.com/aws/aws-xray-sdk-go v1.8.5
 	github.com/go-sql-driver/mysql v1.9.3
