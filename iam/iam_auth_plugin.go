@@ -19,7 +19,10 @@ package iam
 import (
 	"database/sql/driver"
 	"errors"
-	"github.com/aws/aws-advanced-go-wrapper/auth-helpers"
+	"log/slog"
+	"time"
+
+	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
 	awssql "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -30,8 +33,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	"log/slog"
-	"time"
 )
 
 func init() {
@@ -121,7 +122,7 @@ func (iamAuthPlugin *IamAuthPlugin) connectInternal(
 	token, cachedTokenFound := TokenCache.Get(cacheKey)
 	isCachedToken := cachedTokenFound && token != ""
 	if isCachedToken {
-		slog.Debug(error_util.GetMessage("IamAuthPlugin.useCachedToken", token))
+		slog.Debug(error_util.GetMessage("IamAuthPlugin.useCachedToken"))
 		props[property_util.PASSWORD.Name] = token
 	} else {
 		err := iamAuthPlugin.fetchAndSetToken(hostInfo, host, port, region, cacheKey, props)
@@ -175,7 +176,7 @@ func (iamAuthPlugin *IamAuthPlugin) fetchAndSetToken(
 		slog.Debug(error_util.GetMessage("IamAuthPlugin.errorGeneratingNewToken", err))
 		return err
 	}
-	slog.Debug(error_util.GetMessage("AuthenticationToken.generatedNewToken", token))
+	slog.Debug(error_util.GetMessage("AuthenticationToken.generatedNewToken"))
 	props[property_util.PASSWORD.Name] = token
 	TokenCache.Put(cacheKey, token, time.Duration(tokenExpirationSec)*time.Second)
 	return nil
