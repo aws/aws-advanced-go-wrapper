@@ -19,14 +19,16 @@ package plugin_helpers
 import (
 	"context"
 	"database/sql/driver"
+	"log/slog"
+	"slices"
+	"strings"
+	"sync"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	"log/slog"
-	"slices"
-	"sync"
 )
 
 const (
@@ -199,9 +201,16 @@ func (pluginManager *PluginManagerImpl) ForceConnect(
 }
 
 func (pluginManager *PluginManagerImpl) Execute(
+	connInvokedOn driver.Conn,
 	methodName string,
 	executeFunc driver_infrastructure.ExecuteFunc,
 	methodArgs ...any) (any, any, bool, error) {
+	if connInvokedOn != nil &&
+		connInvokedOn != pluginManager.pluginService.GetCurrentConnection() &&
+		!slices.Contains(utils.CLOSING_METHODS, methodName) {
+		return nil, nil, false, error_util.NewGenericAwsWrapperError(error_util.GetMessage(
+			"PluginManagerImpl.invokedAgainstOldConnection", strings.Split(methodName, ".")[0], methodName))
+	}
 	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (any, any, bool, error)) (any, any, bool, error) {
 		parentCtx := pluginManager.GetTelemetryContext()
 		telemetryCtx, ctx := pluginManager.telemetryFactory.OpenTelemetryContext(utils.GetStructName(plugin), telemetry.NESTED, parentCtx)
@@ -210,7 +219,7 @@ func (pluginManager *PluginManagerImpl) Execute(
 			telemetryCtx.CloseContext()
 			pluginManager.SetTelemetryContext(parentCtx)
 		}()
-		return plugin.Execute(methodName, targetFunc, methodArgs...)
+		return plugin.Execute(connInvokedOn, methodName, targetFunc, methodArgs...)
 	}
 	executeFuncWithTelemetry := func() (any, any, bool, error) {
 		parentCtx := pluginManager.GetTelemetryContext()

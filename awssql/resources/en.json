@@ -161,6 +161,7 @@
 	"PluginServiceImpl.hostsChangelistEmpty": "There are no changes in the hosts' availability.",
 	"PluginServiceImpl.nonEmptyAliases": "FillAliases called when HostInfo already contains the following aliases: '%v'.",
 	"PluginServiceImpl.failedToRetrieveHostPort": "Could not retrieve Host:Port for connection.",
+	"PluginManagerImpl.invokedAgainstOldConnection": "The internal connection has changed since %v was created, skip executing method %v. This is likely due to failover. To ensure you are using the updated connection, please re-create Statement, Tx, Result and Row objects after failover.",
 	"RdsHostListProvider.unableToGatherTopology": "Unable to gather topology, no hosts identified from query, cache, or initial host list.",
 	"RdsHostListProvider.unableToGetHostName": "Unable to retrieve host name from given connection.",
 	"RdsHostListProvider.givenTemplateInvalid": "The given cluster format template is invalid, using default host formatting.",

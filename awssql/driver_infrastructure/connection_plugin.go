@@ -24,6 +24,7 @@ import (
 type ConnectionPlugin interface {
 	GetSubscribedMethods() []string
 	Execute(
+		connInvokedOn driver.Conn,
 		methodName string,
 		executeFunc ExecuteFunc,
 		methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error)

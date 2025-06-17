@@ -91,7 +91,7 @@ type PluginManager interface {
 	InitHostProvider(initialUrl string, props map[string]string, hostListProviderService HostListProviderService) error
 	Connect(hostInfo *host_info_util.HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)
 	ForceConnect(hostInfo *host_info_util.HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)
-	Execute(name string, methodFunc ExecuteFunc, methodArgs ...any) (
+	Execute(connInvokedOn driver.Conn, name string, methodFunc ExecuteFunc, methodArgs ...any) (
 		wrappedReturnValue any,
 		wrappedReturnValue2 any,
 		wrappedOk bool,

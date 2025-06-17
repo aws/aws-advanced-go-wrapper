@@ -52,7 +52,7 @@ func TestExecuteFunctionCallA(t *testing.T) {
 		return "resultTestValue", nil, true, nil
 	}
 
-	result, _, _, _ := target.Execute("callA", execFunc, 10, "arg2, 3.33")
+	result, _, _, _ := target.Execute(nil, "callA", execFunc, 10, "arg2, 3.33")
 	if result != "resultTestValue" {
 		t.Fatalf(`Result should be "resultTestValue", got "%s"`, result)
 	}
@@ -94,7 +94,7 @@ func TestExecuteFunctionCallB(t *testing.T) {
 		return "resultTestValue", nil, true, nil
 	}
 
-	result, _, _, _ := target.Execute("callB", execFunc, 10, "arg2, 3.33")
+	result, _, _, _ := target.Execute(nil, "callB", execFunc, 10, "arg2, 3.33")
 	if result != "resultTestValue" {
 		t.Fatalf(`Result should be "resultTestValue", got "%s"`, result)
 	}
@@ -134,7 +134,7 @@ func TestExecuteFunctionCallC(t *testing.T) {
 		return "resultTestValue", nil, true, nil
 	}
 
-	result, _, _, _ := target.Execute("callC", execFunc, 10, "arg2, 3.33")
+	result, _, _, _ := target.Execute(nil, "callC", execFunc, 10, "arg2, 3.33")
 	if result != "resultTestValue" {
 		t.Fatalf(`Result should be "resultTestValue", got "%s"`, result)
 	}
@@ -319,7 +319,7 @@ func TestTwoConnectionsDoNotBlockOneAnother(t *testing.T) {
 	acquireDbResourceMutexSuccessful := atomic.Bool{}
 
 	group1 := func(wg *sync.WaitGroup) {
-		_, _, _, _ = awsDriver.ExecuteWithPlugins(pluginManager1, "lock-routine-1",
+		_, _, _, _ = awsDriver.ExecuteWithPlugins(nil, pluginManager1, "lock-routine-1",
 			func() (any, any, bool, error) {
 				dbResourceMutex.Lock()
 				waitForDbResourceLocked.Done()
@@ -327,7 +327,7 @@ func TestTwoConnectionsDoNotBlockOneAnother(t *testing.T) {
 			},
 		)
 		waitForReleaseDbResourceToProceed.Wait()
-		_, _, _, _ = awsDriver.ExecuteWithPlugins(pluginManager1, "release-routine-1",
+		_, _, _, _ = awsDriver.ExecuteWithPlugins(nil, pluginManager1, "release-routine-1",
 			func() (any, any, bool, error) {
 				dbResourceMutex.Unlock()
 				dbResourceReleased.Store(true)
@@ -339,7 +339,7 @@ func TestTwoConnectionsDoNotBlockOneAnother(t *testing.T) {
 
 	group2 := func(wg *sync.WaitGroup) {
 		waitForDbResourceLocked.Wait()
-		_, _, _, _ = awsDriver.ExecuteWithPlugins(pluginManager2, "lock-routine-2",
+		_, _, _, _ = awsDriver.ExecuteWithPlugins(nil, pluginManager2, "lock-routine-2",
 			func() (any, any, bool, error) {
 				waitForReleaseDbResourceToProceed.Done()
 				time.Sleep(3 * time.Second)

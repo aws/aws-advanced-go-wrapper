@@ -67,6 +67,7 @@ func (b *BenchmarkPlugin) ForceConnect(
 }
 
 func (b *BenchmarkPlugin) Execute(
+	connInvokedOn driver.Conn,
 	methodName string,
 	executeFunc driver_infrastructure.ExecuteFunc,
 	methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {

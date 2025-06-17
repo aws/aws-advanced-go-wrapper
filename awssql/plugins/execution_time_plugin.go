@@ -17,11 +17,13 @@
 package plugins
 
 import (
+	"database/sql/driver"
+	"log/slog"
+	"time"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
-	"log/slog"
-	"time"
 )
 
 type ExecutionTimePluginFactory struct{}
@@ -53,6 +55,7 @@ func (d *ExecutionTimePlugin) GetSubscribedMethods() []string {
 }
 
 func (d *ExecutionTimePlugin) Execute(
+	connInvokedOn driver.Conn,
 	methodName string,
 	executeFunc driver_infrastructure.ExecuteFunc,
 	methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {

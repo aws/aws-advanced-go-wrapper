@@ -48,11 +48,18 @@ func (d *DefaultPlugin) GetSubscribedMethods() []string {
 }
 
 func (d *DefaultPlugin) Execute(
+	connInvokedOn driver.Conn,
 	methodName string,
 	executeFunc driver_infrastructure.ExecuteFunc,
 	methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
 	wrappedReturnValue, wrappedReturnValue2, wrappedOk, wrappedErr = executeFunc()
 	if wrappedErr != nil {
+		return
+	}
+
+	if connInvokedOn != nil && connInvokedOn != d.PluginService.GetCurrentConnection() {
+		// Is using an old connection, so transaction analysis should be skipped.
+		// PluginManager blocks all methods invoked using old connections except for close/abort.
 		return
 	}
 

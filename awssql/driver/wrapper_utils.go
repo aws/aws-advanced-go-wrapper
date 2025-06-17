@@ -21,12 +21,14 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 )
 
 func ExecuteWithPlugins(
+	connInvokedOn driver.Conn,
 	pluginManager driver_infrastructure.PluginManager,
 	methodName string,
 	executeFunc driver_infrastructure.ExecuteFunc,
@@ -41,7 +43,7 @@ func ExecuteWithPlugins(
 		telemetryCtx.CloseContext()
 		pluginManager.SetTelemetryContext(context.TODO())
 	}()
-	wrappedReturnValue, wrappedReturnValue2, wrappedOk, wrappedErr = pluginManager.Execute(methodName, executeFunc, methodArgs...)
+	wrappedReturnValue, wrappedReturnValue2, wrappedOk, wrappedErr = pluginManager.Execute(connInvokedOn, methodName, executeFunc, methodArgs...)
 	if wrappedErr != nil {
 		telemetryCtx.SetSuccess(false)
 		telemetryCtx.SetError(wrappedErr)
@@ -52,17 +54,18 @@ func ExecuteWithPlugins(
 }
 
 func queryWithPlugins(
+	connInvokedOn driver.Conn,
 	pluginManager driver_infrastructure.PluginManager,
 	methodName string,
 	queryFunc driver_infrastructure.ExecuteFunc,
 	engine driver_infrastructure.DatabaseEngine,
 	methodArgs ...any) (driver.Rows, error) {
-	result, _, _, err := ExecuteWithPlugins(pluginManager, methodName, queryFunc, methodArgs...)
+	result, _, _, err := ExecuteWithPlugins(connInvokedOn, pluginManager, methodName, queryFunc, methodArgs...)
 
 	if err == nil {
 		driverRows, ok := result.(driver.Rows)
 		if ok {
-			rows := AwsWrapperRows{driverRows, pluginManager}
+			rows := AwsWrapperRows{connInvokedOn, driverRows, pluginManager}
 			if engine == driver_infrastructure.MYSQL {
 				return &AwsWrapperMySQLRows{rows}, nil
 			}
@@ -78,15 +81,16 @@ func queryWithPlugins(
 }
 
 func execWithPlugins(
+	connInvokedOn driver.Conn,
 	pluginManager driver_infrastructure.PluginManager,
 	methodName string,
 	execFunc driver_infrastructure.ExecuteFunc,
 	methodArgs ...any) (driver.Result, error) {
-	result, _, _, err := ExecuteWithPlugins(pluginManager, methodName, execFunc, methodArgs...)
+	result, _, _, err := ExecuteWithPlugins(connInvokedOn, pluginManager, methodName, execFunc, methodArgs...)
 	if err == nil {
 		driverResult, ok := result.(driver.Result)
 		if ok {
-			return &AwsWrapperResult{driverResult, pluginManager}, nil
+			return &AwsWrapperResult{connInvokedOn, driverResult, pluginManager}, nil
 		}
 		err = errors.New(error_util.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Result"))
 	}
@@ -95,16 +99,17 @@ func execWithPlugins(
 }
 
 func prepareWithPlugins(
+	connInvokedOn driver.Conn,
 	pluginManager driver_infrastructure.PluginManager,
 	methodName string,
 	prepareFunc driver_infrastructure.ExecuteFunc,
 	conn AwsWrapperConn,
 	methodArgs ...any) (driver.Stmt, error) {
-	result, _, _, err := ExecuteWithPlugins(pluginManager, methodName, prepareFunc, methodArgs...)
+	result, _, _, err := ExecuteWithPlugins(connInvokedOn, pluginManager, methodName, prepareFunc, methodArgs...)
 	if err == nil {
 		driverStmt, ok := result.(driver.Stmt)
 		if ok {
-			return &AwsWrapperStmt{driverStmt, pluginManager, conn}, nil
+			return &AwsWrapperStmt{connInvokedOn, driverStmt, pluginManager, conn}, nil
 		}
 		err = errors.New(error_util.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Stmt"))
 	}
@@ -112,16 +117,17 @@ func prepareWithPlugins(
 }
 
 func beginWithPlugins(
+	connInvokedOn driver.Conn,
 	pluginManager driver_infrastructure.PluginManager,
 	pluginService driver_infrastructure.PluginService,
 	methodName string,
 	beginFunc driver_infrastructure.ExecuteFunc) (driver.Tx, error) {
-	result, _, _, err := ExecuteWithPlugins(pluginManager, methodName, beginFunc)
+	result, _, _, err := ExecuteWithPlugins(connInvokedOn, pluginManager, methodName, beginFunc)
 	if err == nil {
 		driverTx, ok := result.(driver.Tx)
 		if ok {
 			pluginService.SetCurrentTx(driverTx)
-			return &AwsWrapperTx{driverTx, pluginManager, pluginService}, nil
+			return &AwsWrapperTx{connInvokedOn, driverTx, pluginManager, pluginService}, nil
 		}
 		err = errors.New(error_util.GetMessage("AwsWrapperExecuteWithPlugins.unableToCastResult", "driver.Tx"))
 	}

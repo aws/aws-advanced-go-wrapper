@@ -71,7 +71,7 @@ func (t TestPlugin) GetSubscribedMethods() []string {
 	}
 }
 
-func (t TestPlugin) Execute(methodName string, executeFunc driver_infrastructure.ExecuteFunc, methodArgs ...any) (any, any, bool, error) {
+func (t TestPlugin) Execute(connInvokedOn driver.Conn, methodName string, executeFunc driver_infrastructure.ExecuteFunc, methodArgs ...any) (any, any, bool, error) {
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:before", reflect.TypeOf(t), t.id))
 	if t.isBefore && t.error != nil {
 		return nil, nil, false, t.error
