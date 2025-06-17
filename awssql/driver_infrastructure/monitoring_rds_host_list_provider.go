@@ -39,9 +39,11 @@ type MonitoringRdsHostListProvider struct {
 	*RdsHostListProvider
 }
 
-func MonitoringRdsHostListProviderReleaseResources() {
-	clusterTopologyMonitors.Clear()
-	clusterTopologyMonitorWg.Wait()
+func MonitoringRdsHostListProviderClearCaches() {
+	if clusterTopologyMonitors != nil {
+		clusterTopologyMonitors.Clear()
+		clusterTopologyMonitorWg.Wait()
+	}
 }
 
 func NewMonitoringRdsHostListProvider(
