@@ -1,0 +1,45 @@
+# Failover Configuration Guide
+
+## Tips to Keep in Mind
+
+### Failover Time Profiles
+
+A failover time profile refers to a specific combination of failover parameters that determine the time in which failover should be completed and define the aggressiveness of failover. Some failover parameters include `failoverTimeoutMs` and `failoverReaderConnectTimeoutMs`. Failover should be completed within 5 minutes by default. If the connection is not re-established during this time, then the failover process times out and fails. Users can configure the failover parameters to adjust the aggressiveness of the failover and fulfill the needs of their specific application. For example, a user could take a more aggressive approach and shorten the time limit on failover to promote a fail-fast approach for an application that does not tolerate database outages. Examples of normal and aggressive failover time profiles are shown below.
+
+> [!WARNING]
+> Aggressive failover does come with its side effects. Since the time limit on failover is shorter, it becomes more likely that a problem is caused not by a failure, but rather because of a timeout.
+
+#### Example of the configuration for a normal failover time profile:
+
+| Parameter                          | Value     |
+|------------------------------------|-----------|
+| `failoverTimeoutMs`                | `180000 ` |
+| `clusterTopologyRefreshRateMs`     | `2000`    |
+| `clusterTopologyHighRefreshRateMs` | `100`     |
+
+#### Example of the configuration for an aggressive failover time profile:
+
+| Parameter                          | Value   |
+|------------------------------------|---------|
+| `failoverTimeoutMs`                | `30000` |
+| `clusterTopologyRefreshRateMs`     | `2000`  |
+| `clusterTopologyHighRefreshRateMs` | `100`   |
+
+### Writer Cluster Endpoints After Failover
+
+Connecting to a writer cluster endpoint after failover can result in a faulty connection because DNS causes a delay in changing the writer cluster. On the AWS DNS server, this change is updated usually between 15-20 seconds, but the other DNS servers sitting between the application and the AWS DNS server may not be updated in time. Using the stale DNS data will most likely cause problems for users, so it is important to keep this is mind.
+
+### 2-Host Clusters
+
+Using failover with a 2-host cluster is not beneficial because during the failover process involving one writer host and one reader host, the two hosts simply switch roles; the reader becomes the writer and the writer becomes the reader. If failover is triggered because one of the hosts has a problem, this problem will persist because there aren't any extra hosts to take the responsibility of the one that is broken. Three or more database hosts are recommended to improve the stability of the cluster.
+
+### Host Availability
+
+It seems as though just one host, the one triggering the failover, will be unavailable during the failover process; this is actually not true. When failover is triggered, all hosts become unavailable for a short time. This is because the control plane, which orchestrates the failover process, first shuts down all hosts, then starts the writer host, and finally starts and connects the remaining hosts to the writer. In short, failover requires each host to be reconfigured and thus, all hosts must become unavailable for a short period of time. One additional note to point out is that if your failover time is aggressive, then this may cause failover to fail because some hosts may still be unavailable by the time your failover times out.
+
+### Investigating Failures
+
+If you are experiencing difficulties with the failover plugin, try the following:
+
+- Enable [logging](./UsingTheGoWrapper.md#logging) to find the cause of the failure. If it is a timeout, review this [documentation](#failover-time-profiles) and adjust the timeout values.
+- For additional assistance, visit the [getting help page](../../README.md#getting-help-and-opening-issues).

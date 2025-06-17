@@ -44,4 +44,4 @@ For more information on how to run the integration tests, please visit [Integrat
 
 ## Architecture
 
-For more information on how the AWS Advanced NodeJS Wrapper functions and how it is structured, please visit [Architecture](./Architecture.md).
+For more information on how the AWS Advanced Go Wrapper functions and how it is structured, please visit [Architecture](./Architecture.md).

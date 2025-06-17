@@ -119,7 +119,7 @@ For example, if a custom domain was being used and the cluster instance endpoint
 construct the instance endpoints using the specified custom domain.
 Since there isn't enough information from the custom domain alone to create the instance endpoints, you should set the
 `clusterInstanceHostPattern` to `?.customHost`, making the dsn
-`"host=host user=user dbname=database password=password clusterInstanceHostPattern=?.customHost`.
+`"host=host user=user dbname=database password=password clusterInstanceHostPattern=?.customHost"`.
 
 Refer to [this diagram](../images/failover_behavior.png) about AWS Advanced Go Wrapper behavior for different connection
 URLs and more details and examples.

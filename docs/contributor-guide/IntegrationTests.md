@@ -2,7 +2,7 @@
 
 ### Prerequisites
 
-Before running the integration tests for the AWS Advanced NodeJS Wrapper, you must install:
+Before running the integration tests for the AWS Advanced Go Wrapper, you must install:
 
 - Docker Desktop:
   - [Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/)

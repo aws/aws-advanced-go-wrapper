@@ -27,4 +27,4 @@ go get github.com/aws/aws-advanced-go-wrapper/mysql-driver@latest
 
 ## Using the AWS Advanced Go Wrapper
 
-For more detailed information about how to use and configure the AWS Advanced NodeJS Wrapper, please visit [this page](./user-guide/UsingTheGoWrapper.md).
+For more detailed information about how to use and configure the AWS Advanced Go Wrapper, please visit [this page](./user-guide/UsingTheGoWrapper.md).
