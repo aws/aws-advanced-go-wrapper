@@ -4,16 +4,16 @@ go 1.24
 
 require (
 	github.com/Shopify/toxiproxy v2.1.4+incompatible
-	github.com/aws/aws-advanced-go-wrapper/auth-helpers v0.0.7
-	github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager v0.0.7
-	github.com/aws/aws-advanced-go-wrapper/awssql v0.0.7
-	github.com/aws/aws-advanced-go-wrapper/federated-auth v0.0.7
-	github.com/aws/aws-advanced-go-wrapper/iam v0.0.7
-	github.com/aws/aws-advanced-go-wrapper/mysql-driver v0.0.7
-	github.com/aws/aws-advanced-go-wrapper/okta v0.0.7
-	github.com/aws/aws-advanced-go-wrapper/otel v0.0.7
-	github.com/aws/aws-advanced-go-wrapper/pgx-driver v0.0.7
-	github.com/aws/aws-advanced-go-wrapper/xray v0.0.7
+	github.com/aws/aws-advanced-go-wrapper/auth-helpers v0.0.8
+	github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager v0.0.8
+	github.com/aws/aws-advanced-go-wrapper/awssql v0.0.8
+	github.com/aws/aws-advanced-go-wrapper/federated-auth v0.0.8
+	github.com/aws/aws-advanced-go-wrapper/iam v0.0.8
+	github.com/aws/aws-advanced-go-wrapper/mysql-driver v0.0.8
+	github.com/aws/aws-advanced-go-wrapper/okta v0.0.8
+	github.com/aws/aws-advanced-go-wrapper/otel v0.0.8
+	github.com/aws/aws-advanced-go-wrapper/pgx-driver v0.0.8
+	github.com/aws/aws-advanced-go-wrapper/xray v0.0.8
 	github.com/aws/aws-sdk-go-v2 v1.36.5
 	github.com/aws/aws-sdk-go-v2/config v1.29.16
 	github.com/aws/aws-sdk-go-v2/service/rds v1.97.3
