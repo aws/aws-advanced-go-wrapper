@@ -19,13 +19,14 @@ package driver_infrastructure
 import (
 	"database/sql/driver"
 	"errors"
+	"log/slog"
+	"math"
+	"time"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"log/slog"
-	"math"
-	"time"
 )
 
 type DsnHostListProvider struct {
@@ -55,7 +56,10 @@ func (c *DsnHostListProvider) init() error {
 		return nil
 	}
 
-	hosts, _ := utils.GetHostsFromDsn(c.dsn, c.isSingleWriterConnectionString)
+	hosts, err := utils.GetHostsFromDsn(c.dsn, c.isSingleWriterConnectionString)
+	if err != nil {
+		return err
+	}
 	c.hostList = append(c.hostList, hosts...)
 
 	if len(c.hostList) == 0 {

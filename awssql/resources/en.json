@@ -60,6 +60,7 @@
 	"DsnParser.invalidKeyValue": "Invalid key value from DSN string: '%v'.",
 	"DsnParser.unableToDetermineProtocol": "Unable to determine protocol of DSN string: '%v'.",
 	"DsnParser.unterminatedQuotedString": "Unterminated quoted string in DSN string: '%v'.",
+	"DsnParser.unableToMatchPortsToHosts": "Unable to match ports to hosts in DSN string. Only DSNs with one port are supported.",
 	"ExecutionTimePlugin.executionTime": "Executed method '%v' in '%v' milliseconds.",
   	"Failover.connectionChangedError": "The active SQL connection has changed due to a connection failure. Please re-configure session state if required.",
 	"Failover.connectionClosedExplicitly": "Unable to failover, the connection has been explicitly closed.",
