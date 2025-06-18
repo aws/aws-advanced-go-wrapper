@@ -22,7 +22,7 @@ import (
 	"log/slog"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	_ "github.com/aws/aws-advanced-go-wrapper/otel"
+	_ "github.com/aws/aws-advanced-go-wrapper/otlp"
 	_ "github.com/aws/aws-advanced-go-wrapper/xray"
 	"strconv"
 	"testing"

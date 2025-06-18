@@ -178,7 +178,7 @@ public class ContainerHelper {
         .withEnv("LOG_LEVEL", "silly")
         .withEnv("UV_THREADPOOL_SIZE", "10")
         .withFileSystemBind("../../../xray", "/app/xray", BindMode.READ_ONLY)
-        .withFileSystemBind("../../../otel", "/app/otel", BindMode.READ_ONLY)
+        .withFileSystemBind("../../../otlp", "/app/otlp", BindMode.READ_ONLY)
         .withFileSystemBind("../../../okta", "/app/okta", BindMode.READ_ONLY)
         .withFileSystemBind("../../../pgx-driver", "/app/pgx-driver", BindMode.READ_ONLY)
         .withFileSystemBind("../../../mysql-driver", "/app/mysql-driver", BindMode.READ_ONLY)

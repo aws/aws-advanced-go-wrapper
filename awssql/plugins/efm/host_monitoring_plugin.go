@@ -105,9 +105,12 @@ func (b *HostMonitorConnectionPlugin) Execute(
 	failureDetectionIntervalMillis := property_util.GetVerifiedWrapperPropertyValue[int](b.props, property_util.FAILURE_DETECTION_INTERVAL_MS)
 	failureDetectionCount := property_util.GetVerifiedWrapperPropertyValue[int](b.props, property_util.FAILURE_DETECTION_COUNT)
 
-	b.initMonitorService()
+	err := b.initMonitorService()
+	if err != nil {
+		return nil, nil, false, err
+	}
 
-	// Sets up a MonitorConnectionState that is active for the duration of executeFunc.
+	// Sets up a MonitorConnectionState that is active for the duration of executeFÏreadounc.
 	// If there are any issues setting up the monitor/state, the error is passed on in wrappedErr.
 	var monitorState *MonitorConnectionState
 	monitoringHostInfo, err := b.getMonitoringHostInfo()
@@ -135,10 +138,15 @@ func (b *HostMonitorConnectionPlugin) Execute(
 	return
 }
 
-func (b *HostMonitorConnectionPlugin) initMonitorService() {
+func (b *HostMonitorConnectionPlugin) initMonitorService() error {
 	if b.monitorService == nil {
-		b.monitorService = NewMonitorServiceImpl(b.pluginService)
+		monitorService, err := NewMonitorServiceImpl(b.pluginService)
+		if err != nil {
+			return err
+		}
+		b.monitorService = monitorService
 	}
+	return nil
 }
 
 func (b *HostMonitorConnectionPlugin) getMonitoringHostInfo() (*host_info_util.HostInfo, error) {

@@ -24,6 +24,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	"log/slog"
 	"sync"
 	"time"
@@ -39,10 +40,11 @@ type MonitorService interface {
 }
 
 type MonitorServiceImpl struct {
-	pluginService driver_infrastructure.PluginService
+	pluginService             driver_infrastructure.PluginService
+	abortedConnectionsCounter telemetry.TelemetryCounter
 }
 
-func NewMonitorServiceImpl(pluginService driver_infrastructure.PluginService) *MonitorServiceImpl {
+func NewMonitorServiceImpl(pluginService driver_infrastructure.PluginService) (*MonitorServiceImpl, error) {
 	if EFM_MONITORS == nil {
 		EFM_MONITORS = utils.NewSlidingExpirationCache[Monitor](
 			"efm_monitors",
@@ -55,7 +57,11 @@ func NewMonitorServiceImpl(pluginService driver_infrastructure.PluginService) *M
 			})
 	}
 
-	return &MonitorServiceImpl{pluginService: pluginService}
+	abortedConnectionsCounter, err := pluginService.GetTelemetryFactory().CreateCounter("efm.connections.aborted")
+	if err != nil {
+		return nil, err
+	}
+	return &MonitorServiceImpl{pluginService: pluginService, abortedConnectionsCounter: abortedConnectionsCounter}, nil
 }
 
 func (m *MonitorServiceImpl) StartMonitoring(conn *driver.Conn, hostInfo *host_info_util.HostInfo, props map[string]string,
@@ -91,8 +97,14 @@ func (m *MonitorServiceImpl) getMonitor(hostInfo *host_info_util.HostInfo, props
 	return EFM_MONITORS.ComputeIfAbsent(
 		monitorKey,
 		func() Monitor {
-			return NewMonitorImpl(m.pluginService, hostInfo, props, failureDetectionTimeMillis,
-				failureDetectionIntervalMillis, failureDetectionCount)
+			return NewMonitorImpl(
+				m.pluginService,
+				hostInfo,
+				props,
+				failureDetectionTimeMillis,
+				failureDetectionIntervalMillis,
+				failureDetectionCount,
+				m.abortedConnectionsCounter)
 		},
 		cacheExpirationNano)
 }

@@ -1,4 +1,4 @@
-module github.com/aws/aws-advanced-go-wrapper/otel
+module github.com/aws/aws-advanced-go-wrapper/otlp
 
 go 1.24
 

@@ -138,6 +138,13 @@ func (pluginManager *PluginManagerImpl) InitHostProvider(
 	}()
 
 	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (any, any, bool, error)) (any, any, bool, error) {
+		parentCtx1 := pluginManager.GetTelemetryContext()
+		telemetryCtx1, ctx1 := pluginManager.telemetryFactory.OpenTelemetryContext(utils.GetStructName(plugin), telemetry.NESTED, parentCtx1)
+		pluginManager.SetTelemetryContext(ctx1)
+		defer func() {
+			telemetryCtx1.CloseContext()
+			pluginManager.SetTelemetryContext(parentCtx1)
+		}()
 		initFunc := func() error {
 			_, _, _, err := targetFunc()
 			return err

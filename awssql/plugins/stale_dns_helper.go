@@ -26,12 +26,22 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 )
 
 type StaleDnsHelper struct {
-	pluginService  driver_infrastructure.PluginService
-	writerHostInfo *host_info_util.HostInfo
-	writerHostAddr string
+	pluginService   driver_infrastructure.PluginService
+	staleDnsCounter telemetry.TelemetryCounter
+	writerHostInfo  *host_info_util.HostInfo
+	writerHostAddr  string
+}
+
+func NewStaleDnsHelper(pluginService driver_infrastructure.PluginService) (*StaleDnsHelper, error) {
+	staleDnsCounter, err := pluginService.GetTelemetryFactory().CreateCounter("staleDNS.stale.detected")
+	if err != nil {
+		return nil, err
+	}
+	return &StaleDnsHelper{pluginService: pluginService, staleDnsCounter: staleDnsCounter}, nil
 }
 
 func (s *StaleDnsHelper) GetVerifiedConnection(
@@ -113,6 +123,8 @@ func (s *StaleDnsHelper) GetVerifiedConnection(
 		// DNS resolves a cluster endpoint to a wrong writer opens a connection to a proper writer host
 
 		slog.Info(error_util.GetMessage("StaleDnsHelper.staleDnsDetected", s.writerHostInfo.String()))
+
+		s.staleDnsCounter.Inc(s.pluginService.GetTelemetryContext())
 
 		writerConn, connectErr := s.pluginService.Connect(s.writerHostInfo, props)
 		if connectErr != nil {

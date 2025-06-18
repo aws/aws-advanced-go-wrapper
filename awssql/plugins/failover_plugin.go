@@ -120,12 +120,18 @@ func NewFailoverPlugin(pluginService driver_infrastructure.PluginService, props 
 	if err != nil {
 		return nil, err
 	}
+
+	staleDnsHelper, err := NewStaleDnsHelper(pluginService)
+	if err != nil {
+		return nil, err
+	}
+
 	return &FailoverPlugin{
 		pluginService:            pluginService,
 		props:                    props,
 		failoverTimeoutMsSetting: failoverTimeoutMsSetting,
 		failoverReaderHostSelectorStrategySetting: failoverReaderHostSelectorStrategySetting,
-		staleDnsHelper:                             &StaleDnsHelper{pluginService: pluginService},
+		staleDnsHelper:                             staleDnsHelper,
 		failoverWriterTriggeredCounter:             failoverWriterTriggeredCounter,
 		failoverWriterSuccessCounter:               failoverWriterSuccessCounter,
 		failoverWriterFailedCounter:                failoverWriterFailedCounter,
