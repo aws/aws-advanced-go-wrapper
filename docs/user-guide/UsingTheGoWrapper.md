@@ -14,48 +14,63 @@ have been enabled by default. Plugin compatibility can be verified in the [plugi
 
 ## Getting a Connection
 
-The AWS Advanced Go Wrapper is an implementation of Go's database/sql/driver interface. You only need to import the
-wrapper and can use the full database/sql API then.
+The AWS Advanced Go Wrapper is an implementation of Go's database/sql/driver interface. The wrapper contains modules for both the [pgx driver](https://github.com/jackc/pgx) and a [Go-MySQL-Driver](https://github.com/go-sql-driver/mysql). The appropriate driver module must be downloaded along with any additional [plugin](#Plugins) modules. The driver must be imported or imported for side effects to be used.
 
-Use `"awssql"` as `driverName` and a valid DSN as `dataSourceName`.
+Use `"awssql-pgx"` or `"awssql-mysql` as `driverName` and a valid DSN as `dataSourceName`.
 
 > [!NOTE]
 > The formatting of a valid DSN for a [MySQL](https://github.com/go-sql-driver/mysql?tab=readme-ov-file#dsn-data-source-name) and [PostgreSQL](https://github.com/jackc/pgx?tab=readme-ov-file#example-usage) connection differs, please provide a valid DSN for the intended underlying driver.
 
+To open a database handle:
+
 ```go
 import (
 	"database/sql"
 
-	_ "github.com/aws/aws-advanced-go-wrapper/awssql"
+	// Driver modules can operate separately and do not need to be imported together:
+	_ "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
+	_ "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 )
 
-pgDsnExample := "host=host port=port user=username dbname=database password=password"
-pgDsnExample2 := "postgres://username:password@host:port/database"
-mySqlDsnExample := "username:password@net(host:port)/database"
-
-db, err := sql.Open("awssql", pgDsnExample)
-if err != nil {
-	panic(err)
+func main() {
+    pgDsnExample := "host=host port=port user=username dbname=database password=password"
+    pgDsnExample2 := "postgres://username:password@host:port/database"
+    mySqlDsnExample := "username:password@net(host:port)/database"
+    
+    db, err := sql.Open("awssql-pgx", pgDsnExample)
+    db, err := sql.Open("awssql-mysql", mySqlDsnExample)
+    if err != nil {
+        panic(err)
+    }
+    defer db.Close()
 }
-defer db.Close()
 ```
 
-To connect directly with the AwsWrapperDriver:
+To obtain a connection from a driver:
 
 ```go
 import (
 	"database/sql"
 
-	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
+    // Driver modules can operate separately and do not need to be imported together:
+    "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
+    "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 )
 
-wrapperDriver := &awsDriver.AwsWrapperDriver{}
+func main() {
+    pgDsnExample := "host=host port=port user=username dbname=database password=password"
+    pgDsnExample2 := "postgres://username:password@host:port/database"
+    mySqlDsnExample := "username:password@net(host:port)/database"
 
-conn, err := wrapperDriver.Open(pgDsnExample)
-if err != nil {
-	panic(err)
+    pgxDriver := &pgx_driver.PgxDriver{}
+    mysqlDriver := &mysql_driver.MySQLDriver{}
+    
+    conn, err := pgxDriver.Open(pgDsnExample)
+    if err != nil {
+        panic(err)
+    }
+    defer conn.Close()
 }
-defer conn.Close()
 ```
 
 ## Logging

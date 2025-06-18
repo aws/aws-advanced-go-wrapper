@@ -74,12 +74,12 @@ For all other questions, please use [GitHub discussions](https://github.com/aws/
 
 ## How to Contribute
 
-1. Set up your environment by following the directions in the [Contributor Guide](docs/contributor-guide/DevelopmentGuide.md).
+1. Set up your environment by following the directions in the [Contributor Guide](docs/contributor-guide/ContributorGuide.md).
 2. To contribute, first make a fork of this project.
 3. Make any changes on your fork. Make sure you are aware of the requirements for the project.
 4. Create a pull request from your fork.
 5. Pull requests need to be approved and merged by maintainers into the main branch. <br />
-**Note:** Before making a pull request, [run all tests](docs/contributor-guide/DevelopmentGuide.md#running-the-tests) and verify everything is passing.
+**Note:** Before making a pull request, [run all tests](docs/contributor-guide/ContributorGuide.md#running-the-tests) and verify everything is passing.
 
 ## Releases
 

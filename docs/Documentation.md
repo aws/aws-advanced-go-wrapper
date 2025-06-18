@@ -1,13 +1,17 @@
 # Documentation
 
-- [Getting Started](./GettingStarted.md)
+- [Getting Started](GettingStarted.md)
 - [User Guide](user-guide/UsingTheGoWrapper.md)
   - [Plugins](user-guide/UsingTheGoWrapper.md#plugins)
     - [Failover Plugin](user-guide/using-plugins/UsingTheFailoverPlugin.md)
-    - [Host Monitoring Plugin](user-guide/using-plugins/UsingTheHostMonitoringPlugin.md);
+    - [Host Monitoring Plugin](user-guide/using-plugins/UsingTheHostMonitoringPlugin.md)
     - [Okta Authentication Plugin](user-guide/using-plugins/UsingTheOktaAuthPlugin.md)
     - [Federated Authentication Plugin](user-guide/using-plugins/UsingTheFederatedAuthPlugin.md)
     - [IAM Authentication Plugin](user-guide/using-plugins/UsingTheIamAuthenticationPlugin.md)
     - [AWS Secrets Manager Plugin](user-guide/using-plugins/UsingTheAwsSecretsManagerPlugin.md)
 - [Contributor Guide](contributor-guide/ContributorGuide.md)
-- 
+  - [Setup](contributor-guide/ContributorGuide.md#setup)
+  - [Testing Overview](contributor-guide/ContributorGuide.md#testing-overview)
+    - [Performance Tests](contributor-guide/ContributorGuide.md#performance-tests)
+  - [Running the Tests](contributor-guide/ContributorGuide.md#running-the-tests)
+  - [Architecture](contributor-guide/Architecture.md)
