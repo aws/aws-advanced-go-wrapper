@@ -45,6 +45,8 @@ func TestBasicConnectivityWrapperProxy(t *testing.T) {
 
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
+	test_utils.RequireTestEnvironmentFeatures(t, environment.Info().Request.Features, test_utils.NETWORK_OUTAGES_ENABLED)
+	test_utils.SkipForTestEnvironmentFeatures(t, environment.Info().Request.Features, test_utils.LIMITLESS_DEPLOYMENT)
 	dsn := test_utils.GetDsn(environment, map[string]string{
 		"host":                       environment.Info().ProxyDatabaseInfo.Instances[0].Host(),
 		"port":                       strconv.Itoa(environment.Info().ProxyDatabaseInfo.InstanceEndpointPort),
@@ -91,6 +93,8 @@ func TestBasicConnectivityFailoverInstanceEndpoint(t *testing.T) {
 
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
+	test_utils.SkipForTestEnvironmentFeatures(t, environment.Info().Request.Features, test_utils.LIMITLESS_DEPLOYMENT)
+
 	dsn := test_utils.GetDsn(environment, map[string]string{
 		"host": environment.Info().DatabaseInfo.Instances[0].Host(),
 	})

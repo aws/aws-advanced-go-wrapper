@@ -88,6 +88,11 @@ public class TestEnvironmentConfig implements AutoCloseable {
               TestEnvironmentFeatures.FAILOVER_SUPPORTED.toString());
         }
 
+        if (request.getFeatures().contains(TestEnvironmentFeatures.LIMITLESS_DEPLOYMENT)) {
+          throw new UnsupportedOperationException(
+              TestEnvironmentFeatures.LIMITLESS_DEPLOYMENT.toString());
+        }
+
         break;
       case AURORA:
       case RDS_MULTI_AZ_CLUSTER:
@@ -99,6 +104,14 @@ public class TestEnvironmentConfig implements AutoCloseable {
           if (request.getDatabaseEngineDeployment() == DatabaseEngineDeployment.RDS_MULTI_AZ_CLUSTER) {
             throw new RuntimeException("IAM isn't supported by " + DatabaseEngineDeployment.RDS_MULTI_AZ_CLUSTER);
           }
+          configureIamAccess(env);
+        }
+
+        break;
+      case AURORA_LIMITLESS:
+        initLimitlessDatabaseParams(env);
+        createDbCluster(env);
+        if (request.getFeatures().contains(TestEnvironmentFeatures.IAM)) {
           configureIamAccess(env);
         }
 
@@ -386,6 +399,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
   private static String getDbEngine(TestEnvironmentRequest request) {
     switch (request.getDatabaseEngineDeployment()) {
       case AURORA:
+      case AURORA_LIMITLESS:
         return getAuroraEngine(request);
       case RDS:
       case RDS_MULTI_AZ_CLUSTER:
@@ -399,6 +413,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
     final TestEnvironmentRequest request = env.info.getRequest();
     switch (request.getDatabaseEngineDeployment()) {
       case AURORA:
+      case AURORA_LIMITLESS:
         return getAuroraDbEngineVersion(env);
       case RDS:
       case RDS_MULTI_AZ_CLUSTER:
@@ -485,6 +500,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
   private static String getDbInstanceClass(TestEnvironmentRequest request) {
     switch (request.getDatabaseEngineDeployment()) {
       case AURORA:
+      case AURORA_LIMITLESS:
         return "db.r5.large";
       case RDS:
       case RDS_MULTI_AZ_CLUSTER:
@@ -510,6 +526,26 @@ public class TestEnvironmentConfig implements AutoCloseable {
         !StringUtils.isNullOrEmpty(System.getenv("DB_DATABASE_NAME"))
             ? System.getenv("DB_DATABASE_NAME")
             : "test_database";
+    final String dbUsername =
+        !StringUtils.isNullOrEmpty(System.getenv("DB_USERNAME"))
+            ? System.getenv("DB_USERNAME")
+            : "test_user";
+    final String dbPassword =
+        !StringUtils.isNullOrEmpty(System.getenv("DB_PASSWORD"))
+            ? System.getenv("DB_PASSWORD")
+            : "secret_password";
+
+    env.info.setDatabaseInfo(new TestDatabaseInfo());
+    env.info.getDatabaseInfo().setUsername(dbUsername);
+    env.info.getDatabaseInfo().setPassword(dbPassword);
+    env.info.getDatabaseInfo().setDefaultDbName(dbName);
+  }
+
+  private static void initLimitlessDatabaseParams(TestEnvironmentConfig env) {
+    final String dbName =
+        !StringUtils.isNullOrEmpty(System.getenv("DB_DATABASE_NAME"))
+            ? System.getenv("DB_DATABASE_NAME")
+            : "postgres_limitless";
     final String dbUsername =
         !StringUtils.isNullOrEmpty(System.getenv("DB_USERNAME"))
             ? System.getenv("DB_USERNAME")
@@ -727,7 +763,8 @@ public class TestEnvironmentConfig implements AutoCloseable {
 
   private static void configureIamAccess(TestEnvironmentConfig env) {
 
-    if (env.info.getRequest().getDatabaseEngineDeployment() != DatabaseEngineDeployment.AURORA) {
+    if (env.info.getRequest().getDatabaseEngineDeployment() != DatabaseEngineDeployment.AURORA
+      && env.info.getRequest().getDatabaseEngineDeployment() != DatabaseEngineDeployment.AURORA_LIMITLESS) {
       throw new UnsupportedOperationException(
           env.info.getRequest().getDatabaseEngineDeployment().toString());
     }

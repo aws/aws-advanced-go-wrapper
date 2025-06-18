@@ -25,7 +25,7 @@ type TestEnvironmentRequest struct {
 	instances     DatabaseInstances
 	Engine        DatabaseEngine
 	Deployment    DatabaseEngineDeployment
-	features      []TestEnvironmentFeatures
+	Features      []TestEnvironmentFeatures
 }
 
 func NewTestEnvironmentRequest(requestVal any) (request TestEnvironmentRequest, err error) {
@@ -67,6 +67,8 @@ func NewTestEnvironmentRequest(requestVal any) (request TestEnvironmentRequest, 
 		deployment = RDS
 	} else if deploymentVal == "AURORA" {
 		deployment = AURORA
+	} else if deploymentVal == "AURORA_LIMITLESS" {
+		deployment = AURORA_LIMITLESS
 	} else {
 		err = fmt.Errorf("Invalid deployment: %s", deploymentVal)
 		return
@@ -83,6 +85,6 @@ func NewTestEnvironmentRequest(requestVal any) (request TestEnvironmentRequest, 
 		InstanceCount: instanceCount,
 		Engine:        engine,
 		Deployment:    deployment,
-		features:      features,
+		Features:      features,
 	}, nil
 }

@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
@@ -62,7 +63,7 @@ func GetSleepSql(engine DatabaseEngine, seconds int) string {
 }
 
 func GetInstanceIdSql(engine DatabaseEngine, deployment DatabaseEngineDeployment) (string, error) {
-	if deployment == AURORA {
+	if deployment == AURORA || deployment == AURORA_LIMITLESS {
 		switch engine {
 		case PG:
 			return "SELECT aurora_db_instance_identifier() as id", nil
@@ -227,7 +228,11 @@ func ConfigureProps(environment *TestEnvironment, props map[string]string) map[s
 		props[property_util.USER.Name] = environment.Info().DatabaseInfo.Username
 	}
 	if _, ok := props[property_util.HOST.Name]; !ok {
-		props[property_util.HOST.Name] = environment.Info().DatabaseInfo.ClusterEndpoint
+		if slices.Contains(environment.Info().Request.Features, LIMITLESS_DEPLOYMENT) {
+			props[property_util.HOST.Name] = strings.Replace(environment.Info().DatabaseInfo.ClusterEndpoint, "cluster-", "shardgrp-", 1)
+		} else {
+			props[property_util.HOST.Name] = environment.Info().DatabaseInfo.ClusterEndpoint
+		}
 	}
 	if _, ok := props[property_util.DATABASE.Name]; !ok {
 		props[property_util.DATABASE.Name] = environment.Info().DatabaseInfo.DefaultDbName
