@@ -34,6 +34,12 @@ When the `iam` module is added as a dependency, the required AWS modules will al
 To enable the IAM Authentication Plugin, add the plugin code `iam` to the [
 `plugins`](../UsingTheGoWrapper.md#connection-plugin-manager-parameters) parameter value. Then, specify parameters that are required or specific to your case.
 
+### Connecting with the Go-MySQL Driver
+
+When connecting through IAM with the Go-MySQL-Driver, the additional parameter `allowCleartextPasswords=true` is required. By default, MySQL encrypts the password and when AWS receives it for IAM authentication it doesn't decrypt it and is unable to connect. When `allowCleartextPasswords` is set to `true` AWS receives the password as-is and is able to connect.
+
+Additional case-specific configuration can be handled by registering a tls.Config with the underlying driver. See [MySQL IAM Sample Code](../../../examples/iam_mysql_example.go) for an example.
+
 ## IAM Authentication Plugin Parameters
 
 | Parameter        |  Value  | Required | Description                                                                                                                                                                                                                                              | Example Value                                       |

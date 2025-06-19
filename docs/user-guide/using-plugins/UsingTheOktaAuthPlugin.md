@@ -40,11 +40,17 @@ When the `okta` module is added as a dependency, the required AWS modules will a
 > acquires SAML assertion from the identity provider, the SAML Assertion is then used to acquire an AWS IAM token. The
 > AWS IAM token is then subsequently used to access the database.
 
-### Enabling the Okta Authentication Plugin
+## Enabling the Okta Authentication Plugin
 
 To enable the Okta Authentication Plugin, add the plugin code `okta` to the [`plugins`](../UsingTheGoWrapper.md#connection-plugin-manager-parameters) value. Then, specify parameters that are required or specific to your case.
 
-### Okta Authentication Plugin Parameters
+### Connecting with the Go-MySQL Driver
+
+For [IAM connections with the Go-MySQL-Driver](UsingTheIamAuthenticationPlugin.md#connecting-with-the-go-mysql-driver) ensure the parameter `allowCleartextPasswords` is set to `true`.
+
+Additional case-specific configuration can be handled by registering a tls.Config with the underlying driver. See [MySQL IAM Sample Code](../../../examples/iam_mysql_example.go) for an example.
+
+## Okta Authentication Plugin Parameters
 
 | Parameter            |  Value  | Required | Description                                                                                                                                                                                                                                                                                                                                                        | Default Value | Example Value                                          |
 |----------------------|:-------:|:--------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|--------------------------------------------------------|

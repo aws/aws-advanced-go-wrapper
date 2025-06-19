@@ -17,12 +17,16 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"log"
 
 	_ "github.com/aws/aws-advanced-go-wrapper/iam"
 	_ "github.com/aws/aws-advanced-go-wrapper/mysql-driver" // awssql mysql driver
+	"github.com/go-sql-driver/mysql"
 )
 
 func iam_mysql() {
@@ -30,14 +34,18 @@ func iam_mysql() {
 	host := "endpoint"
 	port := "3306"
 	iamUser := "user"
-	password := "password"
 	dbName := "db"
 	plugins := "iam"
 	iamRegion := "us-east-1"
+	// To use custom tls.Config set to the name of registered config. Ex. "aws-rds-secure".
+	tlsConfig := "true"
 
-	connStr := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?plugins=%s&iamRegion=%s",
-		iamUser, password, host, port, dbName, plugins, iamRegion,
+	// Connection parameter allowCleartextPasswords=true must be set for iam connections.
+	connStr := fmt.Sprintf("%s@tcp(%s:%s)/%s?plugins=%s&iamRegion=%s&allowCleartextPasswords=true&tls=%s",
+		iamUser, host, port, dbName, plugins, iamRegion, tlsConfig,
 	)
+
+	// If using a custom tls.Config, ensure it is set up and registered before connecting. Example in setupSSL().
 
 	// Open the database connection
 	db, err := sql.Open("awssql-mysql", connStr)
@@ -55,4 +63,22 @@ func iam_mysql() {
 
 	// Print the result
 	fmt.Println("Query result:", result)
+}
+
+func setupSSL() {
+	caCert, err := ioutil.ReadFile("/path/to/certificate.pem")
+	if err != nil {
+		// handle error
+	}
+
+	caCertPool := x509.NewCertPool()
+	if !caCertPool.AppendCertsFromPEM(caCert) {
+		// handle error
+	}
+
+	tlsConfig := &tls.Config{
+		RootCAs: caCertPool,
+	}
+
+	mysql.RegisterTLSConfig("aws-rds-secure", tlsConfig)
 }

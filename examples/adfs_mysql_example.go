@@ -39,7 +39,8 @@ func adfs_mysql() {
 	idpUsername := "someFederatedUsername@example.com"
 	idpPassword := "somePassword"
 
-	connStr := fmt.Sprintf("tcp(%s:%s)/%s?plugins=%s&dbUser=%s&iamRegion=%s&idpEndpoint=%s&iamRoleArn=%s&iamIdpArn=%s&idpUsername=%s&idpPassword=%s",
+	// Connection parameter allowCleartextPasswords=true must be set for iam connections.
+	connStr := fmt.Sprintf("tcp(%s:%s)/%s?plugins=%s&dbUser=%s&iamRegion=%s&idpEndpoint=%s&iamRoleArn=%s&iamIdpArn=%s&idpUsername=%s&idpPassword=%s&allowCleartextPasswords=true",
 		host, port, dbName, plugins, dbUser, iamRegion, idpEndpoint, iamRoleArn, iamIdpArn, idpUsername, idpPassword,
 	)
 
