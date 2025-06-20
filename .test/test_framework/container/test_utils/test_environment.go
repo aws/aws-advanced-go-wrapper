@@ -105,7 +105,7 @@ func VerifyClusterStatus() error {
 		return err
 	}
 	info := env.info
-	if info.Request.Deployment == AURORA { // TODO || info.request.deployment == RDS_MULTI_AZ_CLUSTER {
+	if info.Request.Deployment == AURORA || info.Request.Deployment == RDS_MULTI_AZ_CLUSTER {
 		remainingTries := 3
 		success := false
 		for !success && remainingTries > 0 {

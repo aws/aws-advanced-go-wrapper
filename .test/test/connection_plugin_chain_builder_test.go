@@ -16,135 +16,144 @@
 
 package test
 
-//import (
-//	"awssql/driver_infrastructure"
-//	"awssql/container"
-//	"awssql/plugin_helpers"
-//	"reflect"
-//	"testing"
-//)
-//
-//// TODO: complete once additional plugins have been added.
-//func TestSortPlugins(t *testing.T) {
-//	builder := &container.ConnectionPluginChainBuilder{}
-//	props := map[string]string{}
-//	props[driver_infrastructure.PLUGINS.Name] = "iam,efm,failover"
-//	pluginManagerImpl := plugin_helpers.PluginManagerImpl{}
-//	pluginManager := driver_infrastructure.PluginManager(&pluginManagerImpl)
-//	var driver driver_infrastructure.PluginService = plugin_helpers.NewPluginServiceImpl(&pluginManagerImpl, props)
-//	plugins, err := builder.GetPlugins(&driver, &pluginManager, props)
-//
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	if len(plugins) != 4 {
-//		t.Fatal("Expected 4 plugins.")
-//	}
-//
-//	_, failoverOk := (*plugins[0]).(plugins.FailoverPlugin)
-//	if !failoverOk {
-//		t.Fatal("Expected first plugin to be a FailoverPlugin.")
-//	}
-//
-//	_, efmOk := (*plugins[1]).(plugins.HostMonitoringPlugin)
-//	if !efmOk {
-//		t.Fatal("Expected second plugin to be a HostMonitoringPlugin.")
-//	}
-//
-//	_, iamOk := (*plugins[2]).(plugins.IamAuthenticationPlugin)
-//	if !iamOk {
-//		t.Fatal("Expected third plugin to be a IamAuthenticationPlugin.")
-//	}
-//
-//	if reflect.TypeOf(*plugins[3]).String() != "driver_infrastructure.DefaultPlugin" {
-//		t.Fatal("Expected fourth plugin to be a DefaultPlugin.")
-//	}
-//}
-//
-//func TestPreservePluginOrder(t *testing.T) {
-//	builder := &container.ConnectionPluginChainBuilder{}
-//	props := map[string]string{}
-//	props[driver_infrastructure.PLUGINS.Name] = "iam,efm,failover"
-//	props[driver_infrastructure.AUTO_SORT_PLUGIN_ORDER.Name] = false
-//	pluginManagerImpl := plugin_helpers.PluginManagerImpl{}
-//	pluginManager := driver_infrastructure.PluginManager(&pluginManagerImpl)
-//	var driver driver_infrastructure.PluginService = plugin_helpers.NewPluginServiceImpl(&pluginManagerImpl, props)
-//	plugins, err := builder.GetPlugins(&driver, &pluginManager, props)
-//
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	if len(plugins) != 4 {
-//		t.Fatal("Expected 4 plugins.")
-//	}
-//
-//	_, iamOk := (*plugins[0]).(plugins.IamAuthenticationPlugin)
-//	if !iamOk {
-//		t.Fatal("Expected first plugin to be a IamAuthenticationPlugin.")
-//	}
-//
-//	_, efmOk := (*plugins[1]).(plugins.HostMonitoringPlugin)
-//	if !efmOk {
-//		t.Fatal("Expected second plugin to be a HostMonitoringPlugin.")
-//	}
-//
-//	_, failoverOk := (*plugins[2]).(plugins.FailoverPlugin)
-//	if !failoverOk {
-//		t.Fatal("Expected third plugin to be a FailoverPlugin.")
-//	}
-//
-//	if reflect.TypeOf(plugins[3]).String() != "driver_infrastructure.DefaultPlugin" {
-//		t.Fatal("Expected fourth plugin to be a DefaultPlugin.")
-//	}
-//}
-//
-//func TestSortPluginsWithStickToPrior(t *testing.T) {
-//	builder := &container.ConnectionPluginChainBuilder{}
-//	props := map[string]string{}
-//	props[driver_infrastructure.PLUGINS.Name] = "dev,iam,executionTime,connectTime,efm,failover"
-//	pluginManagerImpl := plugin_helpers.PluginManagerImpl{}
-//	pluginManager := driver_infrastructure.PluginManager(&pluginManagerImpl)
-//	var driver driver_infrastructure.PluginService = plugin_helpers.NewPluginServiceImpl(&pluginManagerImpl, props)
-//	plugins, err := builder.GetPlugins(&driver, &pluginManager, props)
-//
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	if len(plugins) != 7 {
-//		t.Fatal("Expected 7 plugins.")
-//	}
-//
-//	_, devOk := (*plugins[0]).(plugins.DeveloperPlugin)
-//	if !devOk {
-//		t.Fatal("Expected first plugin to be a DeveloperPlugin.")
-//	}
-//
-//	_, efmOk := (*plugins[1]).(plugins.FailoverPlugin)
-//	if !efmOk {
-//		t.Fatal("Expected second plugin to be a FailoverPlugin.")
-//	}
-//
-//	_, failoverOk := (*plugins[2]).(plugins.HostMonitoringPlugin)
-//	if !failoverOk {
-//		t.Fatal("Expected third plugin to be a HostMonitoringPlugin.")
-//	}
-//
-//	_, iamOk := (*plugins[3]).(plugins.IamAuthenticationPlugin)
-//	if !iamOk {
-//		t.Fatal("Expected fourth plugin to be a IamAuthenticationPlugin.")
-//	}
-//
-//	_, executeOk := (*plugins[4]).(plugins.ExecuteTimePlugin)
-//	if !executeOk {
-//		t.Fatal("Expected fifth plugin to be a ExecuteTimePlugin.")
-//	}
-//
-//	_, connectOk := (*plugins[5]).(plugins.ConnectTimePlugin)
-//	if !connectOk {
-//		t.Fatal("Expected sixth plugin to be a ConnectTimePlugin.")
-//	}
-//
-//	if reflect.TypeOf(plugins[6]).String() != "driver_infrastructure.DefaultPlugin" {
-//		t.Fatal("Expected seventh plugin to be a DefaultPlugin.")
-//	}
-//}
+import (
+	"reflect"
+	"testing"
+
+	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
+	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/efm"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
+	"github.com/aws/aws-advanced-go-wrapper/iam"
+	_ "github.com/aws/aws-advanced-go-wrapper/iam"
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestSortPlugins(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockPluginManager := mock_driver_infrastructure.NewMockPluginManager(ctrl)
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+
+	mockPluginService.EXPECT().GetTelemetryFactory().Return(telemetry.NewNilTelemetryFactory()).AnyTimes()
+	mockPluginManager.EXPECT().GetDefaultConnectionProvider().Return(nil).AnyTimes()
+	mockPluginManager.EXPECT().GetEffectiveConnectionProvider().Return(nil).AnyTimes()
+	mockPluginManager.EXPECT().GetConnectionProviderManager().Return(driver_infrastructure.ConnectionProviderManager{}).AnyTimes()
+
+	builder := &awsDriver.ConnectionPluginChainBuilder{}
+	props := map[string]string{property_util.PLUGINS.Name: "iam,efm,failover"}
+	availablePlugins := map[string]driver_infrastructure.ConnectionPluginFactory{
+		"failover":      plugins.NewFailoverPluginFactory(),
+		"efm":           efm.NewHostMonitoringPluginFactory(),
+		"limitless":     limitless.NewLimitlessPluginFactory(),
+		"executionTime": plugins.NewExecutionTimePluginFactory(),
+		"iam":           iam.NewIamAuthPluginFactory(),
+	}
+	plugins, err := builder.GetPlugins(mockPluginService, mockPluginManager, props, availablePlugins)
+	require.Nil(t, err)
+
+	assert.Equal(t, 4, len(plugins), "Expected 4 plugins.")
+	assert.Equal(t, "*plugins.FailoverPlugin", reflect.TypeOf(plugins[0]).String())
+	assert.Equal(t, "*efm.HostMonitorConnectionPlugin", reflect.TypeOf(plugins[1]).String())
+	assert.Equal(t, "*iam.IamAuthPlugin", reflect.TypeOf(plugins[2]).String())
+	assert.Equal(t, "*plugins.DefaultPlugin", reflect.TypeOf(plugins[3]).String())
+}
+
+func TestPreservePluginOrder(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockPluginManager := mock_driver_infrastructure.NewMockPluginManager(ctrl)
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+
+	mockPluginService.EXPECT().GetTelemetryFactory().Return(telemetry.NewNilTelemetryFactory()).AnyTimes()
+	mockPluginManager.EXPECT().GetDefaultConnectionProvider().Return(nil).AnyTimes()
+	mockPluginManager.EXPECT().GetEffectiveConnectionProvider().Return(nil).AnyTimes()
+	mockPluginManager.EXPECT().GetConnectionProviderManager().Return(driver_infrastructure.ConnectionProviderManager{}).AnyTimes()
+
+	builder := &awsDriver.ConnectionPluginChainBuilder{}
+	props := map[string]string{property_util.PLUGINS.Name: "iam,efm,failover", property_util.AUTO_SORT_PLUGIN_ORDER.Name: "false"}
+	availablePlugins := map[string]driver_infrastructure.ConnectionPluginFactory{
+		"failover":      plugins.NewFailoverPluginFactory(),
+		"efm":           efm.NewHostMonitoringPluginFactory(),
+		"limitless":     limitless.NewLimitlessPluginFactory(),
+		"executionTime": plugins.NewExecutionTimePluginFactory(),
+		"iam":           iam.NewIamAuthPluginFactory(),
+	}
+	plugins, err := builder.GetPlugins(mockPluginService, mockPluginManager, props, availablePlugins)
+	require.Nil(t, err)
+
+	assert.Equal(t, 4, len(plugins), "Expected 4 plugins.")
+	assert.Equal(t, "*iam.IamAuthPlugin", reflect.TypeOf(plugins[0]).String())
+	assert.Equal(t, "*efm.HostMonitorConnectionPlugin", reflect.TypeOf(plugins[1]).String())
+	assert.Equal(t, "*plugins.FailoverPlugin", reflect.TypeOf(plugins[2]).String())
+	assert.Equal(t, "*plugins.DefaultPlugin", reflect.TypeOf(plugins[3]).String())
+}
+
+func TestSortAllPlugins(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockPluginManager := mock_driver_infrastructure.NewMockPluginManager(ctrl)
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+
+	mockPluginService.EXPECT().GetTelemetryFactory().Return(telemetry.NewNilTelemetryFactory()).AnyTimes()
+	mockPluginManager.EXPECT().GetDefaultConnectionProvider().Return(nil).AnyTimes()
+	mockPluginManager.EXPECT().GetEffectiveConnectionProvider().Return(nil).AnyTimes()
+	mockPluginManager.EXPECT().GetConnectionProviderManager().Return(driver_infrastructure.ConnectionProviderManager{}).AnyTimes()
+
+	builder := &awsDriver.ConnectionPluginChainBuilder{}
+	props := map[string]string{property_util.PLUGINS.Name: "iam,executionTime,limitless,efm,failover"}
+	availablePlugins := map[string]driver_infrastructure.ConnectionPluginFactory{
+		"failover":      plugins.NewFailoverPluginFactory(),
+		"efm":           efm.NewHostMonitoringPluginFactory(),
+		"limitless":     limitless.NewLimitlessPluginFactory(),
+		"executionTime": plugins.NewExecutionTimePluginFactory(),
+		"iam":           iam.NewIamAuthPluginFactory(),
+	}
+	plugins, err := builder.GetPlugins(mockPluginService, mockPluginManager, props, availablePlugins)
+	require.Nil(t, err)
+
+	assert.Equal(t, 6, len(plugins), "Expected 6 plugins.")
+	assert.Equal(t, "*plugins.ExecutionTimePlugin", reflect.TypeOf(plugins[0]).String())
+	assert.Equal(t, "*limitless.LimitlessPlugin", reflect.TypeOf(plugins[1]).String())
+	assert.Equal(t, "*plugins.FailoverPlugin", reflect.TypeOf(plugins[2]).String())
+	assert.Equal(t, "*efm.HostMonitorConnectionPlugin", reflect.TypeOf(plugins[3]).String())
+	assert.Equal(t, "*iam.IamAuthPlugin", reflect.TypeOf(plugins[4]).String())
+	assert.Equal(t, "*plugins.DefaultPlugin", reflect.TypeOf(plugins[5]).String())
+}
+
+func TestNoPlugins(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockPluginManager := mock_driver_infrastructure.NewMockPluginManager(ctrl)
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+
+	mockPluginService.EXPECT().GetTelemetryFactory().Return(telemetry.NewNilTelemetryFactory()).AnyTimes()
+	mockPluginManager.EXPECT().GetDefaultConnectionProvider().Return(nil).AnyTimes()
+	mockPluginManager.EXPECT().GetEffectiveConnectionProvider().Return(nil).AnyTimes()
+	mockPluginManager.EXPECT().GetConnectionProviderManager().Return(driver_infrastructure.ConnectionProviderManager{}).AnyTimes()
+
+	builder := &awsDriver.ConnectionPluginChainBuilder{}
+	props := map[string]string{property_util.PLUGINS.Name: "none"}
+	availablePlugins := map[string]driver_infrastructure.ConnectionPluginFactory{
+		"failover":      plugins.NewFailoverPluginFactory(),
+		"efm":           efm.NewHostMonitoringPluginFactory(),
+		"limitless":     limitless.NewLimitlessPluginFactory(),
+		"executionTime": plugins.NewExecutionTimePluginFactory(),
+		"iam":           iam.NewIamAuthPluginFactory(),
+	}
+	plugins, err := builder.GetPlugins(mockPluginService, mockPluginManager, props, availablePlugins)
+	require.Nil(t, err)
+
+	assert.Equal(t, 1, len(plugins), "Expected 1 plugin.")
+	assert.Equal(t, "*plugins.DefaultPlugin", reflect.TypeOf(plugins[0]).String())
+}
