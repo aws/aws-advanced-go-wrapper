@@ -47,6 +47,7 @@ Enhanced Failure Monitoring will be enabled by default if the [`plugins`](../Usi
 > [!NOTE]
 > When loading the Host Monitoring Plugin, the order plugins are loaded in matters. If setting the [`autoSortPluginOrder`](../UsingTheGoWrapper.md#connection-plugin-manager-parameters) parameter to `false`, we recommend that you load the Host Monitoring Plugin at the end (or as close to the end) as possible. When used in conjunction with the Failover Plugin, the Host Monitoring Plugin must be loaded after the Failover Plugin. For example, when loading plugins with the `plugins` parameter, the parameter value should be `failover,...,efm`.
 > 
+
 ### Enhanced Failure Monitoring Parameters
 <div style="text-align:center"><img src="../../images/efm_monitor_process.png" /></div>
 
