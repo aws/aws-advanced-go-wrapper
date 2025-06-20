@@ -105,7 +105,7 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	CLUSTER_ID.Name:                                 true,
 	CLUSTER_INSTANCE_HOST_PATTERN.Name:              true,
 	IAM_HOST.Name:                                   true,
-	IAM_EXPIRATION.Name:                             true,
+	IAM_EXPIRATION_SEC.Name:                         true,
 	IAM_REGION.Name:                                 true,
 	IAM_DEFAULT_PORT.Name:                           true,
 	SECRETS_MANAGER_SECRET_ID.Name:                  true,
@@ -122,7 +122,7 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	ENABLE_CONNECT_FAILOVER.Name:                    true,
 	CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS.Name:      true,
 	WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS.Name:          true,
-	IAM_TOKEN_EXPIRATION.Name:                       true,
+	IAM_TOKEN_EXPIRATION_SEC.Name:                   true,
 	IDP_USERNAME.Name:                               true,
 	IDP_PASSWORD.Name:                               true,
 	IDP_PORT.Name:                                   true,
@@ -308,8 +308,8 @@ var IAM_REGION = AwsWrapperProperty{
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
-var IAM_EXPIRATION = AwsWrapperProperty{
-	Name:                "iamExpiration",
+var IAM_EXPIRATION_SEC = AwsWrapperProperty{
+	Name:                "iamExpirationSec",
 	description:         "IAM token cache expiration in seconds.",
 	defaultValue:        "870",
 	wrapperPropertyType: WRAPPER_TYPE_INT,
@@ -387,8 +387,8 @@ var WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS = AwsWrapperProperty{
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
-var IAM_TOKEN_EXPIRATION = AwsWrapperProperty{
-	Name:                "iamTokenExpiration",
+var IAM_TOKEN_EXPIRATION_SEC = AwsWrapperProperty{
+	Name:                "iamTokenExpirationSec",
 	description:         "IAM token cache expiration in seconds.",
 	defaultValue:        "870",
 	wrapperPropertyType: WRAPPER_TYPE_INT,
@@ -559,7 +559,7 @@ var LIMITLESS_MAX_CONN_RETRIES = AwsWrapperProperty{
 }
 
 var LIMITLESS_ROUTER_QUERY_TIMEOUT_MS = AwsWrapperProperty{
-	Name:                "limitlessTransactionRouterFetchTimeout",
+	Name:                "limitlessTransactionRouterFetchTimeoutMs",
 	description:         "The timeout in milliseconds for fetching available Limitless transaction routers.",
 	defaultValue:        "5000",
 	wrapperPropertyType: WRAPPER_TYPE_INT,

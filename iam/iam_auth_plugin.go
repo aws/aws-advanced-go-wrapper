@@ -158,7 +158,7 @@ func (iamAuthPlugin *IamAuthPlugin) fetchAndSetToken(
 	region region_util.Region,
 	cacheKey string,
 	props map[string]string) error {
-	tokenExpirationSec := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.IAM_EXPIRATION)
+	tokenExpirationSec := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.IAM_EXPIRATION_SEC)
 	awsCredentialsProvider, err := auth_helpers.GetAwsCredentialsProvider(*hostInfo, props)
 	if err != nil {
 		slog.Error(error_util.GetMessage("IamAuthPlugin.errorGettingAwsCredentialsProvider", err))
