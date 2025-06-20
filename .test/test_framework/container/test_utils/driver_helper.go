@@ -40,12 +40,7 @@ func OpenDb(engine DatabaseEngine, dsn string) (*sql.DB, error) {
 	return nil, fmt.Errorf("unknown engine %s", engine)
 }
 
-type CanReleaseResources interface {
-	driver.Driver
-	ReleaseResources()
-}
-
-func NewWrapperDriver(engine DatabaseEngine) CanReleaseResources {
+func NewWrapperDriver(engine DatabaseEngine) driver.Driver {
 	switch engine {
 	case PG:
 		return &pgx_driver.PgxDriver{}

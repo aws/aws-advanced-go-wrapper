@@ -33,8 +33,8 @@ func (d *MySQLDriver) Open(dsn string) (driver.Conn, error) {
 	return d.awsWrapperDriver.Open(dsn)
 }
 
-func (d *MySQLDriver) ReleaseResources() {
-	d.awsWrapperDriver.ReleaseResources()
+func ClearCaches() {
+	awsDriver.ClearCaches()
 }
 
 func init() {

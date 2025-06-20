@@ -282,7 +282,7 @@ func setupTest() {
 }
 
 func cleanupTest() {
-	driver_infrastructure.MonitoringRdsHostListProviderReleaseResources()
+	driver_infrastructure.MonitoringRdsHostListProviderClearCaches()
 }
 
 func TestFailoverWriter(t *testing.T) {

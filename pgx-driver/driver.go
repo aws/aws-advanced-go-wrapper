@@ -34,8 +34,8 @@ func (d *PgxDriver) Open(dsn string) (driver.Conn, error) {
 	return d.awsWrapperDriver.Open(dsn)
 }
 
-func (d *PgxDriver) ReleaseResources() {
-	d.awsWrapperDriver.ReleaseResources()
+func ClearCaches() {
+	awsDriver.ClearCaches()
 }
 
 func init() {

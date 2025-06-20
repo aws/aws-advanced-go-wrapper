@@ -81,7 +81,6 @@ func TestFailoverWriter(t *testing.T) {
 	assert.Equal(t, currWriterId, newInstanceId)
 	assert.NotEqual(t, instanceId, newInstanceId)
 
-	wrapperDriver.ReleaseResources()
 	test_utils.BasicCleanup(t.Name())
 }
 
@@ -129,7 +128,6 @@ func TestFailoverWriterWithTelemetryOtel(t *testing.T) {
 	assert.Equal(t, currWriterId, newInstanceId)
 	assert.NotEqual(t, instanceId, newInstanceId)
 
-	wrapperDriver.ReleaseResources()
 	test_utils.BasicCleanup(t.Name())
 }
 
@@ -177,7 +175,6 @@ func TestFailoverWriterWithTelemetryXray(t *testing.T) {
 	assert.Equal(t, currWriterId, newInstanceId)
 	assert.NotEqual(t, instanceId, newInstanceId)
 
-	wrapperDriver.ReleaseResources()
 	test_utils.BasicCleanup(t.Name())
 }
 
@@ -217,8 +214,6 @@ func TestFailoverWriterEndpoint(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, newInstanceId)
 	assert.NotEqual(t, instanceId, newInstanceId)
-
-	wrapperDriver.ReleaseResources()
 }
 
 func TestFailoverReaderOrWriter(t *testing.T) {
@@ -255,8 +250,6 @@ func TestFailoverReaderOrWriter(t *testing.T) {
 	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	assert.Nil(t, err)
 	assert.NotZero(t, newInstanceId)
-
-	wrapperDriver.ReleaseResources()
 }
 
 func TestFailoverStrictReader(t *testing.T) {
@@ -294,8 +287,6 @@ func TestFailoverStrictReader(t *testing.T) {
 	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	assert.Nil(t, err)
 	assert.False(t, auroraTestUtility.IsDbInstanceWriter(newInstanceId, ""))
-
-	wrapperDriver.ReleaseResources()
 }
 
 func TestFailoverWriterInTransactionWithSQL(t *testing.T) {
@@ -355,8 +346,6 @@ func TestFailoverWriterInTransactionWithSQL(t *testing.T) {
 	// Clean up the test table
 	_, err = execer.ExecContext(ctx, "DROP TABLE IF EXISTS test_failover_tx_rollback", []driver.NamedValue{})
 	assert.Nil(t, err)
-
-	wrapperDriver.ReleaseResources()
 }
 
 func TestFailoverEfmDisableInstance(t *testing.T) {

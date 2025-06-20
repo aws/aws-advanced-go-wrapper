@@ -133,10 +133,6 @@ func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 	return NewAwsWrapperConn(pluginManager, pluginService, dbEngine), nil
 }
 
-func (d *AwsWrapperDriver) ReleaseResources() {
-	driver_infrastructure.MonitoringRdsHostListProviderReleaseResources()
-}
-
 func UsePluginFactory(code string, pluginFactory driver_infrastructure.ConnectionPluginFactory) {
 	pluginFactoryByCode[code] = pluginFactory
 }
@@ -152,6 +148,7 @@ func ClearCaches() {
 	for _, pluginFactory := range pluginFactoryByCode {
 		pluginFactory.ClearCaches()
 	}
+	driver_infrastructure.MonitoringRdsHostListProviderClearCaches()
 }
 
 type AwsWrapperConn struct {
