@@ -147,6 +147,7 @@ func TestGetHostsFromDsnWithMultipleHosts(t *testing.T) {
 		GetHostsFromDsnWithMultipleHostsMultiplePorts(testDsn, strBeforePort[i], t)
 	}
 }
+
 func GetHostsFromDsnWithMultipleHostsNoPort(dsn string, t *testing.T) {
 	dsn = fmt.Sprintf(dsn, "")
 	hosts, err := utils.GetHostsFromDsn(dsn, true)
