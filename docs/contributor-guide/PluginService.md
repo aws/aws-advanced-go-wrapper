@@ -14,7 +14,13 @@ The plugin service uses the host list provider to retrieve the most recent host 
 
 The AWS Advanced Go Wrapper has two host list providers, the `DsnHostListProvider` and the `RdsHostListPovider`.
 
-The `DsnHostListProvider` is the default provider, it parses the DSN for cluster information and stores the information.
+The `DsnHostListProvider` is the default provider, it parses the DSN for cluster information and stores the information. It supports having multiple hosts in the DSN with the same port:
+
+| Host Parameter Value  | Port Parameter Value | Support            | Behaviour                                             |
+|-----------------------|----------------------|--------------------|-------------------------------------------------------|
+| `hostname1,hostname2` | nil                  | :white_check_mark: | Two hosts with the default port for the underlying DB |
+| `hostname1,hostname2` | `8090`               | :white_check_mark: | Two hosts with port `8090`                            |
+| `hostname1,hostname2` | `8030,8090`          | :x:                | DsnHostListProvider errors out during initialization  |
 
 The `RdsHostListProvider` provides information of the Aurora cluster.
 It uses the current connection to track the available hosts and their roles in the cluster.

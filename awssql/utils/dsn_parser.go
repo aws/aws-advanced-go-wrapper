@@ -53,17 +53,21 @@ func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []*host_i
 
 	hostStringList := strings.Split(properties[property_util.HOST.Name], ",")
 	portStringList := strings.Split(properties[property_util.PORT.Name], ",")
-
-	for i, hostString := range hostStringList {
-		portString := portStringList[i]
-		port := host_info_util.HOST_NO_PORT
+	port := host_info_util.HOST_NO_PORT
+	if len(portStringList) > 1 {
+		return hostInfoList, error_util.NewDsnParsingError(
+			error_util.GetMessage("DsnParser.unableToMatchPortsToHosts"))
+	} else if len(portStringList) == 1 {
+		portString := portStringList[0]
 		if portString != "" {
 			port, err = strconv.Atoi(portString)
 			if err != nil {
 				port = host_info_util.HOST_NO_PORT
 			}
 		}
+	}
 
+	for i, hostString := range hostStringList {
 		var hostRole host_info_util.HostRole
 		if isSingleWriterDsn {
 			hostRole = host_info_util.READER

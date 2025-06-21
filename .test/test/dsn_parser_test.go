@@ -17,10 +17,13 @@
 package test
 
 import (
+	"fmt"
+	"strings"
+	"testing"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -128,4 +131,54 @@ func TestParseDsnMySqlWithoutParams(t *testing.T) {
 	assert.Equal(t, "mydatabase.com", props[property_util.HOST.Name])
 	assert.Equal(t, "3306", props[property_util.PORT.Name])
 	assert.Equal(t, "myDatabase", props[property_util.DATABASE.Name])
+}
+
+func TestGetHostsFromDsnWithMultipleHosts(t *testing.T) {
+	testDsns := []string{
+		"user=someUser password=somePassword host=host1,host2%s database=pgx_test",
+		"postgres://someUser:somePassword@host1,host2%s/pgx_test",
+		"someUser:somePassword@tcp(host1,host2%s)/myDatabase",
+	}
+	strBeforePort := []string{" port=", ":", ":"}
+
+	for i, testDsn := range testDsns {
+		GetHostsFromDsnWithMultipleHostsNoPort(testDsn, t)
+		GetHostsFromDsnWithMultipleHostsOnePort(testDsn, strBeforePort[i], t)
+		GetHostsFromDsnWithMultipleHostsMultiplePorts(testDsn, strBeforePort[i], t)
+	}
+}
+
+func GetHostsFromDsnWithMultipleHostsNoPort(dsn string, t *testing.T) {
+	dsn = fmt.Sprintf(dsn, "")
+	hosts, err := utils.GetHostsFromDsn(dsn, true)
+	if err != nil {
+		t.Errorf(`Unexpected error when calling GetHostsFromDsn: %s, Error: %q`, dsn, err)
+	}
+	assert.Equal(t, 2, len(hosts))
+	assert.Equal(t, host_info_util.HOST_NO_PORT, hosts[0].Port)
+	assert.Equal(t, host_info_util.HOST_NO_PORT, hosts[1].Port)
+	assert.Equal(t, "host1", hosts[0].Host)
+	assert.Equal(t, "host2", hosts[1].Host)
+}
+
+func GetHostsFromDsnWithMultipleHostsOnePort(dsn string, strBeforePort string, t *testing.T) {
+	dsn = fmt.Sprintf(dsn, strBeforePort+"1234")
+	hosts, err := utils.GetHostsFromDsn(dsn, true)
+	if err != nil {
+		t.Errorf(`Unexpected error when calling GetHostsFromDsn: %s, Error: %q`, dsn, err)
+	}
+	assert.Equal(t, 2, len(hosts))
+	assert.Equal(t, 1234, hosts[0].Port)
+	assert.Equal(t, 1234, hosts[1].Port)
+	assert.Equal(t, "host1", hosts[0].Host)
+	assert.Equal(t, "host2", hosts[1].Host)
+}
+
+func GetHostsFromDsnWithMultipleHostsMultiplePorts(dsn string, strBeforePort string, t *testing.T) {
+	dsn = fmt.Sprintf(dsn, strBeforePort+"1234,5678")
+	_, err := utils.GetHostsFromDsn(dsn, true)
+	if err == nil {
+		t.Errorf("GetHostsFromDsn should throw an error with an invalid value for the port parameter")
+	}
+	assert.True(t, strings.Contains(err.Error(), "port"))
 }
