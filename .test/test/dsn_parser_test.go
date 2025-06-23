@@ -63,6 +63,75 @@ func TestParseDsnPgxUrl(t *testing.T) {
 	assert.Equal(t, "https://someendpoint.com:3456", props["customEndpoint"])
 }
 
+func TestParseDsnPgxUrlNoPort(t *testing.T) {
+	dsn := "postgres://someUser:somePassword@localhost/pgx_test"
+	props, err := utils.ParseDsn(dsn)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
+	}
+
+	assert.Equal(t, "postgresql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "localhost", props[property_util.HOST.Name])
+	assert.Equal(t, "pgx_test", props[property_util.DATABASE.Name])
+}
+
+func TestParseDsnPgxUrlNoDb(t *testing.T) {
+	dsn := "postgres://someUser:somePassword@localhost:5432"
+	props, err := utils.ParseDsn(dsn)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
+	}
+
+	assert.Equal(t, "postgresql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "5432", props[property_util.PORT.Name])
+	assert.Equal(t, "localhost", props[property_util.HOST.Name])
+
+	dsnTrailingSlash := "postgres://someUser:somePassword@localhost:5432/"
+	props, err = utils.ParseDsn(dsnTrailingSlash)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
+	}
+
+	assert.Equal(t, "postgresql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "5432", props[property_util.PORT.Name])
+	assert.Equal(t, "localhost", props[property_util.HOST.Name])
+}
+
+func TestParseDsnPgxUrlNoPortNoDb(t *testing.T) {
+	dsn := "postgres://someUser:somePassword@localhost"
+	props, err := utils.ParseDsn(dsn)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
+	}
+
+	assert.Equal(t, "postgresql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "localhost", props[property_util.HOST.Name])
+
+	dsnWithTrailingSlash := "postgres://someUser:somePassword@localhost/"
+	props, err = utils.ParseDsn(dsnWithTrailingSlash)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
+	}
+
+	assert.Equal(t, "postgresql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "localhost", props[property_util.HOST.Name])
+}
+
 func TestParseDsnPgxUrlWithoutParams(t *testing.T) {
 	dsn := "postgres://someUser:somePassword@localhost:5432/pgx_test"
 	props, err := utils.ParseDsn(dsn)
@@ -77,6 +146,45 @@ func TestParseDsnPgxUrlWithoutParams(t *testing.T) {
 	assert.Equal(t, "localhost", props[property_util.HOST.Name])
 	assert.Equal(t, "5432", props[property_util.PORT.Name])
 	assert.Equal(t, "pgx_test", props[property_util.DATABASE.Name])
+}
+
+func TestParseDsnPgxUrlWithTrailingSpace(t *testing.T) {
+	dsn := "postgres://someUser:somePassword@localhost:5432/pgx_test?sslmode=disable&foo=bar&customEndpoint=https://someendpoint.com:3456&randomNum=4    "
+	props, err := utils.ParseDsn(dsn)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
+	}
+
+	assert.Equal(t, "postgresql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "localhost", props[property_util.HOST.Name])
+	assert.Equal(t, "5432", props[property_util.PORT.Name])
+	assert.Equal(t, "pgx_test", props[property_util.DATABASE.Name])
+	assert.Equal(t, "disable", props["sslmode"])
+	assert.Equal(t, "bar", props["foo"])
+	assert.Equal(t, "https://someendpoint.com:3456", props["customEndpoint"])
+	assert.Equal(t, "4", props["randomNum"])
+}
+
+func TestParsePgxUrlEndpointWithTrailingDot(t *testing.T) {
+	dsnWithTrailingDot := "postgres://someUser:somePassword@mydatabase.com.:5432/pgx_test?foo=bar&pop=snap&customEndpoint=https://someendpoint.com:3456"
+	props, err := utils.ParseDsn(dsnWithTrailingDot)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsnWithTrailingDot, err)
+	}
+
+	assert.Equal(t, "postgresql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "mydatabase.com.", props[property_util.HOST.Name])
+	assert.Equal(t, "5432", props[property_util.PORT.Name])
+	assert.Equal(t, "pgx_test", props[property_util.DATABASE.Name])
+	assert.Equal(t, "bar", props["foo"])
+	assert.Equal(t, "snap", props["pop"])
+	assert.Equal(t, "https://someendpoint.com:3456", props["customEndpoint"])
 }
 
 func TestParseDsnPgxKeyValue(t *testing.T) {
@@ -95,6 +203,100 @@ func TestParseDsnPgxKeyValue(t *testing.T) {
 	assert.Equal(t, "pgx_test", props[property_util.DATABASE.Name])
 	assert.Equal(t, "disable", props["sslmode"])
 	assert.Equal(t, "bar", props["foo"])
+	assert.Equal(t, "https://someendpoint.com:3456", props["customEndpoint"])
+}
+
+func TestParseDsnPgxKeyValueWithTrailingSpace(t *testing.T) {
+	dsn := "user=someUser password=somePassword host=localhost port=5432 database=pgx_test sslmode=disable foo=bar customEndpoint=https://someendpoint.com:3456    "
+	props, err := utils.ParseDsn(dsn)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
+	}
+
+	assert.Equal(t, "postgresql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "localhost", props[property_util.HOST.Name])
+	assert.Equal(t, "5432", props[property_util.PORT.Name])
+	assert.Equal(t, "pgx_test", props[property_util.DATABASE.Name])
+	assert.Equal(t, "disable", props["sslmode"])
+	assert.Equal(t, "bar", props["foo"])
+	assert.Equal(t, "https://someendpoint.com:3456", props["customEndpoint"])
+}
+
+func TestParseDsnPgxKeyValueWithPathInParams(t *testing.T) {
+	dsn := "user=someUser password=somePassword host=localhost port=5432 database=pgx_test sslmode=verify-full sslrootcert=/Users/myuser/mywork/root.pem"
+	props, err := utils.ParseDsn(dsn)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
+	}
+
+	assert.Equal(t, "postgresql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "localhost", props[property_util.HOST.Name])
+	assert.Equal(t, "5432", props[property_util.PORT.Name])
+	assert.Equal(t, "pgx_test", props[property_util.DATABASE.Name])
+	assert.Equal(t, "verify-full", props["sslmode"])
+	assert.Equal(t, "/Users/myuser/mywork/root.pem", props["sslrootcert"])
+}
+
+func TestParsePgxKeyValueEndpointWithTrailingDot(t *testing.T) {
+	dsnWithTrailingDot := "user=someUser password=somePassword host=mydatabase.com. port=5432 database=pgx_test foo=bar pop=snap customEndpoint=https://someendpoint.com:3456"
+	props, err := utils.ParseDsn(dsnWithTrailingDot)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsnWithTrailingDot, err)
+	}
+
+	assert.Equal(t, "postgresql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "mydatabase.com.", props[property_util.HOST.Name])
+	assert.Equal(t, "5432", props[property_util.PORT.Name])
+	assert.Equal(t, "pgx_test", props[property_util.DATABASE.Name])
+	assert.Equal(t, "bar", props["foo"])
+	assert.Equal(t, "snap", props["pop"])
+	assert.Equal(t, "https://someendpoint.com:3456", props["customEndpoint"])
+}
+
+func TestParsePgxKeyValueEndpointWithTrailingSlash(t *testing.T) {
+	dsn := "user=someUser password=somePassword host=mydatabase.com/ port=5432 database=pgx_test foo=bar pop=snap customEndpoint=https://someendpoint.com:3456"
+	props, err := utils.ParseDsn(dsn)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
+	}
+
+	assert.Equal(t, "postgresql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "mydatabase.com/", props[property_util.HOST.Name])
+	assert.Equal(t, "5432", props[property_util.PORT.Name])
+	assert.Equal(t, "pgx_test", props[property_util.DATABASE.Name])
+	assert.Equal(t, "bar", props["foo"])
+	assert.Equal(t, "snap", props["pop"])
+	assert.Equal(t, "https://someendpoint.com:3456", props["customEndpoint"])
+}
+
+func TestParsePgxKeyValueEndpointWithTrailingSlashDot(t *testing.T) {
+	dsn := "user=someUser password=somePassword host=mydatabase.com/. port=5432 database=pgx_test foo=bar pop=snap customEndpoint=https://someendpoint.com:3456"
+	props, err := utils.ParseDsn(dsn)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
+	}
+
+	assert.Equal(t, "postgresql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "mydatabase.com/.", props[property_util.HOST.Name])
+	assert.Equal(t, "5432", props[property_util.PORT.Name])
+	assert.Equal(t, "pgx_test", props[property_util.DATABASE.Name])
+	assert.Equal(t, "bar", props["foo"])
+	assert.Equal(t, "snap", props["pop"])
 	assert.Equal(t, "https://someendpoint.com:3456", props["customEndpoint"])
 }
 
@@ -131,6 +333,112 @@ func TestParseDsnMySqlWithoutParams(t *testing.T) {
 	assert.Equal(t, "mydatabase.com", props[property_util.HOST.Name])
 	assert.Equal(t, "3306", props[property_util.PORT.Name])
 	assert.Equal(t, "myDatabase", props[property_util.DATABASE.Name])
+}
+
+func TestParseDsnMySqlWithNoPort(t *testing.T) {
+	dsn := "someUser:somePassword@tcp(mydatabase.com)/myDatabase"
+	props, err := utils.ParseDsn(dsn)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
+	}
+
+	assert.Equal(t, "mysql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "mydatabase.com", props[property_util.HOST.Name])
+	assert.Equal(t, "myDatabase", props[property_util.DATABASE.Name])
+}
+
+func TestParseDsnMySqlWithNoDb(t *testing.T) {
+	dsn := "someUser:somePassword@tcp(mydatabase.com:3306)/"
+	props, err := utils.ParseDsn(dsn)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
+	}
+
+	assert.Equal(t, "mysql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "mydatabase.com", props[property_util.HOST.Name])
+	assert.Equal(t, "3306", props[property_util.PORT.Name])
+}
+
+func TestParseMySqlWithTrailingSpace(t *testing.T) {
+	dsn := "someUser:somePassword@tcp(mydatabase.com:3306)/myDatabase?foo=bar&pop=snap&numTest=4   "
+	props, err := utils.ParseDsn(dsn)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
+	}
+
+	assert.Equal(t, "mysql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "mydatabase.com", props[property_util.HOST.Name])
+	assert.Equal(t, "3306", props[property_util.PORT.Name])
+	assert.Equal(t, "myDatabase", props[property_util.DATABASE.Name])
+	assert.Equal(t, "bar", props["foo"])
+	assert.Equal(t, "snap", props["pop"])
+	assert.Equal(t, "4", props["numTest"])
+}
+
+func TestParseMySqlEndpointWithTrailingDot(t *testing.T) {
+	dsnWithTrailingDot := "someUser:somePassword@tcp(mydatabase.com.:3306)/myDatabase?foo=bar&pop=snap&customEndpoint=https://someendpoint.com:3456"
+	props, err := utils.ParseDsn(dsnWithTrailingDot)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsnWithTrailingDot, err)
+	}
+
+	assert.Equal(t, "mysql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "mydatabase.com.", props[property_util.HOST.Name])
+	assert.Equal(t, "3306", props[property_util.PORT.Name])
+	assert.Equal(t, "myDatabase", props[property_util.DATABASE.Name])
+	assert.Equal(t, "bar", props["foo"])
+	assert.Equal(t, "snap", props["pop"])
+	assert.Equal(t, "https://someendpoint.com:3456", props["customEndpoint"])
+}
+
+func TestParseMySqlEndpointWithTrailingSlash(t *testing.T) {
+	dsnWithTrailingSlash := "someUser:somePassword@tcp(mydatabase.com/:3306)/myDatabase?foo=bar&pop=snap&customEndpoint=https://someendpoint.com:3456"
+	props, err := utils.ParseDsn(dsnWithTrailingSlash)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsnWithTrailingSlash, err)
+	}
+
+	assert.Equal(t, "mysql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "mydatabase.com/", props[property_util.HOST.Name])
+	assert.Equal(t, "3306", props[property_util.PORT.Name])
+	assert.Equal(t, "myDatabase", props[property_util.DATABASE.Name])
+	assert.Equal(t, "bar", props["foo"])
+	assert.Equal(t, "snap", props["pop"])
+	assert.Equal(t, "https://someendpoint.com:3456", props["customEndpoint"])
+}
+
+func TestParseMySqlEndpointWithTrailingSlashDot(t *testing.T) {
+	dsn := "someUser:somePassword@tcp(mydatabase.com/.:3306)/myDatabase?foo=bar&pop=snap&customEndpoint=https://someendpoint.com:3456"
+	props, err := utils.ParseDsn(dsn)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
+	}
+
+	assert.Equal(t, "mysql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "mydatabase.com/.", props[property_util.HOST.Name])
+	assert.Equal(t, "3306", props[property_util.PORT.Name])
+	assert.Equal(t, "myDatabase", props[property_util.DATABASE.Name])
+	assert.Equal(t, "bar", props["foo"])
+	assert.Equal(t, "snap", props["pop"])
+	assert.Equal(t, "https://someendpoint.com:3456", props["customEndpoint"])
 }
 
 func TestGetHostsFromDsnWithMultipleHosts(t *testing.T) {

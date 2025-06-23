@@ -39,9 +39,10 @@ var (
 	pgxKeyValueDsnPattern = regexp.MustCompile("([a-zA-Z0-9]+=[-a-zA-Z0-9+&@#/%?=~_!:,.']+[ ]*)+")
 	mySqlDsnPattern       = regexp.MustCompile(`^(?:(?P<user>[^:@/]+)(?::(?P<passwd>[^@/]*))?@)?` + // [user[:password]@]
 		`(?:(?P<net>[^()/:?]+)?(?:\((?P<addr>[^\)]*)\))?)?` + // [net[(addr)]]
-		`/(?P<dbname>[^?]+)` + // /dbname
+		`(?:/(?P<dbname>[^?]*))?` + // [/dbname] - made optional
 		`(?:\?(?P<params>.*))?` + // [?param1=value1&paramN=valueN]
 		`$`)
+	spaceBetweenWordsPattern = regexp.MustCompile(`^\s*\S+\s+\S.*$`)
 )
 
 func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []*host_info_util.HostInfo, err error) {
@@ -201,11 +202,12 @@ func isDsnPgxKeyValueString(dsn string) bool {
 }
 
 func isDsnMySql(dsn string) bool {
-	return mySqlDsnPattern.MatchString(dsn)
+	return !spaceBetweenWordsPattern.MatchString(dsn) && mySqlDsnPattern.MatchString(dsn)
 }
 
 func parsePgxURLSettings(connString string) (map[string]string, error) {
 	properties := make(map[string]string)
+	connString = strings.TrimSpace(connString)
 
 	parsedURL, err := url.Parse(connString)
 	if err != nil {
@@ -315,7 +317,7 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 			if end == len(dsn) {
 				dsn = ""
 			} else {
-				dsn = dsn[end+1:]
+				dsn = strings.TrimLeft(dsn[end+1:], " \t\n\r\v\f")
 			}
 		} else { // quoted string
 			dsn = dsn[1:]
@@ -336,7 +338,7 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 			if end == len(dsn) {
 				dsn = ""
 			} else {
-				dsn = dsn[end+1:]
+				dsn = strings.TrimLeft(dsn[end+1:], " \t\n\r\v\f")
 			}
 		}
 
@@ -359,6 +361,7 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 
 func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 	properties = make(map[string]string)
+	dsn = strings.TrimSpace(dsn)
 
 	// To account for props that have "/" in their value like endpoints
 	paramsStartIndex := strings.Index(dsn, "?")
