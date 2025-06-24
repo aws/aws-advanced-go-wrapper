@@ -23,10 +23,10 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 )
 
-type ConnectFunc func() (driver.Conn, error)
+type ConnectFunc func(props map[string]string) (driver.Conn, error)
 type ExecuteFunc func() (any, any, bool, error)
 type PluginExecFunc func(plugin ConnectionPlugin, targetFunc func() (any, any, bool, error)) (any, any, bool, error)
-type PluginConnectFunc func(plugin ConnectionPlugin, targetFunc func() (driver.Conn, error)) (driver.Conn, error)
+type PluginConnectFunc func(plugin ConnectionPlugin, props map[string]string, targetFunc func(props map[string]string) (driver.Conn, error)) (driver.Conn, error)
 
 type HostListProviderService interface {
 	IsStaticHostListProvider() bool

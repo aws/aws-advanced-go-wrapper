@@ -714,7 +714,6 @@ public class TestEnvironmentConfig implements AutoCloseable {
         .withEnv("AWS_SESSION_TOKEN", env.awsSessionToken)
         .withEnv("AWS_REGION", otlpRegion);
 
-    System.out.println("MAKING OTEL CONTAINER WITH NAME: " + TELEMETRY_OTLP_CONTAINER_NAME);
     env.info.setOtelTracesTelemetryInfo(new TestTelemetryInfo(TELEMETRY_OTLP_CONTAINER_NAME, 4317));
     env.info.setMetricsTelemetryInfo(new TestTelemetryInfo(TELEMETRY_OTLP_CONTAINER_NAME, 4317));
 

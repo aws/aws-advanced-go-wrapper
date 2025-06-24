@@ -21,11 +21,14 @@ import (
 	"database/sql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
 	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	_ "github.com/aws/aws-advanced-go-wrapper/iam"
 	_ "github.com/aws/aws-advanced-go-wrapper/otlp"
 	_ "github.com/aws/aws-advanced-go-wrapper/xray"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"log"
 	"net"
 	"strconv"
 	"testing"
@@ -242,6 +245,50 @@ func TestIamValidConnectionConnObjectWithTelemetryXray(t *testing.T) {
 	rows, err := queryer.QueryContext(context.Background(), "SELECT 1", nil)
 	assert.NoError(t, err)
 	defer rows.Close()
+}
+
+func TestIamWithFailover(t *testing.T) {
+	awsDriver.ClearCaches()
+	auroraTestUtility, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
+	assert.Nil(t, err)
+
+	props := initIamProps(
+		environment.Info().IamUsername,
+		"anypassword",
+		environment,
+	)
+	props["plugins"] = "iam,failover"
+	dsn := test_utils.GetDsn(environment, props)
+	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
+
+	conn, err := wrapperDriver.Open(dsn)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	// Check that we are connected to the writer.
+	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
+	assert.Nil(t, err)
+	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+
+	// Failover and check that it has failed over.
+	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(instanceId, "", "")
+	assert.Nil(t, triggerFailoverError)
+	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
+	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
+	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryError.Error())
+
+	// Assert that we are connected to the new writer after failover.
+	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
+	assert.Nil(t, err)
+	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
+	assert.Nil(t, err)
+	assert.Equal(t, currWriterId, newInstanceId)
+	assert.NotEqual(t, instanceId, newInstanceId)
+
+	test_utils.BasicCleanup(t.Name())
 }
 
 func initIamProps(user string, password string, testEnvironment *test_utils.TestEnvironment) map[string]string {

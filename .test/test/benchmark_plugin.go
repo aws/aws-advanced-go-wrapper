@@ -55,7 +55,7 @@ func (b *BenchmarkPlugin) Connect(
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	b.resources = append(b.resources, "connect")
-	return connectFunc()
+	return connectFunc(props)
 }
 
 func (b *BenchmarkPlugin) ForceConnect(
@@ -64,7 +64,7 @@ func (b *BenchmarkPlugin) ForceConnect(
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	b.resources = append(b.resources, "forceConnect")
-	return connectFunc()
+	return connectFunc(props)
 }
 
 func (b *BenchmarkPlugin) Execute(

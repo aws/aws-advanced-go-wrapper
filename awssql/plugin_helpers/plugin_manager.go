@@ -45,7 +45,10 @@ const (
 
 type PluginChain struct {
 	execChain    func(pluginFunc driver_infrastructure.PluginExecFunc, execFunc func() (any, any, bool, error)) (any, any, bool, error)
-	connectChain func(pluginFunc driver_infrastructure.PluginConnectFunc, connectFunc func() (driver.Conn, error)) (driver.Conn, error)
+	connectChain func(
+		pluginFunc driver_infrastructure.PluginConnectFunc,
+		props map[string]string,
+		connectFunc func(props map[string]string) (driver.Conn, error)) (driver.Conn, error)
 }
 
 func (chain *PluginChain) ExecAddToHead(plugin driver_infrastructure.ConnectionPlugin) {
@@ -63,13 +66,21 @@ func (chain *PluginChain) ExecAddToHead(plugin driver_infrastructure.ConnectionP
 
 func (chain *PluginChain) ConnectAddToHead(plugin driver_infrastructure.ConnectionPlugin) {
 	if chain.connectChain == nil {
-		chain.connectChain = func(pluginFunc driver_infrastructure.PluginConnectFunc, connectFunc func() (driver.Conn, error)) (driver.Conn, error) {
-			return pluginFunc(plugin, connectFunc)
+		chain.connectChain = func(
+			pluginFunc driver_infrastructure.PluginConnectFunc,
+			props map[string]string,
+			connectFunc func(props map[string]string) (driver.Conn, error)) (driver.Conn, error) {
+			return pluginFunc(plugin, props, connectFunc)
 		}
 	} else {
 		pipelineSoFar := chain.connectChain
-		chain.connectChain = func(pluginFunc driver_infrastructure.PluginConnectFunc, connectFunc func() (driver.Conn, error)) (driver.Conn, error) {
-			return pluginFunc(plugin, func() (driver.Conn, error) { return pipelineSoFar(pluginFunc, connectFunc) })
+		chain.connectChain = func(
+			pluginFunc driver_infrastructure.PluginConnectFunc,
+			props map[string]string,
+			connectFunc func(props map[string]string) (driver.Conn, error)) (driver.Conn, error) {
+			return pluginFunc(plugin, props, func(props map[string]string) (driver.Conn, error) {
+				return pipelineSoFar(pluginFunc, props, connectFunc)
+			})
 		}
 	}
 }
@@ -82,12 +93,15 @@ func (chain *PluginChain) Execute(pluginFunc driver_infrastructure.PluginExecFun
 	return chain.execChain(pluginFunc, execFunc)
 }
 
-func (chain *PluginChain) Connect(pluginFunc driver_infrastructure.PluginConnectFunc, connectFunc func() (driver.Conn, error)) (driver.Conn, error) {
+func (chain *PluginChain) Connect(
+	pluginFunc driver_infrastructure.PluginConnectFunc,
+	props map[string]string,
+	connectFunc func(props map[string]string) (driver.Conn, error)) (driver.Conn, error) {
 	if chain.connectChain == nil {
 		slog.Warn(error_util.GetMessage("PluginManager.pipelineNone"))
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginManager.pipelineNone"))
 	}
-	return chain.connectChain(pluginFunc, connectFunc)
+	return chain.connectChain(pluginFunc, props, connectFunc)
 }
 
 type PluginManagerImpl struct {
@@ -178,7 +192,10 @@ func (pluginManager *PluginManagerImpl) Connect(
 		pluginManager.SetTelemetryContext(parentCtx)
 	}()
 
-	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (driver.Conn, error)) (driver.Conn, error) {
+	pluginFunc := func(
+		plugin driver_infrastructure.ConnectionPlugin,
+		props map[string]string,
+		targetFunc func(props map[string]string) (driver.Conn, error)) (driver.Conn, error) {
 		parentCtx1 := pluginManager.GetTelemetryContext()
 		telemetryCtx1, ctx1 := pluginManager.telemetryFactory.OpenTelemetryContext(utils.GetStructName(plugin), telemetry.NESTED, parentCtx1)
 		pluginManager.SetTelemetryContext(ctx1)
@@ -188,7 +205,7 @@ func (pluginManager *PluginManagerImpl) Connect(
 		}()
 		return plugin.Connect(hostInfo, props, isInitialConnection, targetFunc)
 	}
-	targetFunc := func() (driver.Conn, error) {
+	targetFunc := func(props map[string]string) (driver.Conn, error) {
 		return nil, error_util.ShouldNotBeCalledError
 	}
 	return pluginManager.connectWithSubscribedPlugins(CONNECT_METHOD, pluginFunc, targetFunc)
@@ -198,10 +215,13 @@ func (pluginManager *PluginManagerImpl) ForceConnect(
 	hostInfo *host_info_util.HostInfo,
 	props map[string]string,
 	isInitialConnection bool) (driver.Conn, error) {
-	pluginFunc := func(plugin driver_infrastructure.ConnectionPlugin, targetFunc func() (driver.Conn, error)) (driver.Conn, error) {
+	pluginFunc := func(
+		plugin driver_infrastructure.ConnectionPlugin,
+		props map[string]string,
+		targetFunc func(props map[string]string) (driver.Conn, error)) (driver.Conn, error) {
 		return plugin.ForceConnect(hostInfo, props, isInitialConnection, targetFunc)
 	}
-	targetFunc := func() (driver.Conn, error) {
+	targetFunc := func(props map[string]string) (driver.Conn, error) {
 		return nil, error_util.ShouldNotBeCalledError
 	}
 	return pluginManager.connectWithSubscribedPlugins(FORCE_CONNECT_METHOD, pluginFunc, targetFunc)
@@ -262,7 +282,7 @@ func (pluginManager *PluginManagerImpl) connectWithSubscribedPlugins(
 		chain = pluginManager.makePluginChain(methodName, false)
 		pluginManager.pluginFuncMap[methodName] = chain
 	}
-	return chain.Connect(pluginFunc, targetFunc)
+	return chain.Connect(pluginFunc, pluginManager.props, targetFunc)
 }
 
 func (pluginManager *PluginManagerImpl) makePluginChain(

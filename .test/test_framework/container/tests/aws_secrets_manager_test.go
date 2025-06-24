@@ -26,6 +26,8 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	_ "github.com/aws/aws-advanced-go-wrapper/otlp"
 	_ "github.com/aws/aws-advanced-go-wrapper/xray"
+	"github.com/stretchr/testify/require"
+	"log"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -121,6 +123,10 @@ func TestSecretsManager(t *testing.T) {
 
 	t.Run("IncorrectRegion", func(t *testing.T) {
 		incorrectRegionTest(t, env, secretName)
+	})
+
+	t.Run("WithFailover", func(t *testing.T) {
+		failoverTest(t, env, secretName)
 	})
 }
 
@@ -328,4 +334,47 @@ func incorrectRegionTest(t *testing.T, env *test_utils.TestEnvironment, secretNa
 
 	pingErr := db.Ping()
 	assert.NotNil(t, pingErr)
+}
+
+func failoverTest(t *testing.T, env *test_utils.TestEnvironment, secretName string) {
+	auroraTestUtility, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
+	assert.Nil(t, err)
+
+	dsn := test_utils.GetDsn(env, map[string]string{
+		"plugins":                "awsSecretsManager,failover",
+		"user":                   "incorrectUser",
+		"password":               "incorrectPassword",
+		"secretsManagerSecretId": secretName,
+		"secretsManagerRegion":   env.Info().Region,
+	})
+	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
+
+	conn, err := wrapperDriver.Open(dsn)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	// Check that we are connected to the writer.
+	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
+	assert.Nil(t, err)
+	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+
+	// Failover and check that it has failed over.
+	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(instanceId, "", "")
+	assert.Nil(t, triggerFailoverError)
+	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
+	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
+	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryError.Error())
+
+	// Assert that we are connected to the new writer after failover.
+	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
+	assert.Nil(t, err)
+	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
+	assert.Nil(t, err)
+	assert.Equal(t, currWriterId, newInstanceId)
+	assert.NotEqual(t, instanceId, newInstanceId)
+
+	test_utils.BasicCleanup(t.Name())
 }

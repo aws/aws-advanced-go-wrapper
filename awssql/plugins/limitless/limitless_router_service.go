@@ -41,13 +41,17 @@ type LimitlessRouterService interface {
 type LimitlessRouterServiceImpl struct {
 	pluginService driver_infrastructure.PluginService
 	queryHelper   LimitlessQueryHelper
+	props         map[string]string
 }
 
-func NewLimitlessRouterServiceImpl(pluginService driver_infrastructure.PluginService) *LimitlessRouterServiceImpl {
-	return NewLimitlessRouterServiceImplInternal(pluginService, NewLimitlessQueryHelperImpl(pluginService))
+func NewLimitlessRouterServiceImpl(pluginService driver_infrastructure.PluginService, props map[string]string) *LimitlessRouterServiceImpl {
+	return NewLimitlessRouterServiceImplInternal(pluginService, NewLimitlessQueryHelperImpl(pluginService), props)
 }
 
-func NewLimitlessRouterServiceImplInternal(pluginService driver_infrastructure.PluginService, queryHelper LimitlessQueryHelper) *LimitlessRouterServiceImpl {
+func NewLimitlessRouterServiceImplInternal(
+	pluginService driver_infrastructure.PluginService,
+	queryHelper LimitlessQueryHelper,
+	props map[string]string) *LimitlessRouterServiceImpl {
 	limitlessRouterServiceInitializationMutex.Lock()
 	defer limitlessRouterServiceInitializationMutex.Unlock()
 
@@ -88,6 +92,7 @@ func NewLimitlessRouterServiceImplInternal(pluginService driver_infrastructure.P
 	return &LimitlessRouterServiceImpl{
 		pluginService: pluginService,
 		queryHelper:   queryHelper,
+		props:         props,
 	}
 }
 
@@ -114,7 +119,7 @@ func (routerService *LimitlessRouterServiceImpl) EstablishConnection(context *Li
 		} else {
 			// Connect right away using provided host info
 			if context.GetConnection() == nil {
-				conn, err := context.ConnectFunc()
+				conn, err := context.ConnectFunc(routerService.props)
 				if err != nil {
 					return err
 				}
@@ -128,7 +133,7 @@ func (routerService *LimitlessRouterServiceImpl) EstablishConnection(context *Li
 	for _, limitlessRouter := range context.LimitlessRouters {
 		if limitlessRouter.Equals(&context.Host) {
 			if context.GetConnection() == nil {
-				conn, err := context.ConnectFunc()
+				conn, err := context.ConnectFunc(routerService.props)
 				if err != nil || conn == nil {
 					if routerService.pluginService.IsLoginError(err) {
 						return err
@@ -151,7 +156,7 @@ func (routerService *LimitlessRouterServiceImpl) EstablishConnection(context *Li
 	}
 	slog.Debug(error_util.GetMessage("LimitlessRouterServiceImpl.selectedHost", selectedRouter.Host))
 
-	conn, err := routerService.pluginService.Connect(selectedRouter, context.Props)
+	conn, err := routerService.pluginService.Connect(selectedRouter, utils.CreateMapCopy(context.Props))
 	if err != nil || conn == nil {
 		selectedRouter.Availability = host_info_util.UNAVAILABLE
 		slog.Debug(error_util.GetMessage("LimitlessRouterServiceImpl.failedToConnectToHost", selectedRouter.Host))
@@ -218,7 +223,7 @@ func (routerService *LimitlessRouterServiceImpl) synchronousGetLimitlessRouter(c
 
 	// Open new context connection
 	if context.connection == nil {
-		conn, err := context.ConnectFunc()
+		conn, err := context.ConnectFunc(routerService.props)
 		if err != nil {
 			if routerService.pluginService.IsLoginError(err) {
 				return err
@@ -279,7 +284,7 @@ func (routerService *LimitlessRouterServiceImpl) retryConnectWithLeastLoadedRout
 				if context.connection != nil {
 					return nil
 				} else {
-					conn, err := context.ConnectFunc()
+					conn, err := context.ConnectFunc(routerService.props)
 					if err != nil || conn == nil {
 						if routerService.pluginService.IsLoginError(err) {
 							return err
@@ -303,7 +308,7 @@ func (routerService *LimitlessRouterServiceImpl) retryConnectWithLeastLoadedRout
 		}
 
 		// Connect to selected router
-		conn, err := routerService.pluginService.Connect(selectedRouter, context.Props)
+		conn, err := routerService.pluginService.Connect(selectedRouter, utils.CreateMapCopy(context.Props))
 		if err != nil || conn == nil {
 			slog.Debug(error_util.GetMessage("LimitlessRouterServiceImpl.failedToConnectToRouter", selectedRouter.Host))
 			selectedRouter.Availability = host_info_util.UNAVAILABLE

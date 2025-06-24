@@ -251,7 +251,7 @@ func (m *MonitorImpl) CheckConnectionStatus() bool {
 	if m.MonitoringConn == nil || m.pluginService.GetTargetDriverDialect().IsClosed(m.MonitoringConn) {
 		// Open a new connection.
 		slog.Debug(error_util.GetMessage("MonitorImpl.openingMonitoringConnection", m.hostInfo.Host))
-		newMonitoringConn, err := m.pluginService.ForceConnect(m.hostInfo, m.monitoringProps)
+		newMonitoringConn, err := m.pluginService.ForceConnect(m.hostInfo, utils.CreateMapCopy(m.monitoringProps))
 		if err != nil || newMonitoringConn == nil {
 			return false
 		}

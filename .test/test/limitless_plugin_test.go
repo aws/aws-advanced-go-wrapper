@@ -92,7 +92,7 @@ func TestLimitlessPluginConnectGivenDialectRecoverySuccess(t *testing.T) {
 	mockConn := &MockConn{}
 	mockLimitlessRouterService := &MockLimitlessRouterService{}
 
-	mockConnFunc := func() (driver.Conn, error) {
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
 		pluginServiceImpl.SetDialect(&driver_infrastructure.AuroraPgDatabaseDialect{})
 		return mockConn, nil
 	}
@@ -126,7 +126,7 @@ func TestLimitlessPluginConnectGivenDialectRecoveryFailure(t *testing.T) {
 	mockConn := &MockConn{}
 	mockLimitlessRouterService := &MockLimitlessRouterService{}
 
-	mockConnFunc := func() (driver.Conn, error) {
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
 		return mockConn, nil
 	}
 
@@ -296,7 +296,7 @@ func TestLimitlessMonitorServiceEstablishConnection(t *testing.T) {
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.NewMySQLDriverDialect(), props, pgLimitlessTestDsn)
 	pluginServiceImpl.SetHostListProvider(mockHostListProviderService)
 
-	limitlessRouterService := limitless.NewLimitlessRouterServiceImplInternal(pluginServiceImpl, nil)
+	limitlessRouterService := limitless.NewLimitlessRouterServiceImplInternal(pluginServiceImpl, nil, props)
 
 	cachedRouter0, _ := host_info_util.NewHostInfoBuilder().SetHost("host0").SetWeight(10).Build()
 	cachedRouter1, _ := host_info_util.NewHostInfoBuilder().SetHost("host1").SetWeight(9).Build()
@@ -307,7 +307,7 @@ func TestLimitlessMonitorServiceEstablishConnection(t *testing.T) {
 
 	host, _ := host_info_util.NewHostInfoBuilder().SetHost("host1").SetWeight(9).Build()
 	mockConn := &MockConn{}
-	mockConnFunc := func() (driver.Conn, error) {
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
 		return mockConn, nil
 	}
 	context := limitless.NewConnectionContext(*host, props, nil, mockConnFunc, nil)
@@ -340,13 +340,13 @@ func TestLimitlessMonitorServiceEstablishConnect_GivenEmptyCacheAndNoWaitForRout
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.NewMySQLDriverDialect(), props, pgLimitlessTestDsn)
 	pluginServiceImpl.SetHostListProvider(mockHostListProviderService)
 
-	limitlessRouterService := limitless.NewLimitlessRouterServiceImplInternal(pluginServiceImpl, nil)
+	limitlessRouterService := limitless.NewLimitlessRouterServiceImplInternal(pluginServiceImpl, nil, props)
 
 	defer limitless.LIMITLESS_ROUTER_CACHE.Clear()
 
 	host, _ := host_info_util.NewHostInfoBuilder().SetHost("host1").SetWeight(9).Build()
 	mockConn := &MockConn{}
-	mockConnFunc := func() (driver.Conn, error) {
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
 		return mockConn, nil
 	}
 	context := limitless.NewConnectionContext(*host, props, nil, mockConnFunc, nil)
@@ -382,13 +382,13 @@ func TestLimitlessMonitorServiceEstablishConnect_MaxRetries(t *testing.T) {
 
 	mockLimitlessQueryHelper := &MockLimitlessQueryHelper{}
 
-	limitlessRouterService := limitless.NewLimitlessRouterServiceImplInternal(pluginServiceImpl, mockLimitlessQueryHelper)
+	limitlessRouterService := limitless.NewLimitlessRouterServiceImplInternal(pluginServiceImpl, mockLimitlessQueryHelper, props)
 
 	defer limitless.LIMITLESS_ROUTER_CACHE.Clear()
 
 	host, _ := host_info_util.NewHostInfoBuilder().SetHost("host1").SetWeight(9).Build()
 	mockConn := &MockConn{}
-	mockConnFunc := func() (driver.Conn, error) {
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
 		return mockConn, nil
 	}
 	context := limitless.NewConnectionContext(*host, props, nil, mockConnFunc, nil)

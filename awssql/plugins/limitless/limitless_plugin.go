@@ -78,7 +78,7 @@ func (plugin *LimitlessPlugin) Connect(
 	dialect := plugin.pluginService.GetDialect()
 	if !IsDialectLimitless(dialect) {
 		var err error
-		conn, err = connectFunc()
+		conn, err = connectFunc(props)
 		if err != nil {
 			return nil, err
 		}
@@ -115,6 +115,6 @@ func (plugin *LimitlessPlugin) Connect(
 
 func (plugin *LimitlessPlugin) initLimitlessRouterService() {
 	if plugin.routerService == nil {
-		plugin.routerService = NewLimitlessRouterServiceImpl(plugin.pluginService)
+		plugin.routerService = NewLimitlessRouterServiceImpl(plugin.pluginService, plugin.props)
 	}
 }

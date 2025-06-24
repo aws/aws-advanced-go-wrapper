@@ -191,7 +191,7 @@ func TestHostMonitoringPluginConnect(t *testing.T) {
 	assert.Nil(t, err)
 	rdsHostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("instance-a-1.xyz.us-east-2.rds.amazonaws.com").Build()
 	assert.Nil(t, err)
-	connectFunc := func() (driver.Conn, error) {
+	connectFunc := func(props map[string]string) (driver.Conn, error) {
 		return &MockDriverConnection{}, nil
 	}
 

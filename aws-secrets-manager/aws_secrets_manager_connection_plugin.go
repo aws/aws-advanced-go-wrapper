@@ -145,9 +145,11 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectInternal(
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	secretsWasFetched, _ := awsSecretsManagerPlugin.updateSecrets(hostInfo, props, false)
 
+	propsCopy := utils.CreateMapCopy(props)
+
 	// try and connect
-	awsSecretsManagerPlugin.applySecretToProperties(props)
-	conn, err := connectFunc()
+	awsSecretsManagerPlugin.applySecretToProperties(propsCopy)
+	conn, err := connectFunc(propsCopy)
 
 	if err == nil {
 		if !secretsWasFetched {
@@ -159,23 +161,22 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectInternal(
 	if awsSecretsManagerPlugin.pluginService.IsLoginError(err) && !secretsWasFetched {
 		// Login unsuccessful with cached credentials
 		// Try to re-fetch credentials and try again
-		secretsWasFetched, err = awsSecretsManagerPlugin.updateSecrets(hostInfo, props, true)
+		secretsWasFetched, err = awsSecretsManagerPlugin.updateSecrets(hostInfo, propsCopy, true)
 
 		if secretsWasFetched {
 			slog.Debug("AwsSecretsManagerConnectionPlugin: failed initial connection, trying again after fetching new secret value.")
 
-			awsSecretsManagerPlugin.applySecretToProperties(props)
-			return connectFunc()
+			awsSecretsManagerPlugin.applySecretToProperties(propsCopy)
+			return connectFunc(propsCopy)
 		}
 	}
 
 	return nil, err
 }
 
-func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) applySecretToProperties(
-	props map[string]string) {
-	props[property_util.USER.Name] = awsSecretsManagerPlugin.secret.Username
-	props[property_util.PASSWORD.Name] = awsSecretsManagerPlugin.secret.Password
+func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) applySecretToProperties(props map[string]string) {
+	property_util.USER.Set(props, awsSecretsManagerPlugin.secret.Username)
+	property_util.PASSWORD.Set(props, awsSecretsManagerPlugin.secret.Password)
 }
 
 func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) updateSecrets(

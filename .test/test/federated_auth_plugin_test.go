@@ -45,20 +45,15 @@ var federatedAuthHostInfo2, _ = host_info_util.NewHostInfoBuilder().SetHost("loc
 var mockIamTokenUtility = &MockIamTokenUtility{}
 var credentialsProviderFactory = &MockCredentialsProviderFactory{}
 
-func connectFunc() (driver.Conn, error) {
-	return nil, nil
-}
-
 func setup(props map[string]string) *federated_auth.FederatedAuthPlugin {
 	mockIamTokenUtility.Reset()
 	credentialsProviderFactory.getAwsCredentialsProviderError = nil
 	federated_auth.TokenCache.Clear()
 	mockTargetDriver := &MockTargetDriver{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := driver_infrastructure.PluginManager(
-		plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
+	mockPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
-	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
+	mockPluginService := pluginServiceImpl
 	federatedAuthPlugin, _ := federated_auth.NewFederatedAuthPlugin(mockPluginService, credentialsProviderFactory, mockIamTokenUtility)
 	return federatedAuthPlugin
 }
@@ -69,13 +64,19 @@ func TestCachedToken(t *testing.T) {
 		property_util.DB_USER.Name:         federatedAuthDbUser,
 	}
 
+	var resultProps map[string]string
+	connectFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
+
 	plugin := setup(props)
 	key := "us-east-2:pg.testdb.us-east-2.rds.amazonaws.com:1234:iamUser"
 	federated_auth.TokenCache.Put(key, federatedAuthTestToken, time.Millisecond*300000)
 	_, _ = plugin.Connect(federatedAuthHostInfo1, props, true, connectFunc)
 
-	assert.Equal(t, federatedAuthDbUser, props[property_util.USER.Name])
-	assert.Equal(t, federatedAuthTestToken, props[property_util.PASSWORD.Name])
+	assert.Equal(t, federatedAuthDbUser, resultProps[property_util.USER.Name])
+	assert.Equal(t, federatedAuthTestToken, resultProps[property_util.PASSWORD.Name])
 }
 
 func TestFederatedAuthConnectWithRetry(t *testing.T) {
@@ -88,7 +89,9 @@ func TestFederatedAuthConnectWithRetry(t *testing.T) {
 	plugin := setup(props)
 	federated_auth.TokenCache.Put(key, "cachedToken", time.Minute)
 	connAttempts := 0
-	mockConnFunc := func() (driver.Conn, error) {
+	var resultProps map[string]string
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
 		connAttempts++
 		cachedToken, ok := federated_auth.TokenCache.Get(key)
 		if ok && cachedToken == "cachedToken" {
@@ -102,8 +105,8 @@ func TestFederatedAuthConnectWithRetry(t *testing.T) {
 	_, err := plugin.Connect(federatedAuthHostInfo1, props, true, mockConnFunc)
 
 	assert.NoError(t, err)
-	assert.Equal(t, federatedAuthDbUser, props[property_util.USER.Name])
-	assert.Equal(t, federatedAuthTestToken, props[property_util.PASSWORD.Name])
+	assert.Equal(t, federatedAuthDbUser, resultProps[property_util.USER.Name])
+	assert.Equal(t, federatedAuthTestToken, resultProps[property_util.PASSWORD.Name])
 	assert.Equal(t, 1, federated_auth.TokenCache.Size())
 	assert.Equal(t, 2, connAttempts)
 }
@@ -118,7 +121,9 @@ func TestFederatedAuthDoesNotRetryConnect(t *testing.T) {
 	plugin := setup(props)
 	testErr := errors.New("test")
 	connAttempts := 0
-	mockConnFunc := func() (driver.Conn, error) {
+	var resultProps map[string]string
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
 		connAttempts++
 		cachedPassword, ok := federated_auth.TokenCache.Get(key)
 		if ok && cachedPassword == "oldPassword" {
@@ -133,8 +138,8 @@ func TestFederatedAuthDoesNotRetryConnect(t *testing.T) {
 	// Should only generate a new token once, if it fails does not retry.
 	require.Error(t, err)
 	assert.Equal(t, pgx_driver.AccessErrors[0], err.Error())
-	assert.Equal(t, federatedAuthDbUser, props[property_util.USER.Name])
-	assert.Equal(t, federatedAuthTestToken, props[property_util.PASSWORD.Name])
+	assert.Equal(t, federatedAuthDbUser, resultProps[property_util.USER.Name])
+	assert.Equal(t, federatedAuthTestToken, resultProps[property_util.PASSWORD.Name])
 	assert.Equal(t, 1, federated_auth.TokenCache.Size())
 	assert.Equal(t, 1, connAttempts)
 
@@ -144,8 +149,8 @@ func TestFederatedAuthDoesNotRetryConnect(t *testing.T) {
 
 	// Should not retry if the error is not a login error.
 	assert.NotEqual(t, testErr, err)
-	assert.Equal(t, "oldPassword", props[property_util.PASSWORD.Name])
-	assert.Equal(t, federatedAuthDbUser, props[property_util.USER.Name])
+	assert.Equal(t, "oldPassword", resultProps[property_util.PASSWORD.Name])
+	assert.Equal(t, federatedAuthDbUser, resultProps[property_util.USER.Name])
 	assert.Equal(t, 1, federated_auth.TokenCache.Size())
 	assert.Equal(t, 1, connAttempts)
 }
@@ -156,13 +161,19 @@ func TestExpiredCachedToken(t *testing.T) {
 		property_util.DB_USER.Name:         federatedAuthDbUser,
 	}
 
+	var resultProps map[string]string
+	connectFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
+
 	plugin := setup(props)
 	key := "us-east-2:pg.testdb.us-east-2.rds.amazonaws.com:1234:iamUser"
 	federated_auth.TokenCache.Put(key, federatedAuthTestToken, time.Nanosecond)
 	_, _ = plugin.Connect(federatedAuthHostInfo1, props, true, connectFunc)
 
-	assert.Equal(t, federatedAuthDbUser, props[property_util.USER.Name])
-	assert.Equal(t, federatedAuthTestToken, props[property_util.PASSWORD.Name])
+	assert.Equal(t, federatedAuthDbUser, resultProps[property_util.USER.Name])
+	assert.Equal(t, federatedAuthTestToken, resultProps[property_util.PASSWORD.Name])
 	assert.Equal(t, 1, mockIamTokenUtility.GenerateAuthenticationTokenCallCounter)
 }
 
@@ -172,11 +183,17 @@ func TestNoCachedToken(t *testing.T) {
 		property_util.DB_USER.Name:         federatedAuthDbUser,
 	}
 
+	var resultProps map[string]string
+	connectFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
+
 	plugin := setup(props)
 	_, _ = plugin.Connect(federatedAuthHostInfo1, props, true, connectFunc)
 
-	assert.Equal(t, federatedAuthDbUser, props[property_util.USER.Name])
-	assert.Equal(t, federatedAuthTestToken, props[property_util.PASSWORD.Name])
+	assert.Equal(t, federatedAuthDbUser, resultProps[property_util.USER.Name])
+	assert.Equal(t, federatedAuthTestToken, resultProps[property_util.PASSWORD.Name])
 	assert.Equal(t, 1, mockIamTokenUtility.GenerateAuthenticationTokenCallCounter)
 }
 
@@ -192,13 +209,19 @@ func TestSpecifiedIamHostPortRegion(t *testing.T) {
 		property_util.IAM_REGION.Name:       expectedRegion,
 	}
 
+	var resultProps map[string]string
+	connectFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
+
 	plugin := setup(props)
 	key := "us-west-2:pg.testdb.us-west-2.rds.amazonaws.com:" + expectedPort + ":iamUser"
 	federated_auth.TokenCache.Put(key, federatedAuthTestToken, time.Millisecond*300000)
 	_, _ = plugin.Connect(federatedAuthHostInfo1, props, true, connectFunc)
 
-	assert.Equal(t, federatedAuthDbUser, props[property_util.USER.Name])
-	assert.Equal(t, federatedAuthTestToken, props[property_util.PASSWORD.Name])
+	assert.Equal(t, federatedAuthDbUser, resultProps[property_util.USER.Name])
+	assert.Equal(t, federatedAuthTestToken, resultProps[property_util.PASSWORD.Name])
 	assert.Equal(t, 0, mockIamTokenUtility.GenerateAuthenticationTokenCallCounter)
 }
 
@@ -212,16 +235,22 @@ func TestIdpCredentialsFallback(t *testing.T) {
 		property_util.PASSWORD.Name:        expectedPassword,
 	}
 
+	var resultProps map[string]string
+	connectFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
+
 	plugin := setup(props)
 	key := "us-east-2:pg.testdb.us-east-2.rds.amazonaws.com:1234:iamUser"
 	federated_auth.TokenCache.Put(key, federatedAuthTestToken, time.Millisecond*300000)
 	_, _ = plugin.Connect(federatedAuthHostInfo1, props, true, connectFunc)
 
-	assert.Equal(t, federatedAuthDbUser, props[property_util.USER.Name])
-	assert.Equal(t, federatedAuthTestToken, props[property_util.PASSWORD.Name])
+	assert.Equal(t, federatedAuthDbUser, resultProps[property_util.USER.Name])
+	assert.Equal(t, federatedAuthTestToken, resultProps[property_util.PASSWORD.Name])
 	assert.Equal(t, 0, mockIamTokenUtility.GenerateAuthenticationTokenCallCounter)
-	assert.Equal(t, expectedUser, props[property_util.IDP_USERNAME.Name])
-	assert.Equal(t, expectedPassword, props[property_util.IDP_PASSWORD.Name])
+	assert.Equal(t, expectedUser, resultProps[property_util.IDP_USERNAME.Name])
+	assert.Equal(t, expectedPassword, resultProps[property_util.IDP_PASSWORD.Name])
 }
 
 func TestUsingIamHost(t *testing.T) {
@@ -231,11 +260,17 @@ func TestUsingIamHost(t *testing.T) {
 		property_util.IAM_HOST.Name:        federatedAuthIamHost,
 	}
 
+	var resultProps map[string]string
+	connectFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
+
 	plugin := setup(props)
 	_, _ = plugin.Connect(federatedAuthHostInfo1, props, true, connectFunc)
 
-	assert.Equal(t, federatedAuthDbUser, props[property_util.USER.Name])
-	assert.Equal(t, federatedAuthTestToken, props[property_util.PASSWORD.Name])
+	assert.Equal(t, federatedAuthDbUser, resultProps[property_util.USER.Name])
+	assert.Equal(t, federatedAuthTestToken, resultProps[property_util.PASSWORD.Name])
 	assert.Equal(t, 1, mockIamTokenUtility.GenerateAuthenticationTokenCallCounter)
 	assert.Equal(t, federatedAuthIamHost, mockIamTokenUtility.CapturedHost)
 }
@@ -244,6 +279,10 @@ func TestInvalidRegionWithoutHost(t *testing.T) {
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
 		property_util.IAM_REGION.Name:      "invalid-region",
+	}
+
+	connectFunc := func(props map[string]string) (driver.Conn, error) {
+		return &MockConn{throwError: true}, nil
 	}
 
 	plugin := setup(props)
@@ -268,6 +307,10 @@ func TestGenerateTokenFailure(t *testing.T) {
 		property_util.DB_USER.Name:         federatedAuthDbUser,
 	}
 
+	connectFunc := func(props map[string]string) (driver.Conn, error) {
+		return &MockConn{throwError: true}, nil
+	}
+
 	plugin := setup(props)
 	mockIamTokenUtility.GenerateTokenError = errors.New("GenerateTokenError")
 	_, err := plugin.Connect(federatedAuthHostInfo1, props, true, connectFunc)
@@ -280,6 +323,10 @@ func TestGetAwsCredentialsProviderError(t *testing.T) {
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
 		property_util.DB_USER.Name:         federatedAuthDbUser,
+	}
+
+	connectFunc := func(props map[string]string) (driver.Conn, error) {
+		return &MockConn{throwError: true}, nil
 	}
 
 	plugin := setup(props)

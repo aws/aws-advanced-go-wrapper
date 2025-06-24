@@ -236,7 +236,7 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 
 	if c.loadConn(c.monitoringConn) == nil {
 		// Open a new connection.
-		conn, err := c.pluginService.ForceConnect(c.initialHostInfo, c.monitoringProps)
+		conn, err := c.pluginService.ForceConnect(c.initialHostInfo, utils.CreateMapCopy(c.monitoringProps))
 		if err != nil {
 			// Can't connect.
 			return nil, err
@@ -542,7 +542,7 @@ func (h *HostMonitoringRoutine) run() {
 
 	for !h.monitor.hostRoutinesStop.Load() {
 		if conn == nil {
-			conn, err = h.monitor.pluginService.ForceConnect(h.hostInfo, h.monitor.monitoringProps)
+			conn, err = h.monitor.pluginService.ForceConnect(h.hostInfo, utils.CreateMapCopy(h.monitor.monitoringProps))
 			if err != nil {
 				// Connect issues.
 				h.monitor.pluginService.SetAvailability(h.hostInfo.AllAliases, host_info_util.UNAVAILABLE)

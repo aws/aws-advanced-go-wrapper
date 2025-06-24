@@ -70,7 +70,7 @@ func (b *HostMonitorConnectionPlugin) Connect(
 	props map[string]string,
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-	conn, err := connectFunc()
+	conn, err := connectFunc(props)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func (b *HostMonitorConnectionPlugin) Execute(
 		return nil, nil, false, err
 	}
 
-	// Sets up a MonitorConnectionState that is active for the duration of executeFÏreadounc.
+	// Sets up a MonitorConnectionState that is active for the duration of executeFunc.
 	// If there are any issues setting up the monitor/state, the error is passed on in wrappedErr.
 	var monitorState *MonitorConnectionState
 	monitoringHostInfo, err := b.getMonitoringHostInfo()
