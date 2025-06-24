@@ -31,10 +31,10 @@ const (
 type DatabaseEngineDeployment string
 
 const (
-	DOCKER DatabaseEngineDeployment = "DOCKER"
-	RDS    DatabaseEngineDeployment = "RDS"
-	AURORA DatabaseEngineDeployment = "AURORA"
-	// TODO: RDS_MULTI_AZ_CLUSTER DatabaseEngineDeployment = "RDS_MULTI_AZ_CLUSTER".
+	DOCKER               DatabaseEngineDeployment = "DOCKER"
+	RDS                  DatabaseEngineDeployment = "RDS"
+	AURORA               DatabaseEngineDeployment = "AURORA"
+	RDS_MULTI_AZ_CLUSTER DatabaseEngineDeployment = "RDS_MULTI_AZ_CLUSTER"
 )
 
 type DatabaseEngine string
@@ -47,31 +47,31 @@ const (
 type TestEnvironmentFeatures string
 
 const (
-	IAM                        TestEnvironmentFeatures = "IAM"
-	SECRETS_MANAGER            TestEnvironmentFeatures = "SECRETS_MANAGER"
-	FAILOVER_SUPPORTED         TestEnvironmentFeatures = "FAILOVER_SUPPORTED"
-	ABORT_CONNECTION_SUPPORTED TestEnvironmentFeatures = "ABORT_CONNECTION_SUPPORTED"
-	NETWORK_OUTAGES_ENABLED    TestEnvironmentFeatures = "NETWORK_OUTAGES_ENABLED"
-	AWS_CREDENTIALS_ENABLED    TestEnvironmentFeatures = "AWS_CREDENTIALS_ENABLED"
-	PERFORMANCE                TestEnvironmentFeatures = "PERFORMANCE"
-	RUN_AUTOSCALING_TESTS_ONLY TestEnvironmentFeatures = "RUN_AUTOSCALING_TESTS_ONLY"
-	SKIP_MYSQL_DRIVER_TESTS    TestEnvironmentFeatures = "SKIP_MYSQL_DRIVER_TESTS"
-	SKIP_PG_DRIVER_TESTS       TestEnvironmentFeatures = "SKIP_PG_DRIVER_TESTS"
-	// TODO: RDS_MULTI_AZ_CLUSTER_SUPPORTED TestEnvironmentFeatures = "RDS_MULTI_AZ_CLUSTER_SUPPORTED".
+	IAM                            TestEnvironmentFeatures = "IAM"
+	SECRETS_MANAGER                TestEnvironmentFeatures = "SECRETS_MANAGER"
+	FAILOVER_SUPPORTED             TestEnvironmentFeatures = "FAILOVER_SUPPORTED"
+	ABORT_CONNECTION_SUPPORTED     TestEnvironmentFeatures = "ABORT_CONNECTION_SUPPORTED"
+	NETWORK_OUTAGES_ENABLED        TestEnvironmentFeatures = "NETWORK_OUTAGES_ENABLED"
+	AWS_CREDENTIALS_ENABLED        TestEnvironmentFeatures = "AWS_CREDENTIALS_ENABLED"
+	PERFORMANCE                    TestEnvironmentFeatures = "PERFORMANCE"
+	RUN_AUTOSCALING_TESTS_ONLY     TestEnvironmentFeatures = "RUN_AUTOSCALING_TESTS_ONLY"
+	SKIP_MYSQL_DRIVER_TESTS        TestEnvironmentFeatures = "SKIP_MYSQL_DRIVER_TESTS"
+	SKIP_PG_DRIVER_TESTS           TestEnvironmentFeatures = "SKIP_PG_DRIVER_TESTS"
+	RDS_MULTI_AZ_CLUSTER_SUPPORTED TestEnvironmentFeatures = "RDS_MULTI_AZ_CLUSTER_SUPPORTED"
 )
 
 var stringToTestEnvironmentFeature = map[string]TestEnvironmentFeatures{
-	"IAM":                        IAM,
-	"SECRETS_MANAGER":            SECRETS_MANAGER,
-	"FAILOVER_SUPPORTED":         FAILOVER_SUPPORTED,
-	"ABORT_CONNECTION_SUPPORTED": ABORT_CONNECTION_SUPPORTED,
-	"NETWORK_OUTAGES_ENABLED":    NETWORK_OUTAGES_ENABLED,
-	"AWS_CREDENTIALS_ENABLED":    AWS_CREDENTIALS_ENABLED,
-	"PERFORMANCE":                PERFORMANCE,
-	"RUN_AUTOSCALING_TESTS_ONLY": RUN_AUTOSCALING_TESTS_ONLY,
-	"SKIP_MYSQL_DRIVER_TESTS":    SKIP_MYSQL_DRIVER_TESTS,
-	"SKIP_PG_DRIVER_TESTS":       SKIP_PG_DRIVER_TESTS,
-	// TODO: "RDS_MULTI_AZ_CLUSTER_SUPPORTED": RDS_MULTI_AZ_CLUSTER_SUPPORTED.
+	"IAM":                            IAM,
+	"SECRETS_MANAGER":                SECRETS_MANAGER,
+	"FAILOVER_SUPPORTED":             FAILOVER_SUPPORTED,
+	"ABORT_CONNECTION_SUPPORTED":     ABORT_CONNECTION_SUPPORTED,
+	"NETWORK_OUTAGES_ENABLED":        NETWORK_OUTAGES_ENABLED,
+	"AWS_CREDENTIALS_ENABLED":        AWS_CREDENTIALS_ENABLED,
+	"PERFORMANCE":                    PERFORMANCE,
+	"RUN_AUTOSCALING_TESTS_ONLY":     RUN_AUTOSCALING_TESTS_ONLY,
+	"SKIP_MYSQL_DRIVER_TESTS":        SKIP_MYSQL_DRIVER_TESTS,
+	"SKIP_PG_DRIVER_TESTS":           SKIP_PG_DRIVER_TESTS,
+	"RDS_MULTI_AZ_CLUSTER_SUPPORTED": RDS_MULTI_AZ_CLUSTER_SUPPORTED,
 }
 
 func matchFeatures(featureStrings []any) []TestEnvironmentFeatures {

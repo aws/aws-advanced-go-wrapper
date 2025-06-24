@@ -22,12 +22,13 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/mysql-driver"
-	"github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 	"slices"
 	"strconv"
 	"time"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
+	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 )
 
 func OpenDb(engine DatabaseEngine, dsn string) (*sql.DB, error) {
@@ -61,13 +62,22 @@ func GetSleepSql(engine DatabaseEngine, seconds int) string {
 }
 
 func GetInstanceIdSql(engine DatabaseEngine, deployment DatabaseEngineDeployment) (string, error) {
-	// TODO: deployment = RDS_MULTI_AZ_CLUSTER.
 	if deployment == AURORA {
 		switch engine {
 		case PG:
 			return "SELECT aurora_db_instance_identifier() as id", nil
 		case MYSQL:
 			return "SELECT @@aurora_server_id as id", nil
+		default:
+			return "", fmt.Errorf("Invalid engine: %s.", engine)
+		}
+	} else if deployment == RDS_MULTI_AZ_CLUSTER {
+		switch engine {
+		case PG:
+			return "SELECT SUBSTRING(endpoint FROM 0 FOR POSITION('.' IN endpoint)) as id FROM rds_tools.show_topology() WHERE id IN" +
+				"(SELECT dbi_resource_id FROM rds_tools.dbi_resource_id())", nil
+		case MYSQL:
+			return "SELECT SUBSTRING_INDEX(endpoint, '.', 1) as id FROM mysql.rds_topology WHERE id=@@server_id", nil
 		default:
 			return "", fmt.Errorf("Invalid engine: %s.", engine)
 		}

@@ -126,5 +126,3 @@ func (s *StaleDnsHelper) GetVerifiedConnection(
 
 	return conn, nil
 }
-
-// TODO: notifyHostListChanged when needed for AuroraStaleDnsPlugin.
