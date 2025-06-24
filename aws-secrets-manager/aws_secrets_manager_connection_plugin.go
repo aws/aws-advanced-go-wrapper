@@ -18,7 +18,10 @@ package aws_secrets_manager
 
 import (
 	"database/sql/driver"
-	"errors"
+	"log/slog"
+	"net/url"
+	"time"
+
 	awssql "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -29,9 +32,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	"log/slog"
-	"net/url"
-	"time"
 )
 
 func init() {
@@ -75,6 +75,14 @@ func NewAwsSecretsManagerPlugin(pluginService driver_infrastructure.PluginServic
 	props map[string]string,
 	awsSecretsManagerClientProvider NewAwsSecretsManagerClientProvider,
 ) (*AwsSecretsManagerPlugin, error) {
+	// Validate Secret ID
+	secretId := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.SECRETS_MANAGER_SECRET_ID)
+
+	if secretId == "" {
+		return nil, error_util.NewGenericAwsWrapperError(
+			error_util.GetMessage("AwsSecretsManagerConnectionPlugin.secretIdMissing", property_util.SECRETS_MANAGER_SECRET_ID.Name))
+	}
+
 	// Get and validate region
 	region, err := GetAwsSecretsManagerRegion(props[property_util.SECRETS_MANAGER_REGION.Name], props[property_util.SECRETS_MANAGER_SECRET_ID.Name])
 	if err != nil {
@@ -87,7 +95,8 @@ func NewAwsSecretsManagerPlugin(pluginService driver_infrastructure.PluginServic
 	if secretsEndpoint != "" {
 		_, err := url.ParseRequestURI(secretsEndpoint)
 		if err != nil {
-			return nil, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.endpointOverrideMisconfigured", secretsEndpoint))
+			return nil, error_util.NewGenericAwsWrapperError(
+				error_util.GetMessage("AwsSecretsManagerConnectionPlugin.endpointOverrideMisconfigured", secretsEndpoint))
 		}
 	}
 

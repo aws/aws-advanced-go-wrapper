@@ -19,16 +19,17 @@ package test
 import (
 	"database/sql/driver"
 	"fmt"
-	"github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager"
+	"testing"
+	"time"
+
+	aws_secrets_manager "github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	"github.com/aws/aws-advanced-go-wrapper/mysql-driver"
-	"testing"
-	"time"
+	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
@@ -110,7 +111,48 @@ func TestAwsSecretsManagerConnectionPluginProps(t *testing.T) {
 	assert.Equal(t, "https://someEndpoint.com", props[property_util.SECRETS_MANAGER_ENDPOINT.Name])
 }
 
+func TestAwsSecretsManagerConnectionPluginMissingSecretId(t *testing.T) {
+	props := map[string]string{
+		property_util.DRIVER_PROTOCOL.Name: "mysql",
+	}
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+
+	_, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
+
+	assert.Equal(t,
+		error_util.GetMessage("AwsSecretsManagerConnectionPlugin.secretIdMissing", property_util.SECRETS_MANAGER_SECRET_ID.Name),
+		err.Error())
+}
+
 func TestAwsSecretsManagerConnectionPluginInvalidRegion(t *testing.T) {
+	props := map[string]string{
+		property_util.SECRETS_MANAGER_SECRET_ID.Name: "myId",
+		property_util.SECRETS_MANAGER_REGION.Name:    "invalidRegion",
+		property_util.DRIVER_PROTOCOL.Name:           "mysql",
+	}
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+
+	_, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
+
+	assert.Equal(t,
+		error_util.GetMessage("AwsSecretsManagerConnectionPlugin.invalidRegion", "invalidRegion"),
+		err.Error())
+}
+
+func TestAwsSecretsManagerConnectionPluginValidRegion(t *testing.T) {
+	props := map[string]string{
+		property_util.SECRETS_MANAGER_SECRET_ID.Name: "myId",
+		property_util.SECRETS_MANAGER_REGION.Name:    "us-west-2",
+		property_util.DRIVER_PROTOCOL.Name:           "mysql",
+	}
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+
+	_, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
+
+	assert.NoError(t, err)
+}
+
+func TestAwsSecretsManagerConnectionPluginValidIdInvalidRegion(t *testing.T) {
 	props := map[string]string{
 		property_util.SECRETS_MANAGER_SECRET_ID.Name: "myId",
 		property_util.DRIVER_PROTOCOL.Name:           "mysql",

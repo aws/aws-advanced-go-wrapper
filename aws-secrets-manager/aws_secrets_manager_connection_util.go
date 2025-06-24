@@ -21,11 +21,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
-	"log/slog"
 
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 )
@@ -85,15 +86,19 @@ func getRdsSecretFromAwsSecretsManager(
 }
 
 func GetAwsSecretsManagerRegion(regionStr string, secretId string) (region_util.Region, error) {
-	region := region_util.GetRegionFromRegionString(regionStr)
-	if region != "" {
+	if regionStr != "" {
+		region := region_util.GetRegionFromRegionString(regionStr)
+
+		if region == "" {
+			return region, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.invalidRegion", regionStr))
+		}
+
 		return region, nil
 	}
 
-	region = region_util.GetRegionFromArn(secretId)
+	region := region_util.GetRegionFromArn(secretId)
 	if region == "" {
 		return region, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.unableToDetermineRegion", property_util.SECRETS_MANAGER_REGION.Name))
 	}
-
 	return region, nil
 }
