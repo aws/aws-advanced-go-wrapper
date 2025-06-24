@@ -4,11 +4,11 @@ The AWS Advanced Go Wrapper has support for Amazon RDS Multi-AZ DB Cluster Deplo
 
 ## General Usage
 
-The process of using the AWS Advanced Go Wrapper with RDS Multi-AZ DB Clusters is the same as using it with an RDS Aurora cluster. All properties, configurations, functions, etc., remain consistent. Instead of connecting to a generic database endpoint, replace the endpoint with the Cluster Writer Endpoint provided by the RDS Multi-AZ DB Cluster.
+The process of using the AWS Advanced Go Wrapper with RDS Multi-AZ DB Clusters is the same as using it with an RDS Aurora cluster. All properties, configurations, functions, etc., remain consistent. Instead of connecting to a generic database endpoint, replace the endpoint with a Cluster Endpoint provided by the RDS Multi-AZ DB Cluster.
 
 ### MySQL
 
-To prepare a connection with MySQL in a Multi-AZ Cluster, please refer to [this example](../../examples/aws_simple_connection_mysql_example.go).
+To prepare a connection with MySQL with the AWS Advanced Go Wrapper please refer to [this example](../../examples/aws_simple_connection_mysql_example.go).
 
 ### PostgreSQL
 
