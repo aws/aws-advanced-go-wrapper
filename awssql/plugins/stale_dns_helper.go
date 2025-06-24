@@ -19,12 +19,13 @@ package plugins
 import (
 	"database/sql/driver"
 	"fmt"
+	"log/slog"
+	"net"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"log/slog"
-	"net"
 )
 
 type StaleDnsHelper struct {
@@ -43,6 +44,10 @@ func (s *StaleDnsHelper) GetVerifiedConnection(
 
 	if !utils.IsWriterClusterDns(host) {
 		return conn, err
+	}
+
+	if err != nil {
+		return nil, err
 	}
 
 	ip, ipErr := net.LookupIP(host)
