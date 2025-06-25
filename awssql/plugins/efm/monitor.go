@@ -42,8 +42,15 @@ type Monitor interface {
 	Close()
 }
 
-func NewMonitorImpl(pluginService driver_infrastructure.PluginService, hostInfo *host_info_util.HostInfo, props map[string]string,
-	failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionCount int) *MonitorImpl {
+func NewMonitorImpl(
+	pluginService driver_infrastructure.PluginService,
+	hostInfo *host_info_util.HostInfo,
+	props map[string]string,
+	failureDetectionTimeMillis int,
+	failureDetectionIntervalMillis int,
+	failureDetectionCount int,
+	abortedConnectionsCounter telemetry.TelemetryCounter,
+) *MonitorImpl {
 	monitoringConnectionProps := props
 	for propKey, propValue := range props {
 		if strings.HasPrefix(propKey, property_util.MONITORING_PROPERTY_PREFIX) {
@@ -59,6 +66,7 @@ func NewMonitorImpl(pluginService driver_infrastructure.PluginService, hostInfo 
 		failureDetectionIntervalNanos: time.Millisecond * time.Duration(failureDetectionIntervalMillis),
 		failureDetectionCount:         failureDetectionCount,
 		NewStates:                     map[time.Time][]weak.Pointer[MonitorConnectionState]{},
+		abortedConnectionsCounter:     abortedConnectionsCounter,
 	}
 
 	monitor.wg.Add(2)
@@ -84,6 +92,7 @@ type MonitorImpl struct {
 	HostUnhealthy                 bool
 	lock                          sync.RWMutex
 	wg                            sync.WaitGroup
+	abortedConnectionsCounter     telemetry.TelemetryCounter
 }
 
 func (m *MonitorImpl) CanDispose() bool {
@@ -177,6 +186,7 @@ func (m *MonitorImpl) run() {
 				monitorState.SetInactive()
 				if connToAbort != nil {
 					(*connToAbort).Close()
+					m.abortedConnectionsCounter.Inc(m.pluginService.GetTelemetryContext())
 				}
 			} else if monitorState.IsActive() {
 				tmpActiveStates = append(tmpActiveStates, monitorStateWeakRef)

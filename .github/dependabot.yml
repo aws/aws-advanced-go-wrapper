@@ -33,7 +33,7 @@ updates:
     schedule:
       interval: "weekly"
   - package-ecosystem: "gomod"
-    directory: "/otel"
+    directory: "/otlp"
     schedule:
       interval: "weekly"
   - package-ecosystem: "gomod"

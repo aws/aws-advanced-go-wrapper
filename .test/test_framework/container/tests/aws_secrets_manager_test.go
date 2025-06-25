@@ -24,7 +24,7 @@ import (
 	_ "github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	_ "github.com/aws/aws-advanced-go-wrapper/otel"
+	_ "github.com/aws/aws-advanced-go-wrapper/otlp"
 	_ "github.com/aws/aws-advanced-go-wrapper/xray"
 	"testing"
 

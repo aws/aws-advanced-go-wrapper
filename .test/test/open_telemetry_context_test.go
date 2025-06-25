@@ -18,7 +18,7 @@ package test
 
 import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	wrapperOtel "github.com/aws/aws-advanced-go-wrapper/otel"
+	wrapperOtel "github.com/aws/aws-advanced-go-wrapper/otlp"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"

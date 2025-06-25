@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-package otel
+package otlp
 
 import (
 	"go.opentelemetry.io/otel/metric"

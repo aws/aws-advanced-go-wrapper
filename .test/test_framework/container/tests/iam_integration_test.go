@@ -23,7 +23,7 @@ import (
 	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	_ "github.com/aws/aws-advanced-go-wrapper/iam"
-	_ "github.com/aws/aws-advanced-go-wrapper/otel"
+	_ "github.com/aws/aws-advanced-go-wrapper/otlp"
 	_ "github.com/aws/aws-advanced-go-wrapper/xray"
 	"github.com/stretchr/testify/assert"
 	"net"

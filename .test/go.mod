@@ -11,7 +11,7 @@ require (
 	github.com/aws/aws-advanced-go-wrapper/iam v0.0.7
 	github.com/aws/aws-advanced-go-wrapper/mysql-driver v0.0.7
 	github.com/aws/aws-advanced-go-wrapper/okta v0.0.7
-	github.com/aws/aws-advanced-go-wrapper/otel v0.0.7
+	github.com/aws/aws-advanced-go-wrapper/otlp v0.0.7
 	github.com/aws/aws-advanced-go-wrapper/pgx-driver v0.0.7
 	github.com/aws/aws-advanced-go-wrapper/xray v0.0.7
 	github.com/aws/aws-sdk-go-v2 v1.36.5
@@ -108,6 +108,6 @@ replace github.com/aws/aws-advanced-go-wrapper/okta => ./../okta
 
 replace github.com/aws/aws-advanced-go-wrapper/auth-helpers => ./../auth-helpers
 
-replace github.com/aws/aws-advanced-go-wrapper/otel => ./../otel
+replace github.com/aws/aws-advanced-go-wrapper/otlp => ./../otlp
 
 replace github.com/aws/aws-advanced-go-wrapper/xray => ./../xray

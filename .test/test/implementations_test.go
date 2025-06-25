@@ -24,7 +24,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 	"github.com/aws/aws-advanced-go-wrapper/okta"
-	"github.com/aws/aws-advanced-go-wrapper/otel"
+	"github.com/aws/aws-advanced-go-wrapper/otlp"
 	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 	"github.com/aws/aws-advanced-go-wrapper/xray"
 
@@ -88,12 +88,12 @@ func TestImplementations(t *testing.T) {
 	var _ driver_infrastructure.ConnectionPluginFactory = (*federated_auth.FederatedAuthPluginFactory)(nil)
 	var _ driver_infrastructure.ConnectionPluginFactory = (*limitless.LimitlessPluginFactory)(nil)
 	var _ telemetry.TelemetryCounter = (*telemetry.NilTelemetryCounter)(nil)
-	var _ telemetry.TelemetryCounter = (*otel.OpenTelemetryCounter)(nil)
+	var _ telemetry.TelemetryCounter = (*otlp.OpenTelemetryCounter)(nil)
 	var _ telemetry.TelemetryContext = (*telemetry.NilTelemetryContext)(nil)
-	var _ telemetry.TelemetryContext = (*otel.OpenTelemetryContext)(nil)
+	var _ telemetry.TelemetryContext = (*otlp.OpenTelemetryContext)(nil)
 	var _ telemetry.TelemetryContext = (*xray.XRayTelemetryContext)(nil)
 	var _ telemetry.TelemetryFactory = (*telemetry.NilTelemetryFactory)(nil)
-	var _ telemetry.TelemetryFactory = (*otel.OpenTelemetryFactory)(nil)
+	var _ telemetry.TelemetryFactory = (*otlp.OpenTelemetryFactory)(nil)
 	var _ telemetry.TelemetryFactory = (*xray.XRayTelemetryFactory)(nil)
 	var _ telemetry.TelemetryFactory = (*telemetry.DefaultTelemetryFactory)(nil)
 	var _ efm.MonitorService = (*efm.MonitorServiceImpl)(nil)
