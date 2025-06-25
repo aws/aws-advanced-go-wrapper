@@ -9,6 +9,8 @@
 	"AwsClientHelper.errorGettingClientConfig": "Error occurred while loading configuration for aws client: '%v'.",
 	"AwsSecretsManagerConnectionPlugin.endpointOverrideMisconfigured" : "The provided endpoint is invalid and could not be used to create a URI: '%v'.",
 	"AwsSecretsManagerConnectionPlugin.failedToFetchDbCredentials" : "Was not able to either fetch or read the database credentials from AWS Secrets Manager. Ensure the correct secretId and region properties have been provided.",
+	"AwsSecretsManagerConnectionPlugin.invalidRegion": "Invalid AWS Secrets Manager Region was given: '%s'.",
+	"AwsSecretsManagerConnectionPlugin.secretIdMissing": "A secret id or a secret arn must be provided in the '%v' property.",
 	"AwsSecretsManagerConnectionPlugin.unableToCreateAwsSecretsManagerClient": "Error occurred while initializing the AwsSecretsManager client",
 	"AwsSecretsManagerConnectionPlugin.unableToDetermineRegion": "Unable to determine connection region. If you are not providing a secret ARN, please set the '%v' property.",
 	"AwsSecretsManagerConnectionPlugin.unableToGetSecretValue" : "Error occurred while getting secret value from AwsSecretsManager: '%v'. ",
