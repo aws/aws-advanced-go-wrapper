@@ -21,7 +21,7 @@ import (
 	"log/slog"
 	"time"
 
-	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
+	"github.com/aws/aws-advanced-go-wrapper/auth-helpers"
 	awssql "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -124,26 +124,27 @@ func (f *FederatedAuthPlugin) connectInternal(
 		region)
 
 	token, isCachedToken := TokenCache.Get(cacheKey)
+	propsCopy := utils.CreateMapCopy(props)
 
 	if isCachedToken {
 		slog.Debug(error_util.GetMessage("AuthenticationToken.useCachedToken"))
-		property_util.PASSWORD.Set(props, token)
+		property_util.PASSWORD.Set(propsCopy, token)
 	} else {
-		updateErr := f.updateAuthenticationToken(props, region, cacheKey, host, port)
+		updateErr := f.updateAuthenticationToken(propsCopy, region, cacheKey, host, port)
 		if updateErr != nil {
 			return nil, updateErr
 		}
 	}
 
-	property_util.USER.Set(props, property_util.DB_USER.Get(props))
+	property_util.USER.Set(propsCopy, property_util.DB_USER.Get(propsCopy))
 
-	result, err := connectFunc()
+	result, err := connectFunc(propsCopy)
 	if err != nil && f.pluginService.IsLoginError(err) && isCachedToken {
-		updateErr := f.updateAuthenticationToken(props, region, cacheKey, host, port)
+		updateErr := f.updateAuthenticationToken(propsCopy, region, cacheKey, host, port)
 		if updateErr != nil {
 			return nil, updateErr
 		}
-		return connectFunc()
+		return connectFunc(propsCopy)
 	}
 	return result, err
 }
@@ -167,7 +168,7 @@ func (f *FederatedAuthPlugin) updateAuthenticationToken(
 		return err
 	}
 	slog.Debug(error_util.GetMessage("AuthenticationToken.generatedNewToken"))
-	props[property_util.PASSWORD.Name] = token
+	property_util.PASSWORD.Set(props, token)
 	TokenCache.Put(cacheKey, token, time.Second*time.Duration(tokenExpirationSec))
 	return nil
 }

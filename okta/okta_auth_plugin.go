@@ -126,28 +126,29 @@ func (o *OktaAuthPlugin) connectInternal(
 		region)
 
 	token, isCachedToken := OktaTokenCache.Get(cacheKey)
+	propsCopy := utils.CreateMapCopy(props)
 
 	if isCachedToken {
 		slog.Debug(error_util.GetMessage("AuthenticationToken.useCachedToken"))
-		property_util.PASSWORD.Set(props, token)
+		property_util.PASSWORD.Set(propsCopy, token)
 	} else {
-		err := o.updateAuthenticationToken(props, region, cacheKey, host, port)
+		err := o.updateAuthenticationToken(propsCopy, region, cacheKey, host, port)
 
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	props[property_util.USER.Name] = property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.DB_USER)
+	property_util.USER.Set(propsCopy, property_util.GetVerifiedWrapperPropertyValue[string](propsCopy, property_util.DB_USER))
 
-	conn, err := connectFunc()
+	conn, err := connectFunc(propsCopy)
 
 	if err != nil && o.pluginService.IsLoginError(err) && isCachedToken {
-		err = o.updateAuthenticationToken(props, region, cacheKey, host, port)
+		err = o.updateAuthenticationToken(propsCopy, region, cacheKey, host, port)
 		if err != nil {
 			return nil, err
 		}
-		return connectFunc()
+		return connectFunc(propsCopy)
 	}
 
 	return conn, err
@@ -172,7 +173,7 @@ func (o *OktaAuthPlugin) updateAuthenticationToken(
 		return err
 	}
 	slog.Debug(error_util.GetMessage("AuthenticationToken.generatedNewToken"))
-	props[property_util.PASSWORD.Name] = token
+	property_util.PASSWORD.Set(props, token)
 	OktaTokenCache.Put(cacheKey, token, time.Second*time.Duration(tokenExpirationSec))
 	return nil
 }

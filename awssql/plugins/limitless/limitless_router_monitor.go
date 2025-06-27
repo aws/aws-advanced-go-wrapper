@@ -62,7 +62,7 @@ func NewLimitlessRouterMonitorImpl(
 		props:          maps.Clone(props),
 	}
 
-	monitor.props[property_util.LIMITLESS_WAIT_FOR_ROUTER_INFO.Name] = "false"
+	property_util.LIMITLESS_WAIT_FOR_ROUTER_INFO.Set(monitor.props, "false")
 	go monitor.run()
 
 	return monitor
@@ -142,7 +142,7 @@ func (monitor *LimitlessRouterMonitorImpl) openConnection() error {
 	if monitor.monitoringConn == nil {
 		// open a new connection
 		slog.Info(error_util.GetMessage("LimitlessRouterMonitorImpl.openingConnection", monitor.hostInfo.Host))
-		newConn, err := monitor.pluginService.ForceConnect(monitor.hostInfo, monitor.props)
+		newConn, err := monitor.pluginService.ForceConnect(monitor.hostInfo, utils.CreateMapCopy(monitor.props))
 		if err != nil {
 			if newConn != nil {
 				_ = newConn.Close()

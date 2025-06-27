@@ -42,7 +42,11 @@ func beforeIamAuthPluginTests(props map[string]string) (driver_infrastructure.Pl
 func TestIamAuthPluginConnect(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	var resultProps map[string]string
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
 
 	props := map[string]string{
 		property_util.USER.Name:            "someUser",
@@ -57,7 +61,7 @@ func TestIamAuthPluginConnect(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t,
 		mockIamTokenUtility.(*MockIamTokenUtility).GetMockTokenValue(),
-		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PASSWORD))
+		property_util.GetVerifiedWrapperPropertyValue[string](resultProps, property_util.PASSWORD))
 	assert.Equal(t, "someUser", mockIamTokenUtility.(*MockIamTokenUtility).CapturedUsername)
 	assert.Equal(t, "database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com", mockIamTokenUtility.(*MockIamTokenUtility).CapturedHost)
 	assert.Equal(t, 1234, mockIamTokenUtility.(*MockIamTokenUtility).CapturedPort)
@@ -67,7 +71,11 @@ func TestIamAuthPluginConnect(t *testing.T) {
 func TestIamAuthPluginConnectWithIamProps(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	var resultProps map[string]string
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
 
 	props := map[string]string{
 		property_util.USER.Name:             "someUser",
@@ -85,7 +93,7 @@ func TestIamAuthPluginConnectWithIamProps(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t,
 		mockIamTokenUtility.(*MockIamTokenUtility).GetMockTokenValue(),
-		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PASSWORD))
+		property_util.GetVerifiedWrapperPropertyValue[string](resultProps, property_util.PASSWORD))
 	assert.Equal(t, "someUser", mockIamTokenUtility.(*MockIamTokenUtility).CapturedUsername)
 	assert.Equal(t, "someIamHost", mockIamTokenUtility.(*MockIamTokenUtility).CapturedHost)
 	assert.Equal(t, 9999, mockIamTokenUtility.(*MockIamTokenUtility).CapturedPort)
@@ -95,7 +103,7 @@ func TestIamAuthPluginConnectWithIamProps(t *testing.T) {
 func TestIamAuthPluginConnectInvalidRegionError(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("mydatabasewithnoregion.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 
 	props := map[string]string{
 		property_util.USER.Name:            "someUser",
@@ -115,7 +123,7 @@ func TestIamAuthPluginConnectInvalidRegionError(t *testing.T) {
 func TestIamAuthPluginConnectPopulatesEmptyTokenCache(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 
 	props := map[string]string{
 		property_util.USER.Name:            "someUser",
@@ -136,7 +144,7 @@ func TestIamAuthPluginConnectPopulatesEmptyTokenCache(t *testing.T) {
 func TestIamAuthPluginConnectUsesCachedToken(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 
 	props := map[string]string{
 		property_util.USER.Name:             "someUser",
@@ -170,7 +178,11 @@ func TestIamAuthPluginConnectUsesCachedToken(t *testing.T) {
 func TestIamAuthPluginConnectCacheExpiredToken(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	var resultProps map[string]string
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
 
 	props := map[string]string{
 		property_util.USER.Name:             "someUser",
@@ -185,9 +197,9 @@ func TestIamAuthPluginConnectCacheExpiredToken(t *testing.T) {
 	expiredCacheExpirationDuration := -(time.Duration(180) * time.Second)
 	cachedToken := "someCachedToken"
 	cacheKey := auth_helpers.GetCacheKey(
-		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.USER),
-		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IAM_HOST),
-		property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.IAM_DEFAULT_PORT),
+		property_util.GetVerifiedWrapperPropertyValue[string](resultProps, property_util.USER),
+		property_util.GetVerifiedWrapperPropertyValue[string](resultProps, property_util.IAM_HOST),
+		property_util.GetVerifiedWrapperPropertyValue[int](resultProps, property_util.IAM_DEFAULT_PORT),
 		region_util.US_EAST_1,
 	)
 
@@ -201,7 +213,7 @@ func TestIamAuthPluginConnectCacheExpiredToken(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t,
 		mockIamTokenUtility.(*MockIamTokenUtility).GetMockTokenValue(),
-		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PASSWORD))
+		property_util.GetVerifiedWrapperPropertyValue[string](resultProps, property_util.PASSWORD))
 	assert.Equal(t, "someUser", mockIamTokenUtility.(*MockIamTokenUtility).CapturedUsername)
 	assert.Equal(t, "someIamHost", mockIamTokenUtility.(*MockIamTokenUtility).CapturedHost)
 	assert.Equal(t, 9999, mockIamTokenUtility.(*MockIamTokenUtility).CapturedPort)
@@ -213,7 +225,9 @@ func TestIamAuthPluginConnectTtlExpiredCachedToken(t *testing.T) {
 	assert.Nil(t, err)
 	mockLoginError := &mysql.MySQLError{SQLState: [5]byte(([]byte(mysql_driver.SqlStateAccessError))[:5])}
 	mockConnFuncCallCounter := 0
-	mockConnFunc := func() (driver.Conn, error) {
+	var resultProps map[string]string
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
 		if mockConnFuncCallCounter == 0 {
 			mockConnFuncCallCounter++
 			return nil, mockLoginError
@@ -252,7 +266,7 @@ func TestIamAuthPluginConnectTtlExpiredCachedToken(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t,
 		mockIamTokenUtility.(*MockIamTokenUtility).GetMockTokenValue(),
-		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PASSWORD))
+		property_util.GetVerifiedWrapperPropertyValue[string](resultProps, property_util.PASSWORD))
 	assert.Equal(t, "someUser", mockIamTokenUtility.(*MockIamTokenUtility).CapturedUsername)
 	assert.Equal(t, "someIamHost", mockIamTokenUtility.(*MockIamTokenUtility).CapturedHost)
 	assert.Equal(t, 9999, mockIamTokenUtility.(*MockIamTokenUtility).CapturedPort)
@@ -263,7 +277,11 @@ func TestIamAuthPluginConnectLoginError(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
 	mockLoginError := &mysql.MySQLError{SQLState: [5]byte(([]byte(mysql_driver.SqlStateAccessError))[:5])}
-	mockConnFunc := func() (driver.Conn, error) { return nil, mockLoginError }
+	var resultProps map[string]string
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
+		return nil, mockLoginError
+	}
 
 	props := map[string]string{
 		property_util.USER.Name:            "someUser",
@@ -280,7 +298,7 @@ func TestIamAuthPluginConnectLoginError(t *testing.T) {
 	assert.Equal(t, mockLoginError, err)
 	assert.Equal(t,
 		mockIamTokenUtility.(*MockIamTokenUtility).GetMockTokenValue(),
-		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PASSWORD))
+		property_util.GetVerifiedWrapperPropertyValue[string](resultProps, property_util.PASSWORD))
 	assert.Equal(t, "someUser", mockIamTokenUtility.(*MockIamTokenUtility).CapturedUsername)
 	assert.Equal(t, "database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com", mockIamTokenUtility.(*MockIamTokenUtility).CapturedHost)
 	assert.Equal(t, 1234, mockIamTokenUtility.(*MockIamTokenUtility).CapturedPort)

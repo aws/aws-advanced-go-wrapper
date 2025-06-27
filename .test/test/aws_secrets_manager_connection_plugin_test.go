@@ -49,7 +49,11 @@ func beforeAwsSecretsManagerConnectionPluginTests(props map[string]string) drive
 func TestAwsSecretsManagerConnectionPluginConnect(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	var resultProps map[string]string
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
 
 	props := map[string]string{
 		property_util.SECRETS_MANAGER_REGION.Name:    "us-west-2",
@@ -63,14 +67,18 @@ func TestAwsSecretsManagerConnectionPluginConnect(t *testing.T) {
 	_, err = awsSecretsManagerConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
 
 	assert.Nil(t, err)
-	assert.Equal(t, "testuser", props[property_util.USER.Name])
-	assert.Equal(t, "testpassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "testuser", resultProps[property_util.USER.Name])
+	assert.Equal(t, "testpassword", resultProps[property_util.PASSWORD.Name])
 }
 
 func TestAwsSecretsManagerConnectionPluginForceConnect(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	var resultProps map[string]string
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
 
 	props := map[string]string{
 		property_util.SECRETS_MANAGER_REGION.Name:    "us-west-2",
@@ -84,14 +92,18 @@ func TestAwsSecretsManagerConnectionPluginForceConnect(t *testing.T) {
 	_, err = awsSecretsManagerConnectionPlugin.ForceConnect(hostInfo, props, false, mockConnFunc)
 
 	assert.Nil(t, err)
-	assert.Equal(t, "testuser", props[property_util.USER.Name])
-	assert.Equal(t, "testpassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "testuser", resultProps[property_util.USER.Name])
+	assert.Equal(t, "testpassword", resultProps[property_util.PASSWORD.Name])
 }
 
 func TestAwsSecretsManagerConnectionPluginProps(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	var resultProps map[string]string
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
 
 	props := map[string]string{
 		property_util.SECRETS_MANAGER_REGION.Name:    "us-west-2",
@@ -106,9 +118,9 @@ func TestAwsSecretsManagerConnectionPluginProps(t *testing.T) {
 	_, err = awsSecretsManagerConnectionPlugin.ForceConnect(hostInfo, props, false, mockConnFunc)
 
 	assert.Nil(t, err)
-	assert.Equal(t, "testuser", props[property_util.USER.Name])
-	assert.Equal(t, "testpassword", props[property_util.PASSWORD.Name])
-	assert.Equal(t, "https://someEndpoint.com", props[property_util.SECRETS_MANAGER_ENDPOINT.Name])
+	assert.Equal(t, "testuser", resultProps[property_util.USER.Name])
+	assert.Equal(t, "testpassword", resultProps[property_util.PASSWORD.Name])
+	assert.Equal(t, "https://someEndpoint.com", resultProps[property_util.SECRETS_MANAGER_ENDPOINT.Name])
 }
 
 func TestAwsSecretsManagerConnectionPluginMissingSecretId(t *testing.T) {
@@ -169,7 +181,11 @@ func TestAwsSecretsManagerConnectionPluginValidIdInvalidRegion(t *testing.T) {
 func TestAwsSecretsManagerConnectionPluginValidRegionThroughArn(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	var resultProps map[string]string
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
 
 	props := map[string]string{
 		property_util.SECRETS_MANAGER_SECRET_ID.Name: "arn:aws:secretsmanager:us-west-2:account-id:secret:default",
@@ -182,8 +198,8 @@ func TestAwsSecretsManagerConnectionPluginValidRegionThroughArn(t *testing.T) {
 	_, err = awsSecretsManagerConnectionPlugin.ForceConnect(hostInfo, props, false, mockConnFunc)
 
 	assert.Nil(t, err)
-	assert.Equal(t, "testuser", props[property_util.USER.Name])
-	assert.Equal(t, "testpassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "testuser", resultProps[property_util.USER.Name])
+	assert.Equal(t, "testpassword", resultProps[property_util.PASSWORD.Name])
 }
 
 func TestAwsSecretsManagerConnectionPluginInvalidEndpoint(t *testing.T) {
@@ -207,7 +223,11 @@ func TestAwsSecretsManagerConnectionPluginCacheSize1(t *testing.T) {
 
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	var resultProps map[string]string
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
 
 	props := map[string]string{
 		property_util.SECRETS_MANAGER_REGION.Name:    "us-west-2",
@@ -221,15 +241,19 @@ func TestAwsSecretsManagerConnectionPluginCacheSize1(t *testing.T) {
 	_, err = awsSecretsManagerConnectionPlugin.ForceConnect(hostInfo, props, false, mockConnFunc)
 
 	assert.Nil(t, err)
-	assert.Equal(t, "testuser", props[property_util.USER.Name])
-	assert.Equal(t, "testpassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "testuser", resultProps[property_util.USER.Name])
+	assert.Equal(t, "testpassword", resultProps[property_util.PASSWORD.Name])
 	assert.Equal(t, 1, aws_secrets_manager.SecretsCache.Size())
 }
 
 func TestAwsSecretsManagerConnectionPluginUsingExpiredSecret(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	var resultProps map[string]string
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
 	secretId := "myId"
 	region := "us-west-2"
 	cachedUsername := "cachedUsername"
@@ -255,15 +279,19 @@ func TestAwsSecretsManagerConnectionPluginUsingExpiredSecret(t *testing.T) {
 	_, err = awsSecretsManagerConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
 
 	assert.Nil(t, err)
-	assert.Equal(t, "testuser", props[property_util.USER.Name])
-	assert.Equal(t, "testpassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "testuser", resultProps[property_util.USER.Name])
+	assert.Equal(t, "testpassword", resultProps[property_util.PASSWORD.Name])
 	assert.Equal(t, 1, aws_secrets_manager.SecretsCache.Size())
 }
 
 func TestAwsSecretsManagerConnectionPluginConnectingUsingCache(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	var resultProps map[string]string
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
 	secretId := "myId"
 	region := "us-west-2"
 	cachedUsername := "cachedUsername"
@@ -289,15 +317,15 @@ func TestAwsSecretsManagerConnectionPluginConnectingUsingCache(t *testing.T) {
 	_, err = awsSecretsManagerConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
 
 	assert.Nil(t, err)
-	assert.Equal(t, cachedUsername, props[property_util.USER.Name])
-	assert.Equal(t, cachedPassword, props[property_util.PASSWORD.Name])
+	assert.Equal(t, cachedUsername, resultProps[property_util.USER.Name])
+	assert.Equal(t, cachedPassword, resultProps[property_util.PASSWORD.Name])
 	assert.Equal(t, 1, aws_secrets_manager.SecretsCache.Size())
 }
 
 func TestAwsSecretsManagerConnectionPluginMultipleConnectionsCache(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func() (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 	secretIds := [4]string{"id1", "id1", "id3", "id4"}
 	region := [4]string{"us-west-2", "us-west-1", "us-west-2", "us-west-2"}
 
@@ -328,7 +356,11 @@ func TestAwsSecretsManagerConnectionPluginLoginError(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
 	mockLoginError := &mysql.MySQLError{SQLState: [5]byte(([]byte(mysql_driver.SqlStateAccessError))[:5])}
-	mockConnFunc := func() (driver.Conn, error) { return nil, mockLoginError }
+	var resultProps map[string]string
+	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+		resultProps = props
+		return nil, mockLoginError
+	}
 
 	props := map[string]string{
 		property_util.SECRETS_MANAGER_REGION.Name:    "us-west-2",
@@ -345,6 +377,6 @@ func TestAwsSecretsManagerConnectionPluginLoginError(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Equal(t, mockLoginError, err)
 	assert.Equal(t, 1, aws_secrets_manager.SecretsCache.Size())
-	assert.Equal(t, "testuser", props[property_util.USER.Name])
-	assert.Equal(t, "testpassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "testuser", resultProps[property_util.USER.Name])
+	assert.Equal(t, "testpassword", resultProps[property_util.PASSWORD.Name])
 }

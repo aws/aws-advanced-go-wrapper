@@ -50,7 +50,7 @@ func (s *StaleDnsHelper) GetVerifiedConnection(
 	hostListProviderService driver_infrastructure.HostListProviderService,
 	props map[string]string,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-	conn, err := connectFunc()
+	conn, err := connectFunc(props)
 
 	if !utils.IsWriterClusterDns(host) {
 		return conn, err
@@ -126,7 +126,7 @@ func (s *StaleDnsHelper) GetVerifiedConnection(
 
 		s.staleDnsCounter.Inc(s.pluginService.GetTelemetryContext())
 
-		writerConn, connectErr := s.pluginService.Connect(s.writerHostInfo, props)
+		writerConn, connectErr := s.pluginService.Connect(s.writerHostInfo, utils.CreateMapCopy(props))
 		if connectErr != nil {
 			return nil, connectErr
 		}

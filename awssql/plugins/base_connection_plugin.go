@@ -44,7 +44,7 @@ func (b BaseConnectionPlugin) Connect(
 	props map[string]string,
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-	return connectFunc()
+	return connectFunc(props)
 }
 
 func (b BaseConnectionPlugin) ForceConnect(
@@ -52,7 +52,7 @@ func (b BaseConnectionPlugin) ForceConnect(
 	props map[string]string,
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-	return connectFunc()
+	return connectFunc(props)
 }
 
 func (b BaseConnectionPlugin) AcceptsStrategy(strategy string) bool {

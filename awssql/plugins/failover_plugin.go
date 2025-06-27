@@ -605,8 +605,8 @@ func (p *FailoverPlugin) shouldErrorTriggerConnectionSwitch(err error) bool {
 }
 
 func (p *FailoverPlugin) createConnectionForHost(hostInfo *host_info_util.HostInfo) (driver.Conn, error) {
-	copyProps := utils.CreateMapCopy(p.props)
-	copyProps[property_util.HOST.Name] = hostInfo.Host
-	copyProps[property_util.INTERNAL_CONNECT_PROPERTY_NAME] = "true"
-	return p.pluginService.Connect(hostInfo, copyProps)
+	propsCopy := utils.CreateMapCopy(p.props)
+	property_util.HOST.Set(propsCopy, hostInfo.Host)
+	propsCopy[property_util.INTERNAL_CONNECT_PROPERTY_NAME] = "true"
+	return p.pluginService.Connect(hostInfo, propsCopy)
 }

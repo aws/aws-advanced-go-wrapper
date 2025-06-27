@@ -97,7 +97,7 @@ func (t TestPlugin) Connect(
 		*t.calls = append(*t.calls, fmt.Sprintf("%s%v:connection", reflect.TypeOf(t), t.id))
 		return t.connection, nil
 	}
-	conn, err := connectFunc()
+	conn, err := connectFunc(properties)
 	if !t.isBefore && t.error != nil {
 		return nil, t.error
 	}
@@ -115,7 +115,7 @@ func (t TestPlugin) ForceConnect(
 		*t.calls = append(*t.calls, fmt.Sprintf("%s%v:forced connection", reflect.TypeOf(t), t.id))
 		return t.connection, nil
 	}
-	conn, err := connectFunc()
+	conn, err := connectFunc(properties)
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:after forceConnect", reflect.TypeOf(t), t.id))
 	return conn, err
 }
