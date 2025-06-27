@@ -48,12 +48,17 @@ type DialectProvider interface {
 }
 
 type DialectManager struct {
-	canUpdate   bool
-	dialect     DatabaseDialect
-	dialectCode string
+	canUpdate            bool
+	dialect              DatabaseDialect
+	dialectCode          string
+	FindRegisteredDriver func(dialectCode string) bool
 }
 
 func (d *DialectManager) GetDialect(dsn string, props map[string]string) (DatabaseDialect, error) {
+	if d.FindRegisteredDriver == nil {
+		d.FindRegisteredDriver = utils.FindRegisteredDriver
+	}
+
 	dialectCode := property_util.DIALECT.Get(props)
 	ok := true
 	if dialectCode == "" {
@@ -79,6 +84,11 @@ func (d *DialectManager) GetDialect(dsn string, props map[string]string) (Databa
 	}
 	rdsUrlType := utils.IdentifyRdsUrlType(hostString)
 	if strings.Contains(driverProtocol, "mysql") {
+		driverIsRegistered := d.FindRegisteredDriver(AWS_MYSQL_DRIVER_CODE)
+		if !driverIsRegistered {
+			return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DatabaseDialectManager.missingWrapperDriver", AWS_MYSQL_DRIVER_CODE))
+		}
+
 		if rdsUrlType.IsRdsCluster {
 			d.canUpdate = true
 			d.dialectCode = AURORA_MYSQL_DIALECT
@@ -101,6 +111,11 @@ func (d *DialectManager) GetDialect(dsn string, props map[string]string) (Databa
 		return d.dialect, nil
 	}
 	if strings.Contains(driverProtocol, "postgres") {
+		driverIsRegistered := d.FindRegisteredDriver(AWS_PGX_DRIVER_CODE)
+		if !driverIsRegistered {
+			return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DatabaseDialectManager.missingWrapperDriver", AWS_PGX_DRIVER_CODE))
+		}
+
 		if rdsUrlType.IsRdsCluster {
 			d.canUpdate = true
 			d.dialectCode = AURORA_PG_DIALECT

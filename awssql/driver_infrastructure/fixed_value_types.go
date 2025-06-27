@@ -67,3 +67,8 @@ const (
 	MYSQL DatabaseEngine = "mysql"
 	PG    DatabaseEngine = "pg"
 )
+
+const (
+	AWS_PGX_DRIVER_CODE   string = "awssql-pgx"
+	AWS_MYSQL_DRIVER_CODE string = "awssql-mysql"
+)

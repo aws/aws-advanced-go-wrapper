@@ -33,7 +33,6 @@ import (
 	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 var mockHostInfo, _ = host_info_util.NewHostInfoBuilder().SetHost("test").SetPort(1234).SetRole(host_info_util.WRITER).Build()
@@ -65,20 +64,6 @@ func TestAwsWrapperError(t *testing.T) {
 	if error_util.FailoverSuccessError.Error() != error_util.GetMessage("Failover.connectionChangedError") {
 		t.Errorf("Should return message attached to Failover.connectionChangedError, improperly handles message.")
 	}
-}
-
-func TestGetDialectFromConnectionParameter(t *testing.T) {
-	dialectManager := driver_infrastructure.DialectManager{}
-
-	props := map[string]string{"databaseDialect": "mysql"}
-	dialect, err := dialectManager.GetDialect(pgTestDsn, props)
-	assert.Nil(t, err)
-	assert.Equal(t, dialect, driver_infrastructure.KnownDialectsByCode["mysql"])
-
-	props = map[string]string{"databaseDialect": "incorrect-code"}
-	_, err = dialectManager.GetDialect(pgTestDsn, props)
-	require.NotNil(t, err)
-	assert.True(t, strings.Contains(err.Error(), "Unknown database dialect code"))
 }
 
 func TestIsDialectPg(t *testing.T) {

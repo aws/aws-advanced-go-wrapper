@@ -54,7 +54,7 @@ func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 	if parseErr != nil {
 		return nil, parseErr
 	}
-	slog.Debug((error_util.GetMessage("AwsWrapper.initializingDatabaseHandle", utils.MaskProperties(props))))
+	slog.Debug(error_util.GetMessage("AwsWrapper.initializingDatabaseHandle", utils.MaskProperties(props)))
 
 	defaultConnProvider := driver_infrastructure.NewDriverConnectionProvider(d.UnderlyingDriver)
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{DefaultProvider: defaultConnProvider}
