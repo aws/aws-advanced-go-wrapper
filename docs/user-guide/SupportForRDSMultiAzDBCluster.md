@@ -44,5 +44,5 @@ Use at your own discretion.
 
 ## Known Issues
 
-When using the AWS Advanced Go Wrapper with Amazon RDS Multi-AZ DB Cluster deployments, the failover process may fail to complete due to the stale topology returning the incorrect writer instance. This causes the wrapper to throw a FailoverFailedError with the message:
+When using the AWS Advanced Go Wrapper with Amazon RDS Multi-AZ DB Cluster deployments, the failover process may fail to complete due to the stale topology returning the incorrect writer instance. This causes the wrapper to return a FailoverFailedError with the message:
 `"The new writer was identified to be 'instance endpoint', but querying the instance for its role returned a reader."`
