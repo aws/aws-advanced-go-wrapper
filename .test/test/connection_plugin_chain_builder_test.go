@@ -110,7 +110,7 @@ func TestSortAllPlugins(t *testing.T) {
 	mockPluginManager.EXPECT().GetConnectionProviderManager().Return(driver_infrastructure.ConnectionProviderManager{}).AnyTimes()
 
 	builder := &awsDriver.ConnectionPluginChainBuilder{}
-	props := map[string]string{property_util.PLUGINS.Name: "iam,executionTime,limitless,efm,failover"}
+	props := map[string]string{property_util.PLUGINS.Name: "iam,executionTime,limitless,efm,failover", property_util.LIMITLESS_USE_SHARD_GROUP_URL.Name: "false"}
 	availablePlugins := map[string]driver_infrastructure.ConnectionPluginFactory{
 		"failover":      plugins.NewFailoverPluginFactory(),
 		"efm":           efm.NewHostMonitoringPluginFactory(),

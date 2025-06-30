@@ -565,6 +565,13 @@ var LIMITLESS_ROUTER_QUERY_TIMEOUT_MS = AwsWrapperProperty{
 	wrapperPropertyType: WRAPPER_TYPE_INT,
 }
 
+var LIMITLESS_USE_SHARD_GROUP_URL = AwsWrapperProperty{
+	Name:                "limitlessUseShardGroupUrl",
+	description:         "When this parameter is set to true, provided host endpoints must be database shard group URLs. Set to false to disable this check.",
+	defaultValue:        "true",
+	wrapperPropertyType: WRAPPER_TYPE_BOOL,
+}
+
 func RemoveInternalAwsWrapperProperties(props map[string]string) map[string]string {
 	copyProps := map[string]string{}
 
