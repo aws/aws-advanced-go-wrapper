@@ -26,12 +26,12 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/xuri/excelize/v2 v2.9.1
 	go.opentelemetry.io/contrib/propagators/aws v1.36.0
-	go.opentelemetry.io/otel v1.36.0
+	go.opentelemetry.io/otel v1.37.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.36.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.36.0
-	go.opentelemetry.io/otel/sdk v1.36.0
-	go.opentelemetry.io/otel/sdk/metric v1.36.0
-	go.opentelemetry.io/otel/trace v1.36.0
+	go.opentelemetry.io/otel/sdk v1.37.0
+	go.opentelemetry.io/otel/sdk/metric v1.37.0
+	go.opentelemetry.io/otel/trace v1.37.0
 )
 
 require (
@@ -53,7 +53,7 @@ require (
 	github.com/aws/smithy-go v1.22.4 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/go-logr/logr v1.4.2 // indirect
+	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -88,7 +88,7 @@ require (
 )
 
 require (
-	go.opentelemetry.io/otel/metric v1.36.0 // indirect
+	go.opentelemetry.io/otel/metric v1.37.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
