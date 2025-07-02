@@ -193,7 +193,9 @@ func (m *MonitorImpl) run() {
 			}
 		}
 		// Update activeStates to those that are still active.
-		slog.Debug(error_util.GetMessage("MonitorImpl.updatingActiveStates", m.hostInfo.Host, len(m.ActiveStates), len(tmpActiveStates)))
+		if len(m.ActiveStates) != 0 || len(tmpActiveStates) != 0 {
+			slog.Debug(error_util.GetMessage("MonitorImpl.updatingActiveStates", m.hostInfo.Host, len(m.ActiveStates), len(tmpActiveStates)))
+		}
 		m.ActiveStates = tmpActiveStates
 		delayDurationNanos := m.failureDetectionIntervalNanos - (statusCheckEndTime.Sub(statusCheckStartTime))
 		if delayDurationNanos < EFM_ROUTINE_SLEEP_DURATION {
