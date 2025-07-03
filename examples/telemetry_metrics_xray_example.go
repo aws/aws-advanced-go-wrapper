@@ -26,14 +26,15 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"go.opentelemetry.io/otel/sdk/resource"
-	"go.opentelemetry.io/otel/sdk/trace"
 	"log"
 	"log/slog"
 	"os"
 	"time"
+
+	_ "github.com/aws/aws-advanced-go-wrapper/xray"
 )
 
 func main() {
@@ -42,21 +43,6 @@ func main() {
 	ctx := context.Background()
 
 	endpoint := "localhost:4317"
-
-	exporter, err := otlptracegrpc.New(
-		ctx,
-		otlptracegrpc.WithEndpoint(endpoint),
-		otlptracegrpc.WithInsecure(),
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	bsp := trace.NewBatchSpanProcessor(exporter,
-		trace.WithMaxQueueSize(10_000),
-		trace.WithMaxExportBatchSize(10_000))
-	// Call shutdown to flush the buffers when program exits.
-	defer bsp.Shutdown(ctx)
 
 	metricsExporter, err := otlpmetricgrpc.New(
 		ctx,
