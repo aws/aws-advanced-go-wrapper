@@ -25,13 +25,14 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 type LimitlessPluginFactory struct {
 }
 
 func (factory LimitlessPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService, props map[string]string) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewLimitlessPlugin(pluginService, props), nil
+	return NewLimitlessPlugin(pluginService, props)
 }
 
 func (factory LimitlessPluginFactory) ClearCaches() {}
@@ -47,11 +48,20 @@ type LimitlessPlugin struct {
 	routerService LimitlessRouterService
 }
 
-func NewLimitlessPlugin(pluginService driver_infrastructure.PluginService, props map[string]string) *LimitlessPlugin {
+func NewLimitlessPlugin(pluginService driver_infrastructure.PluginService, props map[string]string) (*LimitlessPlugin, error) {
+	validateShardGroupUrl := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.LIMITLESS_USE_SHARD_GROUP_URL)
+	if validateShardGroupUrl {
+		host := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.HOST)
+		isShardGroupUrl := utils.IsLimitlessDbShardGroupDns(host)
+		if !isShardGroupUrl {
+			return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("LimitlessPlugin.expectedShardGroupUrl", host))
+		}
+	}
+
 	return &LimitlessPlugin{
 		pluginService: pluginService,
 		props:         props,
-	}
+	}, nil
 }
 
 // Note: This method is for testing purposes.

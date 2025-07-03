@@ -20,6 +20,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
@@ -47,6 +48,61 @@ func beforeLimitlessPluginConnectTest(props map[string]string) *plugin_helpers.P
 	pluginServiceImpl.SetDialect(&driver_infrastructure.AuroraPgDatabaseDialect{})
 
 	return pluginServiceImpl
+}
+
+func TestCreateLimitlessPluginWithNonShardGroupUrlValidateTrue(t *testing.T) {
+	host := "database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com"
+	props := map[string]string{
+		property_util.DRIVER_PROTOCOL.Name: "postgresql",
+		property_util.HOST.Name:            host,
+	}
+	pluginServiceImpl := beforeLimitlessPluginConnectTest(props)
+	pluginFactory := limitless.LimitlessPluginFactory{}
+	plugin, err := pluginFactory.GetInstance(pluginServiceImpl, props)
+	assert.Error(t, err)
+	assert.Nil(t, plugin)
+	assert.Equal(t, err, error_util.NewGenericAwsWrapperError(error_util.GetMessage("LimitlessPlugin.expectedShardGroupUrl", host)))
+}
+
+func TestCreateLimitlessPluginWithNonShardGroupUrlValidateFalse(t *testing.T) {
+	host := "database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com"
+	props := map[string]string{
+		property_util.DRIVER_PROTOCOL.Name:               "postgresql",
+		property_util.HOST.Name:                          host,
+		property_util.LIMITLESS_USE_SHARD_GROUP_URL.Name: "false",
+	}
+	pluginServiceImpl := beforeLimitlessPluginConnectTest(props)
+	pluginFactory := limitless.LimitlessPluginFactory{}
+	plugin, err := pluginFactory.GetInstance(pluginServiceImpl, props)
+	assert.Nil(t, err)
+	assert.NotNil(t, plugin)
+}
+
+func TestCreateLimitlessPluginWithShardGroupUrlValidateTrue(t *testing.T) {
+	host := "mydb-1-db-shard-group-1.shardgrp-xyz.us-east-2.rds.amazonaws.com"
+	props := map[string]string{
+		property_util.DRIVER_PROTOCOL.Name: "postgresql",
+		property_util.HOST.Name:            host,
+	}
+	pluginServiceImpl := beforeLimitlessPluginConnectTest(props)
+	pluginFactory := limitless.LimitlessPluginFactory{}
+	plugin, err := pluginFactory.GetInstance(pluginServiceImpl, props)
+	assert.Nil(t, err)
+	assert.NotNil(t, plugin)
+}
+
+func TestCreateLimitlessPluginWithShardGroupUrlValidateFalse(t *testing.T) {
+	host := "mydb-1-db-shard-group-1.shardgrp-xyz.us-east-2.rds.amazonaws.com"
+	props := map[string]string{
+		property_util.DRIVER_PROTOCOL.Name:               "postgresql",
+		property_util.HOST.Name:                          host,
+		property_util.LIMITLESS_USE_SHARD_GROUP_URL.Name: "false",
+	}
+	pluginServiceImpl := beforeLimitlessPluginConnectTest(props)
+	pluginFactory := limitless.LimitlessPluginFactory{}
+	plugin, err := pluginFactory.GetInstance(pluginServiceImpl, props)
+	assert.Nil(t, err)
+	assert.NotNil(t, plugin)
 }
 
 func TestLimitlessPluginConnect(t *testing.T) {
