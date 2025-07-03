@@ -9,6 +9,7 @@
     - [Federated Authentication Plugin](user-guide/using-plugins/UsingTheFederatedAuthPlugin.md)
     - [IAM Authentication Plugin](user-guide/using-plugins/UsingTheIamAuthenticationPlugin.md)
     - [AWS Secrets Manager Plugin](user-guide/using-plugins/UsingTheAwsSecretsManagerPlugin.md)
+    - [Limitless Connection Plugin](user-guide/using-plugins/UsingTheLimitlessConnectionPlugin.md)
 - [Contributor Guide](contributor-guide/ContributorGuide.md)
   - [Setup](contributor-guide/ContributorGuide.md#setup)
   - [Testing Overview](contributor-guide/ContributorGuide.md#testing-overview)

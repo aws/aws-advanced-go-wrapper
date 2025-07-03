@@ -49,11 +49,11 @@ When connecting to Aurora clusters, the [`clusterInstanceHostPattern`](#failover
 
 ### FailoverFailedError
 
-When the AWS Advanced Go Wrapper throws a `FailoverFailedError`, the original connection has failed, and the AWS Advanced Go Wrapper tried to failover to a new instance, but was unable to. There are various reasons this may happen: no hosts were available, a network failure occurred, and so on. In this scenario, please wait until the server is up or other problems are solved. (Error will be thrown.)
+When the AWS Advanced Go Wrapper returns a `FailoverFailedError`, the original connection has failed, and the AWS Advanced Go Wrapper tried to failover to a new instance, but was unable to. There are various reasons this may happen: no hosts were available, a network failure occurred, and so on. In this scenario, please wait until the server is up or other problems are solved. (Error will be returned.)
 
 ### FailoverSuccessError
 
-When the AWS Advanced Go Wrapper throws a `FailoverSuccessError`, the original connection has failed while outside a transaction, and the AWS Advanced Go Wrapper successfully failed over to another available instance in the cluster. However, any session state configuration of the initial connection is now lost. In this scenario, you should:
+When the AWS Advanced Go Wrapper returns a `FailoverSuccessError`, the original connection has failed while outside a transaction, and the AWS Advanced Go Wrapper successfully failed over to another available instance in the cluster. However, any session state configuration of the initial connection is now lost. In this scenario, you should:
 
 - Reuse and reconfigure the original connection (e.g., reconfigure session state to be the same as the original connection).
 
@@ -61,7 +61,7 @@ When the AWS Advanced Go Wrapper throws a `FailoverSuccessError`, the original c
 
 ### TransactionResolutionUnknownError
 
-When the AWS Advanced Go Wrapper throws a `TransactionResolutionUnknownError`, the original connection has failed within a transaction. In this scenario, the Go Wrapper first attempts to rollback the transaction and then fails over to another available instance in the cluster. Note that the rollback might be unsuccessful as the initial connection may be broken at the time that the Go Wrapper recognizes the problem. Note also that any session state configuration of the initial connection is now lost. In this scenario, you should:
+When the AWS Advanced Go Wrapper returns a `TransactionResolutionUnknownError`, the original connection has failed within a transaction. In this scenario, the Go Wrapper first attempts to rollback the transaction and then fails over to another available instance in the cluster. Note that the rollback might be unsuccessful as the initial connection may be broken at the time that the Go Wrapper recognizes the problem. Note also that any session state configuration of the initial connection is now lost. In this scenario, you should:
 
 - Reuse and reconfigure the original connection (e.g: reconfigure session state to be the same as the original connection).
 
@@ -78,7 +78,7 @@ When the AWS Advanced Go Wrapper throws a `TransactionResolutionUnknownError`, t
 >
 > #### Warnings About Proper Usage of the AWS Advanced Go Wrapper
 >
-> 1.  Some users may dispose of connection objects if an Error occurs. In this case, the application will lose the fast-failover functionality offered by the Go Wrapper. When failover occurs, the Go Wrapper internally establishes a ready-to-use connection within a connection object before throwing an Error to the user. If this connection is disposed of, the newly established connection will also be thrown away. The correct practice is to check the error type of the Error and reuse the connection object if the error code indicates successful failover. The [PostgreSQL Failover Sample Code](./../../../examples/aws_failover_postgresql_example.go) and [MySQL Failover Sample Code](./../../../examples/aws_failover_mysql_example.go) demonstrates this practice. See the section about [Failover Errors](#failover-errors) for more details.
+> 1.  Some users may dispose of connection objects if an Error occurs. In this case, the application will lose the fast-failover functionality offered by the Go Wrapper. When failover occurs, the Go Wrapper internally establishes a ready-to-use connection within a connection object before returning an Error to the user. If this connection is disposed of, the newly established connection will also be thrown away. The correct practice is to check the error type of the Error and reuse the connection object if the error code indicates successful failover. The [PostgreSQL Failover Sample Code](./../../../examples/aws_failover_postgresql_example.go) and [MySQL Failover Sample Code](./../../../examples/aws_failover_mysql_example.go) demonstrates this practice. See the section about [Failover Errors](#failover-errors) for more details.
 > 2.  We highly recommended that you use the cluster and read-only cluster endpoints instead of the direct instance endpoints of your Aurora cluster, unless you are confident in your application's use of instance endpoints. Although the Go Wrapper will correctly failover to the new writer instance when using instance endpoints, use of these endpoints is discouraged because individual instances can spontaneously change reader/writer status when failover occurs. The Go Wrapper will always connect directly to the instance specified if an instance endpoint is provided, so a write-safe connection cannot be assumed if the application uses instance endpoints.
 
 ### Blue/Green Deployments
