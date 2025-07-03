@@ -23,6 +23,9 @@ dependencies.
 To enable the AWS Secrets Manager Plugin, add the plugin code `awsSecretsManager` to the [
 `plugins`](../UsingTheGoWrapper.md#connection-plugin-manager-parameters) value. Then specify the required parameters.
 
+> [!WARNING]
+> The `plugins` value should not contain more than one of the following codes: `awsSecretsManager`, `federatedAuth`, `iam`, and `okta` as each connection should use only one method of authentication.
+
 ## AWS Secrets Manager Plugin Parameters
 
 The following properties are required for the AWS Secrets Manager Plugin to retrieve database credentials from the AWS
