@@ -87,67 +87,99 @@ func GetVerifiedWrapperPropertyValue[T any](props map[string]string, property Aw
 	return result
 }
 
+func GetPositiveIntProperty(props map[string]string, property AwsWrapperProperty) (int, error) {
+	val := GetVerifiedWrapperPropertyValue[int](props, property)
+	if val < 0 {
+		return 0, error_util.NewGenericAwsWrapperError(error_util.GetMessage("AwsWrapperProperty.requiresNonNegativeIntValue", property.Name))
+	}
+	return val, nil
+}
+
+func GetHttpTimeoutValue(props map[string]string) int {
+	val := GetVerifiedWrapperPropertyValue[int](props, HTTP_TIMEOUT_MS)
+	if val <= 0 {
+		slog.Error(error_util.GetMessage("AwsWrapperProperty.noTimeoutValue", HTTP_TIMEOUT_MS.Name, val))
+	}
+	return val
+}
+
+func GetExpirationValue(props map[string]string, property AwsWrapperProperty) int {
+	val := GetVerifiedWrapperPropertyValue[int](props, property)
+	if val <= 0 {
+		slog.Error(error_util.GetMessage("AwsWrapperProperty.noExpirationValue", property.Name, val))
+	}
+	return val
+}
+
+func GetRefreshRateValue(props map[string]string, property AwsWrapperProperty) int {
+	val := GetVerifiedWrapperPropertyValue[int](props, property)
+	if val <= 0 {
+		slog.Error(error_util.GetMessage("AwsWrapperProperty.noRefreshRateValue", property.Name, val))
+	}
+	return val
+}
+
 var ALL_WRAPPER_PROPERTIES = map[string]bool{
-	USER.Name:                                       true,
-	PASSWORD.Name:                                   true,
-	HOST.Name:                                       true,
-	PORT.Name:                                       true,
-	DATABASE.Name:                                   true,
-	DRIVER_PROTOCOL.Name:                            true,
-	NET.Name:                                        true,
-	SINGLE_WRITER_DSN.Name:                          true,
-	PLUGINS.Name:                                    true,
-	AUTO_SORT_PLUGIN_ORDER.Name:                     true,
-	DIALECT.Name:                                    true,
-	TARGET_DRIVER_DIALECT.Name:                      true,
-	TARGET_DRIVER_AUTO_REGISTER.Name:                true,
-	CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name:           true,
-	CLUSTER_ID.Name:                                 true,
-	CLUSTER_INSTANCE_HOST_PATTERN.Name:              true,
+	USER.Name:                                      true,
+	PASSWORD.Name:                                  true,
+	HOST.Name:                                      true,
+	PORT.Name:                                      true,
+	DATABASE.Name:                                  true,
+	DRIVER_PROTOCOL.Name:                           true,
+	NET.Name:                                       true,
+	SINGLE_WRITER_DSN.Name:                         true,
+	PLUGINS.Name:                                   true,
+	AUTO_SORT_PLUGIN_ORDER.Name:                    true,
+	DIALECT.Name:                                   true,
+	TARGET_DRIVER_DIALECT.Name:                     true,
+	TARGET_DRIVER_AUTO_REGISTER.Name:               true,
+	CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name:          true,
+	CLUSTER_ID.Name:                                true,
+	CLUSTER_INSTANCE_HOST_PATTERN.Name:             true,
 	AWS_PROFILE.Name:                                true,
-	IAM_HOST.Name:                                   true,
-	IAM_EXPIRATION_SEC.Name:                         true,
-	IAM_REGION.Name:                                 true,
-	IAM_DEFAULT_PORT.Name:                           true,
-	SECRETS_MANAGER_SECRET_ID.Name:                  true,
-	SECRETS_MANAGER_REGION.Name:                     true,
-	SECRETS_MANAGER_ENDPOINT.Name:                   true,
-	SECRETS_MANAGER_EXPIRATION_SEC.Name:             true,
-	FAILURE_DETECTION_TIME_MS.Name:                  true,
-	FAILURE_DETECTION_INTERVAL_MS.Name:              true,
-	FAILURE_DETECTION_COUNT.Name:                    true,
-	MONITOR_DISPOSAL_TIME_MS.Name:                   true,
-	FAILOVER_TIMEOUT_MS.Name:                        true,
-	FAILOVER_MODE.Name:                              true,
-	FAILOVER_READER_HOST_SELECTOR_STRATEGY.Name:     true,
-	ENABLE_CONNECT_FAILOVER.Name:                    true,
-	CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS.Name:      true,
-	WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS.Name:          true,
-	IAM_TOKEN_EXPIRATION_SEC.Name:                   true,
-	IDP_USERNAME.Name:                               true,
-	IDP_PASSWORD.Name:                               true,
-	IDP_PORT.Name:                                   true,
-	IAM_ROLE_ARN.Name:                               true,
-	IAM_IDP_ARN.Name:                                true,
-	IDP_ENDPOINT.Name:                               true,
-	RELAYING_PARTY_ID.Name:                          true,
-	DB_USER.Name:                                    true,
-	APP_ID.Name:                                     true,
-	HTTP_TIMEOUT_MS.Name:                            true,
-	SSL_INSECURE.Name:                               true,
-	ENABLE_TELEMETRY.Name:                           true,
-	TELEMETRY_SUBMIT_TOP_LEVEL.Name:                 true,
-	TELEMETRY_TRACES_BACKEND.Name:                   true,
-	TELEMETRY_METRICS_BACKEND.Name:                  true,
-	TELEMETRY_FAILOVER_ADDITIONAL_TOP_TRACE.Name:    true,
-	LIMITLESS_MONITORING_INTERVAL_MS.Name:           true,
-	LIMITLESS_MONITORING_DISPOSAL_TIME_MS.Name:      true,
-	LIMITLESS_ROUTER_CACHE_EXPIRATIONL_TIME_MS.Name: true,
-	LIMITLESS_WAIT_FOR_ROUTER_INFO.Name:             true,
-	LIMITLESS_GET_ROUTER_MAX_RETRIES.Name:           true,
-	LIMITLESS_GET_ROUTER_RETRY_INTERVAL_MS.Name:     true,
-	LIMITLESS_MAX_CONN_RETRIES.Name:                 true,
-	LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name:          true,
+	IAM_HOST.Name:                                  true,
+	IAM_EXPIRATION_SEC.Name:                        true,
+	IAM_REGION.Name:                                true,
+	IAM_DEFAULT_PORT.Name:                          true,
+	SECRETS_MANAGER_SECRET_ID.Name:                 true,
+	SECRETS_MANAGER_REGION.Name:                    true,
+	SECRETS_MANAGER_ENDPOINT.Name:                  true,
+	SECRETS_MANAGER_EXPIRATION_SEC.Name:            true,
+	FAILURE_DETECTION_TIME_MS.Name:                 true,
+	FAILURE_DETECTION_INTERVAL_MS.Name:             true,
+	FAILURE_DETECTION_COUNT.Name:                   true,
+	MONITOR_DISPOSAL_TIME_MS.Name:                  true,
+	FAILOVER_TIMEOUT_MS.Name:                       true,
+	FAILOVER_MODE.Name:                             true,
+	FAILOVER_READER_HOST_SELECTOR_STRATEGY.Name:    true,
+	ENABLE_CONNECT_FAILOVER.Name:                   true,
+	CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS.Name:     true,
+	WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS.Name:         true,
+	IAM_TOKEN_EXPIRATION_SEC.Name:                  true,
+	IDP_USERNAME.Name:                              true,
+	IDP_PASSWORD.Name:                              true,
+	IDP_PORT.Name:                                  true,
+	IAM_ROLE_ARN.Name:                              true,
+	IAM_IDP_ARN.Name:                               true,
+	IDP_ENDPOINT.Name:                              true,
+	RELAYING_PARTY_ID.Name:                         true,
+	DB_USER.Name:                                   true,
+	APP_ID.Name:                                    true,
+	HTTP_TIMEOUT_MS.Name:                           true,
+	SSL_INSECURE.Name:                              true,
+	ENABLE_TELEMETRY.Name:                          true,
+	TELEMETRY_SUBMIT_TOP_LEVEL.Name:                true,
+	TELEMETRY_TRACES_BACKEND.Name:                  true,
+	TELEMETRY_METRICS_BACKEND.Name:                 true,
+	TELEMETRY_FAILOVER_ADDITIONAL_TOP_TRACE.Name:   true,
+	LIMITLESS_MONITORING_INTERVAL_MS.Name:          true,
+	LIMITLESS_MONITORING_DISPOSAL_TIME_MS.Name:     true,
+	LIMITLESS_ROUTER_CACHE_EXPIRATION_TIME_MS.Name: true,
+	LIMITLESS_WAIT_FOR_ROUTER_INFO.Name:            true,
+	LIMITLESS_GET_ROUTER_MAX_RETRIES.Name:          true,
+	LIMITLESS_GET_ROUTER_RETRY_INTERVAL_MS.Name:    true,
+	LIMITLESS_MAX_CONN_RETRIES.Name:                true,
+	LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name:         true,
 }
 
 var USER = AwsWrapperProperty{
@@ -528,7 +560,7 @@ var LIMITLESS_MONITORING_DISPOSAL_TIME_MS = AwsWrapperProperty{
 	wrapperPropertyType: WRAPPER_TYPE_INT,
 }
 
-var LIMITLESS_ROUTER_CACHE_EXPIRATIONL_TIME_MS = AwsWrapperProperty{
+var LIMITLESS_ROUTER_CACHE_EXPIRATION_TIME_MS = AwsWrapperProperty{
 	Name:                "limitlessTransactionRouterCacheExpirationTimeMs",
 	description:         "Expiration in milliseconds for the Limitless router cache.",
 	defaultValue:        "600000",

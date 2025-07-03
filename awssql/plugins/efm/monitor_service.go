@@ -19,23 +19,23 @@ package efm
 import (
 	"database/sql/driver"
 	"fmt"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	"log/slog"
 	"sync"
 	"time"
 	"weak"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 )
 
 var EFM_MONITORS *utils.SlidingExpirationCache[Monitor]
 
 type MonitorService interface {
 	StartMonitoring(conn *driver.Conn, hostInfo *host_info_util.HostInfo, props map[string]string,
-		failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionCount int) (*MonitorConnectionState, error)
+		failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionCount int, monitorDisposalTimeMillis int) (*MonitorConnectionState, error)
 	StopMonitoring(state *MonitorConnectionState, connToAbort driver.Conn)
 }
 
@@ -65,14 +65,14 @@ func NewMonitorServiceImpl(pluginService driver_infrastructure.PluginService) (*
 }
 
 func (m *MonitorServiceImpl) StartMonitoring(conn *driver.Conn, hostInfo *host_info_util.HostInfo, props map[string]string,
-	failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionCount int) (*MonitorConnectionState, error) {
+	failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionCount int, monitorDisposalTimeMillis int) (*MonitorConnectionState, error) {
 	if conn == nil {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("MonitorServiceImpl.illegalArgumentError", "conn"))
 	}
 	if hostInfo.IsNil() {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("MonitorServiceImpl.illegalArgumentError", "hostInfo"))
 	}
-	monitor := m.getMonitor(hostInfo, props, failureDetectionTimeMillis, failureDetectionIntervalMillis, failureDetectionCount)
+	monitor := m.getMonitor(hostInfo, props, failureDetectionTimeMillis, failureDetectionIntervalMillis, failureDetectionCount, monitorDisposalTimeMillis)
 	state := NewMonitorConnectionState(conn)
 	monitor.StartMonitoring(state)
 	return state, nil
@@ -91,9 +91,9 @@ func (m *MonitorServiceImpl) StopMonitoring(state *MonitorConnectionState, connT
 }
 
 func (m *MonitorServiceImpl) getMonitor(hostInfo *host_info_util.HostInfo, props map[string]string, failureDetectionTimeMillis int,
-	failureDetectionIntervalMillis int, failureDetectionCount int) Monitor {
+	failureDetectionIntervalMillis int, failureDetectionCount int, monitorDisposalTimeMillis int) Monitor {
 	monitorKey := fmt.Sprintf("%d:%d:%d:%s", failureDetectionTimeMillis, failureDetectionIntervalMillis, failureDetectionCount, hostInfo.GetUrl())
-	cacheExpirationNano := time.Millisecond * time.Duration(property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.MONITOR_DISPOSAL_TIME_MS))
+	cacheExpirationNano := time.Millisecond * time.Duration(monitorDisposalTimeMillis)
 	return EFM_MONITORS.ComputeIfAbsent(
 		monitorKey,
 		func() Monitor {

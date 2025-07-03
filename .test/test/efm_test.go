@@ -19,11 +19,12 @@ package test
 import (
 	"database/sql/driver"
 	"fmt"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	"strings"
 	"testing"
 	"time"
 	"weak"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 
 	awssql "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
@@ -70,16 +71,16 @@ func TestMonitorServiceImpl(t *testing.T) {
 	assert.NotNil(t, efm.EFM_MONITORS)
 	assert.Zero(t, efm.EFM_MONITORS.Size())
 
-	_, err := monitorService.StartMonitoring(nil, nil, nil, 0, 0, 0)
+	_, err := monitorService.StartMonitoring(nil, nil, nil, 0, 0, 0, 0)
 	// Monitoring with an invalid conn should fail.
 	assert.True(t, strings.Contains(err.Error(), "conn"))
 
-	_, err = monitorService.StartMonitoring(&testConn, nil, nil, 0, 0, 0)
+	_, err = monitorService.StartMonitoring(&testConn, nil, nil, 0, 0, 0, 0)
 	// Monitoring with an invalid monitoring HostInfo should fail.
 	assert.True(t, strings.Contains(err.Error(), "hostInfo"))
 
 	// Monitoring with correct parameters should create a new monitor.
-	state, err := monitorService.StartMonitoring(&testConn, mockHostInfo, nil, 0, 900, 3)
+	state, err := monitorService.StartMonitoring(&testConn, mockHostInfo, nil, 0, 900, 3, 0)
 	monitorKey := fmt.Sprintf("%d:%d:%d:%s", 0, 900, 3, mockHostInfo.GetUrl())
 
 	assert.Nil(t, err)
@@ -91,7 +92,7 @@ func TestMonitorServiceImpl(t *testing.T) {
 	monitor, ok := val.(*efm.MonitorImpl)
 	assert.True(t, ok)
 
-	state2, err := monitorService.StartMonitoring(&testConn, mockHostInfo, nil, 0, 900, 3)
+	state2, err := monitorService.StartMonitoring(&testConn, mockHostInfo, nil, 0, 900, 3, 0)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(monitor.NewStates))
 	// Monitoring on the same host should not increase the cache size.

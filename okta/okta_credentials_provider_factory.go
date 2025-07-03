@@ -20,15 +20,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/aws/aws-advanced-go-wrapper/auth-helpers"
+	"io"
+	"net/http"
+	"net/url"
+
+	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	"io"
-	"net/http"
-	"net/url"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -71,7 +72,7 @@ func (o *OktaCredentialsProviderFactory) GetSamlAssertion(props map[string]strin
 		return "", err
 	}
 
-	httpTimeoutMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.HTTP_TIMEOUT_MS)
+	httpTimeoutMs := property_util.GetHttpTimeoutValue(props)
 	insecureSsl := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.SSL_INSECURE)
 	client := o.httpClientProvider(httpTimeoutMs, insecureSsl, nil)
 

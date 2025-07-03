@@ -20,13 +20,14 @@ import (
 	"context"
 	"database/sql/driver"
 	"errors"
+	"log/slog"
+	"math"
+	"time"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"log/slog"
-	"math"
-	"time"
 )
 
 type LimitlessQueryHelper interface {
@@ -60,8 +61,11 @@ func (queryHelper *LimitlessQueryHelperImpl) QueryForLimitlessRouters(
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("Conn.doesNotImplementRequiredInterface", "driver.QueryerContext"))
 	}
 
-	timeout := time.Duration(property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.LIMITLESS_ROUTER_QUERY_TIMEOUT_MS)) * time.Millisecond
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	timeoutMs, err := property_util.GetPositiveIntProperty(props, property_util.LIMITLESS_ROUTER_QUERY_TIMEOUT_MS)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutMs)*time.Millisecond)
 	defer cancel()
 
 	rows, err := queryerCtx.QueryContext(ctx, query, nil)

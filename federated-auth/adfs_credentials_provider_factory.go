@@ -17,17 +17,18 @@
 package federated_auth
 
 import (
-	"github.com/aws/aws-advanced-go-wrapper/auth-helpers"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	"log/slog"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"strings"
+
+	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -96,7 +97,7 @@ func (a *AdfsCredentialsProviderFactory) GetUriAndParamsFromSignInPage(uri strin
 	}
 
 	client := a.httpClientProvider(
-		property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.HTTP_TIMEOUT_MS),
+		property_util.GetHttpTimeoutValue(props),
 		property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.SSL_INSECURE),
 		nil)
 
@@ -168,7 +169,7 @@ func (a *AdfsCredentialsProviderFactory) getSamlAssertionFromPost(uri string, pa
 		return "", err
 	}
 	client := a.httpClientProvider(
-		property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.HTTP_TIMEOUT_MS),
+		property_util.GetHttpTimeoutValue(props),
 		property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.SSL_INSECURE),
 		jar)
 
