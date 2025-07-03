@@ -209,6 +209,8 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) updateSecrets(
 			telemetryCtx.SetError(err)
 			return fetched, err
 		}
+	} else {
+		slog.Debug(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.useCachedSecret"))
 	}
 
 	telemetryCtx.SetSuccess(true)

@@ -15,6 +15,7 @@
 	"AwsSecretsManagerConnectionPlugin.unableToDetermineRegion": "Unable to determine connection region. If you are not providing a secret ARN, please set the '%v' property.",
 	"AwsSecretsManagerConnectionPlugin.unableToGetSecretValue" : "Error occurred while getting secret value from AwsSecretsManager: '%v'. ",
 	"AwsSecretsManagerConnectionPlugin.unableToParseSecretValue" : "Error occurred while parsing the secret value from AwsSecretsManager: '%v'. Make sure that 'username' and 'password' entries are present in the secrets.",
+	"AwsSecretsManagerConnectionPlugin.useCachedSecret" : "Use cached secret.",
 	"AwsWrapper.illegalArgumentError": "Illegal argument for property '%s' in method '%s' was provided: '%s'.",
 	"AwsWrapper.initializingDatabaseHandle": "Initializing database handler with the following properties: '%v'.",
 	"AwsWrapper.unsupportedMethodError": "Method '%v' not supported by %s.",
