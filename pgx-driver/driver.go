@@ -19,6 +19,7 @@ package pgx_driver
 import (
 	"database/sql"
 	"database/sql/driver"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/jackc/pgx/v5/stdlib"
 
 	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
@@ -40,6 +41,6 @@ func ClearCaches() {
 
 func init() {
 	sql.Register(
-		"awssql-pgx",
+		driver_infrastructure.AWS_PGX_DRIVER_CODE,
 		&PgxDriver{})
 }

@@ -20,6 +20,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/go-sql-driver/mysql"
 )
 
@@ -39,6 +40,6 @@ func ClearCaches() {
 
 func init() {
 	sql.Register(
-		"awssql-mysql",
+		driver_infrastructure.AWS_MYSQL_DRIVER_CODE,
 		&MySQLDriver{})
 }
