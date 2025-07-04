@@ -21,8 +21,12 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	"github.com/aws/aws-advanced-go-wrapper/auth-helpers"
-	"github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager"
+	"net/http"
+	"reflect"
+	"time"
+
+	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
+	aws_secrets_manager "github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
@@ -31,9 +35,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	"net/http"
-	"reflect"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
@@ -306,7 +307,7 @@ type MockStmt struct {
 }
 
 func (a MockStmt) Close() error {
-	return errors.New("MockStmt error")
+	return nil
 }
 
 func (a MockStmt) Exec(args []driver.Value) (driver.Result, error) {

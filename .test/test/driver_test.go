@@ -449,4 +449,12 @@ func TestMethodInvokedOnOldConnection(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since Stmt was created") {
 		t.Errorf("After internal connection has changed, methods on Stmt should fail to execute.")
 	}
+
+	// Closing methods should always execute, even if internal connection has changed.
+	err = rows.Close()
+	assert.Nil(t, err)
+	err = stmt.Close()
+	assert.Nil(t, err)
+	err = mockAwsWrapperConn.Close()
+	assert.Nil(t, err)
 }

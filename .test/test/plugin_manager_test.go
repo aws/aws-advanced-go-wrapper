@@ -18,14 +18,21 @@ package test
 
 import (
 	"errors"
-	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
+	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExecuteFunctionCallA(t *testing.T) {
@@ -365,16 +372,176 @@ func TestTwoConnectionsDoNotBlockOneAnother(t *testing.T) {
 	}
 }
 
-/* TODO: complete following tests when corresponding features are complete
-- testExecuteCachedJdbcCallA (verify)
-- testExecuteAgainstOldConnection
-- testDefaultPlugins
-- testNoWrapperPlugins
-- testOverridingDefaultPluginsWithPluginCodes
-- testGetHostSpecByStrategy_givenPluginWithNoSubscriptions_thenThrowsSqlException
-- testGetHostSpecByStrategy_givenPluginWithDiffSubscription_thenThrowsSqlException
-- testGetHostSpecByStrategy_givenUnsupportedPlugin_thenThrowsSqlException
-- testGetHostSpecByStrategy_givenSupportedSubscribedPlugin_thenThrowsSqlException
-- testGetHostSpecByStrategy_givenMultiplePlugins
-- testGetHostSpecByStrategy_givenInputHostsAndMultiplePlugins
-*/
+func TestGetHostInfoByStrategyPluginNotSubscribed(t *testing.T) {
+	host0, _ := host_info_util.NewHostInfoBuilder().SetHost("host0").SetWeight(10).Build()
+	host1, _ := host_info_util.NewHostInfoBuilder().SetHost("host1").SetWeight(9).Build()
+	host2, _ := host_info_util.NewHostInfoBuilder().SetHost("host2").SetWeight(8).Build()
+	hostList := []*host_info_util.HostInfo{host0, host1, host2}
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockPlugin := mock_driver_infrastructure.NewMockConnectionPlugin(ctrl)
+	mockPlugin.EXPECT().GetSubscribedMethods().Return([]string{}).AnyTimes()
+	mockPlugin.EXPECT().GetHostInfoByStrategy(gomock.Any(), gomock.Any(), gomock.Any()).Return(host0, nil).AnyTimes()
+
+	strategy := "random"
+	props := make(map[string]string)
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	pluginManager := plugin_helpers.NewPluginManagerImpl(&MockTargetDriver{}, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
+	err := pluginManager.Init(mockPluginService, []driver_infrastructure.ConnectionPlugin{mockPlugin})
+	if err != nil {
+		return
+	}
+
+	selectedHost, err := pluginManager.GetHostInfoByStrategy(host_info_util.WRITER, strategy, hostList)
+
+	assert.Nil(t, selectedHost)
+	require.NotNil(t, err)
+	assert.Equal(t, error_util.GetMessage("PluginManagerImpl.unsupportedHostSelectionStrategy", strategy), err.Error())
+}
+
+func TestGetHostInfoByStrategyPluginDiffSubscribed(t *testing.T) {
+	host0, _ := host_info_util.NewHostInfoBuilder().SetHost("host0").SetWeight(10).Build()
+	host1, _ := host_info_util.NewHostInfoBuilder().SetHost("host1").SetWeight(9).Build()
+	host2, _ := host_info_util.NewHostInfoBuilder().SetHost("host2").SetWeight(8).Build()
+	hostList := []*host_info_util.HostInfo{host0, host1, host2}
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockPlugin := mock_driver_infrastructure.NewMockConnectionPlugin(ctrl)
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+
+	mockPlugin.EXPECT().GetSubscribedMethods().Return([]string{plugin_helpers.CONNECT_METHOD}).AnyTimes()
+	mockPlugin.EXPECT().GetHostInfoByStrategy(gomock.Any(), gomock.Any(), gomock.Any()).Return(host0, nil).AnyTimes()
+
+	strategy := "random"
+	props := make(map[string]string)
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	pluginManager := plugin_helpers.NewPluginManagerImpl(&MockTargetDriver{}, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
+	err := pluginManager.Init(mockPluginService, []driver_infrastructure.ConnectionPlugin{mockPlugin})
+	if err != nil {
+		return
+	}
+	selectedHost, err := pluginManager.GetHostInfoByStrategy(host_info_util.WRITER, strategy, hostList)
+
+	assert.Nil(t, selectedHost)
+	require.NotNil(t, err)
+	assert.Equal(t, error_util.GetMessage("PluginManagerImpl.unsupportedHostSelectionStrategy", strategy), err.Error())
+}
+
+func TestGetHostInfoByStrategyPluginUnsupported(t *testing.T) {
+	host0, _ := host_info_util.NewHostInfoBuilder().SetHost("host0").SetWeight(10).Build()
+	host1, _ := host_info_util.NewHostInfoBuilder().SetHost("host1").SetWeight(9).Build()
+	host2, _ := host_info_util.NewHostInfoBuilder().SetHost("host2").SetWeight(8).Build()
+	hostList := []*host_info_util.HostInfo{host0, host1, host2}
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockPlugin := mock_driver_infrastructure.NewMockConnectionPlugin(ctrl)
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+
+	mockPlugin.EXPECT().GetSubscribedMethods().Return([]string{plugin_helpers.ALL_METHODS}).AnyTimes()
+	testError := errors.New("test")
+	mockPlugin.EXPECT().GetHostInfoByStrategy(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, testError).AnyTimes()
+
+	strategy := "random"
+	props := make(map[string]string)
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	pluginManager := plugin_helpers.NewPluginManagerImpl(&MockTargetDriver{}, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
+	err := pluginManager.Init(mockPluginService, []driver_infrastructure.ConnectionPlugin{mockPlugin})
+	if err != nil {
+		return
+	}
+	selectedHost, err := pluginManager.GetHostInfoByStrategy(host_info_util.WRITER, strategy, hostList)
+
+	assert.Nil(t, selectedHost)
+	require.NotNil(t, err)
+	assert.Equal(t, testError, err)
+}
+
+func TestGetHostInfoByStrategyPluginSupported(t *testing.T) {
+	host0, _ := host_info_util.NewHostInfoBuilder().SetHost("host0").SetWeight(10).Build()
+	host1, _ := host_info_util.NewHostInfoBuilder().SetHost("host1").SetWeight(9).Build()
+	host2, _ := host_info_util.NewHostInfoBuilder().SetHost("host2").SetWeight(8).Build()
+	hostList := []*host_info_util.HostInfo{host0, host1, host2}
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockPlugin := mock_driver_infrastructure.NewMockConnectionPlugin(ctrl)
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+
+	mockPlugin.EXPECT().GetSubscribedMethods().Return([]string{plugin_helpers.ALL_METHODS}).AnyTimes()
+	mockPlugin.EXPECT().GetHostInfoByStrategy(gomock.Any(), gomock.Any(), gomock.Any()).Return(host0, nil).AnyTimes()
+
+	strategy := "random"
+	props := make(map[string]string)
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	pluginManager := plugin_helpers.NewPluginManagerImpl(&MockTargetDriver{}, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
+	err := pluginManager.Init(mockPluginService, []driver_infrastructure.ConnectionPlugin{mockPlugin})
+	if err != nil {
+		return
+	}
+	selectedHost, err := pluginManager.GetHostInfoByStrategy(host_info_util.WRITER, strategy, hostList)
+
+	assert.Nil(t, err)
+	require.NotNil(t, selectedHost)
+	assert.Equal(t, host0, selectedHost)
+}
+
+func TestGetHostInfoByStrategyMultiplePlugins(t *testing.T) {
+	host0, _ := host_info_util.NewHostInfoBuilder().SetHost("host0").SetWeight(10).Build()
+	host1, _ := host_info_util.NewHostInfoBuilder().SetHost("host1").SetWeight(9).Build()
+	host2, _ := host_info_util.NewHostInfoBuilder().SetHost("host2").SetWeight(8).Build()
+	hostList := []*host_info_util.HostInfo{host0, host1, host2}
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	unsubscribedPlugin0 := mock_driver_infrastructure.NewMockConnectionPlugin(ctrl)
+	unsubscribedPlugin0.EXPECT().GetSubscribedMethods().Return([]string{}).AnyTimes()
+	unsubscribedPlugin0.EXPECT().GetHostInfoByStrategy(gomock.Any(), gomock.Any(), gomock.Any()).Return(host0, nil).AnyTimes()
+
+	unsubscribedPlugin1 := mock_driver_infrastructure.NewMockConnectionPlugin(ctrl)
+	unsubscribedPlugin1.EXPECT().GetSubscribedMethods().Return([]string{plugin_helpers.CONNECT_METHOD}).AnyTimes()
+	unsubscribedPlugin1.EXPECT().GetHostInfoByStrategy(gomock.Any(), gomock.Any(), gomock.Any()).Return(host0, nil).AnyTimes()
+
+	unsupportedSubscribedPlugin0 := mock_driver_infrastructure.NewMockConnectionPlugin(ctrl)
+	unsupportedSubscribedPlugin0.EXPECT().GetSubscribedMethods().Return([]string{plugin_helpers.ALL_METHODS}).AnyTimes()
+	unsupportedSubscribedPlugin0.EXPECT().GetHostInfoByStrategy(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("test")).AnyTimes()
+
+	unsupportedSubscribedPlugin1 := mock_driver_infrastructure.NewMockConnectionPlugin(ctrl)
+	unsupportedSubscribedPlugin1.EXPECT().GetSubscribedMethods().Return([]string{plugin_helpers.GET_HOST_INFO_BY_STRATEGY_METHOD}).AnyTimes()
+	unsupportedSubscribedPlugin1.EXPECT().GetHostInfoByStrategy(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("test")).AnyTimes()
+
+	supportedSubscribedPlugin := mock_driver_infrastructure.NewMockConnectionPlugin(ctrl)
+	supportedSubscribedPlugin.EXPECT().GetSubscribedMethods().Return([]string{plugin_helpers.GET_HOST_INFO_BY_STRATEGY_METHOD}).AnyTimes()
+	supportedSubscribedPlugin.EXPECT().GetHostInfoByStrategy(gomock.Any(), gomock.Any(), gomock.Any()).Return(host1, nil).AnyTimes()
+
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	plugins := []driver_infrastructure.ConnectionPlugin{
+		unsubscribedPlugin0,
+		unsubscribedPlugin1,
+		unsupportedSubscribedPlugin0,
+		unsupportedSubscribedPlugin1,
+		supportedSubscribedPlugin,
+	}
+
+	strategy := "random"
+	props := make(map[string]string)
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	pluginManager := plugin_helpers.NewPluginManagerImpl(&MockTargetDriver{}, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
+	err := pluginManager.Init(mockPluginService, plugins)
+	if err != nil {
+		return
+	}
+	selectedHost, err := pluginManager.GetHostInfoByStrategy(host_info_util.WRITER, strategy, hostList)
+
+	assert.Nil(t, err)
+	require.NotNil(t, selectedHost)
+	assert.Equal(t, host1, selectedHost)
+}
