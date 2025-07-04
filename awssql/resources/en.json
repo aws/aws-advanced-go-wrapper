@@ -5,6 +5,7 @@
 	"AdfsCredentialsProviderFactory.signOnPagePostActionRequestFailed": "ADFS SignOn Page POST action failed with HTTP status '%s'.",
 	"AdfsCredentialsProviderFactory.signOnPageRequestFailed": "ADFS SignOn Page Request Failed with HTTP status '%s'.",
 	"AdfsCredentialsProviderFactory.signOnPageUrl": "ADFS SignOn URL: '%s'.",
+	"AuthHelpers.missingRequiredParameters": "Missing required parameter(s) for plugin '%s': '%v'.",
 	"AwsClientHelper.errorGettingAwsCredentialsProvider": "Error occurred while getting aws.CredentialsProvider: '%v'.",
 	"AwsClientHelper.errorGettingClientConfig": "Error occurred while loading configuration for aws client: '%v'.",
 	"AwsSecretsManagerConnectionPlugin.endpointOverrideMisconfigured" : "The provided endpoint is invalid and could not be used to create a URI: '%v'.",

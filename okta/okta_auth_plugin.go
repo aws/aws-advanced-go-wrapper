@@ -108,6 +108,20 @@ func (o *OktaAuthPlugin) connectInternal(
 	props map[string]string,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	utils.CheckIdpCredentialsWithFallback(property_util.IDP_USERNAME, property_util.IDP_PASSWORD, props)
+
+	err := auth_helpers.ValidateAuthParams("okta",
+		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.DB_USER),
+		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IDP_USERNAME),
+		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IDP_PASSWORD),
+		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IDP_ENDPOINT),
+		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IAM_ROLE_ARN),
+		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IAM_IDP_ARN),
+		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.APP_ID))
+
+	if err != nil {
+		return nil, err
+	}
+
 	host := auth_helpers.GetIamHost(property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IAM_HOST), *hostInfo)
 	port := auth_helpers.GetIamPort(
 		property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.IAM_DEFAULT_PORT),

@@ -21,7 +21,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/auth-helpers"
+	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
 	awssql "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -104,6 +104,19 @@ func (f *FederatedAuthPlugin) connectInternal(
 	props map[string]string,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	utils.CheckIdpCredentialsWithFallback(property_util.IDP_USERNAME, property_util.IDP_PASSWORD, props)
+
+	err := auth_helpers.ValidateAuthParams("adfs",
+		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.DB_USER),
+		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IDP_USERNAME),
+		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IDP_PASSWORD),
+		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IDP_ENDPOINT),
+		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IAM_ROLE_ARN),
+		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IAM_IDP_ARN),
+		"",
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	host := auth_helpers.GetIamHost(property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IAM_HOST), *hostInfo)
 

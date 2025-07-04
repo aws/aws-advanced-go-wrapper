@@ -19,6 +19,9 @@ package test
 import (
 	"database/sql/driver"
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
@@ -26,10 +29,8 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	"github.com/aws/aws-advanced-go-wrapper/federated-auth"
-	"github.com/aws/aws-advanced-go-wrapper/pgx-driver"
-	"testing"
-	"time"
+	federated_auth "github.com/aws/aws-advanced-go-wrapper/federated-auth"
+	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -58,10 +59,15 @@ func setup(props map[string]string) *federated_auth.FederatedAuthPlugin {
 	return federatedAuthPlugin
 }
 
-func TestCachedToken(t *testing.T) {
+func TestFederatedAuthCachedToken(t *testing.T) {
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
 		property_util.DB_USER.Name:         federatedAuthDbUser,
+		property_util.IDP_USERNAME.Name:    "username",
+		property_util.IDP_PASSWORD.Name:    "password",
+		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
 	}
 
 	var resultProps map[string]string
@@ -83,6 +89,11 @@ func TestFederatedAuthConnectWithRetry(t *testing.T) {
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
 		property_util.DB_USER.Name:         federatedAuthDbUser,
+		property_util.IDP_USERNAME.Name:    "username",
+		property_util.IDP_PASSWORD.Name:    "password",
+		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
 	}
 
 	key := "us-east-2:pg.testdb.us-east-2.rds.amazonaws.com:1234:iamUser"
@@ -115,6 +126,11 @@ func TestFederatedAuthDoesNotRetryConnect(t *testing.T) {
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
 		property_util.DB_USER.Name:         federatedAuthDbUser,
+		property_util.IDP_USERNAME.Name:    "username",
+		property_util.IDP_PASSWORD.Name:    "password",
+		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
 	}
 
 	key := "us-east-2:pg.testdb.us-east-2.rds.amazonaws.com:1234:iamUser"
@@ -155,10 +171,15 @@ func TestFederatedAuthDoesNotRetryConnect(t *testing.T) {
 	assert.Equal(t, 1, connAttempts)
 }
 
-func TestExpiredCachedToken(t *testing.T) {
+func TestFederatedAuthExpiredCachedToken(t *testing.T) {
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
 		property_util.DB_USER.Name:         federatedAuthDbUser,
+		property_util.IDP_USERNAME.Name:    "username",
+		property_util.IDP_PASSWORD.Name:    "password",
+		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
 	}
 
 	var resultProps map[string]string
@@ -177,10 +198,15 @@ func TestExpiredCachedToken(t *testing.T) {
 	assert.Equal(t, 1, mockIamTokenUtility.GenerateAuthenticationTokenCallCounter)
 }
 
-func TestNoCachedToken(t *testing.T) {
+func TestFederatedAuthNoCachedToken(t *testing.T) {
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
 		property_util.DB_USER.Name:         federatedAuthDbUser,
+		property_util.IDP_USERNAME.Name:    "username",
+		property_util.IDP_PASSWORD.Name:    "password",
+		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
 	}
 
 	var resultProps map[string]string
@@ -197,13 +223,18 @@ func TestNoCachedToken(t *testing.T) {
 	assert.Equal(t, 1, mockIamTokenUtility.GenerateAuthenticationTokenCallCounter)
 }
 
-func TestSpecifiedIamHostPortRegion(t *testing.T) {
+func TestFederatedAuthSpecifiedIamHostPortRegion(t *testing.T) {
 	expectedHost := "pg.testdb.us-west-2.rds.amazonaws.com"
 	expectedPort := "9876"
 	expectedRegion := "us-west-2"
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name:  "postgresql",
 		property_util.DB_USER.Name:          federatedAuthDbUser,
+		property_util.IDP_USERNAME.Name:     "username",
+		property_util.IDP_PASSWORD.Name:     "password",
+		property_util.IDP_ENDPOINT.Name:     "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name:     "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name:      "iamIdpArn",
 		property_util.IAM_HOST.Name:         expectedHost,
 		property_util.IAM_DEFAULT_PORT.Name: expectedPort,
 		property_util.IAM_REGION.Name:       expectedRegion,
@@ -225,11 +256,14 @@ func TestSpecifiedIamHostPortRegion(t *testing.T) {
 	assert.Equal(t, 0, mockIamTokenUtility.GenerateAuthenticationTokenCallCounter)
 }
 
-func TestIdpCredentialsFallback(t *testing.T) {
+func TestFederatedAuthIdpCredentialsFallback(t *testing.T) {
 	expectedUser := "expectedUser"
 	expectedPassword := "expectedPassword"
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
+		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
 		property_util.DB_USER.Name:         federatedAuthDbUser,
 		property_util.USER.Name:            expectedUser,
 		property_util.PASSWORD.Name:        expectedPassword,
@@ -253,9 +287,14 @@ func TestIdpCredentialsFallback(t *testing.T) {
 	assert.Equal(t, expectedPassword, resultProps[property_util.IDP_PASSWORD.Name])
 }
 
-func TestUsingIamHost(t *testing.T) {
+func TestFederatedAuthUsingIamHost(t *testing.T) {
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
+		property_util.IDP_USERNAME.Name:    "username",
+		property_util.IDP_PASSWORD.Name:    "password",
+		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
 		property_util.DB_USER.Name:         federatedAuthDbUser,
 		property_util.IAM_HOST.Name:        federatedAuthIamHost,
 	}
@@ -275,10 +314,16 @@ func TestUsingIamHost(t *testing.T) {
 	assert.Equal(t, federatedAuthIamHost, mockIamTokenUtility.CapturedHost)
 }
 
-func TestInvalidRegionWithoutHost(t *testing.T) {
+func TestFederatedAuthInvalidRegionWithoutHost(t *testing.T) {
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
 		property_util.IAM_REGION.Name:      "invalid-region",
+		property_util.IDP_USERNAME.Name:    "username",
+		property_util.IDP_PASSWORD.Name:    "password",
+		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
+		property_util.DB_USER.Name:         federatedAuthDbUser,
 	}
 
 	connectFunc := func(props map[string]string) (driver.Conn, error) {
@@ -293,6 +338,12 @@ func TestInvalidRegionWithoutHost(t *testing.T) {
 	props = map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
 		property_util.IAM_REGION.Name:      "",
+		property_util.IDP_USERNAME.Name:    "username",
+		property_util.IDP_PASSWORD.Name:    "password",
+		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
+		property_util.DB_USER.Name:         federatedAuthDbUser,
 	}
 
 	plugin = setup(props)
@@ -301,9 +352,14 @@ func TestInvalidRegionWithoutHost(t *testing.T) {
 	assert.Equal(t, error_util.NewGenericAwsWrapperError(error_util.GetMessage("FederatedAuthPlugin.unableToDetermineRegion", property_util.IAM_REGION.Name)), err)
 }
 
-func TestGenerateTokenFailure(t *testing.T) {
+func TestFederatedAuthGenerateTokenFailure(t *testing.T) {
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
+		property_util.IDP_USERNAME.Name:    "username",
+		property_util.IDP_PASSWORD.Name:    "password",
+		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
 		property_util.DB_USER.Name:         federatedAuthDbUser,
 	}
 
@@ -319,9 +375,14 @@ func TestGenerateTokenFailure(t *testing.T) {
 	assert.Equal(t, errors.New("GenerateTokenError"), err)
 }
 
-func TestGetAwsCredentialsProviderError(t *testing.T) {
+func TestFederatedAuthGetAwsCredentialsProviderError(t *testing.T) {
 	props := map[string]string{
 		property_util.DRIVER_PROTOCOL.Name: "postgresql",
+		property_util.IDP_USERNAME.Name:    "username",
+		property_util.IDP_PASSWORD.Name:    "password",
+		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
 		property_util.DB_USER.Name:         federatedAuthDbUser,
 	}
 
@@ -335,4 +396,28 @@ func TestGetAwsCredentialsProviderError(t *testing.T) {
 
 	assert.Equal(t, 0, mockIamTokenUtility.GenerateAuthenticationTokenCallCounter)
 	assert.Equal(t, errors.New("getAwsCredentialsProviderError"), err)
+}
+
+func TestFederatedMissingParams(t *testing.T) {
+	missingParams := []string{property_util.IDP_USERNAME.Name, property_util.IDP_ENDPOINT.Name}
+	props := map[string]string{
+		property_util.DRIVER_PROTOCOL.Name: "postgresql",
+		property_util.DB_USER.Name:         federatedAuthDbUser,
+		property_util.IDP_PASSWORD.Name:    "password",
+		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
+	}
+
+	connectFunc := func(props map[string]string) (driver.Conn, error) {
+		return &MockConn{throwError: true}, nil
+	}
+
+	plugin := setup(props)
+	key := "us-east-2:pg.testdb.us-east-2.rds.amazonaws.com:1234:iamUser"
+	federated_auth.TokenCache.Put(key, federatedAuthTestToken, time.Millisecond*300000)
+	_, err := plugin.Connect(federatedAuthHostInfo1, props, true, connectFunc)
+
+	assert.Error(t, err)
+	assert.Equal(t, error_util.GetMessage("AuthHelpers.missingRequiredParameters",
+		"adfs", missingParams), err.Error())
 }
