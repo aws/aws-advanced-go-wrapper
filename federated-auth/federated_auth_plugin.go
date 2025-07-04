@@ -112,7 +112,8 @@ func (f *FederatedAuthPlugin) connectInternal(
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IDP_ENDPOINT),
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IAM_ROLE_ARN),
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IAM_IDP_ARN),
-		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.APP_ID))
+		"",
+	)
 	if err != nil {
 		return nil, err
 	}
