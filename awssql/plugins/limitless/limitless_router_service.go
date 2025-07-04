@@ -59,6 +59,7 @@ func NewLimitlessRouterServiceImplInternal(
 		LIMITLESS_ROUTER_MONITOR_CACHE = utils.NewSlidingExpirationCache[LimitlessRouterMonitor](
 			"limitless_router_monitors",
 			func(monitor LimitlessRouterMonitor) bool {
+				slog.Debug(error_util.GetMessage("SlidingExpirationCache.itemDisposal", "limitless router monitor"))
 				monitor.Close()
 				return false
 			},
@@ -71,6 +72,7 @@ func NewLimitlessRouterServiceImplInternal(
 		LIMITLESS_ROUTER_CACHE = utils.NewSlidingExpirationCache[[]*host_info_util.HostInfo](
 			"limitless_routers",
 			func(routers []*host_info_util.HostInfo) bool {
+				slog.Debug(error_util.GetMessage("SlidingExpirationCache.itemDisposal", "limitless router"))
 				return false
 			},
 			func(routers []*host_info_util.HostInfo) bool {

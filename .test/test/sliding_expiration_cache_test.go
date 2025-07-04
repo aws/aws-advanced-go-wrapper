@@ -62,3 +62,29 @@ func TestSlidingExpirationCacheClear(t *testing.T) {
 	slidingExpirationCache.Clear()
 	assert.Equal(t, 0, slidingExpirationCache.Size())
 }
+
+func TestSlidingExpirationGetExpiredItem(t *testing.T) {
+	slidingExpirationCache := utils.NewSlidingExpirationCache[int]("test")
+	slidingExpirationCache.Put("a", 1, time.Nanosecond)
+	slidingExpirationCache.Put("b", 2, time.Nanosecond)
+
+	item, ok := slidingExpirationCache.Get("a", time.Minute)
+	assert.Equal(t, 0, item)
+	assert.False(t, ok)
+}
+
+func TestSlidingExpirationComputeIfAbsentExpiredItem(t *testing.T) {
+	itemDisposed := false
+	disposalFunc := func(item int) bool {
+		itemDisposed = true
+		return true
+	}
+	slidingExpirationCache := utils.NewSlidingExpirationCache[int]("test", disposalFunc)
+	slidingExpirationCache.Put("a", 1, time.Nanosecond)
+	slidingExpirationCache.Put("b", 2, time.Nanosecond)
+
+	item := slidingExpirationCache.ComputeIfAbsent("a", func() int { return 3 }, time.Minute)
+	assert.Equal(t, 3, item)
+	assert.Equal(t, 2, slidingExpirationCache.Size())
+	assert.True(t, itemDisposed)
+}
