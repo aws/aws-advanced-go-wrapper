@@ -44,6 +44,9 @@ When the `okta` module is added as a dependency, the required AWS modules will a
 
 To enable the Okta Authentication Plugin, add the plugin code `okta` to the [`plugins`](../UsingTheGoWrapper.md#connection-plugin-manager-parameters) value. Then, specify parameters that are required or specific to your case.
 
+> [!WARNING]
+> The `plugins` value should not contain more than one of the following codes: `awsSecretsManager`, `federatedAuth`, `iam`, and `okta` as each connection should use only one method of authentication.
+
 ### Connecting with the Go-MySQL Driver
 
 For [IAM connections with the Go-MySQL-Driver](UsingTheIamAuthenticationPlugin.md#connecting-with-the-go-mysql-driver) ensure the parameter `allowCleartextPasswords` is set to `true`.

@@ -50,6 +50,9 @@ dependencies.
 To enable the AWS Secrets Manager Plugin, add the plugin code `federatedAuth` to the [`plugins`](../UsingTheGoWrapper.md#connection-plugin-manager-parameters)
    value. Then, specify parameters that are required or specific to your case.
 
+> [!WARNING]
+> The `plugins` value should not contain more than one of the following codes: `awsSecretsManager`, `federatedAuth`, `iam`, and `okta` as each connection should use only one method of authentication.
+
 ### Connecting with the Go-MySQL Driver
 
 When connecting through IAM with the Go-MySQL-Driver, the additional parameter `allowCleartextPasswords=true` is required. By default, MySQL encrypts the password and when AWS receives it for IAM authentication it doesn't decrypt it and is unable to connect. When `allowCleartextPasswords` is set to `true` AWS receives the password as-is and is able to connect.
