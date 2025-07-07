@@ -18,10 +18,12 @@ package auth_helpers
 
 import (
 	"context"
+	"sync"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"sync"
 )
 
 type AwsCredentialsProviderHandler interface {
@@ -38,7 +40,7 @@ func GetAwsCredentialsProvider(hostInfo host_info_util.HostInfo, props map[strin
 	if awsCredentialsProviderHandler != nil {
 		return awsCredentialsProviderHandler.GetAwsCredentialsProvider(hostInfo, props)
 	}
-	return getDefaultProvider()
+	return getDefaultProvider(property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.AWS_PROFILE))
 }
 
 func SetAwsCredentialsProviderHandler(credentialsHandler AwsCredentialsProviderHandler) {
@@ -47,8 +49,9 @@ func SetAwsCredentialsProviderHandler(credentialsHandler AwsCredentialsProviderH
 	awsCredentialsProviderHandler = credentialsHandler
 }
 
-func getDefaultProvider() (aws.CredentialsProvider, error) {
-	cfg, err := config.LoadDefaultConfig(context.TODO())
+func getDefaultProvider(profile string) (aws.CredentialsProvider, error) {
+	cfg, err := config.LoadDefaultConfig(context.TODO(),
+		config.WithSharedConfigProfile(profile))
 	if err != nil {
 		return nil, err
 	}

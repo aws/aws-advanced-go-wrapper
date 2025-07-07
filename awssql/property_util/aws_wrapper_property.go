@@ -104,6 +104,7 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name:           true,
 	CLUSTER_ID.Name:                                 true,
 	CLUSTER_INSTANCE_HOST_PATTERN.Name:              true,
+	AWS_PROFILE.Name:                                true,
 	IAM_HOST.Name:                                   true,
 	IAM_EXPIRATION_SEC.Name:                         true,
 	IAM_REGION.Name:                                 true,
@@ -285,6 +286,12 @@ var MONITOR_DISPOSAL_TIME_MS = AwsWrapperProperty{
 	description:         "Interval in milliseconds for a monitor to be considered inactive and to be disposed.",
 	defaultValue:        "600000", // 10 minutes.
 	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var AWS_PROFILE = AwsWrapperProperty{
+	Name:                "awsProfile",
+	description:         "Name of the AWS Profile to use for IAM or SecretsManager auth.",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
 var IAM_HOST = AwsWrapperProperty{
