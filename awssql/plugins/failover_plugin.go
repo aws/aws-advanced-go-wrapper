@@ -20,6 +20,10 @@ import (
 	"context"
 	"database/sql/driver"
 	"errors"
+	"log/slog"
+	"strings"
+	"time"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
@@ -27,9 +31,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	"log/slog"
-	"strings"
-	"time"
 )
 
 type FailoverMode string
@@ -93,7 +94,10 @@ type FailoverPlugin struct {
 }
 
 func NewFailoverPlugin(pluginService driver_infrastructure.PluginService, props map[string]string) (*FailoverPlugin, error) {
-	failoverTimeoutMsSetting := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.FAILOVER_TIMEOUT_MS)
+	failoverTimeoutMsSetting, err := property_util.GetPositiveIntProperty(props, property_util.FAILOVER_TIMEOUT_MS)
+	if err != nil {
+		return nil, err
+	}
 	failoverReaderHostSelectorStrategySetting := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.FAILOVER_READER_HOST_SELECTOR_STRATEGY)
 
 	failoverWriterTriggeredCounter, err := pluginService.GetTelemetryFactory().CreateCounter("writerFailover.triggered.count")

@@ -22,7 +22,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/auth-helpers"
+	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
 	awssql "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -159,7 +159,7 @@ func (iamAuthPlugin *IamAuthPlugin) fetchAndSetToken(
 	region region_util.Region,
 	cacheKey string,
 	props map[string]string) error {
-	tokenExpirationSec := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.IAM_EXPIRATION_SEC)
+	tokenExpirationSec := property_util.GetExpirationValue(props, property_util.IAM_EXPIRATION_SEC)
 	awsCredentialsProvider, err := auth_helpers.GetAwsCredentialsProvider(*hostInfo, props)
 	if err != nil {
 		slog.Error(error_util.GetMessage("IamAuthPlugin.errorGettingAwsCredentialsProvider", err))

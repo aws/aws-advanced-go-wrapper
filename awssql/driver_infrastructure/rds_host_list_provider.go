@@ -19,15 +19,16 @@ package driver_infrastructure
 import (
 	"database/sql/driver"
 	"fmt"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"log/slog"
 	"math"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 
 	"github.com/google/uuid"
 )
@@ -84,7 +85,7 @@ func (r *RdsHostListProvider) init() {
 	if r.isInitialized {
 		return
 	}
-	refreshRateInt := property_util.GetVerifiedWrapperPropertyValue[int](r.properties, property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS)
+	refreshRateInt := property_util.GetRefreshRateValue(r.properties, property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS)
 	r.refreshRateNanos = time.Millisecond * time.Duration(refreshRateInt)
 	hostListFromDsn, err := utils.GetHostsFromDsn(r.originalDsn, false)
 	if err != nil || len(hostListFromDsn) == 0 {

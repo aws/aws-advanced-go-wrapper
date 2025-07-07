@@ -18,15 +18,16 @@ package limitless
 
 import (
 	"database/sql/driver"
+	"log/slog"
+	"maps"
+	"sync/atomic"
+	"time"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"log/slog"
-	"maps"
-	"sync/atomic"
-	"time"
 )
 
 type LimitlessRouterMonitor interface {
@@ -107,7 +108,7 @@ func (monitor *LimitlessRouterMonitorImpl) run() {
 		}
 
 		routerCacheExpiration :=
-			time.Millisecond * time.Duration(property_util.GetVerifiedWrapperPropertyValue[int](monitor.props, property_util.LIMITLESS_ROUTER_CACHE_EXPIRATIONL_TIME_MS))
+			time.Millisecond * time.Duration(property_util.GetExpirationValue(monitor.props, property_util.LIMITLESS_ROUTER_CACHE_EXPIRATION_TIME_MS))
 		monitor.routerCache.Put(
 			monitor.routerCacheKey,
 			newLimitlessRouters,

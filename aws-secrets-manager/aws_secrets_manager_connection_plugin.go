@@ -104,6 +104,7 @@ func NewAwsSecretsManagerPlugin(pluginService driver_infrastructure.PluginServic
 	if err != nil {
 		return nil, err
 	}
+	secretExpirationTimeSec := property_util.GetExpirationValue(props, property_util.SECRETS_MANAGER_EXPIRATION_SEC)
 
 	return &AwsSecretsManagerPlugin{
 		pluginService: pluginService,
@@ -114,7 +115,7 @@ func NewAwsSecretsManagerPlugin(pluginService driver_infrastructure.PluginServic
 		region:                          region,
 		endpoint:                        secretsEndpoint,
 		awsSecretsManagerClientProvider: awsSecretsManagerClientProvider,
-		secretExpirationTimeSec:         time.Second * time.Duration(property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.SECRETS_MANAGER_EXPIRATION_SEC)),
+		secretExpirationTimeSec:         time.Second * time.Duration(secretExpirationTimeSec),
 		fetchCredentialsCounter:         fetchCredentialsCounter,
 	}, err
 }

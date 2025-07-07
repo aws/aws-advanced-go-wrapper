@@ -18,11 +18,12 @@ package driver_infrastructure
 
 import (
 	"database/sql/driver"
+	"sync"
+	"time"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"sync"
-	"time"
 )
 
 var MONITOR_EXPIRATION_NANOS = time.Minute
@@ -97,7 +98,7 @@ func (m *MonitoringRdsHostListProvider) getMonitor() ClusterTopologyMonitor {
 		return monitor
 	}
 
-	highRefreshRateNano := time.Millisecond * time.Duration(property_util.GetVerifiedWrapperPropertyValue[int](m.properties, property_util.CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS))
+	highRefreshRateNano := time.Millisecond * time.Duration(property_util.GetRefreshRateValue(m.properties, property_util.CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS))
 
 	computeFunc := func() ClusterTopologyMonitor {
 		monitor = NewClusterTopologyMonitorImpl(

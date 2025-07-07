@@ -168,8 +168,7 @@ func (f *FederatedAuthPlugin) updateAuthenticationToken(
 	cacheKey string,
 	host string,
 	port int) error {
-	tokenExpirationSec := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.IAM_TOKEN_EXPIRATION_SEC)
-
+	tokenExpirationSec := property_util.GetExpirationValue(props, property_util.IAM_TOKEN_EXPIRATION_SEC)
 	credentialsProvider, err := f.credentialsProviderFactory.GetAwsCredentialsProvider(host, region, props)
 	if err != nil {
 		return err

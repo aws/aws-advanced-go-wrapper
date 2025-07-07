@@ -19,6 +19,7 @@ package limitless
 import (
 	"database/sql/driver"
 	"errors"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
@@ -104,7 +105,7 @@ func (plugin *LimitlessPlugin) Connect(
 		err := plugin.routerService.StartMonitoring(
 			hostInfo,
 			props,
-			property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.LIMITLESS_MONITORING_INTERVAL_MS))
+			property_util.GetRefreshRateValue(props, property_util.LIMITLESS_MONITORING_INTERVAL_MS))
 		if err != nil {
 			return nil, err
 		}

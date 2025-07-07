@@ -18,14 +18,15 @@ package limitless
 
 import (
 	"errors"
+	"log/slog"
+	"sync"
+	"time"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"log/slog"
-	"sync"
-	"time"
 )
 
 var LIMITLESS_ROUTER_MONITOR_CACHE *utils.SlidingExpirationCache[LimitlessRouterMonitor]
@@ -170,7 +171,7 @@ func (routerService *LimitlessRouterServiceImpl) EstablishConnection(context *Li
 }
 
 func (routerService *LimitlessRouterServiceImpl) getLimitlessRouters(routerCacheKey string, props map[string]string) []*host_info_util.HostInfo {
-	cacheExpirationNano := time.Millisecond * time.Duration(property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.LIMITLESS_ROUTER_CACHE_EXPIRATIONL_TIME_MS))
+	cacheExpirationNano := time.Millisecond * time.Duration(property_util.GetExpirationValue(props, property_util.LIMITLESS_ROUTER_CACHE_EXPIRATION_TIME_MS))
 	routers, ok := LIMITLESS_ROUTER_CACHE.Get(routerCacheKey, cacheExpirationNano)
 	if ok {
 		return routers
@@ -181,8 +182,11 @@ func (routerService *LimitlessRouterServiceImpl) getLimitlessRouters(routerCache
 func (routerService *LimitlessRouterServiceImpl) synchronousGetLimitlessRoutersWithRetry(context *LimitlessConnectionContext) error {
 	slog.Debug(error_util.GetMessage("LimitlessRouterServiceImpl.synchronousGetLimitlessRoutersWithRetry"))
 	retryCount := -1 // start at -1 since the first try is not a retry.
-	maxRetries := property_util.GetVerifiedWrapperPropertyValue[int](context.Props, property_util.LIMITLESS_GET_ROUTER_MAX_RETRIES)
-	retryIntervalMs := property_util.GetVerifiedWrapperPropertyValue[int](context.Props, property_util.LIMITLESS_GET_ROUTER_RETRY_INTERVAL_MS)
+	maxRetries, err := property_util.GetPositiveIntProperty(context.Props, property_util.LIMITLESS_GET_ROUTER_MAX_RETRIES)
+	if err != nil {
+		slog.Error(err.Error())
+	}
+	retryIntervalMs := property_util.GetRefreshRateValue(context.Props, property_util.LIMITLESS_GET_ROUTER_RETRY_INTERVAL_MS)
 	for retryCount < maxRetries {
 		err := routerService.synchronousGetLimitlessRouter(context)
 		if err != nil {
@@ -200,7 +204,7 @@ func (routerService *LimitlessRouterServiceImpl) synchronousGetLimitlessRoutersW
 func (routerService *LimitlessRouterServiceImpl) synchronousGetLimitlessRouter(context *LimitlessConnectionContext) error {
 	// Get lock
 	routerCacheExpiration :=
-		time.Millisecond * time.Duration(property_util.GetVerifiedWrapperPropertyValue[int](context.Props, property_util.LIMITLESS_MONITORING_DISPOSAL_TIME_MS))
+		time.Millisecond * time.Duration(property_util.GetExpirationValue(context.Props, property_util.LIMITLESS_MONITORING_DISPOSAL_TIME_MS))
 	routerCacheKey, err := routerService.pluginService.GetHostListProvider().GetClusterId()
 	if err != nil {
 		return err
@@ -260,7 +264,10 @@ func (routerService *LimitlessRouterServiceImpl) synchronousGetLimitlessRouter(c
 
 func (routerService *LimitlessRouterServiceImpl) retryConnectWithLeastLoadedRouters(context *LimitlessConnectionContext) error {
 	retryCount := 0
-	maxRetries := property_util.GetVerifiedWrapperPropertyValue[int](context.Props, property_util.LIMITLESS_MAX_CONN_RETRIES)
+	maxRetries, err := property_util.GetPositiveIntProperty(context.Props, property_util.LIMITLESS_MAX_CONN_RETRIES)
+	if err != nil {
+		slog.Error(err.Error())
+	}
 	for retryCount < maxRetries {
 		// If context limitless routers empty or none are available, fetch routers synchronously
 		noAvailableRoutersFunc := func(routers []*host_info_util.HostInfo) bool {
@@ -327,7 +334,7 @@ func (routerService *LimitlessRouterServiceImpl) StartMonitoring(hostInfo *host_
 	cacheKey, err := routerService.pluginService.GetHostListProvider().GetClusterId()
 
 	if err == nil {
-		cacheExpirationNano := time.Millisecond * time.Duration(property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.LIMITLESS_MONITORING_DISPOSAL_TIME_MS))
+		cacheExpirationNano := time.Millisecond * time.Duration(property_util.GetExpirationValue(props, property_util.LIMITLESS_MONITORING_DISPOSAL_TIME_MS))
 
 		LIMITLESS_ROUTER_MONITOR_CACHE.ComputeIfAbsent(
 			cacheKey,
