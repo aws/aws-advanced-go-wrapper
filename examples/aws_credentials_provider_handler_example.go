@@ -47,7 +47,7 @@ func custom_aws_credential_provider() {
 	plugins := "iam"
 	iamRegion := "us-east-1"
 
-	// setup custom credentials provider
+	// Setup custom credentials provider
 	auth_helpers.SetAwsCredentialsProviderHandler(CustomAwsCredentialsProvider{})
 
 	connStr := fmt.Sprintf("host=%s port=%s user=%s dbname=%s plugins=%s iamRegion=%s",
