@@ -54,7 +54,7 @@ func custom_aws_credential_provider() {
 		host, port, iamUser, dbName, plugins, iamRegion,
 	)
 
-	// alternative connection string for pgx
+	// Alternative connection string for pgx
 	// connStr := fmt.Sprintf("postgresql://%s@%s:%s/%s?plugins=%s&iamRegion=%s",
 	// 	user, host, port, dbName, plugins, iamRegion)
 

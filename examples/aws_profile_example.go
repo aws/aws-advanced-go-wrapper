@@ -38,14 +38,14 @@ func custom_aws_profile_example() {
 	// The profile to use in .aws/credentials file
 	awsProfile := "customprofile"
 
-	// setup custom credentials provider
+	// Optional: setup custom credentials provider
 	auth_helpers.SetAwsCredentialsProviderHandler(CustomAwsCredentialsProvider{})
 
 	connStr := fmt.Sprintf("host=%s port=%s user=%s dbname=%s plugins=%s iamRegion=%s awsProfile=%s",
 		host, port, iamUser, dbName, plugins, iamRegion, awsProfile,
 	)
 
-	// alternative connection string for pgx
+	// Alternative connection string for pgx
 	// connStr := fmt.Sprintf("postgresql://%s@%s:%s/%s?plugins=%s&iamRegion=%s&wasProfile=%s",
 	// 	user, host, port, dbName, plugins, iamRegion, awsProfile)
 
