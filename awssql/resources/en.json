@@ -178,6 +178,7 @@
 	"RdsHostListProvider.unknownHostRole": "Query to gather host role failed, unable to determine role of current host.",
 	"SamlCredentialsProviderFactory.getSamlAssertionFailed": "Failed to get SAML Assertion due to exception: '%s'.",
 	"SlidingExpirationCache.exitingCacheCleanupRoutine": "Sliding expiration cache '%v' cleanup routine has been cancelled.",
+	"SlidingExpirationCache.itemDisposal": "Disposing of %s.",
 	"SlidingExpirationCache.startingCacheCleanupRoutine": "Sliding expiration cache '%v', has been initialized, cleanup routine has started.",
 	"StaleDnsHelper.clusterEndpointDns": "Cluster endpoint resolves to '%s'.",
 	"StaleDnsHelper.staleDnsDetected": "Stale DNS data detected. Opening a connection to '%s'.",

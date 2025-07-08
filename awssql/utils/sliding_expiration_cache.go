@@ -20,6 +20,7 @@ import (
 	"context"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"log/slog"
+	"reflect"
 	"sync"
 	"time"
 )
@@ -86,12 +87,14 @@ func (c *SlidingExpirationCache[T]) Get(key string, itemExpiration time.Duration
 }
 
 func (c *SlidingExpirationCache[T]) ComputeIfAbsent(key string, computeFunc func() T, itemExpiration time.Duration) T {
-	c.lock.RLock()
-	item, ok := c.cache[key]
-	c.lock.RUnlock()
+	item, ok := c.Get(key, itemExpiration)
 
 	if ok {
-		return item.item
+		return item
+	}
+
+	if reflect.ValueOf(item).IsValid() {
+		c.Remove(key)
 	}
 
 	c.lock.Lock()
