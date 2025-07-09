@@ -58,14 +58,48 @@ jobs:
     steps:
       - name: 'Clone repository'
         uses: actions/checkout@v4
+      - name: Generate coverpkg list
+        id: coverpkg
+        run: |
+          coverpkg=$(find . -name go.mod -not -path "*/.test/*" -execdir sh -c 'go list ./... | grep -v "/test$"' \; | paste -sd, -)
+          echo $coverpkg
+          echo "coverpkg=$coverpkg"
+          echo "coverpkg=$coverpkg" >> $GITHUB_ENV
+  
       - name: 'Test with Go'
         working-directory: ${{ github.workspace }}/.test
-        run: go test ./test/... -json > TestResults.json
+        run: |
+          go test ./test/... -coverpkg=$coverpkg -coverprofile=coverage_raw -json > TestResults.json
+
+      - name: Check test coverage threshold
+        working-directory: ${{ github.workspace }}/.test
+        run: |
+          go tool cover -func=coverage_raw > coverage_results.out
+          coverage=$(cat coverage_results.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
+          echo "Total Coverage: $coverage%"
+          threshold=65.0
+          result=$(echo "$coverage >= $threshold" | bc)
+          if [ "$result" -ne 1 ]; then
+            echo "Coverage $coverage% is below threshold of $threshold%"
+            exit 1
+          else
+            echo "Coverage $coverage% meets the threshold of $threshold%"
+          fi
+
       - name: 'Upload Go test results'
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Go-results
+          name: Go-Test-Results
           path: ${{ github.workspace }}/.test/TestResults.json
           retention-days: 5
-          
+
+      - name: 'Upload Go coverage results'
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Go-Coverage-Results
+          path: |
+            ${{ github.workspace }}/.test/coverage_results.out
+            ${{ github.workspace }}/.test/coverage_raw
+          retention-days: 5
