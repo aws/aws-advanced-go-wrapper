@@ -60,7 +60,43 @@ jobs:
         uses: actions/checkout@v4
       - name: 'Test with Go'
         working-directory: ${{ github.workspace }}/.test
-        run: go test ./test/... -json > TestResults.json
+        run: |
+          packages=$(echo "
+            github.com/aws/aws-advanced-go-wrapper/awssql/driver,
+            github.com/aws/aws-advanced-go-wrapper/awssql/driver_info,
+            github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure,
+            github.com/aws/aws-advanced-go-wrapper/awssql/error_util,
+            github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util,
+            github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers,
+            github.com/aws/aws-advanced-go-wrapper/awssql/plugins,
+            github.com/aws/aws-advanced-go-wrapper/awssql/property_util,
+            github.com/aws/aws-advanced-go-wrapper/awssql/region_util,
+            github.com/aws/aws-advanced-go-wrapper/awssql/utils,
+            github.com/aws/aws-advanced-go-wrapper/pgx-driver,
+            github.com/aws/aws-advanced-go-wrapper/mysql-driver,
+            github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager,
+            github.com/aws/aws-advanced-go-wrapper/iam,
+            github.com/aws/aws-advanced-go-wrapper/federated-auth,
+            github.com/aws/aws-advanced-go-wrapper/okta,
+            github.com/aws/aws-advanced-go-wrapper/auth-helpers,
+            github.com/aws/aws-advanced-go-wrapper/otlp,
+            github.com/aws/aws-advanced-go-wrapper/xray" | tr -d '\n ')
+          go test ./test/... -coverpkg=${packages} -coverprofile=coverage.out -json > TestResults.json
+
+      - name: Check test coverage threshold
+        working-directory: ${{ github.workspace }}/.test
+        run: |
+          coverage=$(go tool cover -func=coverage.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
+          echo "Total Coverage: $coverage%"
+          threshold=66.0
+          result=$(echo "$coverage >= $threshold" | bc)
+          if [ "$result" -ne 1 ]; then
+            echo "Coverage $coverage% is below threshold of $threshold%"
+            exit 1
+          else
+            echo "Coverage $coverage% meets the threshold of $threshold%"
+          fi
+
       - name: 'Upload Go test results'
         if: always()
         uses: actions/upload-artifact@v4
@@ -68,4 +104,4 @@ jobs:
           name: Go-results
           path: ${{ github.workspace }}/.test/TestResults.json
           retention-days: 5
-          
+
