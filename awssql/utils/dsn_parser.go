@@ -380,7 +380,9 @@ func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 
 	// [username[:password]@][protocol[(address)]]
 	lastAtIndex := strings.LastIndex(dsn[:lastSlashIndex], "@")
+	netPropStart := 0
 	if lastAtIndex != -1 {
+		netPropStart = lastAtIndex + 1
 		colonIndex := strings.Index(dsn[:lastAtIndex], ":")
 		if colonIndex == -1 {
 			properties[property_util.USER.Name] = dsn[:lastAtIndex]
@@ -388,14 +390,16 @@ func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 			properties[property_util.USER.Name] = dsn[:colonIndex]
 			properties[property_util.PASSWORD.Name] = dsn[colonIndex+1 : lastAtIndex]
 		}
+	} else {
+		lastAtIndex = 0
 	}
 
 	// [protocol[(address)]]
 	openParenIndex := strings.Index(dsn[lastAtIndex:lastSlashIndex], "(") + lastAtIndex
 	if openParenIndex == -1 {
-		properties[NET_PROP_KEY] = dsn[lastAtIndex+1 : lastSlashIndex]
+		properties[NET_PROP_KEY] = dsn[netPropStart:lastSlashIndex]
 	} else {
-		properties[NET_PROP_KEY] = dsn[lastAtIndex+1 : openParenIndex]
+		properties[NET_PROP_KEY] = dsn[netPropStart:openParenIndex]
 
 		closeParenIndex := strings.LastIndex(dsn[lastAtIndex:lastSlashIndex], ")") + lastAtIndex
 		if closeParenIndex == -1 {

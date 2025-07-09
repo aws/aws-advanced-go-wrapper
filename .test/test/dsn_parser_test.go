@@ -327,9 +327,27 @@ func TestParseDsnMySqlWithoutParams(t *testing.T) {
 		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
 	}
 
+	assert.Equal(t, "tcp", props[property_util.NET.Name])
 	assert.Equal(t, "mysql", props[property_util.DRIVER_PROTOCOL.Name])
 	assert.Equal(t, "someUser", props[property_util.USER.Name])
 	assert.Equal(t, "somePassword", props[property_util.PASSWORD.Name])
+	assert.Equal(t, "mydatabase.com", props[property_util.HOST.Name])
+	assert.Equal(t, "3306", props[property_util.PORT.Name])
+	assert.Equal(t, "myDatabase", props[property_util.DATABASE.Name])
+}
+
+func TestParseDsnMySqlNoUserNoPassword(t *testing.T) {
+	dsn := "tcp(mydatabase.com:3306)/myDatabase"
+	props, err := utils.ParseDsn(dsn)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
+	}
+
+	assert.Equal(t, "tcp", props[property_util.NET.Name])
+	assert.Equal(t, "mysql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "", props[property_util.USER.Name])
+	assert.Equal(t, "", props[property_util.PASSWORD.Name])
 	assert.Equal(t, "mydatabase.com", props[property_util.HOST.Name])
 	assert.Equal(t, "3306", props[property_util.PORT.Name])
 	assert.Equal(t, "myDatabase", props[property_util.DATABASE.Name])
