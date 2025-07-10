@@ -44,7 +44,7 @@ type FederatedAuthPluginFactory struct{}
 
 func (f FederatedAuthPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService, props map[string]string) (driver_infrastructure.ConnectionPlugin, error) {
 	providerFactory := NewAdfsCredentialsProviderFactory(auth_helpers.GetBasicHttpClient, auth_helpers.NewAwsStsClient, pluginService)
-	return NewFederatedAuthPlugin(pluginService, providerFactory, auth_helpers.RegularIamTokenUtility{})
+	return NewFederatedAuthPlugin(pluginService, providerFactory, &auth_helpers.RegularIamTokenUtility{})
 }
 
 func (f FederatedAuthPluginFactory) ClearCaches() {

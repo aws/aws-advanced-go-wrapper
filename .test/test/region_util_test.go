@@ -17,9 +17,10 @@
 package test
 
 import (
+	"testing"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -29,6 +30,7 @@ func TestGetRegionFromRegionString(t *testing.T) {
 	assert.Equal(t, region_util.AP_SOUTH_1, region_util.GetRegionFromRegionString(string(region_util.AP_SOUTH_1)))
 	assert.Equal(t, region_util.AP_SOUTH_1, region_util.GetRegionFromRegionString("ap-south-1"))
 	assert.Equal(t, region_util.AP_SOUTH_1, region_util.GetRegionFromRegionString("Ap-SoUtH-1"))
+	assert.Equal(t, "", "")
 }
 
 func TestGetRegionFromHost(t *testing.T) {

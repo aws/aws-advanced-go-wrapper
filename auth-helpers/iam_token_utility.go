@@ -18,13 +18,21 @@ package auth_helpers
 
 import (
 	"context"
+	"strconv"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/rds/auth"
-	"strconv"
 )
+
+type BuildAuthTokenFunc = func(ctx context.Context,
+	endpoint string,
+	region string,
+	dbUser string,
+	creds aws.CredentialsProvider,
+	optFns ...func(options *auth.BuildAuthTokenOptions)) (string, error)
 
 type IamTokenUtility interface {
 	GenerateAuthenticationToken(
@@ -37,9 +45,11 @@ type IamTokenUtility interface {
 	) (string, error)
 }
 
-type RegularIamTokenUtility struct{}
+type RegularIamTokenUtility struct {
+	buildAuthTokenFunc BuildAuthTokenFunc
+}
 
-func (iamTokenUtility RegularIamTokenUtility) GenerateAuthenticationToken(
+func (iamTokenUtility *RegularIamTokenUtility) GenerateAuthenticationToken(
 	user string,
 	host string,
 	port int,
@@ -47,6 +57,10 @@ func (iamTokenUtility RegularIamTokenUtility) GenerateAuthenticationToken(
 	awsCredentialsProvider aws.CredentialsProvider,
 	pluginService driver_infrastructure.PluginService,
 ) (string, error) {
+	if iamTokenUtility.buildAuthTokenFunc == nil {
+		iamTokenUtility.buildAuthTokenFunc = auth.BuildAuthToken
+	}
+
 	parentCtx := pluginService.GetTelemetryContext()
 	telemetryCtx, ctx := pluginService.GetTelemetryFactory().OpenTelemetryContext(telemetry.TELEMETRY_FETCH_TOKEN, telemetry.NESTED, parentCtx)
 	pluginService.SetTelemetryContext(ctx)
@@ -55,7 +69,7 @@ func (iamTokenUtility RegularIamTokenUtility) GenerateAuthenticationToken(
 		pluginService.SetTelemetryContext(parentCtx)
 	}()
 
-	authToken, err := auth.BuildAuthToken(
+	authToken, err := iamTokenUtility.buildAuthTokenFunc(
 		context.TODO(),
 		host+":"+strconv.Itoa(port),
 		string(region),
@@ -70,4 +84,8 @@ func (iamTokenUtility RegularIamTokenUtility) GenerateAuthenticationToken(
 
 	telemetryCtx.SetSuccess(true)
 	return authToken, nil
+}
+
+func (iamTokenUtility *RegularIamTokenUtility) SetBuildAuthTokenFunc(buildAuthTokenFunc BuildAuthTokenFunc) {
+	iamTokenUtility.buildAuthTokenFunc = buildAuthTokenFunc
 }

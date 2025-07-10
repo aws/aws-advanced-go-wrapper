@@ -19,9 +19,13 @@ package test
 import (
 	"context"
 	"database/sql/driver"
+	"errors"
 	"strings"
 	"testing"
 
+	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
+	mock_telemetry "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/util/telemetry"
+	mock_database_sql_driver "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/database_sql_driver"
 	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -31,6 +35,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
+	"github.com/golang/mock/gomock"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -457,4 +462,243 @@ func TestMethodInvokedOnOldConnection(t *testing.T) {
 	assert.Nil(t, err)
 	err = mockAwsWrapperConn.Close()
 	assert.Nil(t, err)
+}
+
+func TestWrapperDriverOpen_ParseError(t *testing.T) {
+	driver := &awsDriver.AwsWrapperDriver{}
+	_, err := driver.Open("parseError")
+
+	// parse error
+	assert.Error(t, err)
+}
+
+func TestAwsWrapperDriver_Open_WorkingDsn(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDriver := mock_database_sql_driver.NewMockDriver(ctrl)
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+
+	mockDriver.
+		EXPECT().Open(gomock.Any()).Return(mockConn, nil)
+
+	driver := &awsDriver.AwsWrapperDriver{
+		DriverDialect:    pgx_driver.NewPgxDriverDialect(),
+		UnderlyingDriver: mockDriver,
+	}
+	wrapperConn, err := driver.Open("user=someuser host=somehost port=5432 database=postgres")
+
+	assert.NoError(t, err)
+	assert.NotNil(t, wrapperConn)
+}
+
+func TestAwsWrapperDriver_Open_ConnectionError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDriver := mock_database_sql_driver.NewMockDriver(ctrl)
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+
+	mockDriver.
+		EXPECT().Open(gomock.Any()).Return(mockConn, errors.New("Connect-error"))
+
+	driver := &awsDriver.AwsWrapperDriver{
+		DriverDialect:    pgx_driver.NewPgxDriverDialect(),
+		UnderlyingDriver: mockDriver,
+	}
+	wrapperConn, err := driver.Open("user=someuser host=somehost port=5432 database=postgres")
+
+	assert.Error(t, err)
+	assert.Nil(t, wrapperConn)
+}
+
+func setupmocks_awsWrapperConn_executeWithPlugins(ctrl *gomock.Controller, results any) (
+	*mock_driver_infrastructure.MockPluginManager, *mock_driver_infrastructure.MockPluginService) {
+	mockPluginManager := mock_driver_infrastructure.NewMockPluginManager(ctrl)
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockTelemetryFactory := mock_telemetry.NewMockTelemetryFactory(ctrl)
+	mockTelemetryContext := mock_telemetry.NewMockTelemetryContext(ctrl)
+
+	mockPluginService.EXPECT().GetCurrentConnection().Return(mockConn).AnyTimes()
+	mockPluginManager.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory)
+	mockTelemetryFactory.EXPECT().OpenTelemetryContext(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(mockTelemetryContext, context.TODO())
+	mockTelemetryContext.EXPECT().SetAttribute(gomock.Any(), gomock.Any())
+	mockPluginManager.EXPECT().SetTelemetryContext(gomock.Any()).AnyTimes()
+	mockTelemetryContext.EXPECT().CloseContext()
+	mockTelemetryContext.EXPECT().SetSuccess(gomock.Any()).AnyTimes()
+
+	mockPluginManager.
+		EXPECT().
+		Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(results, nil, true, nil)
+
+	return mockPluginManager, mockPluginService
+}
+
+func TestAwsWrapperConn_Prepare(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDriverStmt := mock_database_sql_driver.NewMockStmt(ctrl)
+	mockPluginManager, mockPluginService := setupmocks_awsWrapperConn_executeWithPlugins(ctrl, mockDriverStmt)
+	dbEngine := driver_infrastructure.PG
+
+	awsWrapperconn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, dbEngine)
+
+	driverStmt, err := awsWrapperconn.Prepare("")
+
+	assert.NoError(t, err)
+	assert.IsType(t, &awsDriver.AwsWrapperStmt{}, driverStmt)
+}
+
+func TestAwsWrapperConn_PrepareContext(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDriverStmt := mock_database_sql_driver.NewMockStmt(ctrl)
+	mockPluginManager, mockPluginService := setupmocks_awsWrapperConn_executeWithPlugins(ctrl, mockDriverStmt)
+	dbEngine := driver_infrastructure.PG
+
+	awsWrapperconn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, dbEngine)
+
+	driverStmt, err := awsWrapperconn.PrepareContext(context.TODO(), "")
+
+	assert.NoError(t, err)
+	assert.IsType(t, &awsDriver.AwsWrapperStmt{}, driverStmt)
+}
+
+func TestAwsWrapperConn_Close(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDriverStmt := mock_database_sql_driver.NewMockStmt(ctrl)
+	mockPluginManager, mockPluginService := setupmocks_awsWrapperConn_executeWithPlugins(ctrl, mockDriverStmt)
+	dbEngine := driver_infrastructure.PG
+	mockPluginManager.EXPECT().ReleaseResources()
+
+	awsWrapperconn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, dbEngine)
+
+	err := awsWrapperconn.Close()
+	assert.NoError(t, err)
+}
+
+func TestAwsWrapperConn_Begin(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDriverTx := mock_database_sql_driver.NewMockTx(ctrl)
+	mockPluginManager, mockPluginService := setupmocks_awsWrapperConn_executeWithPlugins(ctrl, mockDriverTx)
+	dbEngine := driver_infrastructure.PG
+	mockPluginService.EXPECT().SetCurrentTx(gomock.Any())
+
+	awsWrapperconn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, dbEngine)
+
+	tx, err := awsWrapperconn.Begin()
+	assert.NoError(t, err)
+	assert.IsType(t, &awsDriver.AwsWrapperTx{}, tx)
+}
+
+func TestAwsWrapperConn_BeginTx(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDriverTx := mock_database_sql_driver.NewMockTx(ctrl)
+	mockPluginManager, mockPluginService := setupmocks_awsWrapperConn_executeWithPlugins(ctrl, mockDriverTx)
+	dbEngine := driver_infrastructure.PG
+	mockPluginService.EXPECT().SetCurrentTx(gomock.Any())
+
+	awsWrapperconn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, dbEngine)
+
+	tx, err := awsWrapperconn.BeginTx(context.TODO(), driver.TxOptions{})
+	assert.NoError(t, err)
+	assert.IsType(t, &awsDriver.AwsWrapperTx{}, tx)
+}
+
+func TestAwsWrapperConn_QueryContext(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDriverRows := mock_database_sql_driver.NewMockRows(ctrl)
+	mockPluginManager, mockPluginService := setupmocks_awsWrapperConn_executeWithPlugins(ctrl, mockDriverRows)
+	dbEngine := driver_infrastructure.PG
+
+	awsWrapperconn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, dbEngine)
+
+	tx, err := awsWrapperconn.QueryContext(context.TODO(), "", nil)
+	assert.NoError(t, err)
+	assert.IsType(t, &awsDriver.AwsWrapperPgRows{}, tx)
+}
+
+func TestAwsWrapperConn_ExecContext(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDriverResults := mock_database_sql_driver.NewMockResult(ctrl)
+	mockPluginManager, mockPluginService := setupmocks_awsWrapperConn_executeWithPlugins(ctrl, mockDriverResults)
+	dbEngine := driver_infrastructure.PG
+
+	awsWrapperconn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, dbEngine)
+
+	tx, err := awsWrapperconn.ExecContext(context.TODO(), "", nil)
+	assert.NoError(t, err)
+	assert.IsType(t, &awsDriver.AwsWrapperResult{}, tx)
+}
+
+func TestAwsWrapperConn_Ping(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDriverResults := mock_database_sql_driver.NewMockResult(ctrl)
+	mockPluginManager, mockPluginService := setupmocks_awsWrapperConn_executeWithPlugins(ctrl, mockDriverResults)
+	dbEngine := driver_infrastructure.PG
+
+	awsWrapperconn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, dbEngine)
+
+	err := awsWrapperconn.Ping(context.TODO())
+	assert.NoError(t, err)
+}
+
+func TestAwsWrapperConn_IsValid(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDriverResults := mock_database_sql_driver.NewMockResult(ctrl)
+	mockPluginManager, mockPluginService := setupmocks_awsWrapperConn_executeWithPlugins(ctrl, mockDriverResults)
+	dbEngine := driver_infrastructure.PG
+
+	awsWrapperconn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, dbEngine)
+
+	isValid := awsWrapperconn.IsValid()
+	assert.True(t, isValid)
+}
+
+func TestAwsWrapperConn_ResetSession(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockSessionResetter := mock_database_sql_driver.NewMockSessionResetter(ctrl)
+	mockPluginManager, mockPluginService := setupmocks_awsWrapperConn_executeWithPlugins(ctrl, mockSessionResetter)
+	dbEngine := driver_infrastructure.PG
+
+	awsWrapperconn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, dbEngine)
+
+	err := awsWrapperconn.ResetSession(context.TODO())
+	assert.NoError(t, err)
+}
+
+func TestAwsWrapperConn_CheckedNamedValue(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockNamedValueChecker := mock_database_sql_driver.NewMockNamedValueChecker(ctrl)
+	mockPluginManager, mockPluginService := setupmocks_awsWrapperConn_executeWithPlugins(ctrl, mockNamedValueChecker)
+	dbEngine := driver_infrastructure.PG
+
+	awsWrapperconn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, dbEngine)
+
+	err := awsWrapperconn.CheckNamedValue(nil)
+	assert.NoError(t, err)
 }
