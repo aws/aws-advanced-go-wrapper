@@ -20,7 +20,7 @@ For information on how to subscribe to these pipelines, please see the documenta
 
 ## Connect Pipeline
 
-The connect pipeline performs any additional setup or post connection steps required to establish a Go connection. By default, the connect pipeline will establish connections using the `DriverConnectionProvider` class for connections requested through the `DriverManager`.
+The connect pipeline performs any additional setup or post connection steps required to establish a Go connection. By default, the connect pipeline will establish connections using the `DriverConnectionProvider` class for connections requested through the `DriverManager`. If you would like to use your own provider to connect see [Connection Provider](../custom-config/ConnectionProvider.md) for details.
 
 The most common usage of the connect pipeline is to fetch extra credentials from external locations.
 
