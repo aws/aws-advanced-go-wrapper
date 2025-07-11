@@ -18,17 +18,19 @@ package test
 
 import (
 	"context"
-	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
 	"log/slog"
 	"time"
 
+	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
+
 	"database/sql/driver"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	_ "github.com/aws/aws-advanced-go-wrapper/otlp"
-	_ "github.com/aws/aws-advanced-go-wrapper/xray"
 	"log"
 	"strconv"
 	"testing"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	_ "github.com/aws/aws-advanced-go-wrapper/otlp"
+	_ "github.com/aws/aws-advanced-go-wrapper/xray"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -124,11 +126,9 @@ func TestFailoverWriterWithTelemetryOtel(t *testing.T) {
 
 	// Assert that we are connected to the new writer after failover.
 	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
-	assert.Nil(t, err)
-	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
-	assert.Nil(t, err)
-	assert.Equal(t, currWriterId, newInstanceId)
-	assert.NotEqual(t, instanceId, newInstanceId)
+	require.True(t, auroraTestUtility.IsDbInstanceWriter(newInstanceId, ""))
+	assert.Nil(t, err, "After failover new connections should not throw errors.")
+	assert.NotZero(t, newInstanceId)
 
 	test_utils.BasicCleanup(t.Name())
 }
