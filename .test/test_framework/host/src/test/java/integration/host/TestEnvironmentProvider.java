@@ -6,7 +6,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.Future;
 import java.util.Set;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -46,6 +45,8 @@ public class TestEnvironmentProvider implements TestTemplateInvocationContextPro
     final boolean excludeDocker = Boolean.parseBoolean(System.getProperty("exclude-docker", "false"));
     final boolean excludeAurora = Boolean.parseBoolean(System.getProperty("exclude-aurora", "false"));
     final boolean excludeMultiAZ = Boolean.parseBoolean(System.getProperty("exclude-multi-az", "false"));
+    final boolean limitlessOnly = Boolean.parseBoolean(System.getProperty("limitless-only", "false"));
+    final boolean excludeLimitless = Boolean.parseBoolean(System.getProperty("exclude-limitless", "true"));
     final boolean excludePerformance =
         Boolean.parseBoolean(System.getProperty("exclude-performance", "false"));
     final boolean excludeMysqlEngine =
@@ -77,6 +78,12 @@ public class TestEnvironmentProvider implements TestTemplateInvocationContextPro
         continue;
       }
       if (deployment == DatabaseEngineDeployment.RDS_MULTI_AZ_CLUSTER && excludeMultiAZ) {
+        continue;
+      }
+      if (deployment != DatabaseEngineDeployment.AURORA_LIMITLESS && limitlessOnly) {
+        continue;
+      }
+      if (deployment == DatabaseEngineDeployment.AURORA_LIMITLESS && excludeLimitless) {
         continue;
       }
       for (DatabaseEngine engine : DatabaseEngine.values()) {
@@ -111,6 +118,10 @@ public class TestEnvironmentProvider implements TestTemplateInvocationContextPro
               // Let's save some time and skip tests for this configuration
               continue;
             }
+            if (deployment == DatabaseEngineDeployment.AURORA_LIMITLESS && (instances == DatabaseInstances.MULTI_INSTANCE ||  numOfInstances > 1)) {
+              // Limitless clusters only support 1 instance
+              continue;
+            }
 
             resultContextList.add(
               getEnvironment(
@@ -119,7 +130,9 @@ public class TestEnvironmentProvider implements TestTemplateInvocationContextPro
                       instances,
                       instances == DatabaseInstances.SINGLE_INSTANCE ? 1 : numOfInstances,
                       deployment,
-                      TestEnvironmentFeatures.NETWORK_OUTAGES_ENABLED,
+                      deployment == DatabaseEngineDeployment.AURORA_LIMITLESS
+                          ? null
+                          : TestEnvironmentFeatures.NETWORK_OUTAGES_ENABLED,
                       TestEnvironmentFeatures.ABORT_CONNECTION_SUPPORTED,
                       deployment == DatabaseEngineDeployment.DOCKER ? null : TestEnvironmentFeatures.AWS_CREDENTIALS_ENABLED,
                       deployment == DatabaseEngineDeployment.DOCKER || excludeFailover
@@ -138,7 +151,8 @@ public class TestEnvironmentProvider implements TestTemplateInvocationContextPro
                       excludeTracesTelemetry ? null : TestEnvironmentFeatures.TELEMETRY_TRACES_ENABLED,
                       excludeMetricsTelemetry ? null : TestEnvironmentFeatures.TELEMETRY_METRICS_ENABLED,
                       // AWS credentials are required for XRay telemetry
-                      excludeTracesTelemetry && excludeMetricsTelemetry ? null : TestEnvironmentFeatures.AWS_CREDENTIALS_ENABLED)));
+                      excludeTracesTelemetry && excludeMetricsTelemetry ? null : TestEnvironmentFeatures.AWS_CREDENTIALS_ENABLED,
+                      !excludeLimitless ? TestEnvironmentFeatures.LIMITLESS_DEPLOYMENT : null)));
           }
         }
       }

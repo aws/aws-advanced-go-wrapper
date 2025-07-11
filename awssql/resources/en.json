@@ -114,7 +114,7 @@
 	"IamAuthPlugin.errorGettingAwsCredentialsProvider": "Error occurred while getting aws.CredentialsProvider: '%v'.",
 	"IamAuthPlugin.unableToDetermineRegion": "Unable to determine connection region. If you are using a non-standard RDS URL, please set the '%v' property.",
 	"IamAuthPlugin.useCachedToken": "Using cached authentication token.",
-	"LimitlessPlugin.expectedShardGroupUrl": "The provided host was not a shard group URL: '%s'.",
+	"LimitlessPlugin.expectedShardGroupUrl": "The provided host was not a Limitless DB shard group URL: '%s'.",
 	"LimitlessPlugin.failedToConnectToHost": "Limitless Plugin failed to connect to host %v.",
 	"LimitlessPlugin.invalidDatabaseUrl": "Invalid Limitless Database URL '%v'. Please use a valid Limitless DB Shard Group endpoint URL.",
 	"LimitlessPlugin.unsupportedDialectOrDatabase": "Unsupported dialect '%T' encountered. Please ensure connection parameters are correct, and refer to the documentation to ensure that the connecting database is compatible with the Limitless Connection Plugin.",

@@ -78,7 +78,7 @@ func CreateTestEnvironment() (*TestEnvironment, error) {
 	if err != nil {
 		return nil, err
 	}
-	if slices.Contains(env.info.Request.features, NETWORK_OUTAGES_ENABLED) {
+	if slices.Contains(env.info.Request.Features, NETWORK_OUTAGES_ENABLED) {
 		err = initProxies(env)
 		if err != nil {
 			return nil, err
@@ -105,7 +105,7 @@ func VerifyClusterStatus() error {
 		return err
 	}
 	info := env.info
-	if info.Request.Deployment == AURORA || info.Request.Deployment == RDS_MULTI_AZ_CLUSTER {
+	if info.Request.Deployment == AURORA || info.Request.Deployment == RDS_MULTI_AZ_CLUSTER || info.Request.Deployment == AURORA_LIMITLESS {
 		remainingTries := 3
 		success := false
 		for !success && remainingTries > 0 {
@@ -116,13 +116,17 @@ func VerifyClusterStatus() error {
 				rebootAllClusterInstances()
 				break
 			}
-			writerId, err := auroraUtility.GetClusterWriterInstanceId(info.auroraClusterName)
-			if err != nil {
-				rebootAllClusterInstances()
-				break
+
+			// Limitless doesn't have instances
+			if info.Request.Deployment != AURORA_LIMITLESS {
+				writerId, err := auroraUtility.GetClusterWriterInstanceId(info.auroraClusterName)
+				if err != nil {
+					rebootAllClusterInstances()
+					break
+				}
+				info.DatabaseInfo.moveInstanceFirst(writerId, false)
+				info.ProxyDatabaseInfo.moveInstanceFirst(writerId, true)
 			}
-			info.DatabaseInfo.moveInstanceFirst(writerId, false)
-			info.ProxyDatabaseInfo.moveInstanceFirst(writerId, true)
 
 			success = true
 		}

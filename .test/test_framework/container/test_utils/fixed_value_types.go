@@ -35,6 +35,7 @@ const (
 	RDS                  DatabaseEngineDeployment = "RDS"
 	AURORA               DatabaseEngineDeployment = "AURORA"
 	RDS_MULTI_AZ_CLUSTER DatabaseEngineDeployment = "RDS_MULTI_AZ_CLUSTER"
+	AURORA_LIMITLESS     DatabaseEngineDeployment = "AURORA_LIMITLESS"
 )
 
 type DatabaseEngine string
@@ -58,6 +59,7 @@ const (
 	SKIP_MYSQL_DRIVER_TESTS        TestEnvironmentFeatures = "SKIP_MYSQL_DRIVER_TESTS"
 	SKIP_PG_DRIVER_TESTS           TestEnvironmentFeatures = "SKIP_PG_DRIVER_TESTS"
 	RDS_MULTI_AZ_CLUSTER_SUPPORTED TestEnvironmentFeatures = "RDS_MULTI_AZ_CLUSTER_SUPPORTED"
+	LIMITLESS_DEPLOYMENT           TestEnvironmentFeatures = "LIMITLESS_DEPLOYMENT"
 )
 
 var stringToTestEnvironmentFeature = map[string]TestEnvironmentFeatures{
@@ -72,6 +74,7 @@ var stringToTestEnvironmentFeature = map[string]TestEnvironmentFeatures{
 	"SKIP_MYSQL_DRIVER_TESTS":        SKIP_MYSQL_DRIVER_TESTS,
 	"SKIP_PG_DRIVER_TESTS":           SKIP_PG_DRIVER_TESTS,
 	"RDS_MULTI_AZ_CLUSTER_SUPPORTED": RDS_MULTI_AZ_CLUSTER_SUPPORTED,
+	"LIMITLESS_DEPLOYMENT":           LIMITLESS_DEPLOYMENT,
 }
 
 func matchFeatures(featureStrings []any) []TestEnvironmentFeatures {

@@ -27,6 +27,7 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.waiters.WaiterOverrideConfiguration;
 import software.amazon.awssdk.core.waiters.WaiterResponse;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ec2.Ec2Client;
@@ -80,6 +81,11 @@ public class AuroraTestUtility {
   private final Region dbRegion;
   private final String dbSecGroup = "default";
   private int numOfInstances = 5;
+  private String limitlessDbEngineVersion = "16.4-limitless";
+  private String limitlessDbShardGroupIdentifier = "test-db-shard-group-identifier";
+  private String monitoringRoleArn = System.getenv("AWS_RDS_MONITORING_ROLE_ARN");
+  private double minAcu = 28.0;
+  private double maxAcu = 601.0;
   private List<TestInstanceInfo> instances = new ArrayList<>();
 
   private final RdsClient rdsClient;
@@ -173,6 +179,7 @@ public class AuroraTestUtility {
     this.dbPassword = password;
     this.dbName = dbName;
     this.dbIdentifier = identifier;
+    this.limitlessDbShardGroupIdentifier = identifier;
     this.dbEngineDeployment = deployment;
     this.dbEngine = engine;
     this.dbInstanceClass = instanceClass;
@@ -183,6 +190,8 @@ public class AuroraTestUtility {
     switch (this.dbEngineDeployment) {
       case AURORA:
         return createAuroraCluster();
+      case AURORA_LIMITLESS:
+        return createAuroraLimitlessCluster();
       case RDS_MULTI_AZ_CLUSTER:
         return createMultiAzCluster();
       default:
@@ -261,6 +270,73 @@ public class AuroraTestUtility {
               instance.endpoint().address(),
               instance.endpoint().port()));
     }
+
+    return clusterDomainSuffix;
+  }
+
+  /**
+   *
+   *
+   * @return
+   * @throws InterruptedException
+   */
+  public String createAuroraLimitlessCluster() throws InterruptedException {
+    final Tag testRunnerTag = Tag.builder().key("env").value("test-runner").build();
+
+    final CreateDbClusterRequest dbClusterRequest =
+        CreateDbClusterRequest.builder()
+            .clusterScalabilityType(ClusterScalabilityType.LIMITLESS)
+            .databaseName(null)
+            .dbClusterIdentifier(dbIdentifier)
+            .enableCloudwatchLogsExports("postgresql")
+            .enableIAMDatabaseAuthentication(true)
+            .enablePerformanceInsights(true)
+            .engine(dbEngine)
+            .engineVersion(limitlessDbEngineVersion)
+            .masterUsername(dbUsername)
+            .masterUserPassword(dbPassword)
+            .monitoringInterval(5)
+            .monitoringRoleArn(monitoringRoleArn)
+            .performanceInsightsRetentionPeriod(31)
+            .storageType("aurora-iopt1")
+            .tags(testRunnerTag)
+            .build();
+    rdsClient.createDBCluster(dbClusterRequest);
+
+    final CreateDbShardGroupRequest shardGroupRequest =
+        CreateDbShardGroupRequest.builder()
+            .dbClusterIdentifier(dbIdentifier)
+            .dbShardGroupIdentifier(limitlessDbShardGroupIdentifier)
+            .minACU(minAcu)
+            .maxACU(maxAcu)
+            .publiclyAccessible(true)
+            .build();
+    rdsClient.createDBShardGroup(shardGroupRequest);
+
+    DescribeDbClustersRequest describeDbClustersRequest = DescribeDbClustersRequest.builder()
+        .dbClusterIdentifier(dbIdentifier)
+        .build();
+
+    WaiterOverrideConfiguration waiterConfig = WaiterOverrideConfiguration.builder()
+        .maxAttempts(90)
+        .waitTimeout(Duration.ofMinutes(90))
+        .build();
+    final RdsWaiter waiter = rdsClient.waiter();
+    WaiterResponse<DescribeDbClustersResponse> waiterResponse = waiter.waitUntilDBClusterAvailable(describeDbClustersRequest, waiterConfig);
+
+    if (waiterResponse.matched().exception().isPresent()) {
+      deleteAuroraLimitlessCluster();
+      throw new InterruptedException(
+          "Unable to start AWS RDS Cluster & Instances after waiting for 90 minutes");
+    }
+
+    final DescribeDbShardGroupsResponse dbShardGroupsResponse = rdsClient.describeDBShardGroups(
+        (builder) ->
+            builder.filters(
+                Filter.builder().name("db-cluster-id").values(dbIdentifier).build()));
+
+    final String endpoint = dbShardGroupsResponse.dbShardGroups().get(0).endpoint();
+    final String clusterDomainSuffix = endpoint.substring(endpoint.indexOf("shardgrp-") + 9);
 
     return clusterDomainSuffix;
   }
@@ -528,6 +604,9 @@ public class AuroraTestUtility {
       case RDS_MULTI_AZ_CLUSTER:
         this.deleteMultiAzCluster();
         break;
+      case AURORA_LIMITLESS:
+        this.deleteAuroraLimitlessCluster();
+        break;
       default:
         throw new UnsupportedOperationException(this.dbEngineDeployment.toString());
     }
@@ -552,22 +631,32 @@ public class AuroraTestUtility {
     }
 
     // Tear down cluster
+    deleteDbClusterInternal();
+  }
+
+  /**
+   * Destroys the limitless cluster. Removes IP from EC2 whitelist.
+   *
+   */
+  public void deleteAuroraLimitlessCluster() {
     int remainingAttempts = 5;
+
+    // Destroy the cluster's shard
     while (--remainingAttempts > 0) {
       try {
-        DeleteDbClusterResponse response = rdsClient.deleteDBCluster(
-            (builder -> builder.skipFinalSnapshot(true).dbClusterIdentifier(dbIdentifier)));
+        DeleteDbShardGroupResponse response = rdsClient.deleteDBShardGroup(
+            (builder -> builder.dbShardGroupIdentifier(limitlessDbShardGroupIdentifier)));
         if (response.sdkHttpResponse().isSuccessful()) {
           break;
         }
         TimeUnit.SECONDS.sleep(30);
-
-      } catch (DbClusterNotFoundException ex) {
-        // ignore
       } catch (Exception ex) {
-        LOGGER.warning("Error deleting db cluster " + dbIdentifier + ": " + ex);
+        // ignore
       }
     }
+
+    // Then, destroy the cluster
+    deleteDbClusterInternal();
   }
 
   /**
@@ -576,6 +665,10 @@ public class AuroraTestUtility {
   public void deleteMultiAzCluster() {
     // deleteDBinstance requests are not necessary to delete a multi-az cluster.
     // Tear down cluster
+    deleteDbClusterInternal();
+  }
+
+  private void deleteDbClusterInternal() {
     int remainingAttempts = 5;
     while (--remainingAttempts > 0) {
       try {
@@ -619,6 +712,7 @@ public class AuroraTestUtility {
   public DatabaseEngine getClusterEngine(final DBCluster cluster) {
     switch (cluster.engine()) {
       case "aurora-postgresql":
+      case "aurora-limitless-postgresql":
       case "postgres":
         return DatabaseEngine.PG;
       case "aurora-mysql":

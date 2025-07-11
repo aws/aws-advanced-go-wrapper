@@ -18,6 +18,7 @@ package test_utils
 
 import (
 	"errors"
+	"slices"
 )
 
 type TestEnvironmentInfo struct {
@@ -56,14 +57,18 @@ func NewTestEnvironmentInfo(testInfo map[string]any) (info TestEnvironmentInfo, 
 	if err != nil {
 		return
 	}
-	proxyDatabaseInfoMap, ok := testInfo["proxyDatabaseInfo"].(map[string]any)
-	if !ok {
-		err = errors.New("unable to cast proxyDatabaseInfo value to usable map")
-		return
-	}
-	proxyDatabaseInfo, err := NewTestProxyDatabaseInfo(proxyDatabaseInfoMap)
-	if err != nil {
-		return
+
+	var proxyDatabaseInfo TestProxyDatabaseInfo
+	if slices.Contains(request.Features, NETWORK_OUTAGES_ENABLED) {
+		proxyDatabaseInfoMap, ok := testInfo["proxyDatabaseInfo"].(map[string]any)
+		if !ok {
+			err = errors.New("unable to cast proxyDatabaseInfo value to usable map")
+			return
+		}
+		proxyDatabaseInfo, err = NewTestProxyDatabaseInfo(proxyDatabaseInfoMap)
+		if err != nil {
+			return
+		}
 	}
 
 	iamUser, ok := testInfo["iamUsername"].(string)

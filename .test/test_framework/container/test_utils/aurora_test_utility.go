@@ -431,3 +431,21 @@ func BasicCleanup(name string) {
 	awsDriver.ClearCaches()
 	slog.Info(fmt.Sprintf("Test finished: %s.", name))
 }
+
+func SkipForTestEnvironmentFeatures(t *testing.T, testEnvironmentRequestFeatures []TestEnvironmentFeatures, featuresToSkip ...TestEnvironmentFeatures) {
+	for _, featureToSkip := range featuresToSkip {
+		if slices.Contains(testEnvironmentRequestFeatures, featureToSkip) {
+			t.Skipf("Skipping test for Test Environment Feature: %s", featureToSkip)
+			return
+		}
+	}
+}
+
+func RequireTestEnvironmentFeatures(t *testing.T, testEnvironmentRequestFeatures []TestEnvironmentFeatures, requiredFeatures ...TestEnvironmentFeatures) {
+	for _, requiredFeature := range requiredFeatures {
+		if !slices.Contains(testEnvironmentRequestFeatures, requiredFeature) {
+			t.Skipf("Skipping test because required test environment feature was not found: %s", requiredFeature)
+			return
+		}
+	}
+}

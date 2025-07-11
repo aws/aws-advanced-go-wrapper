@@ -20,7 +20,7 @@ jobs:
     strategy: 
       fail-fast: false
       matrix: 
-        dbEngine: ["mysql", "postgres"]
+        dbEngine: ["mysql", "postgres", "limitless-postgres"]
     steps:
       - name: 'Clone repository'
         uses: actions/checkout@v4
@@ -48,6 +48,7 @@ jobs:
           RDS_DB_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
           AURORA_MYSQL_DB_ENGINE_VERSION: "default"
           AURORA_PG_DB_ENGINE_VERSION: "default"
+          AWS_RDS_MONITORING_ROLE_ARN: ${{ secrets.AWS_RDS_MONITORING_ROLE_ARN }}
       - name: "Get Github Action IP"
         if: always()
         id: ip

@@ -43,6 +43,8 @@ func TestEfmDisableInstance(t *testing.T) {
 
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
+	test_utils.SkipForTestEnvironmentFeatures(t, environment.Info().Request.Features, test_utils.LIMITLESS_DEPLOYMENT)
+
 	dsn := getDsnForEfmIntegrationTest(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint())
 
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
@@ -101,6 +103,7 @@ func TestEfmDisableAllInstances(t *testing.T) {
 
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
+	test_utils.SkipForTestEnvironmentFeatures(t, environment.Info().Request.Features, test_utils.LIMITLESS_DEPLOYMENT)
 
 	dsn := getDsnForEfmIntegrationTest(environment, environment.Info().ProxyDatabaseInfo.ClusterEndpoint)
 
@@ -160,6 +163,7 @@ func TestEfmDisableAllInstancesDB(t *testing.T) {
 
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
+	test_utils.SkipForTestEnvironmentFeatures(t, environment.Info().Request.Features, test_utils.LIMITLESS_DEPLOYMENT)
 
 	dsn := getDsnForEfmIntegrationTest(environment, environment.Info().ProxyDatabaseInfo.ClusterEndpoint)
 

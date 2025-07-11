@@ -78,6 +78,7 @@ func TestPerformanceFailureDetectionTimeEfmEnabled(t *testing.T) {
 	var err error
 	perfTestEnvironment, err = test_utils.GetCurrentTestEnvironment()
 	assert.NoError(t, err)
+	test_utils.RequireTestEnvironmentFeatures(t, perfTestEnvironment.Info().Request.Features, test_utils.PERFORMANCE)
 
 	useSqlDb := USE_SQL_DB_DEFAULT
 	envValue := os.Getenv(USE_SQL_DB_ENV_VAR_NAME)
@@ -136,6 +137,7 @@ func TestPerformanceFailureDetectionTimeEfmAndFailoverEnabled(t *testing.T) {
 	var err error
 	perfTestEnvironment, err = test_utils.GetCurrentTestEnvironment()
 	assert.NoError(t, err)
+	test_utils.RequireTestEnvironmentFeatures(t, perfTestEnvironment.Info().Request.Features, test_utils.PERFORMANCE)
 
 	useSqlDb := USE_SQL_DB_DEFAULT
 	envValue := os.Getenv(USE_SQL_DB_ENV_VAR_NAME)
