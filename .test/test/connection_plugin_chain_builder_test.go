@@ -29,7 +29,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	"github.com/aws/aws-advanced-go-wrapper/iam"
-	_ "github.com/aws/aws-advanced-go-wrapper/iam"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

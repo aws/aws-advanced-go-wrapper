@@ -39,27 +39,26 @@ var NetworkErrors = []string{
 	"99",
 	"F0",
 	"XX",
-	"unexpected EOF",
-	"use of closed network connection",
 }
 
 var PgNetworkErrorMessages = []string{
 	"unexpected EOF",
 	"use of closed network connection",
 	"broken pipe",
+	"bad connection",
 }
 
 type PgxErrorHandler struct {
 }
 
 func (p *PgxErrorHandler) IsNetworkError(err error) bool {
-	sqlState := p.getSQLStateFromError(err)
+	sqlState := p.GetSQLStateFromError(err)
 
 	if sqlState != "" && slices.Contains(NetworkErrors, sqlState) {
 		return true
 	}
 
-	for _, networkError := range NetworkErrors {
+	for _, networkError := range PgNetworkErrorMessages {
 		if strings.Contains(err.Error(), networkError) {
 			return true
 		}
@@ -68,7 +67,7 @@ func (p *PgxErrorHandler) IsNetworkError(err error) bool {
 }
 
 func (p *PgxErrorHandler) IsLoginError(err error) bool {
-	sqlState := p.getSQLStateFromError(err)
+	sqlState := p.GetSQLStateFromError(err)
 	if sqlState != "" && slices.Contains(AccessErrors, sqlState) {
 		return true
 	}
@@ -82,7 +81,7 @@ func (p *PgxErrorHandler) IsLoginError(err error) bool {
 	return false
 }
 
-func (p *PgxErrorHandler) getSQLStateFromError(err error) string {
+func (p *PgxErrorHandler) GetSQLStateFromError(err error) string {
 	var pgErr *pgconn.PgError
 	ok := errors.As(err, &pgErr)
 	if ok {

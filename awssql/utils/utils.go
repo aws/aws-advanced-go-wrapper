@@ -196,6 +196,14 @@ func CreateMapCopy[K comparable, V any](mapToCopy map[K]V) map[K]V {
 	return mapCopy
 }
 
+func CombineMaps[K comparable, V any](mapToCopy map[K]V, mapToAdd map[K]V) map[K]V {
+	mapToReturn := CreateMapCopy(mapToCopy)
+	for key, value := range mapToAdd {
+		mapToReturn[key] = value
+	}
+	return mapToReturn
+}
+
 func Rollback(conn driver.Conn, currentTx driver.Tx) {
 	if currentTx != nil {
 		err := currentTx.Rollback()

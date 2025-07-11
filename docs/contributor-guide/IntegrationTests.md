@@ -105,6 +105,9 @@ The following are the currently available integration test tasks. Each task may 
 - `test-aurora`: run Aurora tests
 - `test-aurora-mysql`: run Aurora tests on the MySQL database type, use when running locally
 - `test-aurora-postgres`: run Aurora tests on the PostgreSQL database type, use when running locally
+- `debug-aurora`: debug Aurora tests with a Delve headless server
+- `debug-aurora-mysql`: debug Aurora tests on the MySQL database type
+- `debug-aurora-postgres`: debug Aurora tests on the PostgreSQL database type
 
 ### Running the Integration Tests
 
@@ -132,5 +135,31 @@ Linux:
 ```
 
 Test results can be found in `.test/test_framework/host/build/test-results/test-all-environments/`.
+
+#### Debugging Integration Tests Using Visual Studio Code
+
+To debug the integration tests using Visual Studio Code, you can attach to the process using Delve. For each test environment, the tests will only start once the debugger has connected and the debugger will automatically disconnect once the tests finish. The example `launch.json` file below must be placed in the `.vsocde` directory within the project.
+
+<details><summary> <strong>Example launch.json to debug using Visual Studio Code</strong></summary>
+
+```json
+{
+  "name": "Connect to Delve",
+  "type": "go",
+  "request": "attach",
+  "mode": "remote",
+  "remotePath": "/app/.test/test_framework/container",
+  "host": "localhost",
+  "port": 5005,
+  "substitutePath": [
+    {
+      "from": "${workspaceFolder}",
+      "to": "/app"
+    }
+  ]
+}
+```
+
+</details>
 
 [^1]: The cluster domain suffix can be determined by checking the endpoint of an existing cluster in the desired region, or by temporarily creating a database to check the endpoint. For example, given the database endpoint `db-identifier.cluster-XYZ.us-east-2.rds.amazonaws.com`, the domain suffix would be `XYZ.us-east-2.rds.amazonaws.com`. See [here](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Endpoints.Cluster.html) for more information on Amazon Aurora cluster endpoints.

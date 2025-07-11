@@ -20,6 +20,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"os"
+	"slices"
+	"strings"
+	"testing"
+	"time"
+
 	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-xray-sdk-go/strategy/sampling"
 	"github.com/aws/aws-xray-sdk-go/xray"
@@ -32,13 +39,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
-	"log/slog"
-	"net"
-	"os"
-	"slices"
-	"strings"
-	"testing"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -218,54 +218,18 @@ func (a AuroraTestUtility) FailoverClusterAndWaitTillWriterChanged(initialWriter
 		}
 	}
 
-	clusterEndpoint := env.Info().DatabaseInfo.ClusterEndpoint
-	initialAddress, err := retrieveIpAddress(clusterEndpoint)
-	if err != nil {
-		return err
-	}
-
 	slog.Debug(fmt.Sprintf("Triggering failover of cluster %s.", clusterId))
 	failoverErr := a.failoverClusterToTarget(clusterId, &targetWriterId)
 	if failoverErr != nil {
 		return failoverErr
 	}
 
-	ipChangeChan := make(chan error)
-
-	go func() {
-		clusterAddress, err := retrieveIpAddress(clusterEndpoint)
-		if err != nil {
-			ipChangeChan <- err
-			return
-		}
-		stopTime := time.Now().Add(time.Duration(writerChangeTimeout) * time.Minute)
-		slog.Debug(fmt.Sprintf("Waiting for ip address of %s to change after trigging failover for %d minutes.", clusterEndpoint, writerChangeTimeout))
-		for clusterAddress == initialAddress && time.Now().Before(stopTime) {
-			time.Sleep(time.Second)
-			clusterAddress, err = retrieveIpAddress(clusterEndpoint)
-			if err != nil {
-				ipChangeChan <- err
-				return
-			}
-		}
-		if !time.Now().Before(stopTime) {
-			slog.Error(fmt.Sprintf("Ip address did not change in %d minutes following failover command.", writerChangeTimeout))
-		} else {
-			slog.Debug(fmt.Sprintf("Ip address of %s has updated after failover.", clusterEndpoint))
-		}
-		ipChangeChan <- nil
-	}()
-
 	slog.Debug(fmt.Sprintf("Waiting for writer %s to change for %d minutes.", initialWriter, writerChangeTimeout))
 	if !a.writerChanged(initialWriter, clusterId, writerChangeTimeout) {
 		return fmt.Errorf("Writer did not change in %d minutes following failover command.", writerChangeTimeout)
 	}
 	slog.Debug(fmt.Sprintf("Writer of cluster %s has updated after failover.", clusterId))
-
-	ipChangeErr := <-ipChangeChan
-	close(ipChangeChan)
-
-	return ipChangeErr
+	return nil
 }
 
 func (a AuroraTestUtility) failoverClusterToTarget(clusterId string, targetWriterId *string) error {
@@ -317,14 +281,6 @@ func (a AuroraTestUtility) writerChanged(initialWriter string, clusterId string,
 		currentWriterId, _ = a.GetClusterWriterInstanceId(clusterId)
 	}
 	return initialWriter != currentWriterId
-}
-
-func retrieveIpAddress(clusterEndpoint string) (string, error) {
-	clusterAddresses, err := net.LookupHost(clusterEndpoint)
-	if err != nil || len(clusterAddresses) == 0 {
-		return "", errors.New("unable to lookup current ip address")
-	}
-	return clusterAddresses[0], nil
 }
 
 func SetupTelemetry(env *TestEnvironment) (trace.SpanProcessor, error) {

@@ -19,19 +19,25 @@ package test
 import (
 	"context"
 	"database/sql/driver"
+	"errors"
+	"fmt"
+	"log"
+	"log/slog"
+	"net"
+	"strconv"
+	"testing"
+	"time"
+
 	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
 	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	_ "github.com/aws/aws-advanced-go-wrapper/iam"
 	_ "github.com/aws/aws-advanced-go-wrapper/otlp"
 	_ "github.com/aws/aws-advanced-go-wrapper/xray"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"log"
-	"net"
-	"strconv"
-	"testing"
 )
 
 // Attempt to connect using the wrong database username.
@@ -289,6 +295,126 @@ func TestIamWithFailover(t *testing.T) {
 	assert.NotEqual(t, instanceId, newInstanceId)
 
 	test_utils.BasicCleanup(t.Name())
+}
+
+func TestIamWithEfm(t *testing.T) {
+	_, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
+	assert.Nil(t, err)
+
+	proxyTestProps := getPropsForTestsWithProxy(environment, environment.Info().ProxyDatabaseInfo.ClusterEndpoint, "efm,iam")
+	iamProps := initIamProps(
+		environment.Info().IamUsername,
+		"anypassword",
+		environment,
+	)
+	props := utils.CombineMaps[string, string](iamProps, proxyTestProps)
+	props[property_util.IAM_HOST.Name] = environment.Info().DatabaseInfo.ClusterEndpoint
+	props[property_util.IAM_DEFAULT_PORT.Name] = strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort)
+
+	dsn := test_utils.GetDsn(environment, props)
+	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+	defer db.Close()
+
+	// Verify connection works.
+	err = db.Ping()
+	require.NoError(t, err, "Failed to open database connection.")
+
+	// Start a long-running query in a goroutine
+	queryChan := make(chan error)
+	go func() {
+		// Execute a sleep query that will run for 10 seconds
+		sleepQuery := test_utils.GetSleepSql(environment.Info().Request.Engine, TEST_SLEEP_QUERY_SECONDS)
+
+		_, err := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, sleepQuery, TEST_SLEEP_QUERY_TIMEOUT_SECONDS)
+		queryChan <- err
+	}()
+
+	// Wait a bit to ensure the query has started
+	time.Sleep(5 * time.Second)
+
+	// Disable connectivity while the sleep query is running
+	slog.Debug("Disabling all connectivity.")
+	test_utils.DisableAllConnectivity()
+
+	// Wait for the query to complete and check the error
+	queryErr := <-queryChan
+	close(queryChan)
+	require.NotNil(t, queryErr)
+	slog.Debug(fmt.Sprintf("Sleep query fails with error: %s.", queryErr.Error()))
+	assert.False(t, errors.Is(queryErr, context.DeadlineExceeded), "Sleep query should have failed due to connectivity loss")
+
+	// Re-enable connectivity
+	slog.Debug("Re-enabling all connectivity.")
+	test_utils.EnableAllConnectivity(true)
+
+	newInstanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
+	assert.Nil(t, err, "After connectivity is re-enabled new connections should not throw errors.")
+	assert.NotZero(t, newInstanceId)
+}
+
+func TestIamWithFailoverEfm(t *testing.T) {
+	auroraTestUtility, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
+	assert.Nil(t, err)
+
+	proxyTestProps := getPropsForTestsWithProxy(environment, environment.Info().ProxyDatabaseInfo.ClusterEndpoint, "failover,efm,iam")
+	iamProps := initIamProps(
+		environment.Info().IamUsername,
+		"anypassword",
+		environment,
+	)
+	props := utils.CombineMaps[string, string](iamProps, proxyTestProps)
+	props[property_util.IAM_HOST.Name] = environment.Info().DatabaseInfo.ClusterEndpoint
+	props[property_util.IAM_DEFAULT_PORT.Name] = strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort)
+	props[property_util.FAILOVER_TIMEOUT_MS.Name] = strconv.Itoa(4 * TEST_MONITORING_TIMEOUT_SECONDS * 1000)
+
+	dsn := test_utils.GetDsn(environment, props)
+	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+	defer db.Close()
+
+	// Verify connection works.
+	err = db.Ping()
+	require.NoError(t, err, "Failed to open database connection.")
+
+	// Start a long-running query in a goroutine
+	queryChan := make(chan error)
+	go func() {
+		// Execute a sleep query that will run for 10 seconds
+		sleepQuery := test_utils.GetSleepSql(environment.Info().Request.Engine, TEST_SLEEP_QUERY_SECONDS)
+
+		_, err := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, sleepQuery, TEST_SLEEP_QUERY_TIMEOUT_SECONDS)
+		queryChan <- err
+	}()
+
+	// Wait a bit to ensure the query has started
+	time.Sleep(5 * time.Second)
+
+	// Disable connectivity while the sleep query is running
+	slog.Debug("Disabling all connectivity.")
+	test_utils.DisableAllConnectivity()
+
+	// Wait a bit to ensure failover has started
+	time.Sleep(2 * TEST_MONITORING_TIMEOUT_SECONDS * time.Second)
+
+	// Re-enable connectivity
+	slog.Debug("Re-enabling all connectivity.")
+	test_utils.EnableAllConnectivity(true)
+
+	// Wait for the query to complete and check the error
+	queryErr := <-queryChan
+	close(queryChan)
+	require.NotNil(t, queryErr)
+	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryErr.Error())
+
+	newInstanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
+	require.True(t, auroraTestUtility.IsDbInstanceWriter(newInstanceId, ""))
+	assert.Nil(t, err, "After connectivity is re-enabled new connections should not throw errors.")
+	assert.NotZero(t, newInstanceId)
 }
 
 func initIamProps(user string, password string, testEnvironment *test_utils.TestEnvironment) map[string]string {

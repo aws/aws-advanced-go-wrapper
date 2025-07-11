@@ -80,7 +80,7 @@ func TestMonitorServiceImpl(t *testing.T) {
 	assert.True(t, strings.Contains(err.Error(), "hostInfo"))
 
 	// Monitoring with correct parameters should create a new monitor.
-	state, err := monitorService.StartMonitoring(&testConn, mockHostInfo, nil, 0, 900, 3, 0)
+	state, err := monitorService.StartMonitoring(&testConn, mockHostInfo, nil, 0, 900, 3, 600000)
 	monitorKey := fmt.Sprintf("%d:%d:%d:%s", 0, 900, 3, mockHostInfo.GetUrl())
 
 	assert.Nil(t, err)
@@ -92,7 +92,7 @@ func TestMonitorServiceImpl(t *testing.T) {
 	monitor, ok := val.(*efm.MonitorImpl)
 	assert.True(t, ok)
 
-	state2, err := monitorService.StartMonitoring(&testConn, mockHostInfo, nil, 0, 900, 3, 0)
+	state2, err := monitorService.StartMonitoring(&testConn, mockHostInfo, nil, 0, 900, 3, 600000)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(monitor.NewStates))
 	// Monitoring on the same host should not increase the cache size.

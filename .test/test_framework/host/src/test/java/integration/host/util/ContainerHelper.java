@@ -57,7 +57,7 @@ public class ContainerHelper {
   private static final String XRAY_TELEMETRY_IMAGE_NAME = "amazon/aws-xray-daemon";
   private static final String OTLP_TELEMETRY_IMAGE_NAME = "amazon/aws-otel-collector";
 
-  private static final String INTEGRATION_TEST_TIMEOUT = "30m";
+  private static final String INTEGRATION_TEST_TIMEOUT = "60m";
   private static final String PERFORMANCE_TEST_TIMEOUT = "12h";
 
   private static final String PERFORMANCE_TEST_TAG = "-tags=performance";
@@ -123,12 +123,12 @@ public class ContainerHelper {
     Long exitCode;
     if (filter != null) {
       exitCode = execInContainer(container, "/app/.test/", consumer, "dlv", "test", "--headless", "--listen=:5005", "--api-version=2",
-              "--accept-multiclient", "./test_framework/container/tests...",  "--", "-test.run", filter);
+              "./test_framework/container/tests...",  "--", "-test.run", filter);
 
     } else {
       // Debug all tests located in aws-advanced-go-wrapper/.test/test_framework/container.
       exitCode = exitCode = execInContainer(container, "/app/.test/", consumer, "dlv", "test", "--headless", "--listen=:5005",
-              "--api-version=2", "--accept-multiclient", "./test_framework/container/tests...");
+              "--api-version=2", "./test_framework/container/tests...");
     }
 
     System.out.println("==== Container console feed ==== <<<<");

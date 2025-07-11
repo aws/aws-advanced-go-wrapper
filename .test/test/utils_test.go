@@ -17,9 +17,10 @@
 package test
 
 import (
+	"testing"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestRollbackWithCurrentTx(t *testing.T) {
@@ -36,4 +37,43 @@ func TestRollbackWithNilCurrentTx(t *testing.T) {
 
 	utils.Rollback(&mockConn, nil)
 	assert.Equal(t, 1, mockConn.execContextCounter)
+}
+
+func TestCombineMaps(t *testing.T) {
+	map1 := map[int]int{}
+	map2 := map[int]int{}
+	assert.Equal(t, map[int]int{}, utils.CombineMaps(map1, map2))
+
+	map3 := map[int]string{
+		1: "one",
+		2: "two",
+	}
+	map4 := map[int]string{
+		3: "three",
+		4: "four",
+	}
+	assert.Equal(t,
+		map[int]string{
+			1: "one",
+			2: "two",
+			3: "three",
+			4: "four",
+		},
+		utils.CombineMaps(map3, map4))
+
+	map5 := map[string]int{
+		"five":  5,
+		"three": 3,
+	}
+	map6 := map[string]int{
+		"three": 33,
+		"two":   2,
+	}
+	assert.Equal(t,
+		map[string]int{
+			"five":  5,
+			"three": 33,
+			"two":   2,
+		},
+		utils.CombineMaps(map5, map6))
 }
