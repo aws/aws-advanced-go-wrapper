@@ -17,6 +17,8 @@
 package driver_infrastructure
 
 import (
+	"sync"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 )
 
@@ -28,6 +30,10 @@ type ConnectionProviderManager struct {
 func (connProviderManager *ConnectionProviderManager) GetConnectionProvider(
 	hostInfo host_info_util.HostInfo,
 	props map[string]string) ConnectionProvider {
+	if customConnectionProvider := getCustomConnectionProvider(); customConnectionProvider != nil && customConnectionProvider.AcceptsUrl(hostInfo, props) {
+		return customConnectionProvider
+	}
+
 	if connProviderManager.EffectiveProvider != nil && connProviderManager.EffectiveProvider.AcceptsUrl(hostInfo, props) {
 		return connProviderManager.EffectiveProvider
 	}
@@ -40,6 +46,10 @@ func (connProviderManager *ConnectionProviderManager) GetDefaultProvider() Conne
 }
 
 func (connProviderManager *ConnectionProviderManager) AcceptsStrategy(strategy string) bool {
+	if customConnectionProvider := getCustomConnectionProvider(); customConnectionProvider != nil && customConnectionProvider.AcceptsStrategy(strategy) {
+		return true
+	}
+
 	if connProviderManager.EffectiveProvider != nil && connProviderManager.EffectiveProvider.AcceptsStrategy(strategy) {
 		return true
 	}
@@ -52,6 +62,13 @@ func (connProviderManager *ConnectionProviderManager) GetHostInfoByStrategy(
 	role host_info_util.HostRole,
 	strategy string,
 	props map[string]string) (*host_info_util.HostInfo, error) {
+	if customConnectionProvider := getCustomConnectionProvider(); customConnectionProvider != nil && customConnectionProvider.AcceptsStrategy(strategy) {
+		host, err := customConnectionProvider.GetHostInfoByStrategy(hosts, role, strategy, props)
+		if err == nil {
+			return host, err
+		}
+	}
+
 	if connProviderManager.EffectiveProvider != nil && connProviderManager.EffectiveProvider.AcceptsStrategy(strategy) {
 		host, err := connProviderManager.EffectiveProvider.GetHostInfoByStrategy(hosts, role, strategy, props)
 		if err == nil {
@@ -63,6 +80,13 @@ func (connProviderManager *ConnectionProviderManager) GetHostInfoByStrategy(
 }
 
 func (connProviderManager *ConnectionProviderManager) GetHostSelectorStrategy(strategy string) (HostSelector, error) {
+	if customConnectionProvider := getCustomConnectionProvider(); customConnectionProvider != nil && customConnectionProvider.AcceptsStrategy(strategy) {
+		hostSelector, err := customConnectionProvider.GetHostSelectorStrategy(strategy)
+		if err == nil {
+			return hostSelector, err
+		}
+	}
+
 	if connProviderManager.EffectiveProvider != nil && connProviderManager.EffectiveProvider.AcceptsStrategy(strategy) {
 		hostSelector, err := connProviderManager.EffectiveProvider.GetHostSelectorStrategy(strategy)
 		if err == nil {
@@ -71,4 +95,25 @@ func (connProviderManager *ConnectionProviderManager) GetHostSelectorStrategy(st
 	}
 
 	return connProviderManager.DefaultProvider.GetHostSelectorStrategy(strategy)
+}
+
+var customConnectionProvider ConnectionProvider
+var customConnectionProviderLock sync.RWMutex
+
+func SetCustomConnectionProvider(connProvider ConnectionProvider) {
+	customConnectionProviderLock.Lock()
+	defer customConnectionProviderLock.Unlock()
+	customConnectionProvider = connProvider
+}
+
+func getCustomConnectionProvider() ConnectionProvider {
+	customConnectionProviderLock.RLock()
+	defer customConnectionProviderLock.RUnlock()
+	return customConnectionProvider
+}
+
+func ResetCustomConnectionProvider() {
+	customConnectionProviderLock.Lock()
+	defer customConnectionProviderLock.Unlock()
+	customConnectionProvider = nil
 }

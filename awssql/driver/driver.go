@@ -63,7 +63,7 @@ func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	pluginManager := driver_infrastructure.PluginManager(plugin_helpers.NewPluginManagerImpl(d.UnderlyingDriver, props, connectionProviderManager, telemetryFactory))
+	pluginManager := plugin_helpers.NewPluginManagerImpl(d.UnderlyingDriver, props, connectionProviderManager, telemetryFactory)
 	pluginServiceImpl, err := plugin_helpers.NewPluginServiceImpl(pluginManager, d.DriverDialect, props, dsn)
 	if err != nil {
 		return nil, err
