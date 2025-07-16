@@ -76,18 +76,19 @@ func TestFailoverWriter(t *testing.T) {
 	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryError.Error())
 
 	// Assert that we are connected to the new writer after failover.
+	slog.Debug("TestFailoverWriter - Assert that we are connected to the new writer after failover.")
 	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	assert.Nil(t, err)
 	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, newInstanceId)
 	assert.NotEqual(t, instanceId, newInstanceId)
-
-	test_utils.BasicCleanup(t.Name())
+	slog.Debug("TestFailoverWriter - finished")
 }
 
 func TestFailoverWriterWithTelemetryOtel(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	bsp, err := test_utils.SetupTelemetry(environment)
 	assert.Nil(t, err)
@@ -127,12 +128,11 @@ func TestFailoverWriterWithTelemetryOtel(t *testing.T) {
 	require.True(t, auroraTestUtility.IsDbInstanceWriter(newInstanceId, ""))
 	assert.Nil(t, err, "After failover new connections should not throw errors.")
 	assert.NotZero(t, newInstanceId)
-
-	test_utils.BasicCleanup(t.Name())
 }
 
 func TestFailoverWriterWithTelemetryXray(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	bsp, err := test_utils.SetupTelemetry(environment)
 	assert.Nil(t, err)
@@ -174,8 +174,6 @@ func TestFailoverWriterWithTelemetryXray(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, newInstanceId)
 	assert.NotEqual(t, instanceId, newInstanceId)
-
-	test_utils.BasicCleanup(t.Name())
 }
 
 func TestFailoverWriterEndpoint(t *testing.T) {
