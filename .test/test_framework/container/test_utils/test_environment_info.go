@@ -73,11 +73,14 @@ func NewTestEnvironmentInfo(testInfo map[string]any) (info TestEnvironmentInfo, 
 		}
 	}
 
-	iamUser, ok := testInfo["iamUsername"].(string)
+	var iamUser string
+	if slices.Contains(request.Features, IAM) {
+		iamUser, ok = testInfo["iamUsername"].(string)
 
-	if !ok {
-		err = errors.New("unable to get IAM username")
-		return
+		if !ok {
+			err = errors.New("unable to get IAM username")
+			return
+		}
 	}
 
 	otelTracesTelemetryInfoMap, ok := testInfo["otelTracesTelemetryInfo"].(map[string]any)
