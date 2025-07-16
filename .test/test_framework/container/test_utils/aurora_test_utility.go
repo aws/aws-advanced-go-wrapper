@@ -164,6 +164,7 @@ func (a AuroraTestUtility) IsDbInstanceWriter(instanceId string, clusterId strin
 }
 
 func (a AuroraTestUtility) GetClusterWriterInstanceId(clusterId string) (string, error) {
+	slog.Debug("AuroraTestUtility.GetClusterWriterInstanceId")
 	if clusterId == "" {
 		env, err := GetCurrentTestEnvironment()
 		if err != nil {
@@ -171,7 +172,8 @@ func (a AuroraTestUtility) GetClusterWriterInstanceId(clusterId string) (string,
 		}
 		clusterId = env.info.auroraClusterName
 	}
-
+	slog.Debug(fmt.Sprintf("AuroraTestUtility.GetClusterWriterInstanceId - clusterId:%s", clusterId))
+	slog.Debug(fmt.Sprintf("AuroraTestUtility.GetClusterWriterInstanceId - fetching dbCluster info"))
 	clusterInfo, err := a.getDbCluster(clusterId)
 	if err != nil || clusterInfo.DBClusterMembers == nil {
 		return "", fmt.Errorf("invalid cluster %s", clusterId)
@@ -182,6 +184,7 @@ func (a AuroraTestUtility) GetClusterWriterInstanceId(clusterId string) (string,
 	if instance.DBInstanceIdentifier == nil || *instance.DBInstanceIdentifier == "" {
 		return "", errors.New("can not find writer")
 	}
+	slog.Debug(fmt.Sprintf("AuroraTestUtility.GetClusterWriterInstanceId - instance.DBInstanceIdentifier:%s", *instance.DBInstanceIdentifier))
 	return *instance.DBInstanceIdentifier, nil
 }
 
