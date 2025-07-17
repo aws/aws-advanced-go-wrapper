@@ -49,7 +49,7 @@ func NewTestInstanceInfo(instanceMap map[string]any) (info TestInstanceInfo, err
 	port, ok3 := instanceMap["port"].(float64)
 
 	if !ok || !ok2 || !ok3 {
-		err = fmt.Errorf("Unable to cast a required property of new TestInstanceInfo from %v.", instanceMap)
+		err = fmt.Errorf("unable to cast a required property of new TestInstanceInfo from %v", instanceMap)
 		return
 	}
 

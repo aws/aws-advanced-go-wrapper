@@ -308,7 +308,7 @@ func TestIamWithEfm(t *testing.T) {
 		"anypassword",
 		environment,
 	)
-	props := utils.CombineMaps[string, string](iamProps, proxyTestProps)
+	props := utils.CombineMaps(iamProps, proxyTestProps)
 	props[property_util.IAM_HOST.Name] = environment.Info().DatabaseInfo.ClusterEndpoint
 	props[property_util.IAM_DEFAULT_PORT.Name] = strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort)
 
@@ -366,7 +366,7 @@ func TestIamWithFailoverEfm(t *testing.T) {
 		"anypassword",
 		environment,
 	)
-	props := utils.CombineMaps[string, string](iamProps, proxyTestProps)
+	props := utils.CombineMaps(iamProps, proxyTestProps)
 	props[property_util.IAM_HOST.Name] = environment.Info().DatabaseInfo.ClusterEndpoint
 	props[property_util.IAM_DEFAULT_PORT.Name] = strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort)
 	props[property_util.FAILOVER_TIMEOUT_MS.Name] = strconv.Itoa(4 * TEST_MONITORING_TIMEOUT_SECONDS * 1000)

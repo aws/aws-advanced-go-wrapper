@@ -325,7 +325,7 @@ func TestTwoConnectionsDoNotBlockOneAnother(t *testing.T) {
 	dbResourceReleased := atomic.Bool{}
 	acquireDbResourceMutexSuccessful := atomic.Bool{}
 
-	group1 := func(wg *sync.WaitGroup) {
+	group1 := func(_ *sync.WaitGroup) {
 		_, _, _, _ = awsDriver.ExecuteWithPlugins(nil, pluginManager1, "lock-routine-1",
 			func() (any, any, bool, error) {
 				dbResourceMutex.Lock()
@@ -344,7 +344,7 @@ func TestTwoConnectionsDoNotBlockOneAnother(t *testing.T) {
 		routinesWg.Done()
 	}
 
-	group2 := func(wg *sync.WaitGroup) {
+	group2 := func(_ *sync.WaitGroup) {
 		waitForDbResourceLocked.Wait()
 		_, _, _, _ = awsDriver.ExecuteWithPlugins(nil, pluginManager2, "lock-routine-2",
 			func() (any, any, bool, error) {

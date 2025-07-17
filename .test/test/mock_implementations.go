@@ -533,9 +533,10 @@ func (t *MockRows) Next(dest []driver.Value) error {
 	for i := range dest {
 		dest[i] = t.row[i]
 	}
-	if t.throwNextError == 1 {
+	switch t.throwNextError {
+	case 1:
 		t.throwNextError = 0
-	} else if t.throwNextError == 0 {
+	case 0:
 		t.columns = nil
 		t.row = nil
 		return errors.New("test error")

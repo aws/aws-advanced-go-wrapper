@@ -69,7 +69,7 @@ func NewAuroraTestUtility(region string) *AuroraTestUtility {
 func (a AuroraTestUtility) waitUntilInstanceHasDesiredStatus(instanceId string, allowedStatuses ...string) error {
 	instanceInfo, err := a.getDbInstance(instanceId)
 	if err != nil {
-		return fmt.Errorf("Invalid instance %s. Error: %e.", instanceId, err)
+		return fmt.Errorf("invalid instance %s, error: %e", instanceId, err)
 	}
 	status := instanceInfo.DBInstanceStatus
 	waitTillTime := time.Now().Add(15 * time.Minute)
@@ -87,7 +87,7 @@ func (a AuroraTestUtility) waitUntilInstanceHasDesiredStatus(instanceId string, 
 		status = &unableToBeFoundMessage
 	}
 	if !slices.Contains(allowedStatuses, strings.ToLower(*status)) {
-		return fmt.Errorf("Instance %s status is still %s.", instanceId, *status)
+		return fmt.Errorf("instance %s status is still %s", instanceId, *status)
 	}
 	slog.Info(fmt.Sprintf("Instance %s, status: %s.", instanceId, *status))
 	return nil
@@ -131,7 +131,7 @@ func (a AuroraTestUtility) rebootInstance(instanceId string) {
 func (a AuroraTestUtility) waitUntilClusterHasDesiredStatus(clusterId string, desiredStatus string) error {
 	clusterInfo, err := a.getDbCluster(clusterId)
 	if err != nil {
-		return fmt.Errorf("Invalid cluster %s.", clusterId)
+		return fmt.Errorf("invalid cluster %s", clusterId)
 	}
 	status := clusterInfo.Status
 	for !doesStatusMatch(status, desiredStatus) {
@@ -158,7 +158,7 @@ func (a AuroraTestUtility) IsDbInstanceWriter(instanceId string, clusterId strin
 		return true
 	}
 	if err != nil {
-		slog.Warn(fmt.Sprintf("Unable to gather writer instance id, returning false for match. Error: %s.", err.Error()))
+		slog.Warn(fmt.Sprintf("unable to gather writer instance id, returning false for match, error: %s", err.Error()))
 	}
 	return false
 }
@@ -167,20 +167,20 @@ func (a AuroraTestUtility) GetClusterWriterInstanceId(clusterId string) (string,
 	if clusterId == "" {
 		env, err := GetCurrentTestEnvironment()
 		if err != nil {
-			return "", errors.New("Unable to determine clusterId.")
+			return "", errors.New("unable to determine clusterId")
 		}
 		clusterId = env.info.auroraClusterName
 	}
 
 	clusterInfo, err := a.getDbCluster(clusterId)
 	if err != nil || clusterInfo.DBClusterMembers == nil {
-		return "", fmt.Errorf("Invalid cluster %s.", clusterId)
+		return "", fmt.Errorf("invalid cluster %s", clusterId)
 	}
 	members := clusterInfo.DBClusterMembers
 
 	instance := members[slices.IndexFunc(members, func(instance types.DBClusterMember) bool { return *instance.IsClusterWriter })]
 	if instance.DBInstanceIdentifier == nil || *instance.DBInstanceIdentifier == "" {
-		return "", errors.New("Can not find writer")
+		return "", errors.New("can not find writer")
 	}
 	return *instance.DBInstanceIdentifier, nil
 }
@@ -226,7 +226,7 @@ func (a AuroraTestUtility) FailoverClusterAndWaitTillWriterChanged(initialWriter
 
 	slog.Debug(fmt.Sprintf("Waiting for writer %s to change for %d minutes.", initialWriter, writerChangeTimeout))
 	if !a.writerChanged(initialWriter, clusterId, writerChangeTimeout) {
-		return fmt.Errorf("Writer did not change in %d minutes following failover command.", writerChangeTimeout)
+		return fmt.Errorf("writer did not change in %d minutes following failover command", writerChangeTimeout)
 	}
 	slog.Debug(fmt.Sprintf("Writer of cluster %s has updated after failover.", clusterId))
 	return nil
@@ -265,6 +265,8 @@ func (a AuroraTestUtility) failoverClusterToTarget(clusterId string, targetWrite
 			env.info.DatabaseInfo.moveInstanceFirst(writerId, false)
 			env.info.ProxyDatabaseInfo.moveInstanceFirst(writerId, true)
 			return nil
+		} else {
+			slog.Debug(fmt.Sprintf("Request to failover cluster %s with writer %s failed. Response was %v.", clusterId, *targetWriterId, resp))
 		}
 		time.Sleep(time.Second)
 	}

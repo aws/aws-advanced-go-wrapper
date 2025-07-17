@@ -17,9 +17,10 @@
 package test
 
 import (
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"testing"
 	"time"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -79,7 +80,7 @@ func TestSlidingExpirationComputeIfAbsentExpiredItem(t *testing.T) {
 		itemDisposed = true
 		return true
 	}
-	slidingExpirationCache := utils.NewSlidingExpirationCache[int]("test", disposalFunc)
+	slidingExpirationCache := utils.NewSlidingExpirationCache("test", disposalFunc)
 	slidingExpirationCache.Put("a", 1, time.Nanosecond)
 	slidingExpirationCache.Put("b", 2, time.Nanosecond)
 

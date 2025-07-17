@@ -166,7 +166,7 @@ func IndexOf[T any](slice []T, item T, compareFunc func(T, T) bool) int {
 }
 
 func RemoveFromSlice[T any](slice []T, item T, compareFunc func(T, T) bool) []T {
-	index := IndexOf[T](
+	index := IndexOf(
 		slice,
 		item,
 		compareFunc)

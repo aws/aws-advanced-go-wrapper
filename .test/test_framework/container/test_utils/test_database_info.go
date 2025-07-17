@@ -108,6 +108,6 @@ func NewTestDatabaseInfo(databaseInfoMap map[string]any) (databaseInfo TestDatab
 			Instances:                   instances,
 		}, nil
 	}
-	err = errors.New("Unable to cast a database info value")
+	err = errors.New("unable to cast a database info value")
 	return
 }

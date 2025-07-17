@@ -57,7 +57,7 @@ func NewLimitlessRouterServiceImplInternal(
 	defer limitlessRouterServiceInitializationMutex.Unlock()
 
 	if LIMITLESS_ROUTER_MONITOR_CACHE == nil {
-		LIMITLESS_ROUTER_MONITOR_CACHE = utils.NewSlidingExpirationCache[LimitlessRouterMonitor](
+		LIMITLESS_ROUTER_MONITOR_CACHE = utils.NewSlidingExpirationCache(
 			"limitless_router_monitors",
 			func(monitor LimitlessRouterMonitor) bool {
 				slog.Debug(error_util.GetMessage("SlidingExpirationCache.itemDisposal", "limitless router monitor"))
@@ -70,7 +70,7 @@ func NewLimitlessRouterServiceImplInternal(
 	}
 
 	if LIMITLESS_ROUTER_CACHE == nil {
-		LIMITLESS_ROUTER_CACHE = utils.NewSlidingExpirationCache[[]*host_info_util.HostInfo](
+		LIMITLESS_ROUTER_CACHE = utils.NewSlidingExpirationCache(
 			"limitless_routers",
 			func(routers []*host_info_util.HostInfo) bool {
 				slog.Debug(error_util.GetMessage("SlidingExpirationCache.itemDisposal", "limitless router"))
@@ -82,7 +82,7 @@ func NewLimitlessRouterServiceImplInternal(
 	}
 
 	if LIMITLESS_SYNC_ROUTER_FETCH_LOCK_MAP == nil {
-		LIMITLESS_SYNC_ROUTER_FETCH_LOCK_MAP = utils.NewSlidingExpirationCache[*sync.Mutex](
+		LIMITLESS_SYNC_ROUTER_FETCH_LOCK_MAP = utils.NewSlidingExpirationCache(
 			"limitless_sync_router_fetch_lock_map",
 			func(*sync.Mutex) bool {
 				return false

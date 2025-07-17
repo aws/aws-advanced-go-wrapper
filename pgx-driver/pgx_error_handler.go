@@ -52,7 +52,7 @@ type PgxErrorHandler struct {
 }
 
 func (p *PgxErrorHandler) IsNetworkError(err error) bool {
-	sqlState := p.GetSQLStateFromError(err)
+	sqlState := p.getSQLStateFromError(err)
 
 	if sqlState != "" && slices.Contains(NetworkErrors, sqlState) {
 		return true
@@ -67,7 +67,7 @@ func (p *PgxErrorHandler) IsNetworkError(err error) bool {
 }
 
 func (p *PgxErrorHandler) IsLoginError(err error) bool {
-	sqlState := p.GetSQLStateFromError(err)
+	sqlState := p.getSQLStateFromError(err)
 	if sqlState != "" && slices.Contains(AccessErrors, sqlState) {
 		return true
 	}
@@ -81,7 +81,7 @@ func (p *PgxErrorHandler) IsLoginError(err error) bool {
 	return false
 }
 
-func (p *PgxErrorHandler) GetSQLStateFromError(err error) string {
+func (p *PgxErrorHandler) getSQLStateFromError(err error) string {
 	var pgErr *pgconn.PgError
 	ok := errors.As(err, &pgErr)
 	if ok {

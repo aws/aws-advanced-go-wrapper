@@ -67,12 +67,12 @@ func GetCurrentTestEnvironment() (*TestEnvironment, error) {
 func CreateTestEnvironment() (*TestEnvironment, error) {
 	infoJson, ok := os.LookupEnv("TEST_ENV_INFO_JSON")
 	if !ok {
-		return nil, errors.New("Unable to get environment variable TEST_ENV_INFO_JSON")
+		return nil, errors.New("unable to get environment variable TEST_ENV_INFO_JSON")
 	}
 	var testInfo map[string]any
 	err := json.Unmarshal([]byte(infoJson), &testInfo)
 	if err != nil {
-		return nil, errors.New("Unable to parse json")
+		return nil, errors.New("unable to parse json")
 	}
 	env, err := NewTestEnvironment(testInfo)
 	if err != nil {
@@ -131,7 +131,7 @@ func VerifyClusterStatus() error {
 			success = true
 		}
 		if !success {
-			return errors.New("Cluster is not healthy")
+			return errors.New("cluster is not healthy")
 		}
 	}
 
@@ -141,7 +141,7 @@ func VerifyClusterStatus() error {
 func rebootAllClusterInstances() {
 	env, err := GetCurrentTestEnvironment()
 	if err != nil {
-		slog.Warn(fmt.Sprintf("Unable to reboot with no test environment. Error: %s.", err.Error()))
+		slog.Warn(fmt.Sprintf("unable to reboot with no test environment, error: %s", err.Error()))
 	}
 	info := env.info
 	auroraUtility := NewAuroraTestUtility(info.Region)

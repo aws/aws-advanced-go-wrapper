@@ -59,7 +59,7 @@ func NewMonitoringRdsHostListProvider(
 			item.Close()
 			return true
 		}
-		clusterTopologyMonitors = utils.NewSlidingExpirationCache[ClusterTopologyMonitor]("cluster-topology-monitors", disposalFunc)
+		clusterTopologyMonitors = utils.NewSlidingExpirationCache("cluster-topology-monitors", disposalFunc)
 		clusterTopologyMonitors.SetCleanupIntervalNanos(MONITOR_EXPIRATION_NANOS)
 	}
 	clusterTopologyMonitorsMutex.Unlock()
