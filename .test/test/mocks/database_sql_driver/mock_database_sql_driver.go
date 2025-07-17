@@ -643,3 +643,79 @@ func (mr *MockValidatorMockRecorder) IsValid() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsValid", reflect.TypeOf((*MockValidator)(nil).IsValid))
 }
+
+// MockConnPrepareContext is a mock of ConnPrepareContext interface.
+type MockConnPrepareContext struct {
+	ctrl     *gomock.Controller
+	recorder *MockConnPrepareContextMockRecorder
+}
+
+// MockConnPrepareContextMockRecorder is the mock recorder for MockConnPrepareContext.
+type MockConnPrepareContextMockRecorder struct {
+	mock *MockConnPrepareContext
+}
+
+// NewMockConnPrepareContext creates a new mock instance.
+func NewMockConnPrepareContext(ctrl *gomock.Controller) *MockConnPrepareContext {
+	mock := &MockConnPrepareContext{ctrl: ctrl}
+	mock.recorder = &MockConnPrepareContextMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockConnPrepareContext) EXPECT() *MockConnPrepareContextMockRecorder {
+	return m.recorder
+}
+
+// PrepareContext mocks base method.
+func (m *MockConnPrepareContext) PrepareContext(arg0 context.Context, arg1 string) (driver.Stmt, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PrepareContext", arg0, arg1)
+	ret0, _ := ret[0].(driver.Stmt)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PrepareContext indicates an expected call of PrepareContext.
+func (mr *MockConnPrepareContextMockRecorder) PrepareContext(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepareContext", reflect.TypeOf((*MockConnPrepareContext)(nil).PrepareContext), arg0, arg1)
+}
+
+// MockConnBeginTx is a mock of ConnBeginTx interface.
+type MockConnBeginTx struct {
+	ctrl     *gomock.Controller
+	recorder *MockConnBeginTxMockRecorder
+}
+
+// MockConnBeginTxMockRecorder is the mock recorder for MockConnBeginTx.
+type MockConnBeginTxMockRecorder struct {
+	mock *MockConnBeginTx
+}
+
+// NewMockConnBeginTx creates a new mock instance.
+func NewMockConnBeginTx(ctrl *gomock.Controller) *MockConnBeginTx {
+	mock := &MockConnBeginTx{ctrl: ctrl}
+	mock.recorder = &MockConnBeginTxMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockConnBeginTx) EXPECT() *MockConnBeginTxMockRecorder {
+	return m.recorder
+}
+
+// BeginTx mocks base method.
+func (m *MockConnBeginTx) BeginTx(arg0 context.Context, arg1 driver.TxOptions) (driver.Tx, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BeginTx", arg0, arg1)
+	ret0, _ := ret[0].(driver.Tx)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BeginTx indicates an expected call of BeginTx.
+func (mr *MockConnBeginTxMockRecorder) BeginTx(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeginTx", reflect.TypeOf((*MockConnBeginTx)(nil).BeginTx), arg0, arg1)
+}
