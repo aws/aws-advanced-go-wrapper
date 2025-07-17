@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-package test
+package dialect_manager_test
 
 import (
 	"strings"
@@ -27,6 +27,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var mysqlTestDsn = "someUser:somePassword@tcp(mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:3306)/myDatabase?foo=bar&pop=snap"
+var pgTestDsn = "postgres://someUser:somePassword@mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:5432/pgx_test?sslmode=disable&foo=bar"
 
 func TestGetDialectFromConnectionParameter(t *testing.T) {
 	dialectManager := driver_infrastructure.DialectManager{}

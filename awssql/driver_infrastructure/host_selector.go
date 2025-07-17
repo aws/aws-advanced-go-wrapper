@@ -18,11 +18,12 @@ package driver_infrastructure
 
 import (
 	"errors"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 )
 
 const (
@@ -45,6 +46,7 @@ type HostSelector interface {
 type WeightedHostSelector interface {
 	SetHostWeights(hostWeightMap map[string]int)
 	ClearHostWeights()
+	HostSelector
 }
 
 func GetHostWeightMapFromString(hostWeightMapString string) (map[string]int, error) {
