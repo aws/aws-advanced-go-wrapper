@@ -112,7 +112,7 @@ func (plugin *LimitlessPlugin) Connect(
 	}
 
 	// Establish Connection
-	context := NewConnectionContext(*hostInfo, props, conn, connectFunc, nil)
+	context := NewConnectionContext(*hostInfo, props, conn, connectFunc, nil, plugin)
 	err := plugin.routerService.EstablishConnection(context)
 	if err != nil {
 		return nil, err

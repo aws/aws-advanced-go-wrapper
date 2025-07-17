@@ -186,18 +186,18 @@ func (mr *MockPluginServiceMockRecorder) AcceptsStrategy(strategy interface{}) *
 }
 
 // Connect mocks base method.
-func (m *MockPluginService) Connect(hostInfo *host_info_util.HostInfo, props map[string]string) (driver.Conn, error) {
+func (m *MockPluginService) Connect(hostInfo *host_info_util.HostInfo, props map[string]string, pluginToSkip driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Connect", hostInfo, props)
+	ret := m.ctrl.Call(m, "Connect", hostInfo, props, pluginToSkip)
 	ret0, _ := ret[0].(driver.Conn)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Connect indicates an expected call of Connect.
-func (mr *MockPluginServiceMockRecorder) Connect(hostInfo, props interface{}) *gomock.Call {
+func (mr *MockPluginServiceMockRecorder) Connect(hostInfo, props, pluginToSkip interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Connect", reflect.TypeOf((*MockPluginService)(nil).Connect), hostInfo, props)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Connect", reflect.TypeOf((*MockPluginService)(nil).Connect), hostInfo, props, pluginToSkip)
 }
 
 // CreateHostListProvider mocks base method.
@@ -745,18 +745,18 @@ func (mr *MockPluginManagerMockRecorder) AcceptsStrategy(strategy interface{}) *
 }
 
 // Connect mocks base method.
-func (m *MockPluginManager) Connect(hostInfo *host_info_util.HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error) {
+func (m *MockPluginManager) Connect(hostInfo *host_info_util.HostInfo, props map[string]string, isInitialConnection bool, pluginToSkip driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Connect", hostInfo, props, isInitialConnection)
+	ret := m.ctrl.Call(m, "Connect", hostInfo, props, isInitialConnection, pluginToSkip)
 	ret0, _ := ret[0].(driver.Conn)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Connect indicates an expected call of Connect.
-func (mr *MockPluginManagerMockRecorder) Connect(hostInfo, props, isInitialConnection interface{}) *gomock.Call {
+func (mr *MockPluginManagerMockRecorder) Connect(hostInfo, props, isInitialConnection, pluginToSkip interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Connect", reflect.TypeOf((*MockPluginManager)(nil).Connect), hostInfo, props, isInitialConnection)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Connect", reflect.TypeOf((*MockPluginManager)(nil).Connect), hostInfo, props, isInitialConnection, pluginToSkip)
 }
 
 // Execute mocks base method.

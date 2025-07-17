@@ -390,8 +390,8 @@ func (p *PluginServiceImpl) updateHostAvailability(hosts []*host_info_util.HostI
 	}
 }
 
-func (p *PluginServiceImpl) Connect(hostInfo *host_info_util.HostInfo, props map[string]string) (driver.Conn, error) {
-	return p.pluginManager.Connect(hostInfo, props, p.currentConnection == nil)
+func (p *PluginServiceImpl) Connect(hostInfo *host_info_util.HostInfo, props map[string]string, pluginToSkip driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
+	return p.pluginManager.Connect(hostInfo, props, p.currentConnection == nil, pluginToSkip)
 }
 
 func (p *PluginServiceImpl) ForceConnect(hostInfo *host_info_util.HostInfo, props map[string]string) (driver.Conn, error) {

@@ -18,6 +18,7 @@ package limitless
 
 import (
 	"database/sql/driver"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 )
@@ -28,6 +29,7 @@ type LimitlessConnectionContext struct {
 	connection       driver.Conn
 	ConnectFunc      driver_infrastructure.ConnectFunc
 	LimitlessRouters []*host_info_util.HostInfo
+	plugin           driver_infrastructure.ConnectionPlugin
 }
 
 func NewConnectionContext(
@@ -35,13 +37,15 @@ func NewConnectionContext(
 	props map[string]string,
 	conn driver.Conn,
 	connectFunc driver_infrastructure.ConnectFunc,
-	limitlessRouters []*host_info_util.HostInfo) *LimitlessConnectionContext {
+	limitlessRouters []*host_info_util.HostInfo,
+	plugin driver_infrastructure.ConnectionPlugin) *LimitlessConnectionContext {
 	return &LimitlessConnectionContext{
 		Host:             hostInfo,
 		Props:            props,
 		connection:       conn,
 		ConnectFunc:      connectFunc,
 		LimitlessRouters: limitlessRouters,
+		plugin:           plugin,
 	}
 }
 

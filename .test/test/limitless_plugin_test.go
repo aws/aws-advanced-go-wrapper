@@ -19,6 +19,9 @@ package test
 import (
 	"database/sql/driver"
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
@@ -26,11 +29,9 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	"github.com/aws/aws-advanced-go-wrapper/mysql-driver"
-	"github.com/aws/aws-advanced-go-wrapper/pgx-driver"
+	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
+	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 var pgLimitlessTestDsn = "user=someUser password=somePassword host=mydb-1-db-shard-group-1.shardgrp-xyz.us-east-2.rds.amazonaws.com port=5432 database=postgres_limitless " +
@@ -366,7 +367,7 @@ func TestLimitlessMonitorServiceEstablishConnection(t *testing.T) {
 	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
 		return mockConn, nil
 	}
-	context := limitless.NewConnectionContext(*host, props, nil, mockConnFunc, nil)
+	context := limitless.NewConnectionContext(*host, props, nil, mockConnFunc, nil, nil)
 
 	err := limitlessRouterService.EstablishConnection(context)
 	actualConn := context.GetConnection()
@@ -405,7 +406,7 @@ func TestLimitlessMonitorServiceEstablishConnect_GivenEmptyCacheAndNoWaitForRout
 	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
 		return mockConn, nil
 	}
-	context := limitless.NewConnectionContext(*host, props, nil, mockConnFunc, nil)
+	context := limitless.NewConnectionContext(*host, props, nil, mockConnFunc, nil, nil)
 
 	err := limitlessRouterService.EstablishConnection(context)
 	actualConn := context.GetConnection()
@@ -447,7 +448,7 @@ func TestLimitlessMonitorServiceEstablishConnect_MaxRetries(t *testing.T) {
 	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
 		return mockConn, nil
 	}
-	context := limitless.NewConnectionContext(*host, props, nil, mockConnFunc, nil)
+	context := limitless.NewConnectionContext(*host, props, nil, mockConnFunc, nil, nil)
 
 	err := limitlessRouterService.EstablishConnection(context)
 

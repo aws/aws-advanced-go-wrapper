@@ -183,7 +183,8 @@ func (pluginManager *PluginManagerImpl) InitHostProvider(
 func (pluginManager *PluginManagerImpl) Connect(
 	hostInfo *host_info_util.HostInfo,
 	props map[string]string,
-	isInitialConnection bool) (driver.Conn, error) {
+	isInitialConnection bool,
+	pluginToSkip driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
 	parentCtx := pluginManager.GetTelemetryContext()
 	telemetryCtx, ctx := pluginManager.telemetryFactory.OpenTelemetryContext(telemetry.TELEMETRY_CONNECT, telemetry.NESTED, parentCtx)
 	pluginManager.SetTelemetryContext(ctx)
@@ -208,7 +209,7 @@ func (pluginManager *PluginManagerImpl) Connect(
 	targetFunc := func(props map[string]string) (driver.Conn, error) {
 		return nil, error_util.ShouldNotBeCalledError
 	}
-	return pluginManager.connectWithSubscribedPlugins(CONNECT_METHOD, pluginFunc, targetFunc)
+	return pluginManager.connectWithSubscribedPlugins(CONNECT_METHOD, pluginFunc, targetFunc, pluginToSkip)
 }
 
 func (pluginManager *PluginManagerImpl) ForceConnect(
@@ -224,7 +225,7 @@ func (pluginManager *PluginManagerImpl) ForceConnect(
 	targetFunc := func(props map[string]string) (driver.Conn, error) {
 		return nil, error_util.ShouldNotBeCalledError
 	}
-	return pluginManager.connectWithSubscribedPlugins(FORCE_CONNECT_METHOD, pluginFunc, targetFunc)
+	return pluginManager.connectWithSubscribedPlugins(FORCE_CONNECT_METHOD, pluginFunc, targetFunc, nil)
 }
 
 func (pluginManager *PluginManagerImpl) Execute(
@@ -267,7 +268,7 @@ func (pluginManager *PluginManagerImpl) executeWithSubscribedPlugins(
 	targetFunc driver_infrastructure.ExecuteFunc) (any, any, bool, error) {
 	chain, ok := pluginManager.pluginFuncMap[methodName]
 	if !ok {
-		chain = pluginManager.makePluginChain(methodName, true)
+		chain = pluginManager.makePluginChain(methodName, true, nil)
 		pluginManager.pluginFuncMap[methodName] = chain
 	}
 	return chain.Execute(pluginFunc, targetFunc)
@@ -276,23 +277,32 @@ func (pluginManager *PluginManagerImpl) executeWithSubscribedPlugins(
 func (pluginManager *PluginManagerImpl) connectWithSubscribedPlugins(
 	methodName string,
 	pluginFunc driver_infrastructure.PluginConnectFunc,
-	targetFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-	chain, ok := pluginManager.pluginFuncMap[methodName]
-	if !ok {
-		chain = pluginManager.makePluginChain(methodName, false)
-		pluginManager.pluginFuncMap[methodName] = chain
+	targetFunc driver_infrastructure.ConnectFunc,
+	pluginToSkip driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
+	var chain PluginChain
+	if pluginToSkip == nil {
+		ok := false
+		chain, ok = pluginManager.pluginFuncMap[methodName]
+		if !ok {
+			chain = pluginManager.makePluginChain(methodName, false, nil)
+			pluginManager.pluginFuncMap[methodName] = chain
+		}
+	} else {
+		chain = pluginManager.makePluginChain(methodName, false, pluginToSkip)
 	}
 	return chain.Connect(pluginFunc, pluginManager.props, targetFunc)
 }
 
 func (pluginManager *PluginManagerImpl) makePluginChain(
 	name string,
-	creatingExecChain bool) PluginChain {
+	creatingExecChain bool,
+	pluginToSkip driver_infrastructure.ConnectionPlugin) PluginChain {
 	chain := PluginChain{}
 	for i := len(pluginManager.plugins) - 1; i >= 0; i-- {
 		currentPlugin := pluginManager.plugins[i]
 		pluginSubscribedMethods := currentPlugin.GetSubscribedMethods()
-		if slices.Contains(pluginSubscribedMethods, ALL_METHODS) || slices.Contains(pluginSubscribedMethods, name) {
+		if currentPlugin != pluginToSkip &&
+			(slices.Contains(pluginSubscribedMethods, ALL_METHODS) || slices.Contains(pluginSubscribedMethods, name)) {
 			if creatingExecChain {
 				chain.ExecAddToHead(currentPlugin)
 			} else {

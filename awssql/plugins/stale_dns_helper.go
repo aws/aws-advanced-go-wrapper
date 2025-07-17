@@ -126,7 +126,7 @@ func (s *StaleDnsHelper) GetVerifiedConnection(
 
 		s.staleDnsCounter.Inc(s.pluginService.GetTelemetryContext())
 
-		writerConn, connectErr := s.pluginService.Connect(s.writerHostInfo, utils.CreateMapCopy(props))
+		writerConn, connectErr := s.pluginService.Connect(s.writerHostInfo, utils.CreateMapCopy(props), nil)
 		if connectErr != nil {
 			return nil, connectErr
 		}

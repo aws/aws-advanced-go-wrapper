@@ -159,7 +159,7 @@ func (routerService *LimitlessRouterServiceImpl) EstablishConnection(context *Li
 	}
 	slog.Debug(error_util.GetMessage("LimitlessRouterServiceImpl.selectedHost", selectedRouter.Host))
 
-	conn, err := routerService.pluginService.Connect(selectedRouter, utils.CreateMapCopy(context.Props))
+	conn, err := routerService.pluginService.Connect(selectedRouter, utils.CreateMapCopy(context.Props), context.plugin)
 	if err != nil || conn == nil {
 		selectedRouter.Availability = host_info_util.UNAVAILABLE
 		slog.Debug(error_util.GetMessage("LimitlessRouterServiceImpl.failedToConnectToHost", selectedRouter.Host))
@@ -317,7 +317,7 @@ func (routerService *LimitlessRouterServiceImpl) retryConnectWithLeastLoadedRout
 		}
 
 		// Connect to selected router
-		conn, err := routerService.pluginService.Connect(selectedRouter, utils.CreateMapCopy(context.Props))
+		conn, err := routerService.pluginService.Connect(selectedRouter, utils.CreateMapCopy(context.Props), context.plugin)
 		if err != nil || conn == nil {
 			slog.Debug(error_util.GetMessage("LimitlessRouterServiceImpl.failedToConnectToRouter", selectedRouter.Host))
 			selectedRouter.Availability = host_info_util.UNAVAILABLE

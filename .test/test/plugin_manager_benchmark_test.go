@@ -74,6 +74,7 @@ func BenchmarkConnectWithPlugins(b *testing.B) {
 					host,
 					props,
 					true,
+					nil,
 				)
 			}
 			pluginManager.ReleaseResources()
