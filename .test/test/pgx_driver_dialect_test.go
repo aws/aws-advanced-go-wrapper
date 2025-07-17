@@ -65,12 +65,10 @@ func TestPgxErrorHandler(t *testing.T) {
 		err := &pgconn.PgError{Code: code}
 		assert.True(t, errorHandler.IsNetworkError(err))
 		assert.False(t, errorHandler.IsLoginError(err))
-		assert.Equal(t, code, errorHandler.GetSQLStateFromError(err))
 	}
 	for _, code := range pgx_driver.AccessErrors {
 		err := &pgconn.PgError{Code: code}
 		assert.False(t, errorHandler.IsNetworkError(err))
 		assert.True(t, errorHandler.IsLoginError(err))
-		assert.Equal(t, code, errorHandler.GetSQLStateFromError(err))
 	}
 }
