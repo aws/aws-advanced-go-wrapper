@@ -39,7 +39,7 @@ func TestGenerateAuthenticationToken_Success(t *testing.T) {
 	mockTelemetryFactory := mock_telemetry.NewMockTelemetryFactory(ctrl)
 	mockTelemetryContext := mock_telemetry.NewMockTelemetryContext(ctrl)
 
-	parentCtx := context.WithValue(context.TODO(), "key", "value")
+	parentCtx := context.TODO()
 	mockPluginService.EXPECT().GetTelemetryContext().Return(parentCtx)
 	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory)
 	mockTelemetryFactory.EXPECT().OpenTelemetryContext(gomock.Any(), gomock.Any(), parentCtx).
@@ -78,7 +78,7 @@ func TestGenerateAuthenticationToken_Error(t *testing.T) {
 	mockTelemetryFactory := mock_telemetry.NewMockTelemetryFactory(ctrl)
 	mockTelemetryContext := mock_telemetry.NewMockTelemetryContext(ctrl)
 
-	parentCtx := context.WithValue(context.TODO(), "key", "value")
+	parentCtx := context.TODO()
 	mockPluginService.EXPECT().GetTelemetryContext().Return(parentCtx)
 	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory)
 	mockTelemetryFactory.EXPECT().OpenTelemetryContext(gomock.Any(), gomock.Any(), parentCtx).

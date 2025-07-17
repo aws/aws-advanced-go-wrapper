@@ -473,7 +473,6 @@ func TestWrapperDriverOpen_ParseError(t *testing.T) {
 }
 
 func TestAwsWrapperDriver_Open_WorkingDsn(t *testing.T) {
-
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 

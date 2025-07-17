@@ -65,10 +65,11 @@ func TestExecutionTimePlugin_ExecuteTracksTime(t *testing.T) {
 
 func TestExecutionTimePlugin_ResetExecutionTime(t *testing.T) {
 	plugin := &plugins.ExecutionTimePlugin{}
-	plugin.Execute(nil, "MockMethod", func() (any, any, bool, error) {
+	_, _, _, err := plugin.Execute(nil, "MockMethod", func() (any, any, bool, error) {
 		time.Sleep(5 * time.Millisecond)
 		return nil, nil, true, nil
 	})
+	assert.NoError(t, err)
 	assert.Greater(t, plugin.GetTotalExecutionTime(), int64(0))
 
 	plugin.ResetExecutionTime()

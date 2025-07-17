@@ -17,14 +17,15 @@
 package test
 
 import (
+	"strings"
+	"testing"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"strings"
-	"testing"
 )
 
 func TestGetDialectFromConnectionParameter(t *testing.T) {
@@ -52,7 +53,7 @@ func TestGetDialectUnregisteredDriverPgx(t *testing.T) {
 	}
 	dialect, err := dialectManager.GetDialect(pgTestDsn, props)
 	assert.Nil(t, dialect)
-	assert.Equal(t, err, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DatabaseDialectManager.missingWrapperDriver", driver_infrastructure.AWS_PGX_DRIVER_CODE)))
+	assert.Equal(t, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DatabaseDialectManager.missingWrapperDriver", driver_infrastructure.AWS_PGX_DRIVER_CODE)), err)
 	driver_infrastructure.ClearCaches()
 }
 

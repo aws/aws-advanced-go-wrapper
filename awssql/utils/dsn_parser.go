@@ -124,7 +124,7 @@ func ParseHostPortPair(instanceClusterTemplate string, defaultPort int) (*host_i
 
 func ParseDatabaseFromDsn(dsn string) (string, error) {
 	props, err := ParseDsn(dsn)
-	if err != nil {
+	if err == nil {
 		return property_util.DATABASE.Get(props), nil
 	}
 	return "", err
@@ -132,7 +132,7 @@ func ParseDatabaseFromDsn(dsn string) (string, error) {
 
 func ParseUserFromDsn(dsn string) (string, error) {
 	props, err := ParseDsn(dsn)
-	if err != nil {
+	if err == nil {
 		return property_util.USER.Get(props), nil
 	}
 	return "", err
@@ -140,7 +140,7 @@ func ParseUserFromDsn(dsn string) (string, error) {
 
 func ParsePasswordFromDsn(dsn string) (string, error) {
 	props, err := ParseDsn(dsn)
-	if err != nil {
+	if err == nil {
 		return property_util.PASSWORD.Get(props), nil
 	}
 	return "", err
