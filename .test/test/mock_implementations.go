@@ -454,7 +454,7 @@ func (m *MockPluginService) GetUpdatedHostListWithTimeout(shouldVerifyWriter boo
 	return nil, nil
 }
 
-func (m *MockPluginService) Connect(hostInfo *host_info_util.HostInfo, props map[string]string, plugin driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
+func (m *MockPluginService) Connect(hostInfo *host_info_util.HostInfo, props map[string]string, pluginToSkip driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
 	return nil, nil
 }
 
