@@ -1,0 +1,105 @@
+name: Dependabot Tidy and Auto-Merge
+
+on:
+  pull_request:
+    branches:
+      - "main"
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+  statuses: read
+
+jobs:
+  tidy-and-merge:
+    name: Tidy and Auto-Merge Dependabot PR
+    runs-on: ubuntu-latest
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'
+          cache: true
+          cache-dependency-path: ./.test/go.sum
+      
+      - name: Checkout PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr checkout ${{ github.event.pull_request.number }}
+      
+      - name: Run go mod tidy
+        id: run-tidy
+        run: |
+          # Find all directories containing go.mod files
+          modules=$(find . -type f -name 'go.mod' -exec dirname {} \;)
+          
+          # Run go mod tidy on each module
+          for dir in $modules; do
+            echo "Running go mod tidy in $dir"
+            cd "$dir"
+            go mod tidy
+            cd - > /dev/null
+          done
+          
+          # Check if there are any changes
+          git diff > diff.txt
+          if [ -s diff.txt ]; then
+            echo "Changes detected after running go mod tidy"
+            echo "diff=true" >> $GITHUB_OUTPUT
+          else
+            echo "No changes detected after running go mod tidy"
+            echo "diff=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Commit
+        if: ${{ steps.run-tidy.outputs.diff == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name 'dependabot[bot]'
+          git config --global user.email 'actions@github.com'
+          git add .
+          git commit -m "chore: automatic commit created after go mod tidy"
+          git push
+      
+      - name: Get Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v1
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+      
+      - name: Check build
+        if: |
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' || 
+          steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        uses: lewagon/wait-on-check-action@v1.3.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: 'build'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+          allowed-conclusions: success
+      
+      - name: Approve PR
+        if: |
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' || 
+          steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        run: gh pr review --approve "${{ github.event.pull_request.number }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable PR auto-merge
+        if: |
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' || 
+          steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        run: gh pr merge --auto --squash "${{ github.event.pull_request.number }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
