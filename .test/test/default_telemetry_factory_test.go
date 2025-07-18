@@ -18,7 +18,6 @@ package test
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	mock_telemetry "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/util/telemetry"
@@ -28,20 +27,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setUpProps(enableTelemetry bool, tracesBackend, metricsBackend string, submitTopLevel bool) map[string]string {
+func setUpProps(enableTelemetry string, tracesBackend, metricsBackend string, submitTopLevel string) map[string]string {
 	return map[string]string{
-		property_util.ENABLE_TELEMETRY.Name:           strings.ToLower(strings.TrimSpace(strings.Title(enableTelemetryString(enableTelemetry)))),
+		property_util.ENABLE_TELEMETRY.Name:           enableTelemetry,
 		property_util.TELEMETRY_TRACES_BACKEND.Name:   tracesBackend,
 		property_util.TELEMETRY_METRICS_BACKEND.Name:  metricsBackend,
-		property_util.TELEMETRY_SUBMIT_TOP_LEVEL.Name: strings.ToLower(strings.TrimSpace(strings.Title(enableTelemetryString(submitTopLevel)))),
+		property_util.TELEMETRY_SUBMIT_TOP_LEVEL.Name: submitTopLevel,
 	}
-}
-
-func enableTelemetryString(b bool) string {
-	if b {
-		return "true"
-	}
-	return "false"
 }
 
 func TestNewDefaultTelemetryFactory_ValidOTLP(t *testing.T) {
@@ -54,7 +46,7 @@ func TestNewDefaultTelemetryFactory_ValidOTLP(t *testing.T) {
 	telemetry.UseTelemetryFactory("otlp", mockTraceFactory)
 	telemetry.UseTelemetryFactory("xray", mockMetricsFactory)
 
-	props := setUpProps(true, "otlp", "xray", true)
+	props := setUpProps("true", "otlp", "xray", "true")
 	factory, err := telemetry.NewDefaultTelemetryFactory(props)
 
 	assert.NoError(t, err)
@@ -62,7 +54,7 @@ func TestNewDefaultTelemetryFactory_ValidOTLP(t *testing.T) {
 }
 
 func TestNewDefaultTelemetryFactory_InvalidBackend(t *testing.T) {
-	props := setUpProps(true, "invalid-backend", "none", true)
+	props := setUpProps("true", "invalid-backend", "none", "true")
 	factory, err := telemetry.NewDefaultTelemetryFactory(props)
 
 	assert.Nil(t, factory)
@@ -71,7 +63,7 @@ func TestNewDefaultTelemetryFactory_InvalidBackend(t *testing.T) {
 }
 
 func TestNewDefaultTelemetryFactory_DisabledTelemetry(t *testing.T) {
-	props := setUpProps(false, "anything", "anything", true)
+	props := setUpProps("false", "anything", "anything", "true")
 	factory, err := telemetry.NewDefaultTelemetryFactory(props)
 
 	assert.NoError(t, err)
@@ -87,7 +79,7 @@ func TestOpenTelemetryContext_TopLevelTraceDisabled(t *testing.T) {
 
 	telemetry.UseTelemetryFactory("otlp", mockTraceFactory)
 
-	props := setUpProps(true, "otlp", "none", false)
+	props := setUpProps("true", "otlp", "none", "false")
 	factory, _ := telemetry.NewDefaultTelemetryFactory(props)
 
 	mockTraceFactory.
@@ -108,7 +100,7 @@ func TestPostCopy_WithFactory(t *testing.T) {
 
 	telemetry.UseTelemetryFactory("otlp", mockTraceFactory)
 
-	props := setUpProps(true, "otlp", "none", true)
+	props := setUpProps("true", "otlp", "none", "true")
 	factory, _ := telemetry.NewDefaultTelemetryFactory(props)
 
 	mockTraceFactory.EXPECT().
@@ -128,7 +120,7 @@ func TestCreateCounter_WithFactory(t *testing.T) {
 
 	telemetry.UseTelemetryFactory("otlp", mockMetricsFactory)
 
-	props := setUpProps(true, "none", "otlp", true)
+	props := setUpProps("true", "none", "otlp", "true")
 	factory, _ := telemetry.NewDefaultTelemetryFactory(props)
 
 	mockMetricsFactory.EXPECT().
@@ -149,7 +141,7 @@ func TestCreateGauge_WithFactory(t *testing.T) {
 
 	telemetry.UseTelemetryFactory("otlp", mockMetricsFactory)
 
-	props := setUpProps(true, "none", "otlp", true)
+	props := setUpProps("true", "none", "otlp", "true")
 	factory, _ := telemetry.NewDefaultTelemetryFactory(props)
 
 	mockMetricsFactory.EXPECT().
