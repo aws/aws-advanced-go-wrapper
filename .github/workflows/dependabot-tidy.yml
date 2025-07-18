@@ -1,6 +1,7 @@
 name: Tidy Dependabot PR
 
 on:
+  workflow_dispatch:
   pull_request:
     branches:
       - "main"
@@ -16,7 +17,6 @@ jobs:
   tidy-dependabot-pr:
     name: Tidy dependabot PR - Pull Request
     runs-on: ubuntu-latest
-    if: ${{ github.actor == 'dependabot[bot]' && github.event_name == 'pull_request' }}
 
     steps:
       - name: Checkout
