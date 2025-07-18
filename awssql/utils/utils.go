@@ -166,7 +166,7 @@ func IndexOf[T any](slice []T, item T, compareFunc func(T, T) bool) int {
 }
 
 func RemoveFromSlice[T any](slice []T, item T, compareFunc func(T, T) bool) []T {
-	index := IndexOf[T](
+	index := IndexOf(
 		slice,
 		item,
 		compareFunc)
@@ -194,6 +194,14 @@ func CreateMapCopy[K comparable, V any](mapToCopy map[K]V) map[K]V {
 		mapCopy[key] = value
 	}
 	return mapCopy
+}
+
+func CombineMaps[K comparable, V any](mapToCopy map[K]V, mapToAdd map[K]V) map[K]V {
+	mapToReturn := CreateMapCopy(mapToCopy)
+	for key, value := range mapToAdd {
+		mapToReturn[key] = value
+	}
+	return mapToReturn
 }
 
 func Rollback(conn driver.Conn, currentTx driver.Tx) {

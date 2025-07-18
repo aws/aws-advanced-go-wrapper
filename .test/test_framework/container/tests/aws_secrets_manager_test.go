@@ -20,6 +20,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"log/slog"
+	"strconv"
+	"testing"
+	"time"
+
 	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
 	_ "github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -27,8 +33,6 @@ import (
 	_ "github.com/aws/aws-advanced-go-wrapper/otlp"
 	_ "github.com/aws/aws-advanced-go-wrapper/xray"
 	"github.com/stretchr/testify/require"
-	"log"
-	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -127,6 +131,14 @@ func TestSecretsManager(t *testing.T) {
 
 	t.Run("WithFailover", func(t *testing.T) {
 		failoverTest(t, env, secretName)
+	})
+
+	t.Run("WithFailoverEfm", func(t *testing.T) {
+		failoverEfmTest(t, env, secretName)
+	})
+
+	t.Run("WithEfm", func(t *testing.T) {
+		efmTest(t, env, secretName)
 	})
 }
 
@@ -377,4 +389,115 @@ func failoverTest(t *testing.T, env *test_utils.TestEnvironment, secretName stri
 	assert.NotEqual(t, instanceId, newInstanceId)
 
 	test_utils.BasicCleanup(t.Name())
+}
+
+func efmTest(t *testing.T, env *test_utils.TestEnvironment, secretName string) {
+	_, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
+	assert.Nil(t, err)
+	props := getPropsForTestsWithProxy(environment, environment.Info().ProxyDatabaseInfo.ClusterEndpoint, "awsSecretsManager,efm")
+	props[property_util.USER.Name] = "incorrectUser"
+	props[property_util.PASSWORD.Name] = "incorrectPassword"
+	props[property_util.SECRETS_MANAGER_REGION.Name] = env.Info().Region
+	props[property_util.SECRETS_MANAGER_SECRET_ID.Name] = secretName
+	props[property_util.FAILOVER_TIMEOUT_MS.Name] = strconv.Itoa(4 * TEST_MONITORING_TIMEOUT_SECONDS * 1000)
+
+	dsn := test_utils.GetDsn(environment, props)
+	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+	defer db.Close()
+
+	// Verify connection works.
+	err = db.Ping()
+	require.NoError(t, err, "Failed to open database connection.")
+
+	// Start a long-running query in a goroutine
+	queryChan := make(chan error)
+	go func() {
+		// Execute a sleep query that will run for 10 seconds
+		sleepQuery := test_utils.GetSleepSql(environment.Info().Request.Engine, TEST_SLEEP_QUERY_SECONDS)
+
+		_, err := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, sleepQuery, TEST_SLEEP_QUERY_TIMEOUT_SECONDS)
+		queryChan <- err
+	}()
+
+	// Wait a bit to ensure the query has started
+	time.Sleep(5 * time.Second)
+
+	// Disable connectivity while the sleep query is running
+	slog.Debug("Disabling all connectivity.")
+	test_utils.DisableAllConnectivity()
+
+	// Wait for the query to complete and check the error
+	queryErr := <-queryChan
+	close(queryChan)
+	require.NotNil(t, queryErr)
+	slog.Debug(fmt.Sprintf("Sleep query fails with error: %s.", queryErr.Error()))
+	assert.False(t, errors.Is(queryErr, context.DeadlineExceeded), "Sleep query should have failed due to connectivity loss")
+
+	// Re-enable connectivity
+	slog.Debug("Re-enabling all connectivity.")
+	test_utils.EnableAllConnectivity(true)
+
+	newInstanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
+	assert.Nil(t, err, "After connectivity is re-enabled new connections should not throw errors.")
+	assert.NotZero(t, newInstanceId)
+}
+
+func failoverEfmTest(t *testing.T, env *test_utils.TestEnvironment, secretName string) {
+	auroraTestUtility, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
+	assert.Nil(t, err)
+	props := getPropsForTestsWithProxy(environment, environment.Info().ProxyDatabaseInfo.ClusterEndpoint, "awsSecretsManager,failover,efm")
+	props[property_util.USER.Name] = "incorrectUser"
+	props[property_util.PASSWORD.Name] = "incorrectPassword"
+	props[property_util.SECRETS_MANAGER_REGION.Name] = env.Info().Region
+	props[property_util.SECRETS_MANAGER_SECRET_ID.Name] = secretName
+	props[property_util.FAILOVER_TIMEOUT_MS.Name] = strconv.Itoa(4 * TEST_MONITORING_TIMEOUT_SECONDS * 1000)
+
+	dsn := test_utils.GetDsn(environment, props)
+	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+	defer db.Close()
+
+	// Verify connection works.
+	err = db.Ping()
+	require.NoError(t, err, "Failed to open database connection.")
+
+	// Start a long-running query in a goroutine
+	queryChan := make(chan error)
+	go func() {
+		// Execute a sleep query that will run for 10 seconds
+		sleepQuery := test_utils.GetSleepSql(environment.Info().Request.Engine, TEST_SLEEP_QUERY_SECONDS)
+
+		_, err := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, sleepQuery, TEST_SLEEP_QUERY_TIMEOUT_SECONDS)
+		queryChan <- err
+	}()
+
+	// Wait a bit to ensure the query has started
+	time.Sleep(5 * time.Second)
+
+	// Disable connectivity while the sleep query is running
+	slog.Debug("Disabling all connectivity.")
+	test_utils.DisableAllConnectivity()
+
+	// Wait a bit to ensure failover has started
+	time.Sleep(2 * TEST_MONITORING_TIMEOUT_SECONDS * time.Second)
+
+	// Re-enable connectivity
+	slog.Debug("Re-enabling all connectivity.")
+	test_utils.EnableAllConnectivity(true)
+
+	// Wait for the query to complete and check the error
+	queryErr := <-queryChan
+	close(queryChan)
+	require.NotNil(t, queryErr)
+	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryErr.Error())
+
+	newInstanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
+	require.True(t, auroraTestUtility.IsDbInstanceWriter(newInstanceId, ""))
+	assert.Nil(t, err, "After connectivity is re-enabled new connections should not throw errors.")
+	assert.NotZero(t, newInstanceId)
 }

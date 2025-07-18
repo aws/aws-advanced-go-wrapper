@@ -31,7 +31,7 @@ type TestEnvironmentRequest struct {
 func NewTestEnvironmentRequest(requestVal any) (request TestEnvironmentRequest, err error) {
 	requestMap, ok := requestVal.(map[string]any)
 	if !ok {
-		err = fmt.Errorf("Unable to cast request value to usable map: %s", requestMap)
+		err = fmt.Errorf("unable to cast request value to usable map: %s", requestMap)
 		return
 	}
 	instanceCountAsFloat, ok := requestMap["numOfInstances"].(float64)
@@ -41,36 +41,39 @@ func NewTestEnvironmentRequest(requestVal any) (request TestEnvironmentRequest, 
 	}
 	var instances DatabaseInstances
 	instancesVal := requestMap["instances"]
-	if instancesVal == "SINGLE_INSTANCE" {
+	switch instancesVal {
+	case "SINGLE_INSTANCE":
 		instances = SINGLE_INSTANCE
-	} else if instancesVal == "MULTI_INSTANCE" {
+	case "MULTI_INSTANCE":
 		instances = MULTI_INSTANCE
-	} else {
-		err = fmt.Errorf("Invalid instances: %s", instancesVal)
+	default:
+		err = fmt.Errorf("invalid instances: %s", instancesVal)
 		return
 	}
 	var engine DatabaseEngine
 	engineVal := requestMap["engine"]
-	if engineVal == "MYSQL" {
+	switch engineVal {
+	case "MYSQL":
 		engine = MYSQL
-	} else if engineVal == "PG" {
+	case "PG":
 		engine = PG
-	} else {
-		err = fmt.Errorf("Invalid engine: %s", engineVal)
+	default:
+		err = fmt.Errorf("invalid engine: %s", engineVal)
 		return
 	}
 	var deployment DatabaseEngineDeployment
 	deploymentVal := requestMap["deployment"]
-	if deploymentVal == "DOCKER" {
+	switch deploymentVal {
+	case "DOCKER":
 		deployment = DOCKER
-	} else if deploymentVal == "RDS" {
+	case "RDS":
 		deployment = RDS
-	} else if deploymentVal == "AURORA" {
+	case "AURORA":
 		deployment = AURORA
-	} else if deploymentVal == "AURORA_LIMITLESS" {
+	case "AURORA_LIMITLESS":
 		deployment = AURORA_LIMITLESS
-	} else {
-		err = fmt.Errorf("Invalid deployment: %s", deploymentVal)
+	default:
+		err = fmt.Errorf("invalid deployment: %s", deploymentVal)
 		return
 	}
 

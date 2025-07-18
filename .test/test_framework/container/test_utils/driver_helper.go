@@ -63,16 +63,17 @@ func GetSleepSql(engine DatabaseEngine, seconds int) string {
 }
 
 func GetInstanceIdSql(engine DatabaseEngine, deployment DatabaseEngineDeployment) (string, error) {
-	if deployment == AURORA || deployment == AURORA_LIMITLESS {
+	switch deployment {
+	case AURORA, AURORA_LIMITLESS:
 		switch engine {
 		case PG:
 			return "SELECT aurora_db_instance_identifier() as id", nil
 		case MYSQL:
 			return "SELECT @@aurora_server_id as id", nil
 		default:
-			return "", fmt.Errorf("Invalid engine: %s.", engine)
+			return "", fmt.Errorf("invalid engine: %s", engine)
 		}
-	} else if deployment == RDS_MULTI_AZ_CLUSTER {
+	case RDS_MULTI_AZ_CLUSTER:
 		switch engine {
 		case PG:
 			return "SELECT SUBSTRING(endpoint FROM 0 FOR POSITION('.' IN endpoint)) as id FROM rds_tools.show_topology() WHERE id IN" +
@@ -80,10 +81,10 @@ func GetInstanceIdSql(engine DatabaseEngine, deployment DatabaseEngineDeployment
 		case MYSQL:
 			return "SELECT SUBSTRING_INDEX(endpoint, '.', 1) as id FROM mysql.rds_topology WHERE id=@@server_id", nil
 		default:
-			return "", fmt.Errorf("Invalid engine: %s.", engine)
+			return "", fmt.Errorf("invalid engine: %s", engine)
 		}
 	}
-	return "", fmt.Errorf("Invalid deployment: %s.", deployment)
+	return "", fmt.Errorf("invalid deployment: %s", deployment)
 }
 
 func ExecuteInstanceQueryDB(engine DatabaseEngine, deployment DatabaseEngineDeployment, db *sql.DB) (string, error) {

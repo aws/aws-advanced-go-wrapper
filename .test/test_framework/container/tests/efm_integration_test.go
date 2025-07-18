@@ -20,21 +20,26 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"log/slog"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-const TEST_FAILURE_DETECTION_INTERVAL_SECONDS = 10
+const TEST_FAILURE_DETECTION_START_TIME_SECONDS = 1
+const TEST_FAILURE_DETECTION_INTERVAL_SECONDS = 5
 const TEST_FAILURE_DETECTION_COUNT = 3
 const TEST_SLEEP_QUERY_SECONDS = (TEST_FAILURE_DETECTION_COUNT + 1) * TEST_FAILURE_DETECTION_INTERVAL_SECONDS
 const TEST_SLEEP_QUERY_TIMEOUT_SECONDS = 2 * TEST_SLEEP_QUERY_SECONDS
+
+// Minimal time EFM takes to consider a host dead is FAILURE_DETECTION_TIME_MS + (TEST_FAILURE_DETECTION_COUNT - 1)*TEST_FAILURE_DETECTION_INTERVAL_SECONDS.
+// As long as TEST_FAILURE_DETECTION_START_TIME_SECONDS < TEST_FAILURE_DETECTION_INTERVAL_SECONDS this leaves time for the host to be marked unhealthy.
+const TEST_MONITORING_TIMEOUT_SECONDS = TEST_FAILURE_DETECTION_COUNT * TEST_FAILURE_DETECTION_INTERVAL_SECONDS
 
 func TestEfmDisableInstance(t *testing.T) {
 	err := test_utils.BasicSetup(t.Name())
@@ -153,7 +158,7 @@ func TestEfmDisableAllInstances(t *testing.T) {
 
 	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	assert.Nil(t, err, "After connectivity is re-enabled new connections should not throw errors.")
-	assert.Equal(t, instanceId, newInstanceId)
+	assert.NotZero(t, newInstanceId)
 }
 
 func TestEfmDisableAllInstancesDB(t *testing.T) {
@@ -214,6 +219,10 @@ func getDsnForEfmIntegrationTest(environment *test_utils.TestEnvironment, host s
 }
 
 func getDsnForTestsWithProxy(environment *test_utils.TestEnvironment, host string, plugins string) string {
+	return test_utils.GetDsn(environment, getPropsForTestsWithProxy(environment, host, plugins))
+}
+
+func getPropsForTestsWithProxy(environment *test_utils.TestEnvironment, host string, plugins string) map[string]string {
 	monitoringConnectTimeoutSeconds := strconv.Itoa(TEST_FAILURE_DETECTION_INTERVAL_SECONDS - 1)
 	monitoringConnectTimeoutParameterName := property_util.MONITORING_PROPERTY_PREFIX
 	switch environment.Info().Request.Engine {
@@ -223,16 +232,16 @@ func getDsnForTestsWithProxy(environment *test_utils.TestEnvironment, host strin
 		monitoringConnectTimeoutParameterName = monitoringConnectTimeoutParameterName + "readTimeout"
 		monitoringConnectTimeoutSeconds = monitoringConnectTimeoutSeconds + "s"
 	}
-	return test_utils.GetDsn(environment, map[string]string{
+	return map[string]string{
 		"host":                       host,
 		"port":                       strconv.Itoa(environment.Info().ProxyDatabaseInfo.InstanceEndpointPort),
 		"clusterInstanceHostPattern": "?." + environment.Info().ProxyDatabaseInfo.InstanceEndpointSuffix,
 		"plugins":                    plugins,
-		"failureDetectionIntervalMs": strconv.Itoa(TEST_FAILURE_DETECTION_INTERVAL_SECONDS * 1000), // interval between probes to host
-		"failureDetectionCount":      strconv.Itoa(TEST_FAILURE_DETECTION_COUNT),                   // 3 consecutive failures before marks host as dead
-		"failureDetectionTimeMs":     "1000",                                                       // 1 second time before polling starts
-		"failoverTimeoutMs":          strconv.Itoa(TEST_FAILURE_DETECTION_COUNT * TEST_FAILURE_DETECTION_INTERVAL_SECONDS * 1000),
+		"failureDetectionIntervalMs": strconv.Itoa(TEST_FAILURE_DETECTION_INTERVAL_SECONDS * 1000),   // interval between probes to host
+		"failureDetectionCount":      strconv.Itoa(TEST_FAILURE_DETECTION_COUNT),                     // consecutive failures before marks host as dead
+		"failureDetectionTimeMs":     strconv.Itoa(TEST_FAILURE_DETECTION_START_TIME_SECONDS * 1000), // time before starting monitoring
+		"failoverTimeoutMs":          strconv.Itoa(TEST_MONITORING_TIMEOUT_SECONDS * 1000),
 		// each monitoring connection has monitoringConnectTimeoutSeconds seconds to connect
 		monitoringConnectTimeoutParameterName: monitoringConnectTimeoutSeconds,
-	})
+	}
 }

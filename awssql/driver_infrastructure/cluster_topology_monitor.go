@@ -100,7 +100,7 @@ func NewClusterTopologyMonitorImpl(
 		hostListProvider:               hostListProvider,
 		databaseDialect:                dialect,
 		clusterId:                      clusterId,
-		monitoringProps:                utils.CreateMapCopy[string, string](props),
+		monitoringProps:                utils.CreateMapCopy(props),
 		initialHostInfo:                initialHostInfo,
 		clusterInstanceTemplate:        clusterInstanceTemplate,
 		pluginService:                  pluginService,

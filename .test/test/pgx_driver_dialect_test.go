@@ -17,13 +17,15 @@
 package test
 
 import (
+	"errors"
 	"fmt"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 	"regexp"
 	"strings"
 	"testing"
 
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -50,4 +52,23 @@ func TestPrepareDsn(t *testing.T) {
 	assert.True(t, strings.Contains(dsn, fmt.Sprintf("%s=dbName", property_util.DATABASE.Name)))
 	assert.False(t, strings.Contains(dsn, fmt.Sprintf("%s=test", property_util.PLUGINS.Name)))
 	assert.False(t, strings.Contains(dsn, "monitor-user"))
+}
+
+func TestPgxErrorHandler(t *testing.T) {
+	errorHandler := &pgx_driver.PgxErrorHandler{}
+	for _, message := range pgx_driver.PgNetworkErrorMessages {
+		err := errors.New(message)
+		assert.True(t, errorHandler.IsNetworkError(err))
+		assert.False(t, errorHandler.IsLoginError(err))
+	}
+	for _, code := range pgx_driver.NetworkErrors {
+		err := &pgconn.PgError{Code: code}
+		assert.True(t, errorHandler.IsNetworkError(err))
+		assert.False(t, errorHandler.IsLoginError(err))
+	}
+	for _, code := range pgx_driver.AccessErrors {
+		err := &pgconn.PgError{Code: code}
+		assert.False(t, errorHandler.IsNetworkError(err))
+		assert.True(t, errorHandler.IsLoginError(err))
+	}
 }

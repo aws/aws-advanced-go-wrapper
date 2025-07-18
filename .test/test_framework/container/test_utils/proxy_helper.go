@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	_ "github.com/Shopify/toxiproxy/client"
 	toxiproxy "github.com/Shopify/toxiproxy/client"
 )
 
@@ -30,7 +29,7 @@ func initProxies(environment *TestEnvironment) error {
 	proxyControlPort := environment.info.ProxyDatabaseInfo.controlPort
 	for i, instance := range environment.info.ProxyDatabaseInfo.Instances {
 		if instance.host == "" || instance.instanceId == "" {
-			return errors.New("No valid host for instance")
+			return errors.New("no valid host for instance")
 		}
 		client := toxiproxy.NewClient(createProxyUrl(instance.host, proxyControlPort))
 		proxies, err := client.Proxies()
@@ -39,7 +38,7 @@ func initProxies(environment *TestEnvironment) error {
 		}
 		host := environment.info.DatabaseInfo.Instances[i].host
 		if host == "" {
-			return errors.New("No host")
+			return errors.New("no host")
 		}
 		environment.proxies[instance.instanceId] = NewProxyInfo(proxies[environment.info.DatabaseInfo.Instances[i].Url()], host, proxyControlPort)
 	}
