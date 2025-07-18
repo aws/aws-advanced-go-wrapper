@@ -10,11 +10,11 @@ require (
 )
 
 require (
-	github.com/go-logr/logr v1.4.3 // indirect
-	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/nicksnyder/go-i18n/v2 v2.6.0 // indirect
-	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
-	golang.org/x/text v0.26.0 // indirect
+	github.com/go-logr/logr v1.4.3 
+	github.com/go-logr/stdr v1.2.2 
+	github.com/nicksnyder/go-i18n/v2 v2.6.0 
+	go.opentelemetry.io/auto/sdk v1.1.0 
+	golang.org/x/text v0.26.0 
 )
 
 replace github.com/aws/aws-advanced-go-wrapper/awssql => ../awssql

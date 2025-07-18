@@ -8,10 +8,10 @@ require (
 )
 
 require (
-	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
-	github.com/nicksnyder/go-i18n/v2 v2.6.0 // indirect
-	golang.org/x/text v0.26.0 // indirect
+	filippo.io/edwards25519 v1.1.0 
+	github.com/google/uuid v1.6.0 
+	github.com/nicksnyder/go-i18n/v2 v2.6.0 
+	golang.org/x/text v0.26.0 
 )
 
 replace github.com/aws/aws-advanced-go-wrapper/awssql => ../awssql

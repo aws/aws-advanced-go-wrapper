@@ -8,11 +8,11 @@ require (
 )
 
 require (
-	github.com/google/uuid v1.6.0 // indirect
-	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/puddle/v2 v2.2.2 // indirect
-	github.com/nicksnyder/go-i18n/v2 v2.6.0 // indirect
+	github.com/google/uuid v1.6.0 
+	github.com/jackc/pgpassfile v1.0.0 
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 
+	github.com/jackc/puddle/v2 v2.2.2 
+	github.com/nicksnyder/go-i18n/v2 v2.6.0 
 	golang.org/x/crypto v0.37.0 // indirect
 	golang.org/x/sync v0.15.0 // indirect
 	golang.org/x/text v0.26.0 // indirect
