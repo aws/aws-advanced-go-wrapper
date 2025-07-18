@@ -18,6 +18,7 @@ package otlp
 
 import (
 	"context"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	"go.opentelemetry.io/otel"
