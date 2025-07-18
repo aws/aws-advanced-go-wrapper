@@ -2,9 +2,6 @@ name: Build, Unit Tests, and Linting
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
       - "*"

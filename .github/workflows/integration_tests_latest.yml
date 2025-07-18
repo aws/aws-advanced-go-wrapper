@@ -2,12 +2,6 @@ name: Integration Tests Latest
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths-ignore: 
-      - "**/*.md"
-      - "docs/**"
 
 permissions:
   id-token: write   # This is required for requesting the JWT
