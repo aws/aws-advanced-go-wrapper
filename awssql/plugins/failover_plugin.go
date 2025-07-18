@@ -612,5 +612,5 @@ func (p *FailoverPlugin) createConnectionForHost(hostInfo *host_info_util.HostIn
 	propsCopy := utils.CreateMapCopy(p.props)
 	property_util.HOST.Set(propsCopy, hostInfo.Host)
 	propsCopy[property_util.INTERNAL_CONNECT_PROPERTY_NAME] = "true"
-	return p.pluginService.Connect(hostInfo, propsCopy)
+	return p.pluginService.Connect(hostInfo, propsCopy, p)
 }

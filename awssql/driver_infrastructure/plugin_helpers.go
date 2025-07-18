@@ -19,6 +19,7 @@ package driver_infrastructure
 import (
 	"context"
 	"database/sql/driver"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 )
@@ -63,7 +64,7 @@ type PluginService interface {
 	ForceRefreshHostList(conn driver.Conn) error
 	ForceRefreshHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) (bool, error)
 	GetUpdatedHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) ([]*host_info_util.HostInfo, error)
-	Connect(hostInfo *host_info_util.HostInfo, props map[string]string) (driver.Conn, error)
+	Connect(hostInfo *host_info_util.HostInfo, props map[string]string, pluginToSkip ConnectionPlugin) (driver.Conn, error)
 	ForceConnect(hostInfo *host_info_util.HostInfo, props map[string]string) (driver.Conn, error)
 	GetDialect() DatabaseDialect
 	SetDialect(dialect DatabaseDialect)
@@ -89,7 +90,7 @@ type PluginServiceProvider func(
 type PluginManager interface {
 	Init(pluginService PluginService, plugins []ConnectionPlugin) error
 	InitHostProvider(initialUrl string, props map[string]string, hostListProviderService HostListProviderService) error
-	Connect(hostInfo *host_info_util.HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)
+	Connect(hostInfo *host_info_util.HostInfo, props map[string]string, isInitialConnection bool, pluginToSkip ConnectionPlugin) (driver.Conn, error)
 	ForceConnect(hostInfo *host_info_util.HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)
 	Execute(connInvokedOn driver.Conn, name string, methodFunc ExecuteFunc, methodArgs ...any) (
 		wrappedReturnValue any,

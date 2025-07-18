@@ -110,7 +110,7 @@ func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 	conn := pluginService.GetCurrentConnection()
 	var connErr error
 	if conn == nil {
-		conn, connErr = pluginManager.Connect(pluginService.GetInitialConnectionHostInfo(), pluginService.GetProperties(), true)
+		conn, connErr = pluginManager.Connect(pluginService.GetInitialConnectionHostInfo(), pluginService.GetProperties(), true, nil)
 		if connErr != nil {
 			return nil, connErr
 		}

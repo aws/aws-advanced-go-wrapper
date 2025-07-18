@@ -175,7 +175,7 @@ func TestConnect(t *testing.T) {
 		return
 	}
 
-	_, _ = target.Connect(nil, props, true)
+	_, _ = target.Connect(nil, props, true, nil)
 	if len(calls) != 4 {
 		t.Fatalf(`Should have 4 calls, got "%v"`, len(calls))
 	}
@@ -242,7 +242,7 @@ func TestConnectWithErrorBefore(t *testing.T) {
 		return
 	}
 
-	_, _ = target.Connect(nil, props, true)
+	_, _ = target.Connect(nil, props, true, nil)
 	if len(calls) != 3 {
 		t.Fatalf(`Should have 3 calls, got "%v"`, len(calls))
 	}
@@ -275,7 +275,7 @@ func TestConnectWithErrorAfter(t *testing.T) {
 		return
 	}
 
-	_, _ = target.Connect(nil, props, true)
+	_, _ = target.Connect(nil, props, true, nil)
 	if len(calls) != 5 {
 		t.Fatalf(`Should have 5 calls, got "%v"`, len(calls))
 	}
@@ -544,4 +544,67 @@ func TestGetHostInfoByStrategyMultiplePlugins(t *testing.T) {
 	assert.Nil(t, err)
 	require.NotNil(t, selectedHost)
 	assert.Equal(t, host1, selectedHost)
+}
+
+func TestConnectPluginToSkip(t *testing.T) {
+	hostInfo, _ := host_info_util.NewHostInfoBuilder().SetHost("host0").SetWeight(10).Build()
+	mockConn := MockDriverConn{}
+	testErr := errors.New("test")
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	pluginThrowsError := mock_driver_infrastructure.NewMockConnectionPlugin(ctrl)
+	pluginThrowsError.EXPECT().GetSubscribedMethods().Return([]string{plugin_helpers.CONNECT_METHOD}).AnyTimes()
+	pluginThrowsError.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, testErr).AnyTimes()
+
+	pluginConnects := mock_driver_infrastructure.NewMockConnectionPlugin(ctrl)
+	pluginConnects.EXPECT().GetSubscribedMethods().Return([]string{plugin_helpers.CONNECT_METHOD}).AnyTimes()
+	pluginConnects.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(mockConn, nil).AnyTimes()
+
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+
+	props := make(map[string]string)
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	pluginManager := plugin_helpers.NewPluginManagerImpl(&MockTargetDriver{}, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
+
+	err := pluginManager.Init(mockPluginService, []driver_infrastructure.ConnectionPlugin{pluginThrowsError, pluginConnects})
+	require.Nil(t, err)
+
+	// When skipping the plugin that connects it should receive the error from the plugin that throws the error.
+	conn, err := pluginManager.Connect(hostInfo, props, false, pluginConnects)
+
+	assert.Nil(t, conn)
+	require.NotNil(t, err)
+	assert.Equal(t, testErr, err)
+
+	// When skipping the plugin that throws the error it should connect.
+	conn, err = pluginManager.Connect(hostInfo, props, false, pluginThrowsError)
+
+	assert.NotNil(t, conn)
+	require.Nil(t, err)
+
+	// Plugin chain is not cached, should go through the chain and throw error.
+	conn, err = pluginManager.Connect(hostInfo, props, false, nil)
+
+	assert.Nil(t, conn)
+	require.NotNil(t, err)
+	assert.Equal(t, testErr, err)
+
+	// Now that plugin chain is cached even as plugins change to only ones that will connect, the error will still be thrown.
+	err = pluginManager.Init(mockPluginService, []driver_infrastructure.ConnectionPlugin{pluginConnects})
+	require.Nil(t, err)
+
+	conn, err = pluginManager.Connect(hostInfo, props, false, nil)
+
+	assert.Nil(t, conn)
+	require.NotNil(t, err)
+	assert.Equal(t, testErr, err)
+
+	// Will make a new chain given pluginToSkip, will fail because that it is skipping the only plugin.
+	conn, err = pluginManager.Connect(hostInfo, props, false, pluginConnects)
+
+	assert.Nil(t, conn)
+	require.NotNil(t, err)
+	assert.Equal(t, error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginManager.pipelineNone")), err)
 }

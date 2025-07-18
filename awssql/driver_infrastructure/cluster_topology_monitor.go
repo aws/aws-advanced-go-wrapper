@@ -18,14 +18,15 @@ package driver_infrastructure
 
 import (
 	"database/sql/driver"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"log/slog"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 
 	"github.com/google/uuid"
 )
@@ -330,7 +331,7 @@ func (c *ClusterTopologyMonitorImpl) delay(useHighRefreshRate bool) {
 	for ok := true; ok; ok = time.Now().Before(end) && !c.stop.Load() && !c.requestToUpdateTopology.Load() {
 		select {
 		case <-c.requestToUpdateTopologyChannel:
-			break
+			return
 		default:
 			time.Sleep(time.Millisecond * 50)
 		}
