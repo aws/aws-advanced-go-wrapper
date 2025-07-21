@@ -8,3 +8,6 @@
 
 # performance test reports
 .test/test_framework/container/tests/reports
+
+# track changes after tidying dependabot PRs
+diff.txt
