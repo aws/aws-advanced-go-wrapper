@@ -30,7 +30,7 @@ func TestGetRegionFromRegionString(t *testing.T) {
 	assert.Equal(t, region_util.AP_SOUTH_1, region_util.GetRegionFromRegionString(string(region_util.AP_SOUTH_1)))
 	assert.Equal(t, region_util.AP_SOUTH_1, region_util.GetRegionFromRegionString("ap-south-1"))
 	assert.Equal(t, region_util.AP_SOUTH_1, region_util.GetRegionFromRegionString("Ap-SoUtH-1"))
-	assert.Equal(t, "", "")
+	assert.Equal(t, region_util.Region(""), region_util.GetRegionFromRegionString(""))
 }
 
 func TestGetRegionFromHost(t *testing.T) {
