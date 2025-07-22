@@ -96,7 +96,7 @@ func TestDsnHostListProvider_CreateHost_BuildsCorrectly(t *testing.T) {
 	assert.Equal(t, 3306, result.Port)
 	assert.Equal(t, host_info_util.READER, result.Role)
 	assert.Equal(t, host_info_util.AVAILABLE, result.Availability)
-	assert.Equal(t, 101, result.Weight) // 1.0 lag * 100 + 0.5 = 100.5 → rounds to 100
+	assert.Equal(t, 101, result.Weight) // 1.0 lag * 100 + 0.5 = 100.5 → rounds to 101
 	assert.Equal(t, now, result.LastUpdateTime)
 }
 
