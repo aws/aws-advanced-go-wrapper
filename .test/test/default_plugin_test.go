@@ -42,7 +42,7 @@ func TestDefaultPlugin_InitHostProvider(t *testing.T) {
 func TestDefaultPlugin_GetSubscribedMethods(t *testing.T) {
 	dp := &plugins.DefaultPlugin{}
 	methods := dp.GetSubscribedMethods()
-	assert.Equal(t, []string{"*"}, methods) // plugin_helpers.ALL_METHODS
+	assert.Equal(t, []string{plugin_helpers.ALL_METHODS}, methods)
 }
 
 func TestDefaultPlugin_Execute_OpenTransaction(t *testing.T) {
