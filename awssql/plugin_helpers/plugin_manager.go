@@ -20,6 +20,7 @@ import (
 	"context"
 	"database/sql/driver"
 	"log/slog"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -42,6 +43,8 @@ const (
 	NOTIFY_CONNECTION_CHANGED_METHOD = "notifyConnectionChanged"
 	NOTIFY_HOST_LIST_CHANGED_METHOD  = "notifyHostListChanged"
 )
+
+const IAM_PLUGIN_TYPE = "*iam.IamAuthPlugin"
 
 type PluginChain struct {
 	execChain    func(pluginFunc driver_infrastructure.PluginExecFunc, execFunc func() (any, any, bool, error)) (any, any, bool, error)
@@ -109,7 +112,7 @@ type PluginManagerImpl struct {
 	pluginService       driver_infrastructure.PluginService
 	connProviderManager driver_infrastructure.ConnectionProviderManager
 	props               map[string]string
-	pluginFuncMap       map[string]PluginChain
+	pluginFuncMap       *utils.RWMap[PluginChain]
 	plugins             []driver_infrastructure.ConnectionPlugin
 	telemetryFactory    telemetry.TelemetryFactory
 	telemetryCtx        context.Context
@@ -121,7 +124,7 @@ func NewPluginManagerImpl(
 	props map[string]string,
 	connProviderManager driver_infrastructure.ConnectionProviderManager,
 	telemetryFactory telemetry.TelemetryFactory) driver_infrastructure.PluginManager {
-	pluginFuncMap := make(map[string]PluginChain)
+	pluginFuncMap := utils.NewRWMap[PluginChain]()
 	return &PluginManagerImpl{
 		targetDriver:        targetDriver,
 		props:               props,
@@ -140,7 +143,6 @@ func (pluginManager *PluginManagerImpl) Init(
 }
 
 func (pluginManager *PluginManagerImpl) InitHostProvider(
-	initialUrl string,
 	props map[string]string,
 	hostListProviderService driver_infrastructure.HostListProviderService) error {
 	parentCtx := pluginManager.GetTelemetryContext()
@@ -163,7 +165,7 @@ func (pluginManager *PluginManagerImpl) InitHostProvider(
 			_, _, _, err := targetFunc()
 			return err
 		}
-		err := plugin.InitHostProvider(initialUrl, props, hostListProviderService, initFunc)
+		err := plugin.InitHostProvider(props, hostListProviderService, initFunc)
 		if err != nil {
 			return nil, nil, false, err
 		}
@@ -266,11 +268,9 @@ func (pluginManager *PluginManagerImpl) executeWithSubscribedPlugins(
 	methodName string,
 	pluginFunc driver_infrastructure.PluginExecFunc,
 	targetFunc driver_infrastructure.ExecuteFunc) (any, any, bool, error) {
-	chain, ok := pluginManager.pluginFuncMap[methodName]
-	if !ok {
-		chain = pluginManager.makePluginChain(methodName, true, nil)
-		pluginManager.pluginFuncMap[methodName] = chain
-	}
+	chain := pluginManager.pluginFuncMap.ComputeIfAbsent(methodName, func() PluginChain {
+		return pluginManager.makePluginChain(methodName, true, nil)
+	})
 	return chain.Execute(pluginFunc, targetFunc)
 }
 
@@ -281,12 +281,9 @@ func (pluginManager *PluginManagerImpl) connectWithSubscribedPlugins(
 	pluginToSkip driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
 	var chain PluginChain
 	if pluginToSkip == nil {
-		ok := false
-		chain, ok = pluginManager.pluginFuncMap[methodName]
-		if !ok {
-			chain = pluginManager.makePluginChain(methodName, false, nil)
-			pluginManager.pluginFuncMap[methodName] = chain
-		}
+		chain = pluginManager.pluginFuncMap.ComputeIfAbsent(methodName, func() PluginChain {
+			return pluginManager.makePluginChain(methodName, false, nil)
+		})
 	} else {
 		chain = pluginManager.makePluginChain(methodName, false, pluginToSkip)
 	}
@@ -461,4 +458,13 @@ func (pluginManager *PluginManagerImpl) SetTelemetryContext(ctx context.Context)
 	pluginManager.telemetryCtxLock.Lock()
 	defer pluginManager.telemetryCtxLock.Unlock()
 	pluginManager.telemetryCtx = ctx
+}
+
+func (pluginManager *PluginManagerImpl) IsPluginInUse(pluginName string) bool {
+	for _, plugin := range pluginManager.plugins {
+		if reflect.TypeOf(plugin).String() == pluginName {
+			return true
+		}
+	}
+	return false
 }

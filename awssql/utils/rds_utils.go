@@ -58,6 +58,10 @@ var (
 	IP_V6_COMPRESSED_REGEXP = regexp.MustCompile("^(([0-9A-Fa-f]{1,4}(:[0-9A-Fa-f]{1,4}){0,5})?)" +
 		"::(([0-9A-Fa-f]{1,4}(:[0-9A-Fa-f]{1,4}){0,5})?)$")
 
+	BG_OLD_HOST_PATTERN     = regexp.MustCompile("(?i).*(?P<prefix>-old1\\.)...*") //nolint:all
+	BG_GREEN_HOSTID_PATTERN = regexp.MustCompile("(?i)(.*)-green-[0-9a-z]{6}")
+	BG_GREEN_HOST_PATTERN   = regexp.MustCompile("(?i).*(?P<prefix>-green-[0-9a-z]{6})...*")
+
 	dnsRegexpArray    = [4]*regexp.Regexp{AURORA_DNS_PATTERN, AURORA_CHINA_DNS_PATTERN, AURORA_OLD_CHINA_DNS_PATTERN, AURORA_GOV_DNS_PATTERN}
 	cachedDnsRegexp   = sync.Map{}
 	cachedDnsPatterns = sync.Map{}
@@ -94,6 +98,10 @@ func IdentifyRdsUrlType(host string) RdsUrlType {
 	} else {
 		return OTHER
 	}
+}
+
+func IsIP(host string) bool {
+	return IsIPv4(host) || IsIPV6(host)
 }
 
 func IsIPv4(host string) bool {
@@ -153,6 +161,51 @@ func IsRdsDns(host string) bool {
 	return true
 }
 
+func IsRdsInstance(host string) bool {
+	preparedHost := GetPreparedHost(host)
+
+	return getDnsGroup(preparedHost) == "" && IsRdsDns(preparedHost)
+}
+
+func IsGreenInstance(host string) bool {
+	preparedHost := GetPreparedHost(host)
+	return preparedHost != "" && BG_GREEN_HOST_PATTERN.MatchString(preparedHost)
+}
+func IsNotOldInstance(host string) bool {
+	preparedHost := GetPreparedHost(host)
+	return preparedHost == "" || !BG_OLD_HOST_PATTERN.MatchString(preparedHost)
+}
+
+// IsNotGreenAndNotOldInstance Verify host contains neither green prefix nor old prefix.
+func IsNotGreenAndNotOldInstance(host string) bool {
+	preparedHost := GetPreparedHost(host)
+	return preparedHost != "" && !BG_GREEN_HOST_PATTERN.MatchString(preparedHost) && !BG_OLD_HOST_PATTERN.MatchString(preparedHost)
+}
+
+func RemoveGreenInstancePrefix(host string) string {
+	preparedHost := GetPreparedHost(host)
+	if preparedHost == "" {
+		return host
+	}
+	// First try the main green host pattern to extract the prefix
+	if matches := BG_GREEN_HOST_PATTERN.FindStringSubmatch(preparedHost); matches != nil {
+		prefixIndex := BG_GREEN_HOST_PATTERN.SubexpIndex("prefix")
+		if prefixIndex >= 0 && prefixIndex < len(matches) {
+			prefix := matches[prefixIndex]
+			if prefix != "" {
+				return strings.Replace(host, prefix+".", ".", 1)
+			}
+		}
+		return host
+	}
+	// Fallback to the hostid pattern for cases where the main pattern doesn't match
+	if matches := BG_GREEN_HOSTID_PATTERN.FindStringSubmatch(preparedHost); len(matches) > 1 {
+		return matches[1] // Return the captured group (everything before -green-[hash])
+	}
+
+	return host
+}
+
 func getDnsGroup(host string) string {
 	if host == "" {
 		return ""
@@ -197,6 +250,19 @@ func GetRdsRegion(host string) string {
 	return cachedDnsRegexp.FindStringSubmatch(host)[cachedDnsRegexp.SubexpIndex(REGION_GROUP)]
 }
 
+func GetRdsClusterId(host string) string {
+	preparedHost := GetPreparedHost(host)
+	if preparedHost == "" {
+		return ""
+	}
+
+	cachedDnsRegexp, ok := findAndCacheRegexp(preparedHost)
+	if ok && cachedDnsRegexp.FindStringSubmatch(host)[cachedDnsRegexp.SubexpIndex(REGION_GROUP)] != "" {
+		return cachedDnsRegexp.FindStringSubmatch(host)[cachedDnsRegexp.SubexpIndex(INSTANCE_GROUP)]
+	}
+	return ""
+}
+
 func findAndCacheRegexp(host string) (regexp.Regexp, bool) {
 	val, ok := cachedDnsRegexp.Load(host)
 	if ok && val != nil {
@@ -213,10 +279,6 @@ func findAndCacheRegexp(host string) (regexp.Regexp, bool) {
 
 func SetPreparedHostFunc(newPrepareHostFunc func(string) string) {
 	prepareHostFunc = newPrepareHostFunc
-}
-
-func ResetPreparedHostFunc() {
-	prepareHostFunc = nil
 }
 
 func GetPreparedHost(host string) string {

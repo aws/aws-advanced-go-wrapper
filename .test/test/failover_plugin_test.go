@@ -19,6 +19,9 @@ package test
 import (
 	"database/sql/driver"
 	"errors"
+	"slices"
+	"testing"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
@@ -27,9 +30,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	"github.com/aws/aws-advanced-go-wrapper/mysql-driver"
-	"slices"
-	"testing"
+	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -80,14 +81,12 @@ func newTestMockMonitoringRdsHostListProvider(
 	hostListProviderService driver_infrastructure.HostListProviderService,
 	databaseDialect driver_infrastructure.TopologyAwareDialect,
 	properties map[string]string,
-	originalDsn string,
 	pluginService driver_infrastructure.PluginService) *MockMonitoringRdsHostListProvider {
 	provider := &MockMonitoringRdsHostListProvider{
 		MonitoringRdsHostListProvider: driver_infrastructure.NewMonitoringRdsHostListProvider(
 			hostListProviderService,
 			databaseDialect,
 			properties,
-			originalDsn,
 			pluginService,
 		),
 	}
@@ -163,7 +162,6 @@ type mockAuroraMysqlDialect struct {
 
 func (t *mockAuroraMysqlDialect) GetHostListProvider(
 	props map[string]string,
-	initialDsn string,
 	hostListProviderService driver_infrastructure.HostListProviderService,
 	pluginService driver_infrastructure.PluginService) driver_infrastructure.HostListProvider {
 	return mockMonitoringRdsHostListProvider
@@ -250,13 +248,13 @@ func initializeTest(
 
 	pluginServiceImpl.SetDialect(&mockAuroraMysqlDialect{isRoleWriter: isRoleWriter})
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
+	mySqlTestDsnProps, _ := utils.ParseDsn(mysqlTestDsn)
 
 	hostListProviderService := driver_infrastructure.HostListProviderService(pluginServiceImpl)
 	mockMonitoringRdsHostListProvider = newTestMockMonitoringRdsHostListProvider(
 		hostListProviderService,
 		&mockAuroraMysqlDialect{isRoleWriter: isRoleWriter},
-		props,
-		mysqlTestDsn,
+		utils.CombineMaps(props, mySqlTestDsnProps),
 		pluginServiceImpl)
 	hostListProviderService.SetHostListProvider(mockMonitoringRdsHostListProvider)
 
@@ -272,7 +270,7 @@ func initializeTest(
 	failoverPlugin, _ := plugins.NewFailoverPlugin(pluginServiceImpl, props)
 	mockFailoverPlugin := &MockFailoverPlugin{FailoverPlugin: failoverPlugin}
 	_ = mockPluginManager.Init(mockPluginService, []driver_infrastructure.ConnectionPlugin{mockFailoverPlugin, &defaultPlugin})
-	_ = mockPluginManager.InitHostProvider(mysqlTestDsn, props, hostListProviderService)
+	_ = mockPluginManager.InitHostProvider(props, hostListProviderService)
 	return mockFailoverPlugin, pluginServiceImpl
 }
 

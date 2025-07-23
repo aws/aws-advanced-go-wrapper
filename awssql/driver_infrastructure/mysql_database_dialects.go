@@ -67,10 +67,9 @@ func (m *MySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 
 func (m *MySQLDatabaseDialect) GetHostListProvider(
 	props map[string]string,
-	initialDsn string,
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
-	return HostListProvider(NewDsnHostListProvider(props, initialDsn, hostListProviderService))
+	return NewDsnHostListProvider(props, hostListProviderService)
 }
 
 func (m *MySQLDatabaseDialect) GetSetAutoCommitQuery(autoCommit bool) (string, error) {
@@ -193,6 +192,16 @@ func (m *RdsMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	return false
 }
 
+func (m *RdsMySQLDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) []BlueGreenResult {
+	bgStatusQuery := "SELECT * FROM mysql.rds_topology"
+	return mySqlGetBlueGreenStatus(conn, bgStatusQuery)
+}
+
+func (m *RdsMySQLDatabaseDialect) IsBlueGreenStatusAvailable(conn driver.Conn) bool {
+	topologyTableExistQuery := "SELECT 1 AS tmp FROM information_schema.tables WHERE table_schema = 'mysql' AND table_name = 'rds_topology'"
+	return utils.GetFirstRowFromQuery(conn, topologyTableExistQuery) != nil
+}
+
 type MySQLTopologyAwareDatabaseDialect struct {
 	MySQLDatabaseDialect
 }
@@ -227,27 +236,25 @@ func (m *MySQLTopologyAwareDatabaseDialect) GetWriterHostName(conn driver.Conn) 
 
 func (m *MySQLTopologyAwareDatabaseDialect) GetHostListProvider(
 	props map[string]string,
-	initialDsn string,
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
-	return m.getTopologyAwareHostListProvider(m, props, initialDsn, hostListProviderService, pluginService)
+	return m.getTopologyAwareHostListProvider(m, props, hostListProviderService, pluginService)
 }
 
 func (m *MySQLTopologyAwareDatabaseDialect) getTopologyAwareHostListProvider(
 	dialect TopologyAwareDialect,
 	props map[string]string,
-	initialDsn string,
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
 	pluginsProp := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PLUGINS)
 
 	if strings.Contains(pluginsProp, "failover") {
 		slog.Debug(error_util.GetMessage("DatabaseDialect.usingMonitoringHostListProvider"))
-		return HostListProvider(NewMonitoringRdsHostListProvider(hostListProviderService, dialect, props, initialDsn, pluginService))
+		return NewMonitoringRdsHostListProvider(hostListProviderService, dialect, props, pluginService)
 	}
 
 	slog.Debug(error_util.GetMessage("DatabaseDialect.usingRdsHostListProvider"))
-	return HostListProvider(NewRdsHostListProvider(hostListProviderService, dialect, props, initialDsn, nil, nil))
+	return NewRdsHostListProvider(hostListProviderService, dialect, props, nil, nil)
 }
 
 type AuroraMySQLDatabaseDialect struct {
@@ -289,10 +296,9 @@ func (m *AuroraMySQLDatabaseDialect) GetWriterHostName(conn driver.Conn) (string
 
 func (m *AuroraMySQLDatabaseDialect) GetHostListProvider(
 	props map[string]string,
-	initialDsn string,
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
-	return m.getTopologyAwareHostListProvider(m, props, initialDsn, hostListProviderService, pluginService)
+	return m.getTopologyAwareHostListProvider(m, props, hostListProviderService, pluginService)
 }
 
 func (m *AuroraMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
@@ -317,7 +323,7 @@ func (m *AuroraMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider Host
 		defer rows.Close()
 	}
 
-	hosts := []*host_info_util.HostInfo{}
+	var hosts []*host_info_util.HostInfo
 	if rows == nil {
 		// Query returned an empty host list, no processing required.
 		return hosts, nil
@@ -353,6 +359,16 @@ func (m *AuroraMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider Host
 		err = rows.Next(row)
 	}
 	return hosts, nil
+}
+
+func (m *AuroraMySQLDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) []BlueGreenResult {
+	bgStatusQuery := "SELECT * FROM mysql.rds_topology"
+	return mySqlGetBlueGreenStatus(conn, bgStatusQuery)
+}
+
+func (m *AuroraMySQLDatabaseDialect) IsBlueGreenStatusAvailable(conn driver.Conn) bool {
+	topologyTableExistQuery := "SELECT 1 AS tmp FROM information_schema.tables WHERE table_schema = 'mysql' AND table_name = 'rds_topology'"
+	return utils.GetFirstRowFromQuery(conn, topologyTableExistQuery) != nil
 }
 
 type RdsMultiAzClusterMySQLDatabaseDialect struct {
@@ -422,7 +438,7 @@ func (r *RdsMultiAzClusterMySQLDatabaseDialect) processTopologyQueryResults(
 	provider HostListProvider,
 	writerHostId string,
 	rows driver.Rows) []*host_info_util.HostInfo {
-	hosts := []*host_info_util.HostInfo{}
+	var hosts []*host_info_util.HostInfo
 	row := make([]driver.Value, len(rows.Columns()))
 	err := rows.Next(row)
 	for err == nil && len(row) > 1 {
@@ -483,7 +499,7 @@ func (r *RdsMultiAzClusterMySQLDatabaseDialect) getWriterHostId(conn driver.Conn
 		return r.getHostIdOfCurrentConnection(conn)
 	}
 
-	var sourceIndex int = -1
+	var sourceIndex = -1
 	for i, name := range columnNames {
 		if name == "Source_Server_Id" {
 			sourceIndex = i
@@ -537,8 +553,50 @@ func (r *RdsMultiAzClusterMySQLDatabaseDialect) getHostIdOfCurrentConnection(con
 
 func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetHostListProvider(
 	props map[string]string,
-	initialDsn string,
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
-	return r.getTopologyAwareHostListProvider(r, props, initialDsn, hostListProviderService, pluginService)
+	return r.getTopologyAwareHostListProvider(r, props, hostListProviderService, pluginService)
+}
+
+func mySqlGetBlueGreenStatus(conn driver.Conn, query string) []BlueGreenResult {
+	queryerCtx, ok := conn.(driver.QueryerContext)
+	if !ok {
+		// Unable to query, conn does not implement QueryerContext.
+		return nil
+	}
+
+	rows, err := queryerCtx.QueryContext(context.Background(), query, nil)
+	if err != nil {
+		// Query failed.
+		slog.Warn(error_util.GetMessage("BlueGreenDeployment.errorQueryingStatusTable", err))
+		return nil
+	}
+	if rows != nil {
+		defer rows.Close()
+	}
+
+	var statuses []BlueGreenResult
+	row := make([]driver.Value, len(rows.Columns()))
+	for rows.Next(row) == nil {
+		if len(row) > 5 {
+			versionAsInt, ok1 := row[5].([]uint8)
+			endpointAsInt, ok2 := row[1].([]uint8)
+			portAsFloat, ok3 := row[2].(int64)
+			roleAsInt, ok4 := row[3].([]uint8)
+			statusAsInt, ok5 := row[4].([]uint8)
+
+			if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 {
+				continue
+			}
+			statuses = append(statuses, BlueGreenResult{
+				Version:  string(versionAsInt),
+				Endpoint: string(endpointAsInt),
+				Port:     int(portAsFloat),
+				Role:     string(roleAsInt),
+				Status:   string(statusAsInt),
+			})
+		}
+	}
+
+	return statuses
 }

@@ -46,7 +46,7 @@ type MonitorServiceImpl struct {
 
 func NewMonitorServiceImpl(pluginService driver_infrastructure.PluginService) (*MonitorServiceImpl, error) {
 	if EFM_MONITORS == nil {
-		EFM_MONITORS = utils.NewSlidingExpirationCache[Monitor](
+		EFM_MONITORS = utils.NewSlidingExpirationCache(
 			"efm_monitors",
 			func(monitor Monitor) bool {
 				monitor.Close()

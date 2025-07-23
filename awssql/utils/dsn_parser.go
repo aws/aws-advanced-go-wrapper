@@ -51,7 +51,10 @@ func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []*host_i
 	if err != nil {
 		return hostInfoList, err
 	}
+	return GetHostsFromProps(properties, isSingleWriterDsn)
+}
 
+func GetHostsFromProps(properties map[string]string, isSingleWriterDsn bool) (hostInfoList []*host_info_util.HostInfo, err error) {
 	hostStringList := strings.Split(properties[property_util.HOST.Name], ",")
 	portStringList := strings.Split(properties[property_util.PORT.Name], ",")
 	port := host_info_util.HOST_NO_PORT

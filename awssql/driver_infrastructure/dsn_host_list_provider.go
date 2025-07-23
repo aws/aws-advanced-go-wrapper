@@ -31,19 +31,19 @@ import (
 
 type DsnHostListProvider struct {
 	isSingleWriterConnectionString bool
-	dsn                            string
+	props                          map[string]string
 	hostListProviderService        HostListProviderService
 	isInitialized                  bool
 	hostList                       []*host_info_util.HostInfo
 	initialHost                    string
 }
 
-func NewDsnHostListProvider(props map[string]string, dsn string, hostListProviderService HostListProviderService) *DsnHostListProvider {
+func NewDsnHostListProvider(props map[string]string, hostListProviderService HostListProviderService) *DsnHostListProvider {
 	isSingleWriterConnectionString := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.SINGLE_WRITER_DSN)
 	initialHost := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.HOST)
 	return &DsnHostListProvider{
 		isSingleWriterConnectionString,
-		dsn,
+		props,
 		hostListProviderService,
 		false,
 		[]*host_info_util.HostInfo{},
@@ -56,7 +56,7 @@ func (c *DsnHostListProvider) init() error {
 		return nil
 	}
 
-	hosts, err := utils.GetHostsFromDsn(c.dsn, c.isSingleWriterConnectionString)
+	hosts, err := utils.GetHostsFromProps(c.props, c.isSingleWriterConnectionString)
 	if err != nil {
 		return err
 	}
@@ -102,7 +102,10 @@ func (c *DsnHostListProvider) CreateHost(hostName string, hostRole host_info_uti
 	builder := host_info_util.NewHostInfoBuilder()
 	weight := int(math.Round(lag)*100 + math.Round(cpu))
 	port := c.hostListProviderService.GetDialect().GetDefaultPort()
-	builder.SetHost(c.initialHost).SetPort(port).SetRole(hostRole).SetAvailability(host_info_util.AVAILABLE).SetWeight(weight).SetLastUpdateTime(lastUpdateTime)
+	if hostName == "" {
+		hostName = c.initialHost
+	}
+	builder.SetHost(hostName).SetPort(port).SetRole(hostRole).SetAvailability(host_info_util.AVAILABLE).SetWeight(weight).SetLastUpdateTime(lastUpdateTime)
 	hostInfo, _ := builder.Build()
 	return hostInfo
 }

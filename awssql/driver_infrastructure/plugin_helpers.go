@@ -31,7 +31,7 @@ type PluginConnectFunc func(plugin ConnectionPlugin, props map[string]string, ta
 
 type HostListProviderService interface {
 	IsStaticHostListProvider() bool
-	CreateHostListProvider(props map[string]string, dsn string) HostListProvider
+	CreateHostListProvider(props map[string]string) HostListProvider
 	GetHostListProvider() HostListProvider
 	SetHostListProvider(hostListProvider HostListProvider)
 	SetInitialConnectionHostInfo(info *host_info_util.HostInfo)
@@ -55,7 +55,7 @@ type PluginService interface {
 	SetInTransaction(inTransaction bool)
 	GetCurrentTx() driver.Tx
 	SetCurrentTx(driver.Tx)
-	CreateHostListProvider(props map[string]string, dsn string) HostListProvider
+	CreateHostListProvider(props map[string]string) HostListProvider
 	SetHostListProvider(hostListProvider HostListProvider)
 	SetInitialConnectionHostInfo(info *host_info_util.HostInfo)
 	IsStaticHostListProvider() bool
@@ -81,6 +81,9 @@ type PluginService interface {
 	SetTelemetryContext(ctx context.Context)
 	UpdateState(sql string, methodArgs ...any)
 	IsReadOnly() bool
+	GetStatus(id string) (BlueGreenStatus, bool)
+	SetStatus(status BlueGreenStatus, id string)
+	IsPluginInUse(pluginName string) bool
 }
 
 type PluginServiceProvider func(
@@ -91,7 +94,7 @@ type PluginServiceProvider func(
 
 type PluginManager interface {
 	Init(pluginService PluginService, plugins []ConnectionPlugin) error
-	InitHostProvider(initialUrl string, props map[string]string, hostListProviderService HostListProviderService) error
+	InitHostProvider(props map[string]string, hostListProviderService HostListProviderService) error
 	Connect(hostInfo *host_info_util.HostInfo, props map[string]string, isInitialConnection bool, pluginToSkip ConnectionPlugin) (driver.Conn, error)
 	ForceConnect(hostInfo *host_info_util.HostInfo, props map[string]string, isInitialConnection bool) (driver.Conn, error)
 	Execute(connInvokedOn driver.Conn, name string, methodFunc ExecuteFunc, methodArgs ...any) (
@@ -112,6 +115,7 @@ type PluginManager interface {
 	GetTelemetryContext() context.Context
 	GetTelemetryFactory() telemetry.TelemetryFactory
 	SetTelemetryContext(ctx context.Context)
+	IsPluginInUse(pluginName string) bool
 	ReleaseResources()
 }
 
@@ -125,7 +129,7 @@ type CanReleaseResources interface {
 	ReleaseResources()
 }
 
-// This cleans up all long standing caches. To be called at the end of program, not each time a Conn is closed.
+// ClearCaches This cleans up all long-standing caches. To be called at the end of program, not each time a Conn is closed.
 func ClearCaches() {
 	if knownEndpointDialectsCache != nil {
 		knownEndpointDialectsCache.Clear()

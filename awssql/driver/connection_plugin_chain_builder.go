@@ -36,15 +36,16 @@ type PluginFactoryWeight struct {
 }
 
 var pluginWeightByCode = map[string]int{
+	"bg":                550,
 	"readWriteSplitting": 600,
-	"failover":           700,
-	"efm":                800,
-	"limitless":          950,
-	"iam":                1000,
-	"awsSecretsManager":  1100,
-	"federatedAuth":      1200,
-	"okta":               1300,
-	"executionTime":      WEIGHT_RELATIVE_TO_PRIOR_PLUGIN,
+	"failover":          700,
+	"efm":               800,
+	"limitless":         950,
+	"iam":               1000,
+	"awsSecretsManager": 1100,
+	"federatedAuth":     1200,
+	"okta":              1300,
+	"executionTime":     WEIGHT_RELATIVE_TO_PRIOR_PLUGIN,
 }
 
 type ConnectionPluginChainBuilder struct {

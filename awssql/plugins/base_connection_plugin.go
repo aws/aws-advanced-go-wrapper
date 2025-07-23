@@ -19,6 +19,7 @@ package plugins
 import (
 	"database/sql/driver"
 	"fmt"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
@@ -76,7 +77,6 @@ func (b BaseConnectionPlugin) NotifyHostListChanged(changes map[string]map[drive
 }
 
 func (b BaseConnectionPlugin) InitHostProvider(
-	initialUrl string,
 	props map[string]string,
 	hostListProviderService driver_infrastructure.HostListProviderService,
 	initHostProviderFunc func() error) error {

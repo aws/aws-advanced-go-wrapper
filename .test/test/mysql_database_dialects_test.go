@@ -113,7 +113,6 @@ func TestMySQLDatabaseDialect_GetHostListProvider(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.MySQLDatabaseDialect{}
 	hostListProvider := testDatabaseDialect.GetHostListProvider(
 		make(map[string]string),
-		"dsn",
 		nil,
 		nil)
 
@@ -202,7 +201,6 @@ func TestRdsMySQLDatabaseDialect_GetHostListProvider(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.RdsMySQLDatabaseDialect{}
 	hostListProvider := testDatabaseDialect.GetHostListProvider(
 		make(map[string]string),
-		"dsn",
 		nil,
 		nil)
 
@@ -294,7 +292,6 @@ func TestAuroraRdsMySQLDatabaseDialect_GetHostListProvider(t *testing.T) {
 	property_util.PLUGINS.Set(propsNoFailover, "efm")
 	hostListProvider := testDatabaseDialect.GetHostListProvider(
 		propsNoFailover,
-		"dsn",
 		nil,
 		nil)
 
@@ -306,7 +303,6 @@ func TestAuroraRdsMySQLDatabaseDialect_GetHostListProvider(t *testing.T) {
 	property_util.PLUGINS.Set(propsWithFailover, "failover")
 	hostListProvider = testDatabaseDialect.GetHostListProvider(
 		propsWithFailover,
-		"dsn",
 		nil,
 		nil)
 
@@ -552,7 +548,7 @@ func TestAuroraRdsMySQLDatabaseDialect_GetWriterHostName(t *testing.T) {
 
 func TestRdsMultiAzClusterMySQLDatabaseDialect_GetDialectUpdateCandidates(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.RdsMultiAzClusterMySQLDatabaseDialect{}
-	expectedCandidates := []string{}
+	var expectedCandidates []string
 
 	assert.ElementsMatch(t, expectedCandidates, testDatabaseDialect.GetDialectUpdateCandidates())
 }
@@ -585,7 +581,6 @@ func TestRdsMultiAzClusterMySQLDatabaseDialect_GetHostListProvider(t *testing.T)
 	property_util.PLUGINS.Set(propsNoFailover, "efm")
 	hostListProvider := testDatabaseDialect.GetHostListProvider(
 		propsNoFailover,
-		"dsn",
 		nil,
 		nil)
 
@@ -597,7 +592,6 @@ func TestRdsMultiAzClusterMySQLDatabaseDialect_GetHostListProvider(t *testing.T)
 	property_util.PLUGINS.Set(propsWithFailover, "failover")
 	hostListProvider = testDatabaseDialect.GetHostListProvider(
 		propsWithFailover,
-		"dsn",
 		nil,
 		nil)
 
@@ -739,7 +733,7 @@ func TestRdsMultiAzClusterMySQLDatabaseDialect_GetWriterHostName(t *testing.T) {
 	mockRows.EXPECT().Columns().Return([]string{"Something", "Source_Server_Id"})
 	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
 		dest[0] = int64(123)
-		dest[1] = int64(hostId)
+		dest[1] = hostId
 		return nil
 	})
 	mockRows.EXPECT().Close().Return(nil)
@@ -767,7 +761,7 @@ func TestRdsMultiAzClusterMySQLDatabaseDialect_GetWriterHostName(t *testing.T) {
 	mockRows.EXPECT().Columns().Return([]string{"Something", "Source_Server_Id"})
 	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
 		dest[0] = int64(123)
-		dest[1] = int64(hostId)
+		dest[1] = hostId
 		return nil
 	})
 	mockRows.EXPECT().Close().Return(nil)
@@ -1061,4 +1055,389 @@ func TestMysqlGetSetTransactionIsolationQuery(t *testing.T) {
 	query, err = dialect.GetSetTransactionIsolationQuery(driver_infrastructure.TRANSACTION_SERIALIZABLE)
 	assert.Nil(t, err)
 	assert.Equal(t, "set session transaction isolation level SERIALIZABLE", query)
+}
+
+func TestAuroraMySQLDatabaseDialect_GetBlueGreenStatus(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.AuroraMySQLDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	expectedQuery := "SELECT * FROM mysql.rds_topology"
+
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{"id", "endpoint", "port", "role", "status", "version"})
+
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = []uint8("1")
+		dest[1] = []uint8("myapp-prod-db.c1a2b3c4d5e6.us-east-1.rds.amazonaws.com")
+		dest[2] = int64(3306)
+		dest[3] = []uint8("BLUE_GREEN_DEPLOYMENT_SOURCE")
+		dest[4] = []uint8("AVAILABLE")
+		dest[5] = []uint8("1.0")
+		return nil
+	})
+
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = []uint8("2")
+		dest[1] = []uint8("myapp-prod-db-target.c1a2b3c4d5e6.us-east-1.rds.amazonaws.com")
+		dest[2] = int64(3306)
+		dest[3] = []uint8("BLUE_GREEN_DEPLOYMENT_TARGET")
+		dest[4] = []uint8("SWITCHOVER_INITIATED")
+		dest[5] = []uint8("1.1")
+		return nil
+	})
+
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip)
+	mockRows.EXPECT().Close().Return(nil)
+
+	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+
+	assert.Len(t, results, 2)
+
+	assert.Equal(t, "1.0", results[0].Version)
+	assert.Equal(t, "myapp-prod-db.c1a2b3c4d5e6.us-east-1.rds.amazonaws.com", results[0].Endpoint)
+	assert.Equal(t, 3306, results[0].Port)
+	assert.Equal(t, "BLUE_GREEN_DEPLOYMENT_SOURCE", results[0].Role)
+	assert.Equal(t, "AVAILABLE", results[0].Status)
+
+	assert.Equal(t, "1.1", results[1].Version)
+	assert.Equal(t, "myapp-prod-db-target.c1a2b3c4d5e6.us-east-1.rds.amazonaws.com", results[1].Endpoint)
+	assert.Equal(t, 3306, results[1].Port)
+	assert.Equal(t, "BLUE_GREEN_DEPLOYMENT_TARGET", results[1].Role)
+	assert.Equal(t, "SWITCHOVER_INITIATED", results[1].Status)
+}
+
+func TestAuroraMySQLDatabaseDialect_GetBlueGreenStatus_QueryError(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.AuroraMySQLDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	expectedQuery := "SELECT * FROM mysql.rds_topology"
+
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
+		Return(nil, fmt.Errorf("table does not exist"))
+
+	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+	assert.Nil(t, results)
+}
+
+func TestAuroraMySQLDatabaseDialect_GetBlueGreenStatus_NoQueryerContext(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.AuroraMySQLDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+
+	results := testDatabaseDialect.GetBlueGreenStatus(mockConn)
+	assert.Nil(t, results)
+}
+
+func TestAuroraMySQLDatabaseDialect_IsBlueGreenStatusAvailable(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.AuroraMySQLDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	expectedQuery := "SELECT 1 AS tmp FROM information_schema.tables WHERE table_schema = 'mysql' AND table_name = 'rds_topology'"
+
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{"tmp"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = int64(1)
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	result := testDatabaseDialect.IsBlueGreenStatusAvailable(conn)
+	assert.True(t, result)
+
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{})
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrBadConn)
+	mockRows.EXPECT().Close().Return(nil)
+
+	result = testDatabaseDialect.IsBlueGreenStatusAvailable(conn)
+	assert.False(t, result)
+}
+
+func TestRdsMySQLDatabaseDialect_GetBlueGreenStatus(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsMySQLDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	expectedQuery := "SELECT * FROM mysql.rds_topology"
+
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{"id", "endpoint", "port", "role", "status", "version"})
+
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = []uint8("1")
+		dest[1] = []uint8("user-service-db.x7y8z9a1b2c3.eu-west-1.rds.amazonaws.com")
+		dest[2] = int64(3306)
+		dest[3] = []uint8("BLUE_GREEN_DEPLOYMENT_SOURCE")
+		dest[4] = []uint8("AVAILABLE")
+		dest[5] = []uint8("2.0")
+		return nil
+	})
+
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip)
+	mockRows.EXPECT().Close().Return(nil)
+
+	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+
+	assert.Len(t, results, 1)
+	assert.Equal(t, "2.0", results[0].Version)
+	assert.Equal(t, "user-service-db.x7y8z9a1b2c3.eu-west-1.rds.amazonaws.com", results[0].Endpoint)
+	assert.Equal(t, 3306, results[0].Port)
+	assert.Equal(t, "BLUE_GREEN_DEPLOYMENT_SOURCE", results[0].Role)
+	assert.Equal(t, "AVAILABLE", results[0].Status)
+}
+
+func TestRdsMySQLDatabaseDialect_GetBlueGreenStatus_EmptyResults(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsMySQLDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	expectedQuery := "SELECT * FROM mysql.rds_topology"
+
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{"id", "endpoint", "port", "role", "status", "version"})
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip) // No rows
+	mockRows.EXPECT().Close().Return(nil)
+
+	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+	assert.Empty(t, results)
+}
+
+func TestRdsMySQLDatabaseDialect_IsBlueGreenStatusAvailable(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsMySQLDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	expectedQuery := "SELECT 1 AS tmp FROM information_schema.tables WHERE table_schema = 'mysql' AND table_name = 'rds_topology'"
+
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{"tmp"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = int64(1)
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	result := testDatabaseDialect.IsBlueGreenStatusAvailable(conn)
+	assert.True(t, result)
+}
+
+func TestRdsMySQLDatabaseDialect_IsBlueGreenStatusAvailable_QueryError(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsMySQLDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	expectedQuery := "SELECT 1 AS tmp FROM information_schema.tables WHERE table_schema = 'mysql' AND table_name = 'rds_topology'"
+
+	// Test query error - should return false
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
+		Return(nil, fmt.Errorf("connection error"))
+
+	result := testDatabaseDialect.IsBlueGreenStatusAvailable(conn)
+	assert.False(t, result)
+}
+
+func TestGetBlueGreenStatus_InvalidRowData(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.AuroraMySQLDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	expectedQuery := "SELECT * FROM mysql.rds_topology"
+
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{"id", "endpoint", "port", "role", "status", "version"})
+
+	// Mock row with invalid data types (should be skipped)
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = []uint8("1")
+		dest[1] = "invalid_type"
+		dest[2] = int64(3306)
+		dest[3] = []uint8("BLUE_GREEN_DEPLOYMENT_SOURCE")
+		dest[4] = []uint8("AVAILABLE")
+		dest[5] = []uint8("1.0")
+		return nil
+	})
+
+	// Mock valid row
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = []uint8("2")
+		dest[1] = []uint8("valid-endpoint.amazonaws.com")
+		dest[2] = int64(3306)
+		dest[3] = []uint8("BLUE_GREEN_DEPLOYMENT_TARGET")
+		dest[4] = []uint8("AVAILABLE")
+		dest[5] = []uint8("1.0")
+		return nil
+	})
+
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip)
+	mockRows.EXPECT().Close().Return(nil)
+
+	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+
+	// Should only return the valid row, invalid row should be skipped
+	assert.Len(t, results, 1)
+	assert.Equal(t, "valid-endpoint.amazonaws.com", results[0].Endpoint)
+}
+
+func TestGetBlueGreenStatus_InsufficientColumns(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsMySQLDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	expectedQuery := "SELECT * FROM mysql.rds_topology"
+
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	// Mock only 3 columns instead of required 6
+	mockRows.EXPECT().Columns().Return([]string{"id", "endpoint", "port"})
+
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = []uint8("1")
+		dest[1] = []uint8("endpoint.amazonaws.com")
+		dest[2] = int64(3306)
+		return nil
+	})
+
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip)
+	mockRows.EXPECT().Close().Return(nil)
+
+	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+
+	assert.Empty(t, results)
 }

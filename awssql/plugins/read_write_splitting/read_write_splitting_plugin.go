@@ -117,7 +117,6 @@ func (r *ReadWriteSplittingPlugin) Connect(
 }
 
 func (r *ReadWriteSplittingPlugin) InitHostProvider(
-	initialUrl string,
 	props map[string]string,
 	hostListProviderService driver_infrastructure.HostListProviderService,
 	initHostProviderFunc func() error) error {

@@ -18,6 +18,7 @@ package driver_infrastructure
 
 import (
 	"database/sql/driver"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 )
 
@@ -35,5 +36,5 @@ type ConnectionPlugin interface {
 	GetHostSelectorStrategy(strategy string) (HostSelector, error)
 	NotifyConnectionChanged(changes map[HostChangeOptions]bool) OldConnectionSuggestedAction
 	NotifyHostListChanged(changes map[string]map[HostChangeOptions]bool)
-	InitHostProvider(initialUrl string, props map[string]string, hostListProviderService HostListProviderService, initHostProviderFunc func() error) error
+	InitHostProvider(props map[string]string, hostListProviderService HostListProviderService, initHostProviderFunc func() error) error
 }

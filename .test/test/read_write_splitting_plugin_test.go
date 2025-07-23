@@ -93,7 +93,7 @@ func TestReadWriteSplittingPlugin_InitHostProvider(t *testing.T) {
 	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
 
 	called := false
-	err := plugin.InitHostProvider("url", nil, mockHostProvider, func() error {
+	err := plugin.InitHostProvider(nil, mockHostProvider, func() error {
 		called = true
 		return nil
 	})
@@ -136,7 +136,7 @@ func TestReadWriteSplittingPlugin_Connect_StaticProvider(t *testing.T) {
 	mockHostProvider.EXPECT().IsStaticHostListProvider().Return(true)
 
 	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
-	_ = plugin.InitHostProvider("url", nil, mockHostProvider, func() error { return nil })
+	_ = plugin.InitHostProvider(nil, mockHostProvider, func() error { return nil })
 
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 	resultConn := mockConn
@@ -160,7 +160,7 @@ func TestReadWriteSplittingPlugin_Connect_UnknownHostRole(t *testing.T) {
 	mockPluginService.EXPECT().GetHostRole(gomock.Any()).Return(host_info_util.UNKNOWN)
 
 	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
-	_ = plugin.InitHostProvider("url", nil, mockHostProvider, func() error { return nil })
+	_ = plugin.InitHostProvider(nil, mockHostProvider, func() error { return nil })
 
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 	resultConn := mockConn
@@ -188,7 +188,7 @@ func TestReadWriteSplittingPlugin_Connect_NilHostRole(t *testing.T) {
 	mockPluginService.EXPECT().GetInitialConnectionHostInfo().Return(nil)
 
 	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
-	_ = plugin.InitHostProvider("url", nil, mockHostProvider, func() error { return nil })
+	_ = plugin.InitHostProvider(nil, mockHostProvider, func() error { return nil })
 
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 	resultConn := mockConn
@@ -214,7 +214,7 @@ func TestReadWriteSplittingPlugin_Connect_SameHostRole(t *testing.T) {
 		&host_info_util.HostInfo{Role: host_info_util.READER})
 
 	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
-	_ = plugin.InitHostProvider("url", nil, mockHostProvider, func() error { return nil })
+	_ = plugin.InitHostProvider(nil, mockHostProvider, func() error { return nil })
 
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 	resultConn := mockConn
@@ -241,7 +241,7 @@ func TestReadWriteSplittingPlugin_Connect_DifferentHostRole(t *testing.T) {
 	mockHostProvider.EXPECT().SetInitialConnectionHostInfo(gomock.Any()).Return()
 
 	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
-	_ = plugin.InitHostProvider("url", nil, mockHostProvider, func() error { return nil })
+	_ = plugin.InitHostProvider(nil, mockHostProvider, func() error { return nil })
 
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 	resultConn := mockConn

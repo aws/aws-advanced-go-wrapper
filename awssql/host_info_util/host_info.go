@@ -57,8 +57,10 @@ type HostInfo struct {
 }
 
 func (hostInfo *HostInfo) AddAlias(alias string) {
-	hostInfo.Aliases[alias] = true
-	hostInfo.AllAliases[alias] = true
+	if alias != "" && hostInfo != nil {
+		hostInfo.Aliases[alias] = true
+		hostInfo.AllAliases[alias] = true
+	}
 }
 
 func (hostInfo *HostInfo) ResetAliases() {
@@ -72,7 +74,17 @@ func (hostInfo *HostInfo) GetUrl() string {
 	return hostInfo.GetHostAndPort() + "/"
 }
 
+func (hostInfo *HostInfo) GetHost() string {
+	if hostInfo == nil {
+		return ""
+	}
+	return hostInfo.Host
+}
+
 func (hostInfo *HostInfo) GetHostAndPort() string {
+	if hostInfo == nil {
+		return ""
+	}
 	if hostInfo.IsPortSpecified() {
 		return hostInfo.Host + ":" + strconv.Itoa(hostInfo.Port)
 	}
@@ -80,7 +92,7 @@ func (hostInfo *HostInfo) GetHostAndPort() string {
 }
 
 func (hostInfo *HostInfo) IsPortSpecified() bool {
-	return hostInfo.Port != HOST_NO_PORT
+	return hostInfo != nil && hostInfo.Port != HOST_NO_PORT
 }
 
 func (hostInfo *HostInfo) Equals(host *HostInfo) bool {
@@ -174,6 +186,19 @@ func (hostInfoBuilder *HostInfoBuilder) SetHostId(hostId string) *HostInfoBuilde
 
 func (hostInfoBuilder *HostInfoBuilder) SetLastUpdateTime(lastUpdateTime time.Time) *HostInfoBuilder {
 	hostInfoBuilder.lastUpdateTime = lastUpdateTime
+	return hostInfoBuilder
+}
+
+func (hostInfoBuilder *HostInfoBuilder) CopyFrom(hostInfo *HostInfo) *HostInfoBuilder {
+	if hostInfo != nil {
+		hostInfoBuilder.host = hostInfo.Host
+		hostInfoBuilder.hostId = hostInfo.HostId
+		hostInfoBuilder.port = hostInfo.Port
+		hostInfoBuilder.availability = hostInfo.Availability
+		hostInfoBuilder.role = hostInfo.Role
+		hostInfoBuilder.weight = hostInfo.Weight
+		hostInfoBuilder.lastUpdateTime = hostInfo.LastUpdateTime
+	}
 	return hostInfoBuilder
 }
 

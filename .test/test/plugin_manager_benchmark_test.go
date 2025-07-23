@@ -25,6 +25,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 )
 
@@ -107,7 +108,7 @@ func BenchmarkExecute(b *testing.B) {
 }
 
 func BenchmarkInitHostProvider(b *testing.B) {
-	props := make(map[string]string)
+	props, _ := utils.ParseDsn(mysqlTestDsn)
 
 	for _, count := range PLUGIN_COUNTS {
 		count := count // capture range variable
@@ -118,7 +119,6 @@ func BenchmarkInitHostProvider(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				//nolint:errcheck
 				pluginManager.InitHostProvider(
-					mysqlTestDsn,
 					props,
 					&MockRdsHostListProviderService{},
 				)

@@ -27,6 +27,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/bg"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/efm"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/read_write_splitting"
@@ -40,6 +41,7 @@ var pluginFactoryByCode = map[string]driver_infrastructure.ConnectionPluginFacto
 	"limitless":          limitless.NewLimitlessPluginFactory(),
 	"executionTime":      plugins.NewExecutionTimePluginFactory(),
 	"readWriteSplitting": read_write_splitting.NewReadWriteSplittingPluginFactory(),
+	"bg":                 bg.NewBlueGreenPluginFactory(),
 }
 
 var underlyingDriverList = map[string]driver.Driver{}
@@ -86,7 +88,7 @@ func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 	}
 
 	hostListProviderService := driver_infrastructure.HostListProviderService(pluginServiceImpl)
-	provider := hostListProviderService.CreateHostListProvider(props, dsn)
+	provider := hostListProviderService.CreateHostListProvider(props)
 	hostListProviderService.SetHostListProvider(provider)
 
 	telemetryCtx, ctx := pluginManager.GetTelemetryFactory().OpenTelemetryContext(telemetry.TELEMETRY_OPEN_CONNECTION, telemetry.TOP_LEVEL, nil)
@@ -96,7 +98,7 @@ func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 		pluginManager.SetTelemetryContext(context.TODO())
 	}()
 
-	err = pluginManager.InitHostProvider(dsn, props, hostListProviderService)
+	err = pluginManager.InitHostProvider(props, hostListProviderService)
 	if err != nil {
 		return nil, err
 	}

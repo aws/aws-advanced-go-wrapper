@@ -22,7 +22,6 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"log/slog"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -59,6 +58,7 @@ func FindHostInTopology(hosts []*host_info_util.HostInfo, hostNames ...string) *
 	return nil
 }
 
+// ExecQueryDirectly Directly executes query on conn.
 func ExecQueryDirectly(conn driver.Conn, query string) error {
 	execerCtx, ok := conn.(driver.ExecerContext)
 	if !ok {
@@ -74,9 +74,8 @@ func ExecQueryDirectly(conn driver.Conn, query string) error {
 	return nil
 }
 
-// Directly executes query on conn, and returns the first row.
-// Returns nil if unable to obtain a row.
-func GetFirstRowFromQuery(conn driver.Conn, query string) []driver.Value {
+// GetRowsFromQuery Directly executes query on conn, and returns the first n rows.
+func GetRowsFromQuery(conn driver.Conn, query string, n int) [][]driver.Value {
 	queryerCtx, ok := conn.(driver.QueryerContext)
 	if !ok {
 		// Unable to query, conn does not implement QueryerContext.
@@ -84,24 +83,36 @@ func GetFirstRowFromQuery(conn driver.Conn, query string) []driver.Value {
 	}
 
 	rows, err := queryerCtx.QueryContext(context.Background(), query, nil)
-	if err != nil {
+	if err != nil || rows == nil {
 		// Query failed.
 		return nil
 	}
-	if rows != nil {
-		defer rows.Close()
-	}
+	defer func(rows driver.Rows) {
+		_ = rows.Close()
+	}(rows)
 
-	res := make([]driver.Value, len(rows.Columns()))
-	err = rows.Next(res)
-	if err != nil {
-		// Gathering row failed.
-		return nil
+	res := make([][]driver.Value, n)
+	row := make([]driver.Value, len(rows.Columns()))
+	for i := 0; i < n; i++ {
+		err = rows.Next(row)
+		if err != nil {
+			// Gathering row failed.
+			break
+		}
+		res[i] = row
 	}
 	return res
 }
 
-// Directly executes query on conn and converts all possible values in the first row to strings.
+func GetFirstRowFromQuery(conn driver.Conn, query string) []driver.Value {
+	res := GetRowsFromQuery(conn, query, 1)
+	if len(res) < 1 {
+		return nil
+	}
+	return res[0]
+}
+
+// GetFirstRowFromQueryAsString Directly executes query on conn and converts all possible values in the first row to strings.
 // Any values that cannot be converted are returned as "". Returns nil if unable to obtain a row.
 func GetFirstRowFromQueryAsString(conn driver.Conn, query string) []string {
 	row := GetFirstRowFromQuery(conn, query)
@@ -144,9 +155,39 @@ func FilterSlice[T any](slice []T, filter func(T) bool) []T {
 	return result
 }
 
-func SliceAndMapHaveCommonElement[T comparable, V any](sliceA []T, mapOfKeysAndValues map[T]V) bool {
-	for item := range mapOfKeysAndValues {
-		if slices.Contains(sliceA, item) {
+func FilterSliceFindFirst[T any](slice []T, filter func(T) bool) T {
+	var zero T
+	for _, v := range slice {
+		if filter(v) {
+			return v
+		}
+	}
+	return zero
+}
+
+func FilterSetFindFirst[T comparable, U any](set map[T]U, filter func(T) bool) T {
+	var zero T
+	for val := range set {
+		if filter(val) {
+			return val
+		}
+	}
+	return zero
+}
+
+func FilterMapFindFirstValue[T comparable, U any](set map[T]U, filter func(U) bool) U {
+	var zero U
+	for _, val := range set {
+		if filter(val) {
+			return val
+		}
+	}
+	return zero
+}
+
+func SliceAndMapHaveCommonElement[T comparable, V any](slice []T, mapOfKeysAndValues map[T]V) bool {
+	for _, item := range slice {
+		if _, exists := mapOfKeysAndValues[item]; exists {
 			return true
 		}
 	}

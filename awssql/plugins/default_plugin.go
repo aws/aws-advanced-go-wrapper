@@ -35,7 +35,6 @@ type DefaultPlugin struct {
 }
 
 func (d *DefaultPlugin) InitHostProvider(
-	initialUrl string,
 	props map[string]string,
 	hostListProviderService driver_infrastructure.HostListProviderService,
 	initHostProviderFunc func() error) error {

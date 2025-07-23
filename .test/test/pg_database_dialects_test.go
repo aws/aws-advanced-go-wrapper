@@ -111,7 +111,6 @@ func TestPgDatabaseDialect_GetHostListProvider(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.PgDatabaseDialect{}
 	hostListProvider := testDatabaseDialect.GetHostListProvider(
 		make(map[string]string),
-		"dsn",
 		nil,
 		nil)
 
@@ -238,7 +237,6 @@ func TestRdsPgDatabaseDialect_GetHostListProvider(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.RdsPgDatabaseDialect{}
 	hostListProvider := testDatabaseDialect.GetHostListProvider(
 		make(map[string]string),
-		"dsn",
 		nil,
 		nil)
 
@@ -433,7 +431,6 @@ func TestAuroraRdsPgDatabaseDialect_GetHostListProvider(t *testing.T) {
 	property_util.PLUGINS.Set(propsNoFailover, "efm")
 	hostListProvider := testDatabaseDialect.GetHostListProvider(
 		propsNoFailover,
-		"dsn",
 		nil,
 		nil)
 
@@ -445,7 +442,6 @@ func TestAuroraRdsPgDatabaseDialect_GetHostListProvider(t *testing.T) {
 	property_util.PLUGINS.Set(propsWithFailover, "failover")
 	hostListProvider = testDatabaseDialect.GetHostListProvider(
 		propsWithFailover,
-		"dsn",
 		nil,
 		nil)
 
@@ -698,7 +694,7 @@ func TestAuroraRdsPgDatabaseDialect_GetLimitlessRouterEndpointQuery(t *testing.T
 
 func TestRdsMultiAzDbClusterPgDialect_GetDialectUpdateCandidates(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.RdsMultiAzClusterPgDatabaseDialect{}
-	expectedCandidates := []string{}
+	var expectedCandidates []string
 
 	assert.ElementsMatch(t, expectedCandidates, testDatabaseDialect.GetDialectUpdateCandidates())
 }
@@ -731,7 +727,6 @@ func TestRdsMultiAzDbClusterPgDialect_GetHostListProvider(t *testing.T) {
 	property_util.PLUGINS.Set(propsNoFailover, "efm")
 	hostListProvider := testDatabaseDialect.GetHostListProvider(
 		propsNoFailover,
-		"dsn",
 		nil,
 		nil)
 
@@ -743,7 +738,6 @@ func TestRdsMultiAzDbClusterPgDialect_GetHostListProvider(t *testing.T) {
 	property_util.PLUGINS.Set(propsWithFailover, "failover")
 	hostListProvider = testDatabaseDialect.GetHostListProvider(
 		propsWithFailover,
-		"dsn",
 		nil,
 		nil)
 
@@ -1229,4 +1223,368 @@ func TestPgGetSetTransactionIsolationQuery(t *testing.T) {
 	query, err = dialect.GetSetTransactionIsolationQuery(driver_infrastructure.TRANSACTION_SERIALIZABLE)
 	assert.Nil(t, err)
 	assert.Equal(t, "set session characteristics as transaction isolation level SERIALIZABLE", query)
+}
+
+func TestAuroraPgDatabaseDialect_GetBlueGreenStatus(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	expectedQuery := "SELECT * FROM get_blue_green_fast_switchover_metadata('aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
+
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{"id", "endpoint", "port", "role", "status", "version"})
+
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = "1"                                                                    // id
+		dest[1] = "prod-aurora-cluster.cluster-abc123def456.us-east-1.rds.amazonaws.com" // endpoint
+		dest[2] = int64(5432)                                                            // port
+		dest[3] = "BLUE_GREEN_DEPLOYMENT_SOURCE"                                         // role
+		dest[4] = "AVAILABLE"                                                            // status
+		dest[5] = "1.0"                                                                  // version
+		return nil
+	})
+
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = "2"                                                                           // id
+		dest[1] = "prod-aurora-cluster-target.cluster-xyz789def456.us-east-1.rds.amazonaws.com" // endpoint
+		dest[2] = int64(5432)                                                                   // port
+		dest[3] = "BLUE_GREEN_DEPLOYMENT_TARGET"                                                // role
+		dest[4] = "SWITCHOVER_IN_PROGRESS"                                                      // status
+		dest[5] = "1.1"                                                                         // version
+		return nil
+	})
+
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip)
+	mockRows.EXPECT().Close().Return(nil)
+
+	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+
+	assert.Len(t, results, 2)
+
+	assert.Equal(t, "1.0", results[0].Version)
+	assert.Equal(t, "prod-aurora-cluster.cluster-abc123def456.us-east-1.rds.amazonaws.com", results[0].Endpoint)
+	assert.Equal(t, 5432, results[0].Port)
+	assert.Equal(t, "BLUE_GREEN_DEPLOYMENT_SOURCE", results[0].Role)
+	assert.Equal(t, "AVAILABLE", results[0].Status)
+
+	assert.Equal(t, "1.1", results[1].Version)
+	assert.Equal(t, "prod-aurora-cluster-target.cluster-xyz789def456.us-east-1.rds.amazonaws.com", results[1].Endpoint)
+	assert.Equal(t, 5432, results[1].Port)
+	assert.Equal(t, "BLUE_GREEN_DEPLOYMENT_TARGET", results[1].Role)
+	assert.Equal(t, "SWITCHOVER_IN_PROGRESS", results[1].Status)
+}
+
+func TestAuroraPgDatabaseDialect_GetBlueGreenStatus_QueryError(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	expectedQuery := "SELECT * FROM get_blue_green_fast_switchover_metadata('aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
+
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
+		Return(nil, fmt.Errorf("function does not exist"))
+
+	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+	assert.Nil(t, results)
+}
+
+func TestAuroraPgDatabaseDialect_GetBlueGreenStatus_NoQueryerContext(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+
+	results := testDatabaseDialect.GetBlueGreenStatus(mockConn)
+	assert.Nil(t, results)
+}
+
+func TestAuroraPgDatabaseDialect_IsBlueGreenStatusAvailable(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	expectedQuery := "SELECT 'get_blue_green_fast_switchover_metadata'::regproc"
+
+	// Test when function exists (returns true)
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{"regproc"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = "get_blue_green_fast_switchover_metadata"
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	result := testDatabaseDialect.IsBlueGreenStatusAvailable(conn)
+	assert.True(t, result)
+
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{})
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrBadConn)
+	mockRows.EXPECT().Close().Return(nil)
+
+	result = testDatabaseDialect.IsBlueGreenStatusAvailable(conn)
+	assert.False(t, result)
+}
+
+func TestRdsPgDatabaseDialect_GetBlueGreenStatus(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsPgDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	expectedQuery := "SELECT * FROM rds_tools.show_topology('aws_advanced_go_wrapper-1.0.0')"
+
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{"id", "endpoint", "port", "role", "status", "version"})
+
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = "1"
+		dest[1] = "analytics-postgres.s1t2u3v4w5x6.us-west-2.rds.amazonaws.com"
+		dest[2] = int64(5432)
+		dest[3] = "BLUE_GREEN_DEPLOYMENT_SOURCE"
+		dest[4] = "AVAILABLE"
+		dest[5] = "2.0"
+		return nil
+	})
+
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip)
+	mockRows.EXPECT().Close().Return(nil)
+
+	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+
+	assert.Len(t, results, 1)
+	assert.Equal(t, "2.0", results[0].Version)
+	assert.Equal(t, "analytics-postgres.s1t2u3v4w5x6.us-west-2.rds.amazonaws.com", results[0].Endpoint)
+	assert.Equal(t, 5432, results[0].Port)
+	assert.Equal(t, "BLUE_GREEN_DEPLOYMENT_SOURCE", results[0].Role)
+	assert.Equal(t, "AVAILABLE", results[0].Status)
+}
+
+func TestRdsPgDatabaseDialect_GetBlueGreenStatus_EmptyResults(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsPgDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	expectedQuery := "SELECT * FROM rds_tools.show_topology('aws_advanced_go_wrapper-1.0.0')"
+
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{"id", "endpoint", "port", "role", "status", "version"})
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip) // No rows
+	mockRows.EXPECT().Close().Return(nil)
+
+	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+	assert.Empty(t, results)
+}
+
+func TestRdsPgDatabaseDialect_IsBlueGreenStatusAvailable(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsPgDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	expectedQuery := "SELECT 'rds_tools.show_topology'::regproc"
+
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{"regproc"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = "rds_tools.show_topology"
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+
+	result := testDatabaseDialect.IsBlueGreenStatusAvailable(conn)
+	assert.True(t, result)
+
+	// Test query error - should return false
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
+		Return(nil, fmt.Errorf("connection error"))
+
+	result = testDatabaseDialect.IsBlueGreenStatusAvailable(conn)
+	assert.False(t, result)
+}
+
+func TestPgGetBlueGreenStatus_InvalidRowData(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	expectedQuery := "SELECT * FROM get_blue_green_fast_switchover_metadata('aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
+
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{"id", "endpoint", "port", "role", "status", "version"})
+
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = "1"
+		dest[1] = 12345
+		dest[2] = int64(5432)
+		dest[3] = "BLUE_GREEN_DEPLOYMENT_SOURCE"
+		dest[4] = "AVAILABLE"
+		dest[5] = "1.0"
+		return nil
+	})
+
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = "2"
+		dest[1] = "valid-endpoint.amazonaws.com"
+		dest[2] = int64(5432)
+		dest[3] = "BLUE_GREEN_DEPLOYMENT_TARGET"
+		dest[4] = "AVAILABLE"
+		dest[5] = "1.0"
+		return nil
+	})
+
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip)
+	mockRows.EXPECT().Close().Return(nil)
+
+	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+
+	assert.Len(t, results, 1)
+	assert.Equal(t, "valid-endpoint.amazonaws.com", results[0].Endpoint)
+}
+
+func TestPgGetBlueGreenStatus_InsufficientColumns(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsPgDatabaseDialect{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockQueryer := mock_database_sql_driver.NewMockQueryerContext(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	conn := struct {
+		driver.Conn
+		driver.QueryerContext
+	}{
+		Conn:           mockConn,
+		QueryerContext: mockQueryer,
+	}
+
+	expectedQuery := "SELECT * FROM rds_tools.show_topology('aws_advanced_go_wrapper-1.0.0')"
+
+	mockQueryer.EXPECT().
+		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
+		Return(mockRows, nil)
+
+	// Mock only 3 columns instead of required 6
+	mockRows.EXPECT().Columns().Return([]string{"id", "endpoint", "port"})
+
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = "1"
+		dest[1] = "endpoint.amazonaws.com"
+		dest[2] = int64(5432)
+		return nil
+	})
+
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip)
+	mockRows.EXPECT().Close().Return(nil)
+
+	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+
+	assert.Empty(t, results)
 }

@@ -27,7 +27,7 @@ type DatabaseDialect interface {
 	GetServerVersionQuery() string
 	GetDialectUpdateCandidates() []string
 	IsDialect(conn driver.Conn) bool
-	GetHostListProvider(props map[string]string, initialDsn string, hostListProviderService HostListProviderService, pluginService PluginService) HostListProvider
+	GetHostListProvider(props map[string]string, hostListProviderService HostListProviderService, pluginService PluginService) HostListProvider
 	DoesStatementSetAutoCommit(statement string) (bool, bool)
 	DoesStatementSetReadOnly(statement string) (bool, bool)
 	DoesStatementSetCatalog(statement string) (string, bool)
@@ -52,3 +52,10 @@ type AuroraLimitlessDialect interface {
 	GetLimitlessRouterEndpointQuery() string
 	DatabaseDialect
 }
+
+type BlueGreenDialect interface {
+	GetBlueGreenStatus(conn driver.Conn) []BlueGreenResult
+	IsBlueGreenStatusAvailable(conn driver.Conn) bool
+	DatabaseDialect
+}
+

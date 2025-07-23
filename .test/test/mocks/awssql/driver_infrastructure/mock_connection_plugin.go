@@ -163,17 +163,17 @@ func (mr *MockConnectionPluginMockRecorder) GetSubscribedMethods() *gomock.Call 
 }
 
 // InitHostProvider mocks base method.
-func (m *MockConnectionPlugin) InitHostProvider(initialUrl string, props map[string]string, hostListProviderService driver_infrastructure.HostListProviderService, initHostProviderFunc func() error) error {
+func (m *MockConnectionPlugin) InitHostProvider(props map[string]string, hostListProviderService driver_infrastructure.HostListProviderService, initHostProviderFunc func() error) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InitHostProvider", initialUrl, props, hostListProviderService, initHostProviderFunc)
+	ret := m.ctrl.Call(m, "InitHostProvider", props, hostListProviderService, initHostProviderFunc)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // InitHostProvider indicates an expected call of InitHostProvider.
-func (mr *MockConnectionPluginMockRecorder) InitHostProvider(initialUrl, props, hostListProviderService, initHostProviderFunc interface{}) *gomock.Call {
+func (mr *MockConnectionPluginMockRecorder) InitHostProvider(props, hostListProviderService, initHostProviderFunc interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitHostProvider", reflect.TypeOf((*MockConnectionPlugin)(nil).InitHostProvider), initialUrl, props, hostListProviderService, initHostProviderFunc)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitHostProvider", reflect.TypeOf((*MockConnectionPlugin)(nil).InitHostProvider), props, hostListProviderService, initHostProviderFunc)
 }
 
 // NotifyConnectionChanged mocks base method.

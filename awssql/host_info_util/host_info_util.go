@@ -16,6 +16,11 @@
 
 package host_info_util
 
+import (
+	"fmt"
+	"slices"
+)
+
 func AreHostListsEqual(s1 []*HostInfo, s2 []*HostInfo) bool {
 	if len(s1) != len(s2) {
 		return false
@@ -32,9 +37,56 @@ func AreHostListsEqual(s1 []*HostInfo, s2 []*HostInfo) bool {
 
 func GetWriter(hosts []*HostInfo) *HostInfo {
 	for _, host := range hosts {
-		if host.Role == WRITER {
+		if host != nil && host.Role == WRITER {
 			return host
 		}
 	}
 	return nil
+}
+
+func GetReaders(hosts []*HostInfo) []*HostInfo {
+	readerHosts := make([]*HostInfo, 0, len(hosts))
+	for _, host := range hosts {
+		if host != nil && host.Role == READER {
+			readerHosts = append(readerHosts, host)
+		}
+	}
+	slices.SortFunc(readerHosts, func(i, j *HostInfo) int {
+		if i.Host < j.Host {
+			return -1
+		} else if i.Host > j.Host {
+			return 1
+		} else {
+			return 0
+		}
+	})
+	return readerHosts
+}
+
+func GetHostAndPort(host string, port int) string {
+	if port > 0 && host != "" {
+		return fmt.Sprintf("%s:%d", host, port)
+	}
+	return host
+}
+
+func HaveNoHostsInCommon(hosts1 []*HostInfo, hosts2 []*HostInfo) bool {
+	var mapSlice, checkSlice []*HostInfo
+	if len(hosts1) <= len(hosts2) {
+		mapSlice, checkSlice = hosts1, hosts2
+	} else {
+		mapSlice, checkSlice = hosts1, hosts2
+	}
+
+	checkMap := make(map[string]int, len(mapSlice))
+	for _, host := range mapSlice {
+		checkMap[host.Host] = 0
+	}
+
+	for _, host := range checkSlice {
+		if _, exists := checkMap[host.Host]; exists {
+			return false
+		}
+	}
+	return true
 }

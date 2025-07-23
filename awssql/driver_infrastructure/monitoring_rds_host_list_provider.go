@@ -51,7 +51,6 @@ func NewMonitoringRdsHostListProvider(
 	hostListProviderService HostListProviderService,
 	databaseDialect TopologyAwareDialect,
 	properties map[string]string,
-	originalDsn string,
 	pluginService PluginService) *MonitoringRdsHostListProvider {
 	clusterTopologyMonitorsMutex.Lock()
 	if clusterTopologyMonitors == nil {
@@ -88,7 +87,7 @@ func NewMonitoringRdsHostListProvider(
 			TopologyCache.Put(m.clusterId, existingHosts, TOPOLOGY_CACHE_EXPIRATION_NANO)
 		}
 	}
-	m.RdsHostListProvider = NewRdsHostListProvider(hostListProviderService, databaseDialect, properties, originalDsn, queryForTopologyFunc, clusterIdChangedFunc)
+	m.RdsHostListProvider = NewRdsHostListProvider(hostListProviderService, databaseDialect, properties, queryForTopologyFunc, clusterIdChangedFunc)
 	return m
 }
 

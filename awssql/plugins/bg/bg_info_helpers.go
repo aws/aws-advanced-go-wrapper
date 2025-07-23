@@ -14,21 +14,27 @@
   limitations under the License.
 */
 
-package driver_infrastructure
+package bg
 
 import (
-	"database/sql/driver"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 )
 
-type HostListProvider interface {
-	Refresh(conn driver.Conn) ([]*host_info_util.HostInfo, error)
-	ForceRefresh(conn driver.Conn) ([]*host_info_util.HostInfo, error)
-	GetHostRole(conn driver.Conn) host_info_util.HostRole
-	IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error)
-	GetClusterId() (string, error)
-	IsStaticHostListProvider() bool
-	CreateHost(hostName string, role host_info_util.HostRole, lag float64, cpu float64, lastUpdateTime time.Time) *host_info_util.HostInfo
+type StatusInfo struct {
+	Version  string
+	endpoint string
+	port     int
+	phase    driver_infrastructure.BlueGreenPhase
+	role     driver_infrastructure.BlueGreenRole
+}
+
+func (s *StatusInfo) IsZero() bool {
+	return s == nil || (s.Version == "" && s.endpoint == "" && s.port == 0)
+}
+
+type PhaseTimeInfo struct {
+	Timestamp time.Time
+	Phase     driver_infrastructure.BlueGreenPhase
 }

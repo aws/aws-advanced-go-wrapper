@@ -28,8 +28,16 @@ import (
 const DEFAULT_PLUGINS = "failover,efm"
 const MONITORING_PROPERTY_PREFIX = "monitoring-"
 const LIMITLESS_PROPERTY_PREFIX = "limitless"
-const INTERNAL_CONNECT_PROPERTY_NAME string = "76c06979-49c4-4c86-9600-a63605b83f50"
-const SET_READ_ONLY_CTX_KEY string = "setReadOnly"
+const INTERNAL_CONNECT_PROPERTY_NAME = "76c06979-49c4-4c86-9600-a63605b83f50"
+const SET_READ_ONLY_CTX_KEY = "setReadOnly"
+const BG_PROPERTY_PREFIX = "blue-green-monitoring-"
+
+var PREFIXES = []string{
+	MONITORING_PROPERTY_PREFIX,
+	INTERNAL_CONNECT_PROPERTY_NAME,
+	LIMITLESS_PROPERTY_PREFIX,
+	BG_PROPERTY_PREFIX,
+}
 
 type WrapperPropertyType int
 
@@ -185,6 +193,13 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	RESET_SESSION_STATE_ON_CLOSE.Name:              true,
 	ROLLBACK_ON_SWITCH.Name:                        true,
 	READER_HOST_SELECTOR_STRATEGY.Name:             true,
+	BG_CONNECT_TIMEOUT_MS.Name:                     true,
+	BGD_ID.Name:                                    true,
+	BG_INTERVAL_BASELINE_MS.Name:                   true,
+	BG_INTERVAL_INCREASED_MS.Name:                  true,
+	BG_INTERVAL_HIGH_MS.Name:                       true,
+	BG_SWITCHOVER_TIMEOUT_MS.Name:                  true,
+	BG_SUSPEND_NEW_BLUE_CONNECTIONS.Name:           true,
 }
 
 var USER = AwsWrapperProperty{
@@ -644,16 +659,73 @@ var READER_HOST_SELECTOR_STRATEGY = AwsWrapperProperty{
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
+var BG_CONNECT_TIMEOUT_MS = AwsWrapperProperty{
+	Name:                "bgConnectTimeoutMs",
+	description:         "Connect timeout in milliseconds during Blue/Green Deployment switchover.",
+	defaultValue:        "30000",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var BGD_ID = AwsWrapperProperty{
+	Name:                "bgdId",
+	description:         "Blue/Green Deployment ID",
+	defaultValue:        "1",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var BG_INTERVAL_BASELINE_MS = AwsWrapperProperty{
+	Name:                "bgBaselineMs",
+	description:         "Baseline Blue/Green Deployment status checking interval in milliseconds.",
+	defaultValue:        "60000",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var BG_INTERVAL_INCREASED_MS = AwsWrapperProperty{
+	Name:                "bgIncreasedMs",
+	description:         "Increased Blue/Green Deployment status checking interval in milliseconds.",
+	defaultValue:        "1000",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var BG_INTERVAL_HIGH_MS = AwsWrapperProperty{
+	Name:                "bgHighMs",
+	description:         "High Blue/Green Deployment status checking interval in milliseconds.",
+	defaultValue:        "100",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var BG_SWITCHOVER_TIMEOUT_MS = AwsWrapperProperty{
+	Name:                "bgSwitchoverTimeoutMs",
+	description:         "Blue/Green Deployment switchover timeout in milliseconds.",
+	defaultValue:        "180000",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var BG_SUSPEND_NEW_BLUE_CONNECTIONS = AwsWrapperProperty{
+	Name:                "bgSuspendNewBlueConnections",
+	description:         "Enables Blue/Green Deployment switchover to suspend new blue connection requests while the switchover process is in progress.",
+	defaultValue:        "false",
+	wrapperPropertyType: WRAPPER_TYPE_BOOL,
+}
+
 func RemoveInternalAwsWrapperProperties(props map[string]string) map[string]string {
 	copyProps := map[string]string{}
 
 	for key, value := range props {
-		// Monitoring properties and the internal connect property flag are not included in copy.
-		if !strings.HasPrefix(key, MONITORING_PROPERTY_PREFIX) && !strings.HasPrefix(key, LIMITLESS_PROPERTY_PREFIX) &&
-			key != INTERNAL_CONNECT_PROPERTY_NAME {
+		// Properties that start with monitoring/internal connect prefixes are not included in copy.
+		if !startsWithPrefix(key) {
 			copyProps[key] = value
 		}
 	}
 
 	return copyProps
+}
+
+func startsWithPrefix(key string) bool {
+	for _, prefix := range PREFIXES {
+		if strings.HasPrefix(key, prefix) {
+			return true
+		}
+	}
+	return false
 }

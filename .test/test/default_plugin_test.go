@@ -36,7 +36,7 @@ import (
 
 func TestDefaultPlugin_InitHostProvider(t *testing.T) {
 	dp := &plugins.DefaultPlugin{}
-	err := dp.InitHostProvider("someUrl", map[string]string{}, nil, nil)
+	err := dp.InitHostProvider(map[string]string{}, nil, nil)
 	assert.NoError(t, err)
 }
 

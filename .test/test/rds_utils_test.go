@@ -50,9 +50,9 @@ const (
 	oldChinaRegionLimitlessDbShardGroup            = "database-test-name.shardgrp-XYZ.cn-northwest-1.rds.amazonaws.com.cn"
 	oldChinaRegionLimitlessDbShardGroupTrailingDot = "database-test-name.shardgrp-XYZ.cn-northwest-1.rds.amazonaws.com.cn."
 
-	extraRdsChinaPath      = "database-test-name.cluster-XYZ.rds.cn-northwest-1.rds.amazonaws.com.cn" //nolint:unused
-	missingCnChinaPath     = "database-test-name.cluster-XYZ.rds.cn-northwest-1.amazonaws.com"        //nolint:unused
-	missingRegionChinaPath = "database-test-name.cluster-XYZ.rds.amazonaws.com.cn"                    //nolint:unused
+	extraRdsChinaPath      = "database-test-name.cluster-XYZ.rds.cn-northwest-1.rds.amazonaws.com.cn"
+	missingCnChinaPath     = "database-test-name.cluster-XYZ.rds.cn-northwest-1.amazonaws.com"
+	missingRegionChinaPath = "database-test-name.cluster-XYZ.rds.amazonaws.com.cn"
 
 	usEastRegionElbUrl            = "elb-name.elb.us-east-2.amazonaws.com"
 	usEastRegionElbUrlTrailingDot = "elb-name.elb.us-east-2.amazonaws.com."
@@ -72,6 +72,10 @@ const (
 	usIsoEastRegionProxy                 = "proxy-test-name.proxy-XYZ.rds.us-iso-east-1.c2s.ic.gov"
 	usIsoEastRegionCustomDomain          = "custom-test-name.cluster-custom-XYZ.rds.us-iso-east-1.c2s.ic.gov"
 	usIsoEastRegionLimitlessDbShardGroup = "database-test-name.shardgrp-XYZ.rds.us-iso-east-1.c2s.ic.gov"
+
+	blueInstance  = "myapp-blue.abc123.us-east-1.rds.amazonaws.com"
+	greenInstance = "myapp-green-abc123.def456.us-east-1.rds.amazonaws.com"
+	oldInstance   = "myapp-old1.ghi789.us-east-1.rds.amazonaws.com"
 )
 
 func TestIsRdsDns(t *testing.T) {
@@ -107,6 +111,9 @@ func TestIsRdsDns(t *testing.T) {
 	assert.True(t, utils.IsRdsDns(chinaRegionProxy))
 	assert.True(t, utils.IsRdsDns(chinaRegionCustomDomain))
 	assert.True(t, utils.IsRdsDns(chinaRegionLimitlessDbShardGroup))
+	assert.True(t, utils.IsRdsDns(extraRdsChinaPath))
+	assert.True(t, utils.IsRdsDns(missingCnChinaPath))
+	assert.False(t, utils.IsRdsDns(missingRegionChinaPath))
 
 	assert.True(t, utils.IsRdsDns(oldChinaRegionCluster))
 	assert.True(t, utils.IsRdsDns(oldChinaRegionClusterTrailingDot))
@@ -268,4 +275,251 @@ func TestGetRdsClusterHostUrl(t *testing.T) {
 	assert.Equal(t, "database-test-name.cluster-XYZ.rds.cn-northwest-1.amazonaws.com.cn", utils.GetRdsClusterHostUrl(chinaRegionClusterReadOnly))
 	assert.Equal(t, "database-test-name.cluster-XYZ.rds.us-isob-east-1.sc2s.sgov.gov", utils.GetRdsClusterHostUrl(usIsobEastRegionCluster))
 	assert.Equal(t, "database-test-name.cluster-XYZ.rds.us-iso-east-1.c2s.ic.gov", utils.GetRdsClusterHostUrl(usIsoEastRegionCluster))
+}
+
+func TestIsRdsInstance(t *testing.T) {
+	assert.True(t, utils.IsRdsInstance(usEastRegionInstance), "Should identify RDS instance")
+	assert.True(t, utils.IsRdsInstance(chinaRegionInstance), "Should identify China RDS instance")
+	assert.True(t, utils.IsRdsInstance(oldChinaRegionInstance), "Should identify old China RDS instance")
+
+	assert.False(t, utils.IsRdsInstance(usEastRegionCluster), "Should not identify cluster as instance")
+	assert.False(t, utils.IsRdsInstance(usEastRegionClusterReadOnly), "Should not identify read-only cluster as instance")
+	assert.False(t, utils.IsRdsInstance(chinaRegionCluster), "Should not identify China cluster as instance")
+
+	assert.False(t, utils.IsRdsInstance(usEastRegionProxy), "Should not identify proxy as instance")
+	assert.False(t, utils.IsRdsInstance(chinaRegionProxy), "Should not identify China proxy as instance")
+
+	assert.False(t, utils.IsRdsInstance("example.com"), "Should not identify non-RDS host as instance")
+	assert.False(t, utils.IsRdsInstance("database.example.org"), "Should not identify non-RDS host as instance")
+	assert.False(t, utils.IsRdsInstance(""), "Should not identify empty string as instance")
+
+	assert.True(t, utils.IsRdsInstance("instance-test-name.XYZ.us-east-2.rds.amazonaws.com."), "Should handle trailing dot")
+
+	assert.True(t, utils.IsRdsInstance(blueInstance), "Should identify blue instance as RDS instance")
+	assert.True(t, utils.IsRdsInstance(greenInstance), "Should identify green instance as RDS instance")
+	assert.True(t, utils.IsRdsInstance(oldInstance), "Should identify old instance as RDS instance")
+}
+
+func TestIsGreenInstance(t *testing.T) {
+	greenInstances := []string{
+		"myapp-green-abc123.def456.us-east-1.rds.amazonaws.com",
+		"database-green-xyz789.cluster-abc123.us-west-2.rds.amazonaws.com",
+		"test-green-123abc.instance.eu-west-1.rds.amazonaws.com",
+		"prod-GREEN-456DEF.cluster.ap-southeast-1.rds.amazonaws.com", // case insensitive
+	}
+
+	for _, host := range greenInstances {
+		assert.True(t, utils.IsGreenInstance(host), "Should identify green instance: %s", host)
+	}
+
+	nonGreenInstances := []string{
+		blueInstance,
+		oldInstance,
+		"test-instance.xyz789.eu-west-1.rds.amazonaws.com",
+		"prod-cluster.cluster-abc123.ap-southeast-1.rds.amazonaws.com",
+		"example.com",
+		"",
+		"myapp-greenish.abc123.us-east-1.rds.amazonaws.com",
+		"myapp-green.abc123.us-east-1.rds.amazonaws.com",
+	}
+	for _, host := range nonGreenInstances {
+		assert.False(t, utils.IsGreenInstance(host), "Should not identify as green instance: %s", host)
+	}
+
+	assert.False(t, utils.IsGreenInstance(""), "Should return false for empty string")
+	assert.False(t, utils.IsGreenInstance("   "), "Should return false for whitespace")
+}
+
+func TestIsNotOldInstance(t *testing.T) {
+	nonOldInstances := []string{
+		"myapp-old1ish.abc123.us-east-1.rds.amazonaws.com",
+		"prod-old1-cluster.cluster-abc123.ap-southeast-1.rds.amazonaws.com",
+		"myapp-blue.abc123.us-east-1.rds.amazonaws.com",
+		"database-green-xyz789.def456.us-west-2.rds.amazonaws.com",
+		"test-instance.ghi789.eu-west-1.rds.amazonaws.com",
+		"prod-cluster.cluster-abc123.ap-southeast-1.rds.amazonaws.com",
+		"example.com",
+		"",
+		"   ",
+	}
+
+	for _, host := range nonOldInstances {
+		assert.True(t, utils.IsNotOldInstance(host), "Should identify as not old instance: %s", host)
+	}
+
+	oldInstances := []string{
+		"myapp-old1.abc123.us-east-1.rds.amazonaws.com",
+		"database-old1.def456.us-west-2.rds.amazonaws.com",
+		"test-OLD1.ghi789.eu-west-1.rds.amazonaws.com",
+	}
+
+	for _, host := range oldInstances {
+		assert.False(t, utils.IsNotOldInstance(host), "Should identify as old instance: %s", host)
+	}
+}
+
+func TestIsNotGreenAndNotOldInstance(t *testing.T) {
+	blueInstances := []string{
+		blueInstance,
+		"database-prod.def456.us-west-2.rds.amazonaws.com",
+		"test-instance.ghi789.eu-west-1.rds.amazonaws.com",
+		"prod-cluster.cluster-abc123.ap-southeast-1.rds.amazonaws.com",
+	}
+
+	for _, host := range blueInstances {
+		assert.True(t, utils.IsNotGreenAndNotOldInstance(host), "Should identify not green and not old: %s", host)
+	}
+
+	greenInstances := []string{
+		greenInstance,
+		"database-green-xyz789.cluster-abc123.us-west-2.rds.amazonaws.com",
+	}
+
+	for _, host := range greenInstances {
+		assert.False(t, utils.IsNotGreenAndNotOldInstance(host), "Should identify as green instance: %s", host)
+	}
+
+	oldInstances := []string{
+		oldInstance,
+		"database-old1.def456.us-west-2.rds.amazonaws.com",
+	}
+
+	for _, host := range oldInstances {
+		assert.False(t, utils.IsNotGreenAndNotOldInstance(host), "Should identify as old instance: %s", host)
+	}
+
+	assert.False(t, utils.IsNotGreenAndNotOldInstance(""), "Should return false for empty string")
+}
+
+func TestRemoveGreenInstancePrefix(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected string
+		desc     string
+	}{
+		{
+			input:    "myapp-green-abc123.def456.us-east-1.rds.amazonaws.com",
+			expected: "myapp.def456.us-east-1.rds.amazonaws.com",
+			desc:     "Should remove green prefix from standard green instance",
+		},
+		{
+			input:    "database-green-xyz789.cluster-abc123.us-west-2.rds.amazonaws.com",
+			expected: "database.cluster-abc123.us-west-2.rds.amazonaws.com",
+			desc:     "Should remove green prefix from green cluster",
+		},
+		{
+			input:    "test-GREEN-123ABC.instance.eu-west-1.rds.amazonaws.com",
+			expected: "test.instance.eu-west-1.rds.amazonaws.com",
+			desc:     "Should handle case insensitive green prefix",
+		},
+	}
+
+	for _, tc := range testCases {
+		result := utils.RemoveGreenInstancePrefix(tc.input)
+		assert.Equal(t, tc.expected, result, tc.desc)
+	}
+
+	nonGreenInstances := []string{
+		"myapp-blue.abc123.us-east-1.rds.amazonaws.com",
+		"database-old1.def456.us-west-2.rds.amazonaws.com",
+		"test-instance.ghi789.eu-west-1.rds.amazonaws.com",
+		"example.com",
+		"",
+	}
+
+	for _, host := range nonGreenInstances {
+		result := utils.RemoveGreenInstancePrefix(host)
+		assert.Equal(t, host, result, "Should return unchanged for non-green instance: %s", host)
+	}
+
+	assert.Equal(t, "", utils.RemoveGreenInstancePrefix(""), "Should handle empty string")
+
+	// Test hostid pattern fallback
+	hostIdPattern := "myapp-green-abc123"
+	expectedHostId := "myapp"
+	result := utils.RemoveGreenInstancePrefix(hostIdPattern)
+	assert.Equal(t, expectedHostId, result)
+}
+
+func TestGetRdsClusterId(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected string
+		desc     string
+	}{
+		{
+			input:    usEastRegionCluster,
+			expected: "database-test-name",
+			desc:     "Should extract cluster ID from US East cluster",
+		},
+		{
+			input:    usEastRegionClusterReadOnly,
+			expected: "database-test-name",
+			desc:     "Should extract cluster ID from read-only cluster",
+		},
+		{
+			input:    chinaRegionCluster,
+			expected: "database-test-name",
+			desc:     "Should extract cluster ID from China cluster",
+		},
+		{
+			input:    oldChinaRegionCluster,
+			expected: "database-test-name",
+			desc:     "Should extract cluster ID from old China cluster",
+		},
+		{
+			input:    usEastRegionClusterTrailingDot,
+			expected: "database-test-name",
+			desc:     "Should handle trailing dot",
+		},
+		{
+			input:    usEastRegionCustomDomain,
+			expected: "custom-test-name",
+			desc:     "Should extract cluster ID from custom domain",
+		},
+		{
+			input:    usEastRegionInstance,
+			expected: "instance-test-name",
+			desc:     "Should extract instance ID from US East instance",
+		},
+		{
+			input:    chinaRegionInstance,
+			expected: "instance-test-name",
+			desc:     "Should extract instance ID from China instance",
+		},
+		{
+			input:    "myapp-blue.cluster-abc123.us-east-1.rds.amazonaws.com",
+			expected: "myapp-blue",
+			desc:     "Should extract ID from blue cluster",
+		},
+		{
+			input:    "myapp-green-def456.cluster-xyz789.us-west-2.rds.amazonaws.com",
+			expected: "myapp-green-def456",
+			desc:     "Should extract ID from green cluster",
+		},
+		{
+			input:    "myapp-old1.cluster-ghi789.eu-west-1.rds.amazonaws.com",
+			expected: "myapp-old1",
+			desc:     "Should extract ID from old cluster",
+		},
+	}
+
+	for _, tc := range testCases {
+		result := utils.GetRdsClusterId(tc.input)
+		assert.Equal(t, tc.expected, result, tc.desc)
+	}
+
+	nonRdsHosts := []string{
+		"example.com",
+		"database.example.org",
+		"localhost",
+		"192.168.1.1",
+		"   ",
+		"",
+	}
+
+	for _, host := range nonRdsHosts {
+		result := utils.GetRdsClusterId(host)
+		assert.Equal(t, "", result, "Should return empty string for non-RDS host: %s", host)
+	}
 }

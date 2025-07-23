@@ -68,12 +68,12 @@ Conn, Result, Rows, Stmt, and Tx; some examples are as follows:
 
 Plugins can also subscribe to the following pipelines:
 
-| Pipeline                                                                                            | Method Name / Subscription Key |
-|-----------------------------------------------------------------------------------------------------|:------------------------------:|
-| [Host list provider pipeline](./Pipelines.md#host-list-provider-pipeline)                           |        initHostProvider        |
-| [Connect pipeline](./Pipelines.md#connect-pipeline)                                                 |          Conn.Connect          |
-| [Connection changed notification pipeline](./Pipelines.md#connection-changed-notification-pipeline) |    notifyConnectionChanged     |
-| [Host list changed notification pipeline](./Pipelines.md#host-list-changed-notification-pipeline)   |     notifyHostListChanged      |                                                                      
+| Pipeline                                                                                    | Method Name / Subscription Key |
+|---------------------------------------------------------------------------------------------|:------------------------------:|
+| [Host list provider pipeline](./Pipelines.md#hostlistprovider-pipeline)                     |        initHostProvider        |
+| [Connect pipeline](./Pipelines.md#connect-pipeline)                                         |          Conn.Connect          |
+| [Connection changed notification pipeline](./Pipelines.md#notifyconnectionchanged-pipeline) |    notifyConnectionChanged     |
+| [Host list changed notification pipeline](./Pipelines.md#notifyhostlistchanged-pipeline)    |     notifyHostListChanged      |                                                                      
 
 ### Tips on Creating a Custom Plugin
 

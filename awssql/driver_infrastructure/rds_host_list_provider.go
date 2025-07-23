@@ -37,14 +37,12 @@ func NewRdsHostListProvider(
 	hostListProviderService HostListProviderService,
 	databaseDialect TopologyAwareDialect,
 	properties map[string]string,
-	originalDsn string,
 	queryForTopologyFunc func(conn driver.Conn) ([]*host_info_util.HostInfo, error),
 	clusterIdChangedFunc func(oldClusterId string)) *RdsHostListProvider {
 	r := &RdsHostListProvider{
 		hostListProviderService: hostListProviderService,
 		databaseDialect:         databaseDialect,
 		properties:              properties,
-		originalDsn:             originalDsn,
 		isInitialized:           false,
 	}
 	if queryForTopologyFunc == nil {
@@ -65,7 +63,6 @@ type RdsHostListProvider struct {
 	hostListProviderService HostListProviderService
 	databaseDialect         TopologyAwareDialect
 	properties              map[string]string
-	originalDsn             string
 	isInitialized           bool
 	// The following properties are initialized from the above in init().
 	initialHostList         []*host_info_util.HostInfo
@@ -87,7 +84,7 @@ func (r *RdsHostListProvider) init() {
 	}
 	refreshRateInt := property_util.GetRefreshRateValue(r.properties, property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS)
 	r.refreshRateNanos = time.Millisecond * time.Duration(refreshRateInt)
-	hostListFromDsn, err := utils.GetHostsFromDsn(r.originalDsn, false)
+	hostListFromDsn, err := utils.GetHostsFromProps(r.properties, false)
 	if err != nil || len(hostListFromDsn) == 0 {
 		return
 	}
@@ -158,7 +155,7 @@ func (r *RdsHostListProvider) ForceRefresh(conn driver.Conn) ([]*host_info_util.
 	if err != nil {
 		return nil, err
 	}
-	slog.Info(utils.LogTopology(hosts, "From ForceRefresh"))
+	slog.Debug(utils.LogTopology(hosts, "From ForceRefresh"))
 	return hosts, nil
 }
 
