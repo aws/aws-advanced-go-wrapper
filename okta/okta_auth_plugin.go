@@ -46,7 +46,7 @@ func (o OktaAuthPluginFactory) GetInstance(
 ) (driver_infrastructure.ConnectionPlugin, error) {
 	providerFactory := NewOktaCredentialsProviderFactory(auth_helpers.GetBasicHttpClient, auth_helpers.NewAwsStsClient, pluginService)
 
-	return NewOktaAuthPlugin(pluginService, providerFactory, auth_helpers.RegularIamTokenUtility{})
+	return NewOktaAuthPlugin(pluginService, providerFactory, &auth_helpers.RegularIamTokenUtility{})
 }
 
 func (o OktaAuthPluginFactory) ClearCaches() {

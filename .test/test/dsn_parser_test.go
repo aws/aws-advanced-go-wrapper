@@ -508,3 +508,113 @@ func GetHostsFromDsnWithMultipleHostsMultiplePorts(dsn string, strBeforePort str
 	}
 	assert.True(t, strings.Contains(err.Error(), "port"))
 }
+
+func TestParseHostPortPair_ValidWriterWithPort(t *testing.T) {
+	hostInfo, err := utils.ParseHostPortPair("test.cluster-abc.us-west-2.rds.amazonaws.com:5432", 3306)
+	assert.NoError(t, err)
+	assert.Equal(t, "test.cluster-abc.us-west-2.rds.amazonaws.com", hostInfo.Host)
+	assert.Equal(t, 5432, hostInfo.Port)
+	assert.Equal(t, host_info_util.WRITER, hostInfo.Role)
+}
+
+func TestParseHostPortPair_ValidReaderWithPort(t *testing.T) {
+	hostInfo, err := utils.ParseHostPortPair("test.cluster-ro-abc.us-west-2.rds.amazonaws.com:5433", 3306)
+	assert.NoError(t, err)
+	assert.Equal(t, "test.cluster-ro-abc.us-west-2.rds.amazonaws.com", hostInfo.Host)
+	assert.Equal(t, 5433, hostInfo.Port)
+	assert.Equal(t, host_info_util.READER, hostInfo.Role)
+}
+
+func TestParseHostPortPair_NoPortProvided(t *testing.T) {
+	hostInfo, err := utils.ParseHostPortPair("test.cluster-ro-abc.us-west-2.rds.amazonaws.com", 3306)
+	assert.NoError(t, err)
+	assert.Equal(t, "test.cluster-ro-abc.us-west-2.rds.amazonaws.com", hostInfo.Host)
+	assert.Equal(t, 3306, hostInfo.Port)
+	assert.Equal(t, host_info_util.READER, hostInfo.Role)
+}
+
+func TestParseHostPortPair_InvalidPort(t *testing.T) {
+	hostInfo, err := utils.ParseHostPortPair("invalid-host:abc", 3306)
+	assert.Nil(t, hostInfo)
+	assert.Error(t, err)
+}
+
+func TestParseDatabaseFromDsn_PgxUrl(t *testing.T) {
+	dsn := "postgres://user:pass@localhost:5432/mydb"
+	db, err := utils.ParseDatabaseFromDsn(dsn)
+	assert.NoError(t, err)
+	assert.Equal(t, "mydb", db)
+}
+
+func TestParseUserFromDsn_PgxUrl(t *testing.T) {
+	dsn := "postgres://myuser:mypassword@localhost:5432/mydb"
+	user, err := utils.ParseUserFromDsn(dsn)
+	assert.NoError(t, err)
+	assert.Equal(t, "myuser", user)
+}
+
+func TestParsePasswordFromDsn_PgxUrl(t *testing.T) {
+	dsn := "postgres://myuser:mypassword@localhost:5432/mydb"
+	pass, err := utils.ParsePasswordFromDsn(dsn)
+	assert.NoError(t, err)
+	assert.Equal(t, "mypassword", pass)
+}
+
+func TestParseDatabaseFromDsn_MySQL(t *testing.T) {
+	dsn := "myuser:mypassword@tcp(localhost:3306)/mydb"
+	db, err := utils.ParseDatabaseFromDsn(dsn)
+	assert.NoError(t, err)
+	assert.Equal(t, "mydb", db)
+}
+
+func TestParseUserFromDsn_MySQL(t *testing.T) {
+	dsn := "myuser:mypassword@tcp(localhost:3306)/mydb"
+	user, err := utils.ParseUserFromDsn(dsn)
+	assert.NoError(t, err)
+	assert.Equal(t, "myuser", user)
+}
+
+func TestParsePasswordFromDsn_MySQL(t *testing.T) {
+	dsn := "myuser:mypassword@tcp(localhost:3306)/mydb"
+	pass, err := utils.ParsePasswordFromDsn(dsn)
+	assert.NoError(t, err)
+	assert.Equal(t, "mypassword", pass)
+}
+
+func TestGetProtocol_PgxUrl(t *testing.T) {
+	dsn := "postgres://user:pass@localhost:5432/db"
+	protocol, err := utils.GetProtocol(dsn)
+	assert.NoError(t, err)
+	assert.Equal(t, utils.PGX_DRIVER_PROTOCOL, protocol)
+}
+
+func TestGetProtocol_PgxKeyValue(t *testing.T) {
+	dsn := "user=postgres password=secret host=localhost dbname=mydb"
+	protocol, err := utils.GetProtocol(dsn)
+	assert.NoError(t, err)
+	assert.Equal(t, utils.PGX_DRIVER_PROTOCOL, protocol)
+}
+
+func TestGetProtocol_MySQL(t *testing.T) {
+	dsn := "myuser:mypassword@tcp(localhost:3306)/mydb"
+	protocol, err := utils.GetProtocol(dsn)
+	assert.NoError(t, err)
+	assert.Equal(t, utils.MYSQL_DRIVER_PROTOCOL, protocol)
+}
+
+func TestGetProtocol_Invalid(t *testing.T) {
+	dsn := "user=postgres password=secret host=localhost dbname=mydb"
+	protocol, err := utils.GetProtocol(dsn)
+	assert.NoError(t, err)
+	assert.Equal(t, utils.PGX_DRIVER_PROTOCOL, protocol)
+
+	dsn = "myuser:mypassword@tcp(localhost:3306)/mydb"
+	protocol, err = utils.GetProtocol(dsn)
+	assert.NoError(t, err)
+	assert.Equal(t, utils.MYSQL_DRIVER_PROTOCOL, protocol)
+
+	dsn = "postgres://user:pass@localhost:5432/db"
+	protocol, err = utils.GetProtocol(dsn)
+	assert.NoError(t, err)
+	assert.Equal(t, utils.PGX_DRIVER_PROTOCOL, protocol)
+}

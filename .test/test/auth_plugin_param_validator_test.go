@@ -54,7 +54,27 @@ func TestValidateAuthParams(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, error_util.GetMessage(errMsgCode, "pluginCode", missingParam), err.Error())
 
-	// Test for one missing multiple params
+	// Test for missing multiple params
+	missingParam = []string{property_util.DB_USER.Name,
+		property_util.IDP_USERNAME.Name,
+		property_util.IDP_PASSWORD.Name,
+		property_util.IDP_ENDPOINT.Name,
+		property_util.IAM_ROLE_ARN.Name,
+		property_util.IAM_IDP_ARN.Name,
+	}
+	err = auth_helpers.ValidateAuthParams("pluginCode",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"")
+
+	assert.Error(t, err)
+	assert.Equal(t, error_util.GetMessage(errMsgCode, "pluginCode", missingParam), err.Error())
+
+	// Test for all missing params
 	missingParam = []string{property_util.DB_USER.Name, property_util.IDP_USERNAME.Name, property_util.IDP_ENDPOINT.Name}
 	err = auth_helpers.ValidateAuthParams("pluginCode",
 		"",

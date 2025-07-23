@@ -47,6 +47,7 @@ type LimitlessRouterMonitorImpl struct {
 }
 
 func NewLimitlessRouterMonitorImpl(
+	queryHelper LimitlessQueryHelper,
 	pluginService driver_infrastructure.PluginService,
 	hostInfo *host_info_util.HostInfo,
 	routerCache *utils.SlidingExpirationCache[[]*host_info_util.HostInfo],
@@ -54,7 +55,7 @@ func NewLimitlessRouterMonitorImpl(
 	intervalMs int,
 	props map[string]string) *LimitlessRouterMonitorImpl {
 	monitor := &LimitlessRouterMonitorImpl{
-		queryHelper:    NewLimitlessQueryHelperImpl(pluginService),
+		queryHelper:    queryHelper,
 		pluginService:  pluginService,
 		hostInfo:       hostInfo,
 		routerCache:    routerCache,

@@ -341,7 +341,14 @@ func (routerService *LimitlessRouterServiceImpl) StartMonitoring(hostInfo *host_
 		LIMITLESS_ROUTER_MONITOR_CACHE.ComputeIfAbsent(
 			cacheKey,
 			func() LimitlessRouterMonitor {
-				return NewLimitlessRouterMonitorImpl(routerService.pluginService, hostInfo, LIMITLESS_ROUTER_CACHE, cacheKey, intervalMs, props)
+				return NewLimitlessRouterMonitorImpl(
+					NewLimitlessQueryHelperImpl(routerService.pluginService),
+					routerService.pluginService,
+					hostInfo,
+					LIMITLESS_ROUTER_CACHE,
+					cacheKey,
+					intervalMs,
+					props)
 			},
 			cacheExpirationNano)
 	} else {
