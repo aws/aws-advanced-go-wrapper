@@ -37,6 +37,7 @@ type PluginFactoryWeight struct {
 }
 
 var pluginWeightByCode = map[string]int{
+	driver_infrastructure.CUSTOM_ENDPOINT_PLUGIN_CODE:           380,
 	driver_infrastructure.AURORA_CONNECTION_TRACKER_PLUGIN_CODE: 400,
 	driver_infrastructure.BLUE_GREEN_PLUGIN_CODE:                550,
 	driver_infrastructure.READ_WRITE_SPLITTING_PLUGIN_CODE:      600,

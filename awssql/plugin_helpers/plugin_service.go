@@ -23,6 +23,7 @@ import (
 	"log/slog"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
@@ -54,6 +55,7 @@ type PluginServiceImpl struct {
 	isInTransaction           bool
 	currentTx                 driver.Tx
 	sessionStateService       driver_infrastructure.SessionStateService
+	allowedAndBlockedHosts    atomic.Pointer[driver_infrastructure.AllowedAndBlockedHosts]
 }
 
 func NewPluginServiceImpl(
@@ -247,6 +249,17 @@ func (p *PluginServiceImpl) GetCurrentHostInfo() (*host_info_util.HostInfo, erro
 			}
 
 			p.currentHostInfo = host_info_util.GetWriter(p.AllHosts)
+			allowedHosts := p.GetHosts()
+			if !host_info_util.IsHostInList(p.currentHostInfo, allowedHosts) {
+				if p.currentHostInfo == nil {
+					return nil, error_util.NewGenericAwsWrapperError(
+						error_util.GetMessage("PluginServiceImpl.currentHostNotAllowed", p.currentHostInfo.GetHostAndPort(), utils.LogTopology(allowedHosts, "")))
+				} else {
+					return nil, error_util.NewGenericAwsWrapperError(
+						error_util.GetMessage("PluginServiceImpl.currentHostNotAllowed", "<nil>", utils.LogTopology(allowedHosts, "")))
+				}
+			}
+
 			if p.currentHostInfo.IsNil() {
 				p.currentHostInfo = p.AllHosts[0]
 			}
@@ -259,12 +272,44 @@ func (p *PluginServiceImpl) GetCurrentHostInfo() (*host_info_util.HostInfo, erro
 	return p.currentHostInfo, nil
 }
 
-func (p *PluginServiceImpl) GetHosts() []*host_info_util.HostInfo {
+// TODO: transfer some uses of #GetHost to #GetAllHosts
+func (p *PluginServiceImpl) GetAllHosts() []*host_info_util.HostInfo {
 	return p.AllHosts
+}
+
+func (p *PluginServiceImpl) GetHosts() []*host_info_util.HostInfo {
+	hostPermissions := p.allowedAndBlockedHosts.Load()
+	if hostPermissions == nil {
+		return p.AllHosts
+	}
+
+	hosts := p.AllHosts
+	allowedHosts := p.allowedAndBlockedHosts.Load().GetAllowedHostIds()
+	blockedHosts := p.allowedAndBlockedHosts.Load().GetBlockedHostIds()
+
+	if allowedHosts != nil && len(allowedHosts) > 0 {
+		hosts = utils.FilterSlice(hosts, func(item *host_info_util.HostInfo) bool {
+			value, ok := allowedHosts[item.HostId]
+			return ok && value
+		})
+	}
+
+	if blockedHosts != nil && len(blockedHosts) > 0 {
+		hosts = utils.FilterSlice(hosts, func(item *host_info_util.HostInfo) bool {
+			value, ok := blockedHosts[item.HostId]
+			return !ok || !value
+		})
+	}
+
+	return hosts
 }
 
 func (p *PluginServiceImpl) GetInitialConnectionHostInfo() *host_info_util.HostInfo {
 	return p.initialHostInfo
+}
+
+func (p *PluginServiceImpl) SetAllowedAndBlockedHosts(allowedAndBlockedHosts *driver_infrastructure.AllowedAndBlockedHosts) {
+	p.allowedAndBlockedHosts.Store(allowedAndBlockedHosts)
 }
 
 func (p *PluginServiceImpl) AcceptsStrategy(strategy string) bool {
