@@ -100,10 +100,10 @@ public class ContainerHelper {
     if (isPerformanceTest) {
       exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-timeout", PERFORMANCE_TEST_TIMEOUT, PERFORMANCE_TEST_TAG, "-run", PERFORMANCE_TEST_FILTER,  "-v", "./test_framework/container/tests...");
     } else if (filter != null) {
-      exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-timeout", INTEGRATION_TEST_TIMEOUT, "-v", "./test_framework/container/tests...", "-run", filter);
+      exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-timeout", INTEGRATION_TEST_TIMEOUT, "-v", "./test_framework/container/tests...", "-p", "1", "-run", filter);
     } else {
       // Run all tests located in aws-advanced-go-wrapper/.test/test_framework/container.
-      exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-timeout", INTEGRATION_TEST_TIMEOUT, "-v", "./test_framework/container/tests...");
+      exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-timeout", INTEGRATION_TEST_TIMEOUT, "-v", "./test_framework/container/tests...", "-p", "1");
     }
 
     System.out.println("==== Container console feed ==== <<<<");
