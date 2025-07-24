@@ -20,7 +20,7 @@ jobs:
     strategy: 
       fail-fast: false
       matrix: 
-        dbEngine: ["multi-az-postgres","multi-az-mysql"]
+        dbEngine: ["multi-az-mysql", "multi-az-postgres"]
     steps:
       - name: 'Clone repository'
         uses: actions/checkout@v4

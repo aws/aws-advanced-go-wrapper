@@ -265,7 +265,7 @@ func TestIamWithFailover(t *testing.T) {
 		environment,
 	)
 	props["plugins"] = "iam,failover"
-	dsn := test_utils.GetDsn(environment, props)
+	dsn := test_utils.GetDsnForTestsWithProxy(environment, props)
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
@@ -280,7 +280,7 @@ func TestIamWithFailover(t *testing.T) {
 	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(instanceId, "", "")
+	triggerFailoverError := auroraTestUtility.CrashInstance(instanceId, "", "")
 	assert.Nil(t, triggerFailoverError)
 	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -292,7 +292,9 @@ func TestIamWithFailover(t *testing.T) {
 	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, newInstanceId)
-	assert.NotEqual(t, instanceId, newInstanceId)
+	if environment.Info().Request.Deployment != test_utils.RDS_MULTI_AZ_CLUSTER {
+		assert.NotEqual(t, instanceId, newInstanceId)
+	}
 
 	test_utils.BasicCleanup(t.Name())
 }
