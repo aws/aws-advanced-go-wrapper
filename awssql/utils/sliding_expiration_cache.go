@@ -143,6 +143,7 @@ func (c *SlidingExpirationCache[T]) cleanupIfExpired(key string) {
 }
 
 func (c *SlidingExpirationCache[T]) Clear() {
+	slog.Debug("SlidingExpirationCache.Clear()")
 	entries := c.GetAllEntries()
 
 	c.lock.Lock()
@@ -152,9 +153,12 @@ func (c *SlidingExpirationCache[T]) Clear() {
 
 	if c.itemDisposalFunc != nil {
 		for _, item := range entries {
+			slog.Debug("SlidingExpirationCache.Clear() - disposing item")
 			c.itemDisposalFunc(item)
+			slog.Debug("SlidingExpirationCache.Clear() - disposing item - finished")
 		}
 	}
+	slog.Debug("SlidingExpirationCache.Clear() - finished")
 }
 
 func (c *SlidingExpirationCache[T]) CleanUp() {

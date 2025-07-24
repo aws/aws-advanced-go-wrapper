@@ -168,6 +168,7 @@ func doesStatusMatch(currentStatus *string, desiredStatus string) bool {
 }
 
 func (a AuroraTestUtility) IsDbInstanceWriter(instanceId string, clusterId string) bool {
+	slog.Debug("IsDbInstanceWriter() - instanceId:" + instanceId)
 	writerId, err := a.GetClusterWriterInstanceId(clusterId)
 	if err == nil && writerId == instanceId {
 		return true
@@ -214,6 +215,26 @@ func (a AuroraTestUtility) getDbCluster(clusterId string) (cluster types.DBClust
 		return
 	}
 	return resp.DBClusters[0], nil
+}
+
+func (a AuroraTestUtility) CrashInstance(initialWriter string, clusterId string, targetWriterId string) (err error) {
+	env, err := GetCurrentTestEnvironment()
+	deployment := env.Info().Request.Deployment
+
+	if RDS_MULTI_AZ_CLUSTER == deployment {
+		slog.Debug("CrashInstance() - RDS_MULTI_AZ_CLUSTER deployment detected. Simulating temporary failure")
+		a.SimulateTemporaryFailure()
+		return nil
+	} else {
+		slog.Debug("CrashInstance() - dbengine deployment %v detected. FailoverClusterAndWaitTillWriterChanged", deployment)
+		return a.FailoverClusterAndWaitTillWriterChanged(initialWriter, clusterId, targetWriterId)
+	}
+}
+
+func (a AuroraTestUtility) SimulateTemporaryFailure() {
+	DisableAllProxies()
+	time.Sleep(5 * time.Second)
+	EnableAllProxies()
 }
 
 func (a AuroraTestUtility) FailoverClusterAndWaitTillWriterChanged(initialWriter string, clusterId string, targetWriterId string) (err error) {
@@ -411,8 +432,10 @@ func BasicSetupInfoLog(name string) error {
 }
 
 func BasicCleanup(name string) {
+	slog.Debug("test_utils.BasicCleanup()")
 	awsDriver.ClearCaches()
 	slog.Info(fmt.Sprintf("Test finished: %s.", name))
+	slog.Debug("test_utils.BasicCleanup() - finished")
 }
 
 func SkipForTestEnvironmentFeatures(t *testing.T, testEnvironmentRequestFeatures []TestEnvironmentFeatures, featuresToSkip ...TestEnvironmentFeatures) {

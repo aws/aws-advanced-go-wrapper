@@ -18,6 +18,7 @@ package driver_infrastructure
 
 import (
 	"database/sql/driver"
+	"fmt"
 	"log/slog"
 	"strings"
 	"sync"
@@ -51,6 +52,7 @@ type ClusterTopologyMonitor interface {
 	SetClusterId(clusterId string)
 	ForceRefreshVerifyWriter(writerImportant bool, timeoutMs int) ([]*host_info_util.HostInfo, error)
 	ForceRefreshUsingConn(conn driver.Conn, timeoutMs int) ([]*host_info_util.HostInfo, error)
+	CanDispose() bool
 	Close()
 	Start(wg *sync.WaitGroup)
 }
@@ -83,6 +85,7 @@ type ClusterTopologyMonitorImpl struct {
 	hostRoutinesLatestTopology              atomic.Value
 	hostRoutinesWriterHostInfo              atomic.Pointer[host_info_util.HostInfo]
 	writerHostInfo                          atomic.Pointer[host_info_util.HostInfo]
+	Uuid                                    uuid.UUID
 }
 
 func NewClusterTopologyMonitorImpl(
@@ -96,6 +99,8 @@ func NewClusterTopologyMonitorImpl(
 	initialHostInfo *host_info_util.HostInfo,
 	clusterInstanceTemplate *host_info_util.HostInfo,
 	pluginService PluginService) *ClusterTopologyMonitorImpl {
+	newUuid := uuid.New()
+	slog.Debug(fmt.Sprintf("NewClusterTopologyMonitorImpl - uuid:%v", newUuid))
 	return &ClusterTopologyMonitorImpl{
 		hostListProvider:               hostListProvider,
 		databaseDialect:                dialect,
@@ -111,13 +116,16 @@ func NewClusterTopologyMonitorImpl(
 		topologyCacheExpirationNano:    topologyCacheExpirationNano,
 		requestToUpdateTopologyChannel: make(chan bool),
 		topologyUpdatedChannel:         make(chan bool),
+		Uuid:                           newUuid,
 	}
 }
 
 func (c *ClusterTopologyMonitorImpl) Start(wg *sync.WaitGroup) {
+	slog.Debug("ClusterTopologyMonitorImpl.Start()")
 	c.monitoringConn.Store(emptyContainer)
 	c.hostRoutinesWriterConn.Store(emptyContainer)
 	c.hostRoutinesReaderConn.Store(emptyContainer)
+	wg.Add(1)
 	go c.Run(wg)
 }
 
@@ -289,7 +297,13 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 	return hosts, nil
 }
 
+func (c *ClusterTopologyMonitorImpl) CanDispose() bool {
+	return true
+}
+
 func (c *ClusterTopologyMonitorImpl) Close() {
+	slog.Debug("ClusterTopologyMonitorImpl.Close()")
+	slog.Debug(fmt.Sprintf("ClusterTopologyMonitorImpl.Close() - uuid:%v", c.Uuid))
 	// Break waiting/sleeping cycles in monitoring routines.
 	c.requestToUpdateTopology.Store(true)
 	c.notifyChannel(c.requestToUpdateTopologyChannel)
@@ -297,6 +311,8 @@ func (c *ClusterTopologyMonitorImpl) Close() {
 
 	// Signal for monitoring loop to exit.
 	c.stop.Store(true)
+	slog.Debug("ClusterTopologyMonitorImpl.Close() - c.stop.Store(true)")
+	slog.Debug(fmt.Sprintf("ClusterTopologyMonitorImpl.Close() - c.stop:%v", c.stop.Load()))
 	c.hostRoutinesStop.Store(true)
 
 	// Waiting to give routines enough time to exit the monitoring loop and close database connections.
@@ -306,6 +322,7 @@ func (c *ClusterTopologyMonitorImpl) Close() {
 	c.hostRoutines.Clear()
 	close(c.requestToUpdateTopologyChannel)
 	close(c.topologyUpdatedChannel)
+	slog.Debug("ClusterTopologyMonitorImpl.Close() - finished")
 }
 
 func (c *ClusterTopologyMonitorImpl) isInPanicMode() bool {
@@ -398,8 +415,8 @@ func (c *ClusterTopologyMonitorImpl) notifyChannel(channel chan bool) {
 }
 
 func (c *ClusterTopologyMonitorImpl) Run(wg *sync.WaitGroup) {
+	defer wg.Done()
 	slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.startMonitoringRoutine", c.initialHostInfo.GetHost()))
-
 	for !c.stop.Load() {
 		if c.isInPanicMode() {
 			if utils.LengthOfSyncMap(c.hostRoutines) == 0 {
@@ -509,14 +526,16 @@ func (c *ClusterTopologyMonitorImpl) Run(wg *sync.WaitGroup) {
 				mapEntry, ok := c.topologyMap.Get(c.clusterId)
 				if ok {
 					slog.Debug(utils.LogTopology(mapEntry.topology, ""))
+					slog.Debug(fmt.Sprintf("ClusterTopologyMonitorImpl.Run() - c.stop:%v", c.stop.Load()))
+					slog.Debug(fmt.Sprintf("ClusterTopologyMonitorImpl.Run() - uuid:%v", c.Uuid))
 				}
 			}
 
 			c.delay(false)
 		}
 	}
-
-	wg.Done()
+	slog.Debug("ClusterTopologyMonitorImpl.Run() - finished")
+	slog.Debug(fmt.Sprintf("ClusterTopologyMonitorImpl.Run() - uuid:%v", c.Uuid))
 }
 
 type HostMonitoringRoutine struct {

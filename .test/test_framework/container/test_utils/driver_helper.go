@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -32,6 +33,16 @@ import (
 	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 )
+
+const TEST_FAILURE_DETECTION_START_TIME_SECONDS = 1
+const TEST_FAILURE_DETECTION_INTERVAL_SECONDS = 5
+const TEST_FAILURE_DETECTION_COUNT = 3
+const TEST_SLEEP_QUERY_SECONDS = (TEST_FAILURE_DETECTION_COUNT + 1) * TEST_FAILURE_DETECTION_INTERVAL_SECONDS
+const TEST_SLEEP_QUERY_TIMEOUT_SECONDS = 2 * TEST_SLEEP_QUERY_SECONDS
+
+// Minimal time EFM takes to consider a host dead is FAILURE_DETECTION_TIME_MS + (TEST_FAILURE_DETECTION_COUNT - 1)*TEST_FAILURE_DETECTION_INTERVAL_SECONDS.
+// As long as TEST_FAILURE_DETECTION_START_TIME_SECONDS < TEST_FAILURE_DETECTION_INTERVAL_SECONDS this leaves time for the host to be marked unhealthy.
+const TEST_MONITORING_TIMEOUT_SECONDS = TEST_FAILURE_DETECTION_COUNT * TEST_FAILURE_DETECTION_INTERVAL_SECONDS
 
 func OpenDb(engine DatabaseEngine, dsn string) (*sql.DB, error) {
 	switch engine {
@@ -61,6 +72,11 @@ func GetSleepSql(engine DatabaseEngine, seconds int) string {
 		return fmt.Sprintf("select sleep(%d)", seconds)
 	}
 	return ""
+}
+
+func ExecuteSleepQuery(engine DatabaseEngine, conn driver.Conn, seconds int) (string, error) {
+	sleepQuery := GetSleepSql(engine, seconds)
+	return GetFirstItemFromQueryAsString(engine, conn, sleepQuery)
 }
 
 func GetInstanceIdSql(engine DatabaseEngine, deployment DatabaseEngineDeployment) (string, error) {
@@ -111,6 +127,7 @@ func ExecuteInstanceQuery(engine DatabaseEngine, deployment DatabaseEngineDeploy
 
 func GetFirstItemFromQueryAsString(engine DatabaseEngine, conn driver.Conn, query string) (string, error) {
 	slog.Debug("test_utils.GetFirstItemFromQueryAsString")
+	defer slog.Debug("test_utils.GetFirstItemFromQueryAsString - FINISHED")
 	queryerCtx, ok := conn.(driver.QueryerContext)
 	if !ok {
 		return "", errors.New("conn does not implement QueryerContext")
@@ -250,6 +267,36 @@ func ExecuteQueryDB(engine DatabaseEngine, db *sql.DB, sql string, timeoutValueS
 
 func GetDsn(environment *TestEnvironment, props map[string]string) string {
 	return ConstructDsn(environment.Info().Request.Engine, ConfigureProps(environment, props))
+}
+
+func GetDsnForTestsWithProxy(environment *TestEnvironment, origProps map[string]string) string {
+	return GetDsn(environment, GetPropsForTestsWithProxy(environment, origProps))
+}
+
+func GetPropsForTestsWithProxy(environment *TestEnvironment, origProps map[string]string) map[string]string {
+	monitoringConnectTimeoutSeconds := strconv.Itoa(TEST_FAILURE_DETECTION_INTERVAL_SECONDS - 1)
+	monitoringConnectTimeoutParameterName := property_util.MONITORING_PROPERTY_PREFIX
+	switch environment.Info().Request.Engine {
+	case PG:
+		monitoringConnectTimeoutParameterName = monitoringConnectTimeoutParameterName + "connect_timeout"
+	case MYSQL:
+		monitoringConnectTimeoutParameterName = monitoringConnectTimeoutParameterName + "readTimeout"
+		monitoringConnectTimeoutSeconds = monitoringConnectTimeoutSeconds + "s"
+	}
+	proxyProps := map[string]string{
+		"host":                       environment.Info().ProxyDatabaseInfo.ClusterEndpoint,
+		"port":                       strconv.Itoa(environment.Info().ProxyDatabaseInfo.InstanceEndpointPort),
+		"clusterInstanceHostPattern": "?." + environment.Info().ProxyDatabaseInfo.InstanceEndpointSuffix,
+		"failureDetectionIntervalMs": strconv.Itoa(TEST_FAILURE_DETECTION_INTERVAL_SECONDS * 1000),   // interval between probes to host
+		"failureDetectionCount":      strconv.Itoa(TEST_FAILURE_DETECTION_COUNT),                     // consecutive failures before marks host as dead
+		"failureDetectionTimeMs":     strconv.Itoa(TEST_FAILURE_DETECTION_START_TIME_SECONDS * 1000), // time before starting monitoring
+		"failoverTimeoutMs":          strconv.Itoa(TEST_MONITORING_TIMEOUT_SECONDS * 1000),
+		// each monitoring connection has monitoringConnectTimeoutSeconds seconds to connect
+		monitoringConnectTimeoutParameterName: monitoringConnectTimeoutSeconds,
+	}
+
+	maps.Copy(origProps, proxyProps)
+	return origProps
 }
 
 func ConfigureProps(environment *TestEnvironment, props map[string]string) map[string]string {

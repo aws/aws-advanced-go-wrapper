@@ -76,6 +76,7 @@ func EnableAllConnectivity(logErrors bool) {
 }
 
 func EnableProxyConnectivity(proxyInfo ProxyInfo, logErrors bool) {
+	slog.Debug(fmt.Sprintf("EnableProxyConnectivity - %s:%d", proxyInfo.controlHost, proxyInfo.controlPort))
 	proxy := proxyInfo.proxy
 	if proxy != nil {
 		// Try to remove upstream toxic
@@ -93,6 +94,7 @@ func EnableProxyConnectivity(proxyInfo ProxyInfo, logErrors bool) {
 }
 
 func DisableAllConnectivity() {
+	slog.Debug(fmt.Sprintf("DisableAllConnectivity"))
 	env, err := GetCurrentTestEnvironment()
 	if err == nil {
 		for _, proxy := range env.proxies {
@@ -102,6 +104,7 @@ func DisableAllConnectivity() {
 }
 
 func DisableProxyConnectivity(proxyInfo ProxyInfo) {
+	slog.Debug(fmt.Sprintf("DisableProxyConnectivity - %s:%d", proxyInfo.controlHost, proxyInfo.controlPort))
 	proxy := proxyInfo.proxy
 	if proxy != nil {
 		// Add downstream toxic with 0 bandwidth.
@@ -129,6 +132,7 @@ func DisableProxyConnectivity(proxyInfo ProxyInfo) {
 }
 
 func DisableAllProxies() {
+	slog.Debug(fmt.Sprintf("DisableAllProxies"))
 	env, err := GetCurrentTestEnvironment()
 	if err == nil {
 		for _, proxy := range env.proxies {
