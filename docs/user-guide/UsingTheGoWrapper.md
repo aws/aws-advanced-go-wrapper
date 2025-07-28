@@ -19,7 +19,7 @@ The AWS Advanced Go Wrapper is an implementation of Go's database/sql/driver int
 Use `"awssql-pgx"` or `"awssql-mysql` as `driverName` and a valid DSN as `dataSourceName`.
 
 > [!NOTE]
-> The formatting of a valid DSN for a [MySQL](https://github.com/go-sql-driver/mysql?tab=readme-ov-file#dsn-data-source-name) and [PostgreSQL](https://github.com/jackc/pgx?tab=readme-ov-file#example-usage) connection differs, please provide a valid DSN for the intended underlying driver.
+> The formatting of a valid DSN for a [MySQL](https://github.com/go-sql-driver/mysql#dsn-data-source-name) and [PostgreSQL](https://github.com/jackc/pgx?tab=readme-ov-file#example-usage) connection differs, please provide a valid DSN for the intended underlying driver.
 
 To open a database handle:
 
