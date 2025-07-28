@@ -21,7 +21,7 @@ import (
 	"strings"
 )
 
-const SET_AUTOCOMMIT_0 = "SET AUTOCOMMIT = 0"
+const SET_AUTOCOMMIT_0 = "set autocommit = 0"
 
 func DoesOpenTransaction(methodName string, methodArgs ...any) bool {
 	if methodName == CONN_BEGIN_TX ||
@@ -36,7 +36,7 @@ func DoesOpenTransaction(methodName string, methodArgs ...any) bool {
 		return false
 	}
 
-	return doesStatementStartTransaction(getSeparateSqlStatements(query))
+	return doesStatementStartTransaction(GetSeparateSqlStatements(query))
 }
 
 func DoesCloseTransaction(methodName string, methodArgs ...any) bool {
@@ -53,21 +53,22 @@ func DoesCloseTransaction(methodName string, methodArgs ...any) bool {
 		return false
 	}
 
-	return doesStatementCloseTransaction(getSeparateSqlStatements(query))
+	return doesStatementCloseTransaction(GetSeparateSqlStatements(query))
 }
 
-func getSeparateSqlStatements(query string) []string {
+func GetSeparateSqlStatements(query string) []string {
 	statementList := parseMultiStatementQueries(query)
 	if len(statementList) == 0 {
 		return []string{}
 	}
 
-	statements := make([]string, len(statementList))
-	for i, statement := range statementList {
-		statement = strings.ToUpper(statement)
+	var statements []string
+	for _, statement := range statementList {
 		re := regexp.MustCompile(`\s*/\*(.*?)\*/\s*`)
-		statement = strings.TrimSpace(re.ReplaceAllString(statement, " "))
-		statements[i] = statement
+		stmt := strings.TrimSpace(re.ReplaceAllString(statement, " "))
+		if stmt != "" {
+			statements = append(statements, stmt)
+		}
 	}
 	return statements
 }
@@ -91,7 +92,8 @@ func parseMultiStatementQueries(query string) []string {
 
 func doesStatementStartTransaction(statements []string) bool {
 	for _, statement := range statements {
-		if strings.HasPrefix(statement, "BEGIN") || strings.HasPrefix(statement, "START TRANSACTION") || statement == SET_AUTOCOMMIT_0 {
+		lowerStatement := strings.ToLower(statement)
+		if strings.HasPrefix(lowerStatement, "begin") || strings.HasPrefix(lowerStatement, "start transaction") || lowerStatement == SET_AUTOCOMMIT_0 {
 			return true
 		}
 	}
@@ -100,10 +102,11 @@ func doesStatementStartTransaction(statements []string) bool {
 
 func doesStatementCloseTransaction(statements []string) bool {
 	for _, statement := range statements {
-		if strings.HasPrefix(statement, "COMMIT") ||
-			strings.HasPrefix(statement, "ROLLBACK") ||
-			strings.HasPrefix(statement, "END") ||
-			strings.HasPrefix(statement, "ABORT") {
+		lowerStatement := strings.ToLower(statement)
+		if strings.HasPrefix(lowerStatement, "commit") ||
+			strings.HasPrefix(lowerStatement, "rollback") ||
+			strings.HasPrefix(lowerStatement, "end") ||
+			strings.HasPrefix(lowerStatement, "abort") {
 			return true
 		}
 	}

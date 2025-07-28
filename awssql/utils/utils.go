@@ -58,6 +58,21 @@ func FindHostInTopology(hosts []*host_info_util.HostInfo, hostNames ...string) *
 	return nil
 }
 
+func ExecQueryDirectly(conn driver.Conn, query string) error {
+	execerCtx, ok := conn.(driver.ExecerContext)
+	if !ok {
+		// Unable to query, conn does not implement ExecerContext.
+		return nil
+	}
+
+	_, err := execerCtx.ExecContext(context.Background(), query, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Directly executes query on conn, and returns the first row.
 // Returns nil if unable to obtain a row.
 func GetFirstRowFromQuery(conn driver.Conn, query string) []driver.Value {
@@ -244,4 +259,20 @@ func FindRegisteredDriver(dialectCode string) bool {
 		}
 	}
 	return false
+}
+
+func GetQueryFromSqlOrMethodArgs(sql string, methodArgs ...any) string {
+	query := sql
+
+	if sql == "" {
+		if methodArgs == nil {
+			return query
+		}
+		query, ok := methodArgs[0].(string)
+		if !ok || len(query) == 0 {
+			return query
+		}
+	}
+
+	return query
 }

@@ -19,6 +19,7 @@ package plugin_helpers
 import (
 	"context"
 	"database/sql/driver"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"log/slog"
 	"slices"
 	"time"
@@ -48,6 +49,7 @@ type PluginServiceImpl struct {
 	initialHostInfo           *host_info_util.HostInfo
 	isInTransaction           bool
 	currentTx                 driver.Tx
+	sessionStateService       driver_infrastructure.SessionStateService
 }
 
 func NewPluginServiceImpl(
@@ -72,6 +74,8 @@ func NewPluginServiceImpl(
 		originalDsn:               dsn,
 		connectionProviderManager: connectionProviderManager,
 	}
+	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(pluginService, props)
+	pluginService.sessionStateService = sessionStateService
 	return pluginService, nil
 }
 
@@ -137,6 +141,7 @@ func (p *PluginServiceImpl) SetCurrentConnection(
 		// Setting up an initial connection.
 		p.currentConnection = &conn
 		p.currentHostInfo = hostInfo
+		p.sessionStateService.Reset()
 
 		if p.initialHostInfo == nil {
 			p.initialHostInfo = hostInfo
@@ -148,12 +153,28 @@ func (p *PluginServiceImpl) SetCurrentConnection(
 		p.pluginManager.NotifyConnectionChanged(changes, skipNotificationForThisPlugin)
 	} else {
 		changes := p.compare(*p.currentConnection, p.currentHostInfo, conn, hostInfo)
+
 		if len(changes) > 0 {
+			err := p.sessionStateService.Begin()
+			defer p.sessionStateService.Complete()
+			if err != nil {
+				return err
+			}
+
 			oldConnection := *p.currentConnection
+			isInTransaction := p.IsInTransaction()
 
 			p.currentConnection = &conn
 			p.currentHostInfo = hostInfo
+			err = p.sessionStateService.ApplyCurrentSessionState(conn)
+			if err != nil {
+				return err
+			}
 			p.SetInTransaction(false)
+
+			if isInTransaction && property_util.GetVerifiedWrapperPropertyValue[bool](p.props, property_util.ROLLBACK_ON_SWITCH) {
+				utils.Rollback(oldConnection, p.GetCurrentTx())
+			}
 
 			pluginOpinions := p.pluginManager.NotifyConnectionChanged(changes, skipNotificationForThisPlugin)
 			_, connectionObjectHasChanged := changes[driver_infrastructure.CONNECTION_OBJECT_CHANGED]
@@ -161,6 +182,7 @@ func (p *PluginServiceImpl) SetCurrentConnection(
 
 			shouldCloseConnection := connectionObjectHasChanged && !p.GetTargetDriverDialect().IsClosed(oldConnection) && !preserve
 			if shouldCloseConnection {
+				_ = p.sessionStateService.ApplyPristineSessionState(oldConnection)
 				oldConnection.Close()
 			}
 		}
@@ -501,6 +523,40 @@ func (p *PluginServiceImpl) IsNetworkError(err error) bool {
 
 func (p *PluginServiceImpl) IsLoginError(err error) bool {
 	return p.driverDialect.IsLoginError(err)
+}
+
+func (p *PluginServiceImpl) UpdateState(sql string, methodArgs ...any) {
+	query := utils.GetQueryFromSqlOrMethodArgs(sql, methodArgs...)
+
+	var autoCommit, updateAutoCommitOk, readOnly, updateReadOnlyOk, updateSchemaOk, updateCatalogOk, updateTransactionIsolationOk bool
+	var schema, catalog string
+	var transactionIsolation driver_infrastructure.TransactionIsolationLevel
+
+	statements := utils.GetSeparateSqlStatements(query)
+	for i := len(statements) - 1; i >= 0 && !updateAutoCommitOk && !updateReadOnlyOk && !updateSchemaOk && !updateCatalogOk && !updateTransactionIsolationOk; i-- {
+		autoCommit, updateAutoCommitOk = p.dialect.DoesStatementSetAutoCommit(statements[i])
+		readOnly, updateReadOnlyOk = p.dialect.DoesStatementSetReadOnly(statements[i])
+		schema, updateSchemaOk = p.dialect.DoesStatementSetSchema(statements[i])
+		catalog, updateCatalogOk = p.dialect.DoesStatementSetCatalog(statements[i])
+		transactionIsolation, updateTransactionIsolationOk = p.dialect.DoesStatementSetTransactionIsolation(statements[i])
+	}
+
+	setIfOk := func(setter func(), ok bool) {
+		if ok {
+			setter()
+		}
+	}
+	setIfOk(func() {
+		p.sessionStateService.SetupPristineAutoCommit()
+		p.sessionStateService.SetAutoCommit(autoCommit)
+	}, updateAutoCommitOk)
+	setIfOk(func() { p.sessionStateService.SetupPristineReadOnly(); p.sessionStateService.SetReadOnly(readOnly) }, updateReadOnlyOk)
+	setIfOk(func() { p.sessionStateService.SetupPristineSchema(); p.sessionStateService.SetSchema(schema) }, updateSchemaOk)
+	setIfOk(func() { p.sessionStateService.SetupPristineCatalog(); p.sessionStateService.SetCatalog(catalog) }, updateCatalogOk)
+	setIfOk(func() {
+		p.sessionStateService.SetupPristineTransactionIsolation()
+		p.sessionStateService.SetTransactionIsolation(transactionIsolation)
+	}, updateTransactionIsolationOk)
 }
 
 func (p *PluginServiceImpl) ReleaseResources() {

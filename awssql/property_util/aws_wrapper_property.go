@@ -136,7 +136,7 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name:          true,
 	CLUSTER_ID.Name:                                true,
 	CLUSTER_INSTANCE_HOST_PATTERN.Name:             true,
-	AWS_PROFILE.Name:                                true,
+	AWS_PROFILE.Name:                               true,
 	IAM_HOST.Name:                                  true,
 	IAM_EXPIRATION_SEC.Name:                        true,
 	IAM_REGION.Name:                                true,
@@ -180,6 +180,9 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	LIMITLESS_GET_ROUTER_RETRY_INTERVAL_MS.Name:    true,
 	LIMITLESS_MAX_CONN_RETRIES.Name:                true,
 	LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name:         true,
+	TRANSFER_SESSION_STATE_ON_SWITCH.Name:          true,
+	RESET_SESSION_STATE_ON_CLOSE.Name:              true,
+	ROLLBACK_ON_SWITCH.Name:                        true,
 }
 
 var USER = AwsWrapperProperty{
@@ -609,6 +612,27 @@ var LIMITLESS_USE_SHARD_GROUP_URL = AwsWrapperProperty{
 	description:         "When this parameter is set to true, provided host endpoints must be database shard group URLs. Set to false to disable this check.",
 	defaultValue:        "true",
 	wrapperPropertyType: WRAPPER_TYPE_BOOL,
+}
+
+var TRANSFER_SESSION_STATE_ON_SWITCH = AwsWrapperProperty{
+	"transferSessionStateOnSwitch",
+	"Enables session state transfer to a new connection.",
+	"true",
+	WRAPPER_TYPE_BOOL,
+}
+
+var RESET_SESSION_STATE_ON_CLOSE = AwsWrapperProperty{
+	"resetSessionStateOnClose",
+	"Enables resetting connection session state before closing it.",
+	"true",
+	WRAPPER_TYPE_BOOL,
+}
+
+var ROLLBACK_ON_SWITCH = AwsWrapperProperty{
+	"rollbackOnSwitch",
+	"Enables rollback of an in progress transaction when switching to a new connection.",
+	"true",
+	WRAPPER_TYPE_BOOL,
 }
 
 func RemoveInternalAwsWrapperProperties(props map[string]string) map[string]string {

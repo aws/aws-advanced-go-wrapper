@@ -52,6 +52,81 @@ func (m *MockDatabaseDialect) EXPECT() *MockDatabaseDialectMockRecorder {
 	return m.recorder
 }
 
+// DoesStatementSetAutoCommit mocks base method.
+func (m *MockDatabaseDialect) DoesStatementSetAutoCommit(statement string) (bool, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DoesStatementSetAutoCommit", statement)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// DoesStatementSetAutoCommit indicates an expected call of DoesStatementSetAutoCommit.
+func (mr *MockDatabaseDialectMockRecorder) DoesStatementSetAutoCommit(statement interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesStatementSetAutoCommit", reflect.TypeOf((*MockDatabaseDialect)(nil).DoesStatementSetAutoCommit), statement)
+}
+
+// DoesStatementSetCatalog mocks base method.
+func (m *MockDatabaseDialect) DoesStatementSetCatalog(statement string) (string, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DoesStatementSetCatalog", statement)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// DoesStatementSetCatalog indicates an expected call of DoesStatementSetCatalog.
+func (mr *MockDatabaseDialectMockRecorder) DoesStatementSetCatalog(statement interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesStatementSetCatalog", reflect.TypeOf((*MockDatabaseDialect)(nil).DoesStatementSetCatalog), statement)
+}
+
+// DoesStatementSetReadOnly mocks base method.
+func (m *MockDatabaseDialect) DoesStatementSetReadOnly(statement string) (bool, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DoesStatementSetReadOnly", statement)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// DoesStatementSetReadOnly indicates an expected call of DoesStatementSetReadOnly.
+func (mr *MockDatabaseDialectMockRecorder) DoesStatementSetReadOnly(statement interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesStatementSetReadOnly", reflect.TypeOf((*MockDatabaseDialect)(nil).DoesStatementSetReadOnly), statement)
+}
+
+// DoesStatementSetSchema mocks base method.
+func (m *MockDatabaseDialect) DoesStatementSetSchema(statement string) (string, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DoesStatementSetSchema", statement)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// DoesStatementSetSchema indicates an expected call of DoesStatementSetSchema.
+func (mr *MockDatabaseDialectMockRecorder) DoesStatementSetSchema(statement interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesStatementSetSchema", reflect.TypeOf((*MockDatabaseDialect)(nil).DoesStatementSetSchema), statement)
+}
+
+// DoesStatementSetTransactionIsolation mocks base method.
+func (m *MockDatabaseDialect) DoesStatementSetTransactionIsolation(statement string) (driver_infrastructure.TransactionIsolationLevel, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DoesStatementSetTransactionIsolation", statement)
+	ret0, _ := ret[0].(driver_infrastructure.TransactionIsolationLevel)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// DoesStatementSetTransactionIsolation indicates an expected call of DoesStatementSetTransactionIsolation.
+func (mr *MockDatabaseDialectMockRecorder) DoesStatementSetTransactionIsolation(statement interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesStatementSetTransactionIsolation", reflect.TypeOf((*MockDatabaseDialect)(nil).DoesStatementSetTransactionIsolation), statement)
+}
+
 // GetDefaultPort mocks base method.
 func (m *MockDatabaseDialect) GetDefaultPort() int {
 	m.ctrl.T.Helper()
@@ -122,6 +197,81 @@ func (mr *MockDatabaseDialectMockRecorder) GetServerVersionQuery() *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetServerVersionQuery", reflect.TypeOf((*MockDatabaseDialect)(nil).GetServerVersionQuery))
 }
 
+// GetSetAutoCommitQuery mocks base method.
+func (m *MockDatabaseDialect) GetSetAutoCommitQuery(autoCommit bool) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSetAutoCommitQuery", autoCommit)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSetAutoCommitQuery indicates an expected call of GetSetAutoCommitQuery.
+func (mr *MockDatabaseDialectMockRecorder) GetSetAutoCommitQuery(autoCommit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSetAutoCommitQuery", reflect.TypeOf((*MockDatabaseDialect)(nil).GetSetAutoCommitQuery), autoCommit)
+}
+
+// GetSetCatalogQuery mocks base method.
+func (m *MockDatabaseDialect) GetSetCatalogQuery(catalog string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSetCatalogQuery", catalog)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSetCatalogQuery indicates an expected call of GetSetCatalogQuery.
+func (mr *MockDatabaseDialectMockRecorder) GetSetCatalogQuery(catalog interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSetCatalogQuery", reflect.TypeOf((*MockDatabaseDialect)(nil).GetSetCatalogQuery), catalog)
+}
+
+// GetSetReadOnlyQuery mocks base method.
+func (m *MockDatabaseDialect) GetSetReadOnlyQuery(readOnly bool) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSetReadOnlyQuery", readOnly)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSetReadOnlyQuery indicates an expected call of GetSetReadOnlyQuery.
+func (mr *MockDatabaseDialectMockRecorder) GetSetReadOnlyQuery(readOnly interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSetReadOnlyQuery", reflect.TypeOf((*MockDatabaseDialect)(nil).GetSetReadOnlyQuery), readOnly)
+}
+
+// GetSetSchemaQuery mocks base method.
+func (m *MockDatabaseDialect) GetSetSchemaQuery(schema string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSetSchemaQuery", schema)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSetSchemaQuery indicates an expected call of GetSetSchemaQuery.
+func (mr *MockDatabaseDialectMockRecorder) GetSetSchemaQuery(schema interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSetSchemaQuery", reflect.TypeOf((*MockDatabaseDialect)(nil).GetSetSchemaQuery), schema)
+}
+
+// GetSetTransactionIsolationQuery mocks base method.
+func (m *MockDatabaseDialect) GetSetTransactionIsolationQuery(level driver_infrastructure.TransactionIsolationLevel) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSetTransactionIsolationQuery", level)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSetTransactionIsolationQuery indicates an expected call of GetSetTransactionIsolationQuery.
+func (mr *MockDatabaseDialectMockRecorder) GetSetTransactionIsolationQuery(level interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSetTransactionIsolationQuery", reflect.TypeOf((*MockDatabaseDialect)(nil).GetSetTransactionIsolationQuery), level)
+}
+
 // IsDialect mocks base method.
 func (m *MockDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	m.ctrl.T.Helper()
@@ -157,6 +307,81 @@ func NewMockTopologyAwareDialect(ctrl *gomock.Controller) *MockTopologyAwareDial
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockTopologyAwareDialect) EXPECT() *MockTopologyAwareDialectMockRecorder {
 	return m.recorder
+}
+
+// DoesStatementSetAutoCommit mocks base method.
+func (m *MockTopologyAwareDialect) DoesStatementSetAutoCommit(statement string) (bool, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DoesStatementSetAutoCommit", statement)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// DoesStatementSetAutoCommit indicates an expected call of DoesStatementSetAutoCommit.
+func (mr *MockTopologyAwareDialectMockRecorder) DoesStatementSetAutoCommit(statement interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesStatementSetAutoCommit", reflect.TypeOf((*MockTopologyAwareDialect)(nil).DoesStatementSetAutoCommit), statement)
+}
+
+// DoesStatementSetCatalog mocks base method.
+func (m *MockTopologyAwareDialect) DoesStatementSetCatalog(statement string) (string, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DoesStatementSetCatalog", statement)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// DoesStatementSetCatalog indicates an expected call of DoesStatementSetCatalog.
+func (mr *MockTopologyAwareDialectMockRecorder) DoesStatementSetCatalog(statement interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesStatementSetCatalog", reflect.TypeOf((*MockTopologyAwareDialect)(nil).DoesStatementSetCatalog), statement)
+}
+
+// DoesStatementSetReadOnly mocks base method.
+func (m *MockTopologyAwareDialect) DoesStatementSetReadOnly(statement string) (bool, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DoesStatementSetReadOnly", statement)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// DoesStatementSetReadOnly indicates an expected call of DoesStatementSetReadOnly.
+func (mr *MockTopologyAwareDialectMockRecorder) DoesStatementSetReadOnly(statement interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesStatementSetReadOnly", reflect.TypeOf((*MockTopologyAwareDialect)(nil).DoesStatementSetReadOnly), statement)
+}
+
+// DoesStatementSetSchema mocks base method.
+func (m *MockTopologyAwareDialect) DoesStatementSetSchema(statement string) (string, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DoesStatementSetSchema", statement)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// DoesStatementSetSchema indicates an expected call of DoesStatementSetSchema.
+func (mr *MockTopologyAwareDialectMockRecorder) DoesStatementSetSchema(statement interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesStatementSetSchema", reflect.TypeOf((*MockTopologyAwareDialect)(nil).DoesStatementSetSchema), statement)
+}
+
+// DoesStatementSetTransactionIsolation mocks base method.
+func (m *MockTopologyAwareDialect) DoesStatementSetTransactionIsolation(statement string) (driver_infrastructure.TransactionIsolationLevel, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DoesStatementSetTransactionIsolation", statement)
+	ret0, _ := ret[0].(driver_infrastructure.TransactionIsolationLevel)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// DoesStatementSetTransactionIsolation indicates an expected call of DoesStatementSetTransactionIsolation.
+func (mr *MockTopologyAwareDialectMockRecorder) DoesStatementSetTransactionIsolation(statement interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesStatementSetTransactionIsolation", reflect.TypeOf((*MockTopologyAwareDialect)(nil).DoesStatementSetTransactionIsolation), statement)
 }
 
 // GetDefaultPort mocks base method.
@@ -257,6 +482,81 @@ func (mr *MockTopologyAwareDialectMockRecorder) GetServerVersionQuery() *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetServerVersionQuery", reflect.TypeOf((*MockTopologyAwareDialect)(nil).GetServerVersionQuery))
 }
 
+// GetSetAutoCommitQuery mocks base method.
+func (m *MockTopologyAwareDialect) GetSetAutoCommitQuery(autoCommit bool) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSetAutoCommitQuery", autoCommit)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSetAutoCommitQuery indicates an expected call of GetSetAutoCommitQuery.
+func (mr *MockTopologyAwareDialectMockRecorder) GetSetAutoCommitQuery(autoCommit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSetAutoCommitQuery", reflect.TypeOf((*MockTopologyAwareDialect)(nil).GetSetAutoCommitQuery), autoCommit)
+}
+
+// GetSetCatalogQuery mocks base method.
+func (m *MockTopologyAwareDialect) GetSetCatalogQuery(catalog string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSetCatalogQuery", catalog)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSetCatalogQuery indicates an expected call of GetSetCatalogQuery.
+func (mr *MockTopologyAwareDialectMockRecorder) GetSetCatalogQuery(catalog interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSetCatalogQuery", reflect.TypeOf((*MockTopologyAwareDialect)(nil).GetSetCatalogQuery), catalog)
+}
+
+// GetSetReadOnlyQuery mocks base method.
+func (m *MockTopologyAwareDialect) GetSetReadOnlyQuery(readOnly bool) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSetReadOnlyQuery", readOnly)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSetReadOnlyQuery indicates an expected call of GetSetReadOnlyQuery.
+func (mr *MockTopologyAwareDialectMockRecorder) GetSetReadOnlyQuery(readOnly interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSetReadOnlyQuery", reflect.TypeOf((*MockTopologyAwareDialect)(nil).GetSetReadOnlyQuery), readOnly)
+}
+
+// GetSetSchemaQuery mocks base method.
+func (m *MockTopologyAwareDialect) GetSetSchemaQuery(schema string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSetSchemaQuery", schema)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSetSchemaQuery indicates an expected call of GetSetSchemaQuery.
+func (mr *MockTopologyAwareDialectMockRecorder) GetSetSchemaQuery(schema interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSetSchemaQuery", reflect.TypeOf((*MockTopologyAwareDialect)(nil).GetSetSchemaQuery), schema)
+}
+
+// GetSetTransactionIsolationQuery mocks base method.
+func (m *MockTopologyAwareDialect) GetSetTransactionIsolationQuery(level driver_infrastructure.TransactionIsolationLevel) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSetTransactionIsolationQuery", level)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSetTransactionIsolationQuery indicates an expected call of GetSetTransactionIsolationQuery.
+func (mr *MockTopologyAwareDialectMockRecorder) GetSetTransactionIsolationQuery(level interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSetTransactionIsolationQuery", reflect.TypeOf((*MockTopologyAwareDialect)(nil).GetSetTransactionIsolationQuery), level)
+}
+
 // GetTopology mocks base method.
 func (m *MockTopologyAwareDialect) GetTopology(conn driver.Conn, provider driver_infrastructure.HostListProvider) ([]*host_info_util.HostInfo, error) {
 	m.ctrl.T.Helper()
@@ -322,6 +622,81 @@ func NewMockAuroraLimitlessDialect(ctrl *gomock.Controller) *MockAuroraLimitless
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockAuroraLimitlessDialect) EXPECT() *MockAuroraLimitlessDialectMockRecorder {
 	return m.recorder
+}
+
+// DoesStatementSetAutoCommit mocks base method.
+func (m *MockAuroraLimitlessDialect) DoesStatementSetAutoCommit(statement string) (bool, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DoesStatementSetAutoCommit", statement)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// DoesStatementSetAutoCommit indicates an expected call of DoesStatementSetAutoCommit.
+func (mr *MockAuroraLimitlessDialectMockRecorder) DoesStatementSetAutoCommit(statement interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesStatementSetAutoCommit", reflect.TypeOf((*MockAuroraLimitlessDialect)(nil).DoesStatementSetAutoCommit), statement)
+}
+
+// DoesStatementSetCatalog mocks base method.
+func (m *MockAuroraLimitlessDialect) DoesStatementSetCatalog(statement string) (string, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DoesStatementSetCatalog", statement)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// DoesStatementSetCatalog indicates an expected call of DoesStatementSetCatalog.
+func (mr *MockAuroraLimitlessDialectMockRecorder) DoesStatementSetCatalog(statement interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesStatementSetCatalog", reflect.TypeOf((*MockAuroraLimitlessDialect)(nil).DoesStatementSetCatalog), statement)
+}
+
+// DoesStatementSetReadOnly mocks base method.
+func (m *MockAuroraLimitlessDialect) DoesStatementSetReadOnly(statement string) (bool, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DoesStatementSetReadOnly", statement)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// DoesStatementSetReadOnly indicates an expected call of DoesStatementSetReadOnly.
+func (mr *MockAuroraLimitlessDialectMockRecorder) DoesStatementSetReadOnly(statement interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesStatementSetReadOnly", reflect.TypeOf((*MockAuroraLimitlessDialect)(nil).DoesStatementSetReadOnly), statement)
+}
+
+// DoesStatementSetSchema mocks base method.
+func (m *MockAuroraLimitlessDialect) DoesStatementSetSchema(statement string) (string, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DoesStatementSetSchema", statement)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// DoesStatementSetSchema indicates an expected call of DoesStatementSetSchema.
+func (mr *MockAuroraLimitlessDialectMockRecorder) DoesStatementSetSchema(statement interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesStatementSetSchema", reflect.TypeOf((*MockAuroraLimitlessDialect)(nil).DoesStatementSetSchema), statement)
+}
+
+// DoesStatementSetTransactionIsolation mocks base method.
+func (m *MockAuroraLimitlessDialect) DoesStatementSetTransactionIsolation(statement string) (driver_infrastructure.TransactionIsolationLevel, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DoesStatementSetTransactionIsolation", statement)
+	ret0, _ := ret[0].(driver_infrastructure.TransactionIsolationLevel)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// DoesStatementSetTransactionIsolation indicates an expected call of DoesStatementSetTransactionIsolation.
+func (mr *MockAuroraLimitlessDialectMockRecorder) DoesStatementSetTransactionIsolation(statement interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesStatementSetTransactionIsolation", reflect.TypeOf((*MockAuroraLimitlessDialect)(nil).DoesStatementSetTransactionIsolation), statement)
 }
 
 // GetDefaultPort mocks base method.
@@ -406,6 +781,81 @@ func (m *MockAuroraLimitlessDialect) GetServerVersionQuery() string {
 func (mr *MockAuroraLimitlessDialectMockRecorder) GetServerVersionQuery() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetServerVersionQuery", reflect.TypeOf((*MockAuroraLimitlessDialect)(nil).GetServerVersionQuery))
+}
+
+// GetSetAutoCommitQuery mocks base method.
+func (m *MockAuroraLimitlessDialect) GetSetAutoCommitQuery(autoCommit bool) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSetAutoCommitQuery", autoCommit)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSetAutoCommitQuery indicates an expected call of GetSetAutoCommitQuery.
+func (mr *MockAuroraLimitlessDialectMockRecorder) GetSetAutoCommitQuery(autoCommit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSetAutoCommitQuery", reflect.TypeOf((*MockAuroraLimitlessDialect)(nil).GetSetAutoCommitQuery), autoCommit)
+}
+
+// GetSetCatalogQuery mocks base method.
+func (m *MockAuroraLimitlessDialect) GetSetCatalogQuery(catalog string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSetCatalogQuery", catalog)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSetCatalogQuery indicates an expected call of GetSetCatalogQuery.
+func (mr *MockAuroraLimitlessDialectMockRecorder) GetSetCatalogQuery(catalog interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSetCatalogQuery", reflect.TypeOf((*MockAuroraLimitlessDialect)(nil).GetSetCatalogQuery), catalog)
+}
+
+// GetSetReadOnlyQuery mocks base method.
+func (m *MockAuroraLimitlessDialect) GetSetReadOnlyQuery(readOnly bool) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSetReadOnlyQuery", readOnly)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSetReadOnlyQuery indicates an expected call of GetSetReadOnlyQuery.
+func (mr *MockAuroraLimitlessDialectMockRecorder) GetSetReadOnlyQuery(readOnly interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSetReadOnlyQuery", reflect.TypeOf((*MockAuroraLimitlessDialect)(nil).GetSetReadOnlyQuery), readOnly)
+}
+
+// GetSetSchemaQuery mocks base method.
+func (m *MockAuroraLimitlessDialect) GetSetSchemaQuery(schema string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSetSchemaQuery", schema)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSetSchemaQuery indicates an expected call of GetSetSchemaQuery.
+func (mr *MockAuroraLimitlessDialectMockRecorder) GetSetSchemaQuery(schema interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSetSchemaQuery", reflect.TypeOf((*MockAuroraLimitlessDialect)(nil).GetSetSchemaQuery), schema)
+}
+
+// GetSetTransactionIsolationQuery mocks base method.
+func (m *MockAuroraLimitlessDialect) GetSetTransactionIsolationQuery(level driver_infrastructure.TransactionIsolationLevel) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSetTransactionIsolationQuery", level)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSetTransactionIsolationQuery indicates an expected call of GetSetTransactionIsolationQuery.
+func (mr *MockAuroraLimitlessDialectMockRecorder) GetSetTransactionIsolationQuery(level interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSetTransactionIsolationQuery", reflect.TypeOf((*MockAuroraLimitlessDialect)(nil).GetSetTransactionIsolationQuery), level)
 }
 
 // IsDialect mocks base method.

@@ -21,6 +21,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
 	"time"
 
@@ -62,6 +63,98 @@ func (p *PgDatabaseDialect) GetHostListProvider(
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
 	return HostListProvider(NewDsnHostListProvider(props, initialDsn, hostListProviderService))
+}
+
+func (p *PgDatabaseDialect) DoesStatementSetAutoCommit(statement string) (bool, bool) {
+	return false, false
+}
+
+func (p *PgDatabaseDialect) DoesStatementSetCatalog(statement string) (string, bool) {
+	return "", false
+}
+
+func (p *PgDatabaseDialect) DoesStatementSetReadOnly(statement string) (bool, bool) {
+	lowercaseStatement := strings.ToLower(statement)
+	if strings.HasPrefix(lowercaseStatement, "set session characteristics as transaction read only") {
+		return true, true
+	}
+
+	if strings.HasPrefix(lowercaseStatement, "set session characteristics as transaction read write") {
+		return false, true
+	}
+
+	return false, false
+}
+
+func (p *PgDatabaseDialect) DoesStatementSetSchema(statement string) (string, bool) {
+	re := regexp.MustCompile(`(?i)set search_path( to |\s?=\s?)("?.+"?)`)
+	matches := re.FindStringSubmatch(statement)
+	if len(matches) < 3 {
+		return "", false
+	}
+	schema := strings.TrimSpace(matches[2])
+	if schema[0] == '"' && schema[len(schema)-1] == '"' {
+		return schema[1 : len(schema)-1], true
+	}
+	return schema, true
+}
+
+func (p *PgDatabaseDialect) DoesStatementSetTransactionIsolation(statement string) (TransactionIsolationLevel, bool) {
+	lowercaseStatement := strings.ToLower(statement)
+	if strings.Contains(lowercaseStatement, "set session characteristics as transaction isolation level read uncommitted") {
+		return TRANSACTION_READ_UNCOMMITTED, true
+	}
+	if strings.Contains(lowercaseStatement, "set session characteristics as transaction isolation level read committed") {
+		return TRANSACTION_READ_COMMITTED, true
+	}
+	if strings.Contains(lowercaseStatement, "set session characteristics as transaction isolation level repeatable read") {
+		return TRANSACTION_REPEATABLE_READ, true
+	}
+	if strings.Contains(lowercaseStatement, "set session characteristics as transaction isolation level serializable") {
+		return TRANSACTION_SERIALIZABLE, true
+	}
+
+	return TRANSACTION_READ_UNCOMMITTED, false
+}
+
+func (p *PgDatabaseDialect) GetSetAutoCommitQuery(autoCommit bool) (string, error) {
+	return "", error_util.NewGenericAwsWrapperError(error_util.GetMessage("AwsWrapper.unsupportedMethodError", "SetAutoCommit", fmt.Sprintf("%T", p)))
+}
+
+func (p *PgDatabaseDialect) GetSetReadOnlyQuery(readOnly bool) (string, error) {
+	readOnlyStr := "only"
+	if !readOnly {
+		readOnlyStr = "write"
+	}
+	return fmt.Sprintf("set session characteristics as transaction read %v", readOnlyStr), nil
+}
+
+func (p *PgDatabaseDialect) GetSetCatalogQuery(catalog string) (string, error) {
+	return "", error_util.NewGenericAwsWrapperError(error_util.GetMessage("AwsWrapper.unsupportedMethodError", "SetCatalog", fmt.Sprintf("%T", p)))
+}
+
+func (p *PgDatabaseDialect) GetSetSchemaQuery(schema string) (string, error) {
+	if strings.Contains(schema, " ") && !strings.HasPrefix(schema, "\"") && !strings.HasSuffix(schema, "\"") {
+		return fmt.Sprintf("set search_path to \"%v\"", schema), nil
+	}
+	return fmt.Sprintf("set search_path to %v", schema), nil
+}
+
+func (p *PgDatabaseDialect) GetSetTransactionIsolationQuery(level TransactionIsolationLevel) (string, error) {
+	levelStr := ""
+	switch level {
+	case TRANSACTION_READ_UNCOMMITTED:
+		levelStr = "READ UNCOMMITTED"
+	case TRANSACTION_READ_COMMITTED:
+		levelStr = "READ COMMITTED"
+	case TRANSACTION_REPEATABLE_READ:
+		levelStr = "REPEATABLE READ"
+	case TRANSACTION_SERIALIZABLE:
+		levelStr = "SERIALIZABLE"
+	default:
+		return "", error_util.NewGenericAwsWrapperError(error_util.GetMessage("DatabaseDialect.invalidTransactionIsolationLevel", levelStr))
+	}
+	return fmt.Sprintf("set session characteristics as transaction isolation level %v", levelStr), nil
 }
 
 type RdsPgDatabaseDialect struct {

@@ -19,6 +19,7 @@ package test
 import (
 	"database/sql/driver"
 	"fmt"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"strconv"
 	"testing"
 	"time"
@@ -876,4 +877,187 @@ func TestRdsMultiAzDbClusterMySQLDialect_GetTopology(t *testing.T) {
 	assert.Equal(t, host_info_util.WRITER, hosts[0].Role)
 	assert.Equal(t, expectedReaderHostName, hosts[1].Host)
 	assert.Equal(t, host_info_util.READER, hosts[1].Role)
+}
+
+func TestMysqlDoesSetReadOnly(t *testing.T) {
+	setMysqlReadOnlyTestFunc(t, " select 1 ", [][]bool{{false, false}})
+	setMysqlReadOnlyTestFunc(t, " select /* COMMENT */ 1 ", [][]bool{{false, false}})
+	setMysqlReadOnlyTestFunc(t, " SET session transaction read only ", [][]bool{{true, true}})
+	setMysqlReadOnlyTestFunc(t, " set session transaction read /* COMMENT */ only ", [][]bool{{true, true}})
+	setMysqlReadOnlyTestFunc(t, " set session transaction read /* COMMENT */ only ", [][]bool{{true, true}})
+	setMysqlReadOnlyTestFunc(t, " /* COMMENT */ set session transaction read /* COMMENT */ only ", [][]bool{{true, true}})
+	setMysqlReadOnlyTestFunc(t, " set session transaction read write ", [][]bool{{false, true}})
+	setMysqlReadOnlyTestFunc(t, " /* COMMENT */ set session transaction /* COMMENT */ read write ", [][]bool{{false, true}})
+	setMysqlReadOnlyTestFunc(t, " /* COMMENT */ set session transaction /* COMMENT */ read write ", [][]bool{{false, true}})
+	setMysqlReadOnlyTestFunc(t, " set session transaction /* COMMENT */ read write ", [][]bool{{false, true}})
+	setMysqlReadOnlyTestFunc(t, " set SESSION TRANSACTION read only; set session transaction read write", [][]bool{{true, true}, {false, true}})
+	setMysqlReadOnlyTestFunc(t, " set session transaction read only;,  select 1", [][]bool{{true, true}, {false, false}})
+	setMysqlReadOnlyTestFunc(t, " set session  /* COMMENT */transaction read only/* COMMENT */; select 1", [][]bool{{true, true}, {false, false}})
+	setMysqlReadOnlyTestFunc(t, " select 1; set session transaction read only; ", [][]bool{{false, false}, {true, true}})
+	setMysqlReadOnlyTestFunc(t, " set session transaction READ ONLY; set session transaction read write; ", [][]bool{{true, true}, {false, true}})
+	setMysqlReadOnlyTestFunc(t, " set session transaction read write; set session transaction read only; ", [][]bool{{false, true}, {true, true}})
+	setMysqlReadOnlyTestFunc(t, " set session transaction read write; select 1", [][]bool{{false, true}, {false, false}})
+	setMysqlReadOnlyTestFunc(t, " select 1; set session transaction read write; select 1", [][]bool{{false, false}, {false, true}, {false, false}})
+}
+
+func setMysqlReadOnlyTestFunc(t *testing.T, query string, expectedValues [][]bool) {
+	statements := utils.GetSeparateSqlStatements(query)
+	dialect := &driver_infrastructure.MySQLDatabaseDialect{}
+	assert.Equal(t, len(expectedValues), len(statements))
+
+	for i, statement := range statements {
+		readOnly, ok := dialect.DoesStatementSetReadOnly(statement)
+		assert.Equal(t, expectedValues[i][0], readOnly)
+		assert.Equal(t, expectedValues[i][1], ok)
+	}
+}
+
+func TestMysqlDoesSetAutoCommit(t *testing.T) {
+	setMysqlAutoCommitTestFunc(t, " select 1 ", [][]bool{{false, false}})
+	setMysqlAutoCommitTestFunc(t, " select /* COMMENT */ 1 ", [][]bool{{false, false}})
+	setMysqlAutoCommitTestFunc(t, " /* COMMENT */ select /* COMMENT */ 1 ", [][]bool{{false, false}})
+	setMysqlAutoCommitTestFunc(t, " set autocommit = 1 ", [][]bool{{true, true}})
+	setMysqlAutoCommitTestFunc(t, " set autocommit = 0 ", [][]bool{{false, true}})
+	setMysqlAutoCommitTestFunc(t, " set autocommit=1 ", [][]bool{{true, true}})
+	setMysqlAutoCommitTestFunc(t, " set autocommit=0 ", [][]bool{{false, true}})
+	setMysqlAutoCommitTestFunc(t, " set autocommit=/* COMMENT */0  ", [][]bool{{false, true}})
+	setMysqlAutoCommitTestFunc(t, " set autocommit=1; set autocommit=0 ", [][]bool{{true, true}, {false, true}})
+	setMysqlAutoCommitTestFunc(t, " set autocommit=0; set autocommit=1 ", [][]bool{{false, true}, {true, true}})
+}
+
+func setMysqlAutoCommitTestFunc(t *testing.T, query string, expectedValues [][]bool) {
+	statements := utils.GetSeparateSqlStatements(query)
+	dialect := &driver_infrastructure.MySQLDatabaseDialect{}
+	assert.Equal(t, len(expectedValues), len(statements))
+
+	for i, statement := range statements {
+		autoCommit, ok := dialect.DoesStatementSetAutoCommit(statement)
+		assert.Equal(t, expectedValues[i][0], autoCommit)
+		assert.Equal(t, expectedValues[i][1], ok)
+	}
+}
+
+func TestMysqlDoesSetCatalog(t *testing.T) {
+	setMysqlCatalogTestFunc(t, " select 1 ", [][]any{{"", false}})
+	setMysqlCatalogTestFunc(t, " select /* COMMENT */ 1 ", [][]any{{"", false}})
+	setMysqlCatalogTestFunc(t, " /* COMMENT */ select /* COMMENT */ 1 ", [][]any{{"", false}})
+	setMysqlCatalogTestFunc(t, " USE dbName ", [][]any{{"dbName", true}})
+	setMysqlCatalogTestFunc(t, " use/* COMMENT USE dbName3*/ dbName ", [][]any{{"dbName", true}})
+	setMysqlCatalogTestFunc(t, " use dbName1 ; use dbName2 ", [][]any{{"dbName1", true}, {"dbName2", true}})
+	setMysqlCatalogTestFunc(t, " SELECT * from user; select /* use dbName */ * from user ", [][]any{{"", false}, {"", false}})
+	setMysqlCatalogTestFunc(t, " use dbName; select 1 ", [][]any{{"dbName", true}, {"", false}})
+}
+
+func setMysqlCatalogTestFunc(t *testing.T, query string, expectedValues [][]any) {
+	statements := utils.GetSeparateSqlStatements(query)
+	dialect := &driver_infrastructure.MySQLDatabaseDialect{}
+	assert.Equal(t, len(expectedValues), len(statements))
+
+	for i, statement := range statements {
+		catalog, ok := dialect.DoesStatementSetCatalog(statement)
+		assert.Equal(t, expectedValues[i][0], catalog)
+		assert.Equal(t, expectedValues[i][1], ok)
+	}
+}
+
+func TestMysqlDoesSetTxIsolation(t *testing.T) {
+	setMysqlTxIsolationTestFunc(t, " select 1 ", [][]any{{driver_infrastructure.TRANSACTION_READ_UNCOMMITTED, false}})
+	setMysqlTxIsolationTestFunc(t, " select /* COMMENT */ 1 ", [][]any{{driver_infrastructure.TRANSACTION_READ_UNCOMMITTED, false}})
+	setMysqlTxIsolationTestFunc(t, " /* COMMENT */ select /* COMMENT */ 1 ", [][]any{{driver_infrastructure.TRANSACTION_READ_UNCOMMITTED, false}})
+	setMysqlTxIsolationTestFunc(t, " set session transaction isolation level read uncommitted ", [][]any{{driver_infrastructure.TRANSACTION_READ_UNCOMMITTED, true}})
+	setMysqlTxIsolationTestFunc(t, " set session transaction isolation level read committed ", [][]any{{driver_infrastructure.TRANSACTION_READ_COMMITTED, true}})
+	setMysqlTxIsolationTestFunc(t, " set session transaction isolation level repeatable read ", [][]any{{driver_infrastructure.TRANSACTION_REPEATABLE_READ, true}})
+	setMysqlTxIsolationTestFunc(t, " set session transaction isolation level serializable ", [][]any{{driver_infrastructure.TRANSACTION_SERIALIZABLE, true}})
+	setMysqlTxIsolationTestFunc(
+		t,
+		" set session transaction isolation level serializable ;"+
+			" set session transaction isolation level repeatable read  ;",
+		[][]any{
+			{driver_infrastructure.TRANSACTION_SERIALIZABLE, true},
+			{driver_infrastructure.TRANSACTION_REPEATABLE_READ, true},
+		},
+	)
+	setMysqlTxIsolationTestFunc(
+		t,
+		" set session transaction /* COMMENT */isolation level read uncommitted ;"+
+			"select 1;"+
+			" set session transaction /* COMMENT */ isolation level read committed ",
+		[][]any{
+			{driver_infrastructure.TRANSACTION_READ_UNCOMMITTED, true},
+			{driver_infrastructure.TRANSACTION_READ_UNCOMMITTED, false},
+			{driver_infrastructure.TRANSACTION_READ_COMMITTED, true},
+		},
+	)
+}
+
+func setMysqlTxIsolationTestFunc(t *testing.T, query string, expectedValues [][]any) {
+	statements := utils.GetSeparateSqlStatements(query)
+	dialect := &driver_infrastructure.MySQLDatabaseDialect{}
+	assert.Equal(t, len(expectedValues), len(statements))
+
+	for i, statement := range statements {
+		level, ok := dialect.DoesStatementSetTransactionIsolation(statement)
+		assert.Equal(t, expectedValues[i][0], level)
+		assert.Equal(t, expectedValues[i][1], ok)
+	}
+}
+
+func TestMysqlDoesSetSchema(t *testing.T) {
+	dialect := &driver_infrastructure.MySQLDatabaseDialect{}
+	catalog, ok := dialect.DoesStatementSetCatalog("anything")
+	assert.Empty(t, catalog)
+	assert.False(t, ok)
+}
+
+func TestMysqlGetSetAutoCommitQuery(t *testing.T) {
+	dialect := &driver_infrastructure.MySQLDatabaseDialect{}
+	query, err := dialect.GetSetAutoCommitQuery(true)
+	assert.Nil(t, err)
+	assert.Equal(t, "set autocommit=true", query)
+	query, err = dialect.GetSetAutoCommitQuery(false)
+	assert.Nil(t, err)
+	assert.Equal(t, "set autocommit=false", query)
+}
+
+func TestMysqlGetSetReadOnlyQuery(t *testing.T) {
+	dialect := &driver_infrastructure.MySQLDatabaseDialect{}
+	query, err := dialect.GetSetReadOnlyQuery(true)
+	assert.Nil(t, err)
+	assert.Equal(t, "set session transaction read only", query)
+	query, err = dialect.GetSetReadOnlyQuery(false)
+	assert.Nil(t, err)
+	assert.Equal(t, "set session transaction read write", query)
+}
+
+func TestMysqlGetSetCatalogQuery(t *testing.T) {
+	dialect := &driver_infrastructure.MySQLDatabaseDialect{}
+	query, err := dialect.GetSetCatalogQuery("catalog")
+	assert.Nil(t, err)
+	assert.Equal(t, "use catalog", query)
+}
+
+func TestMysqlGetSetSchemaQuery(t *testing.T) {
+	dialect := &driver_infrastructure.MySQLDatabaseDialect{}
+	query, err := dialect.GetSetSchemaQuery("schema")
+	assert.Empty(t, query)
+	assert.Error(t, err)
+}
+
+func TestMysqlGetSetTransactionIsolationQuery(t *testing.T) {
+	dialect := &driver_infrastructure.MySQLDatabaseDialect{}
+	query, err := dialect.GetSetTransactionIsolationQuery(driver_infrastructure.TRANSACTION_READ_COMMITTED)
+	assert.Nil(t, err)
+	assert.Equal(t, "set session transaction isolation level READ COMMITTED", query)
+
+	query, err = dialect.GetSetTransactionIsolationQuery(driver_infrastructure.TRANSACTION_READ_UNCOMMITTED)
+	assert.Nil(t, err)
+	assert.Equal(t, "set session transaction isolation level READ UNCOMMITTED", query)
+
+	query, err = dialect.GetSetTransactionIsolationQuery(driver_infrastructure.TRANSACTION_REPEATABLE_READ)
+	assert.Nil(t, err)
+	assert.Equal(t, "set session transaction isolation level REPEATABLE READ", query)
+
+	query, err = dialect.GetSetTransactionIsolationQuery(driver_infrastructure.TRANSACTION_SERIALIZABLE)
+	assert.Nil(t, err)
+	assert.Equal(t, "set session transaction isolation level SERIALIZABLE", query)
 }

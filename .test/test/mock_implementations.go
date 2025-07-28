@@ -361,6 +361,9 @@ type MockPluginService struct {
 	PluginManager driver_infrastructure.PluginManager
 }
 
+func (m *MockPluginService) UpdateState(sql string, methodArgs ...any) {
+}
+
 func (m *MockPluginService) GetHostSelectorStrategy(strategy string) (hostSelector driver_infrastructure.HostSelector, err error) {
 	return nil, nil
 }

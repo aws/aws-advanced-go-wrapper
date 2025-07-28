@@ -28,6 +28,16 @@ type DatabaseDialect interface {
 	GetDialectUpdateCandidates() []string
 	IsDialect(conn driver.Conn) bool
 	GetHostListProvider(props map[string]string, initialDsn string, hostListProviderService HostListProviderService, pluginService PluginService) HostListProvider
+	DoesStatementSetAutoCommit(statement string) (bool, bool)
+	DoesStatementSetReadOnly(statement string) (bool, bool)
+	DoesStatementSetCatalog(statement string) (string, bool)
+	DoesStatementSetSchema(statement string) (string, bool)
+	DoesStatementSetTransactionIsolation(statement string) (TransactionIsolationLevel, bool)
+	GetSetAutoCommitQuery(autoCommit bool) (string, error)
+	GetSetReadOnlyQuery(readOnly bool) (string, error)
+	GetSetCatalogQuery(catalog string) (string, error)
+	GetSetSchemaQuery(schema string) (string, error)
+	GetSetTransactionIsolationQuery(level TransactionIsolationLevel) (string, error)
 }
 
 type TopologyAwareDialect interface {
