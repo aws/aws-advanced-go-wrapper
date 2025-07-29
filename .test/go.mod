@@ -16,7 +16,7 @@ require (
 	github.com/aws/aws-advanced-go-wrapper/xray v0.0.7
 	github.com/aws/aws-sdk-go-v2 v1.37.0
 	github.com/aws/aws-sdk-go-v2/config v1.30.0
-	github.com/aws/aws-sdk-go-v2/service/rds v1.99.0
+	github.com/aws/aws-sdk-go-v2/service/rds v1.100.0
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.36.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.35.0
 	github.com/aws/aws-xray-sdk-go v1.8.5
