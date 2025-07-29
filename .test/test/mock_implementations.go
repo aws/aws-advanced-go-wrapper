@@ -511,6 +511,10 @@ func (m *MockPluginService) SetTelemetryContext(ctx context.Context) {
 	m.PluginManager.SetTelemetryContext(ctx)
 }
 
+func (m *MockPluginService) IsReadOnly() bool {
+	return false
+}
+
 type MockDriverConn struct {
 	driver.Conn
 }

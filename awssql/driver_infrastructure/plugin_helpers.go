@@ -80,6 +80,7 @@ type PluginService interface {
 	GetTelemetryFactory() telemetry.TelemetryFactory
 	SetTelemetryContext(ctx context.Context)
 	UpdateState(sql string, methodArgs ...any)
+	IsReadOnly() bool
 }
 
 type PluginServiceProvider func(

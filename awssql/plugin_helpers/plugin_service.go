@@ -578,6 +578,14 @@ func (p *PluginServiceImpl) ReleaseResources() {
 	}
 }
 
+func (p *PluginServiceImpl) IsReadOnly() bool {
+	readOnly := p.sessionStateService.GetReadOnly()
+	if readOnly == nil {
+		return false
+	}
+	return *readOnly
+}
+
 // This cleans up all long standing caches. To be called at the end of program, not each time a Conn is closed.
 func ClearCaches() {
 	if hostAvailabilityExpiringCache != nil {

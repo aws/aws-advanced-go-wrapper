@@ -211,6 +211,7 @@ func (c *AwsWrapperConn) BeginTx(ctx context.Context, opts driver.TxOptions) (dr
 		result, err := beginTx.BeginTx(ctx, opts)
 		return result, nil, false, err
 	}
+	c.setReadWriteMode(ctx)
 	return beginWithPlugins(c.pluginService.GetCurrentConnection(), c.pluginManager, c.pluginService, utils.CONN_BEGIN_TX, beginFunc)
 }
 
@@ -224,10 +225,17 @@ func (c *AwsWrapperConn) QueryContext(ctx context.Context, query string, args []
 		result, err := queryerCtx.QueryContext(ctx, query, args)
 		return result, nil, false, err
 	}
+
+	c.setReadWriteMode(ctx)
 	return queryWithPlugins(c.pluginService.GetCurrentConnection(), c.pluginManager, utils.CONN_QUERY_CONTEXT, queryFunc, c.engine, query)
 }
 
 func (c *AwsWrapperConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
+	c.setReadWriteMode(ctx)
+	return c.execContextInternal(ctx, query, args)
+}
+
+func (c *AwsWrapperConn) execContextInternal(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
 	execFunc := func() (any, any, bool, error) {
 		c.pluginService.UpdateState(query)
 		execerCtx, ok := c.pluginService.GetCurrentConnection().(driver.ExecerContext)
@@ -285,6 +293,20 @@ func (c *AwsWrapperConn) CheckNamedValue(val *driver.NamedValue) error {
 		return nil, nil, false, namedValueChecker.CheckNamedValue(val)
 	}
 	_, _, _, err := ExecuteWithPlugins(c.pluginService.GetCurrentConnection(), c.pluginManager, utils.CONN_CHECK_NAMED_VALUE, checkNamedValueFunc)
+	return err
+}
+
+func (c *AwsWrapperConn) setReadWriteMode(ctx context.Context) error {
+	isReadOnlyCtx := utils.GetSetReadOnlyFromCtx(ctx)
+	isReadOnlySession := c.pluginService.IsReadOnly()
+
+	if isReadOnlyCtx == isReadOnlySession {
+		return nil
+	}
+
+	query, _ := c.pluginService.GetDialect().GetSetReadOnlyQuery(isReadOnlyCtx)
+	c.pluginService.UpdateState("", query)
+	_, err := c.execContextInternal(context.TODO(), query, []driver.NamedValue{})
 	return err
 }
 
