@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-# Release (2025-07-11)
+# Release (2025-07-31)
 ## General Highlights
 The Amazon Web Services (AWS) Advanced Go Wrapper allows an application to take advantage of the features of clustered Aurora databases.
 
