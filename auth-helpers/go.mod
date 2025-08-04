@@ -4,7 +4,7 @@ go 1.24
 
 require (
 	github.com/aws/aws-advanced-go-wrapper/awssql v1.0.0
-	github.com/aws/aws-sdk-go-v2 v1.37.0
+	github.com/aws/aws-sdk-go-v2 v1.37.1
 	github.com/aws/aws-sdk-go-v2/config v1.30.1
 	github.com/aws/aws-sdk-go-v2/credentials v1.18.1
 	github.com/aws/aws-sdk-go-v2/feature/rds/auth v1.6.0
