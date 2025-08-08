@@ -18,11 +18,12 @@ package utils
 
 import (
 	"context"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"log/slog"
 	"reflect"
 	"sync"
 	"time"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 )
 
 type DisposalFunc[T any] func(T) bool

@@ -266,7 +266,7 @@ func GetQueryFromSqlOrMethodArgs(sql string, methodArgs ...any) string {
 	query := sql
 
 	if sql == "" {
-		if methodArgs == nil || len(methodArgs) == 0 {
+		if len(methodArgs) == 0 {
 			return query
 		}
 

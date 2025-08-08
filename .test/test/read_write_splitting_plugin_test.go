@@ -79,7 +79,6 @@ func TestReadWriteSplittingPlugin_GetSubscribedMethods(t *testing.T) {
 	assert.Contains(t, methods, plugin_helpers.NOTIFY_CONNECTION_CHANGED_METHOD)
 	assert.Contains(t, methods, plugin_helpers.QUERY_CONTEXT_METHOD)
 	assert.Contains(t, methods, plugin_helpers.EXECUTE_CONTEXT_METHOD)
-
 }
 
 func TestReadWriteSplittingPlugin_InitHostProvider(t *testing.T) {
@@ -253,7 +252,6 @@ func TestReadWriteSplittingPlugin_NotifyConnectionChanged(t *testing.T) {
 	// not in read/write split
 	action := plugin.NotifyConnectionChanged(nil)
 	assert.Equal(t, driver_infrastructure.NO_OPINION, action)
-
 }
 
 func TestReadWriteSplittingPlugin_Execute_Success(t *testing.T) {
@@ -477,7 +475,6 @@ func TestReadWriteSplittingPlugin_Execute_SwitchReaderWriterReaderThenClose(t *t
 	assert.False(t, ok)
 	assert.Nil(t, val1)
 	assert.Nil(t, val2)
-
 }
 
 func TestReadWriteSplittingPlugin_InitHostProvider_AfterReaderSetup(t *testing.T) {

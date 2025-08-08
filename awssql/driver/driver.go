@@ -211,7 +211,9 @@ func (c *AwsWrapperConn) BeginTx(ctx context.Context, opts driver.TxOptions) (dr
 		result, err := beginTx.BeginTx(ctx, opts)
 		return result, nil, false, err
 	}
-	c.setReadWriteMode(ctx)
+	if err := c.setReadWriteMode(ctx); err != nil {
+		return nil, err
+	}
 	return beginWithPlugins(c.pluginService.GetCurrentConnection(), c.pluginManager, c.pluginService, utils.CONN_BEGIN_TX, beginFunc)
 }
 
@@ -226,12 +228,16 @@ func (c *AwsWrapperConn) QueryContext(ctx context.Context, query string, args []
 		return result, nil, false, err
 	}
 
-	c.setReadWriteMode(ctx)
+	if err := c.setReadWriteMode(ctx); err != nil {
+		return nil, err
+	}
 	return queryWithPlugins(c.pluginService.GetCurrentConnection(), c.pluginManager, utils.CONN_QUERY_CONTEXT, queryFunc, c.engine, query)
 }
 
 func (c *AwsWrapperConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
-	c.setReadWriteMode(ctx)
+	if err := c.setReadWriteMode(ctx); err != nil {
+		return nil, err
+	}
 	return c.execContextInternal(ctx, query, args)
 }
 

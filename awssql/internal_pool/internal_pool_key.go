@@ -14,21 +14,32 @@
   limitations under the License.
 */
 
-package driver_infrastructure
+package internal_pool
 
 import (
-	"database/sql/driver"
-
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"fmt"
 )
 
-type DriverDialect interface {
-	IsDialect(driver driver.Driver) bool
-	GetAllowedOnConnectionMethodNames() []string
-	PrepareDsn(properties map[string]string, info *host_info_util.HostInfo) string
-	IsNetworkError(err error) bool
-	IsLoginError(err error) bool
-	IsClosed(conn driver.Conn) bool
-	IsDriverRegistered(drivers map[string]driver.Driver) bool
-	RegisterDriver()
+type PoolKey struct {
+	url      string
+	extraKey string
+}
+
+func NewPoolKey(url string, extraKey string) *PoolKey {
+	return &PoolKey{
+		url:      url,
+		extraKey: extraKey,
+	}
+}
+
+func (pk *PoolKey) GetUrl() string {
+	return pk.url
+}
+
+func (pk *PoolKey) GetExtraKey() string {
+	return pk.extraKey
+}
+
+func (pk *PoolKey) GetPoolKeyString() string {
+	return fmt.Sprint("PoolKey [url=", pk.url, ", extraKey=", pk.extraKey, "]")
 }
