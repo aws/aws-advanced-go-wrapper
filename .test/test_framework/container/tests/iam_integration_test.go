@@ -264,7 +264,9 @@ func TestIamWithFailover(t *testing.T) {
 		"anypassword",
 		environment,
 	)
-	props["plugins"] = "iam,failover"
+	props[property_util.PLUGINS.Name] = "failover,iam"
+	props[property_util.IAM_HOST.Name] = environment.Info().DatabaseInfo.ClusterEndpoint
+	props[property_util.IAM_DEFAULT_PORT.Name] = strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort)
 	dsn := test_utils.GetDsnForTestsWithProxy(environment, props)
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
@@ -282,6 +284,10 @@ func TestIamWithFailover(t *testing.T) {
 	// Failover and check that it has failed over.
 	triggerFailoverError := auroraTestUtility.CrashInstance(instanceId, "", "")
 	assert.Nil(t, triggerFailoverError)
+	if test_utils.RDS_MULTI_AZ_CLUSTER == environment.Info().Request.Deployment &&
+		test_utils.MYSQL == environment.Info().Request.Engine {
+		time.Sleep(60 * time.Second)
+	}
 	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
 	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryError.Error())
@@ -296,10 +302,10 @@ func TestIamWithFailover(t *testing.T) {
 		assert.NotEqual(t, instanceId, newInstanceId)
 	}
 
-	test_utils.BasicCleanup(t.Name())
 }
 
 func TestIamWithEfm(t *testing.T) {
+	awsDriver.ClearCaches()
 	_, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
@@ -358,6 +364,7 @@ func TestIamWithEfm(t *testing.T) {
 }
 
 func TestIamWithFailoverEfm(t *testing.T) {
+	awsDriver.ClearCaches()
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
@@ -386,6 +393,10 @@ func TestIamWithFailoverEfm(t *testing.T) {
 	// Start a long-running query in a goroutine
 	queryChan := make(chan error)
 	go func() {
+		//if test_utils.RDS_MULTI_AZ_CLUSTER == environment.Info().Request.Deployment &&
+		//	test_utils.MYSQL == environment.Info().Request.Engine {
+		//	time.Sleep(15 * time.Second)
+		//}
 		// Execute a sleep query that will run for 10 seconds
 		sleepQuery := test_utils.GetSleepSql(environment.Info().Request.Engine, TEST_SLEEP_QUERY_SECONDS)
 
