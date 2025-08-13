@@ -35,8 +35,8 @@ var KnownDialectsByCode = map[string]DatabaseDialect{
 	RDS_PG_DIALECT:                     &RdsPgDatabaseDialect{},
 	AURORA_MYSQL_DIALECT:               &AuroraMySQLDatabaseDialect{},
 	AURORA_PG_DIALECT:                  &AuroraPgDatabaseDialect{},
-	RDS_MYSQL_MULTI_AZ_CLUSTER_DIALECT: &RdsMultiAZClusterMySQLDatabaseDialect{},
-	RDS_PG_MULTI_AZ_CLUSTER_DIALECT:    &RdsMultiAZClusterPgDatabaseDialect{},
+	RDS_MYSQL_MULTI_AZ_CLUSTER_DIALECT: &RdsMultiAzClusterMySQLDatabaseDialect{},
+	RDS_PG_MULTI_AZ_CLUSTER_DIALECT:    &RdsMultiAzClusterPgDatabaseDialect{},
 }
 
 var knownEndpointDialectsCache *utils.CacheMap[string] = utils.NewCache[string]()

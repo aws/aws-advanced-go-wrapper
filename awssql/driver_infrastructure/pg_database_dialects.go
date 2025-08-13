@@ -349,11 +349,11 @@ func (m *AuroraPgDatabaseDialect) GetLimitlessRouterEndpointQuery() string {
 	return "select router_endpoint, load from aurora_limitless_router_endpoints()"
 }
 
-type RdsMultiAZClusterPgDatabaseDialect struct {
+type RdsMultiAzClusterPgDatabaseDialect struct {
 	PgTopologyAwareDatabaseDialect
 }
 
-func (r *RdsMultiAZClusterPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
+func (r *RdsMultiAzClusterPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	writerHostFuncExistQuery := "SELECT 1 AS tmp FROM information_schema.routines WHERE routine_schema='rds_tools' " +
 		"AND routine_name='multi_az_db_cluster_source_dbi_resource_id'"
 	fetchWriterHostQuery := "SELECT multi_az_db_cluster_source_dbi_resource_id FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()"
@@ -369,11 +369,11 @@ func (r *RdsMultiAZClusterPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	return row[0] != nil
 }
 
-func (r *RdsMultiAZClusterPgDatabaseDialect) GetDialectUpdateCandidates() []string {
+func (r *RdsMultiAzClusterPgDatabaseDialect) GetDialectUpdateCandidates() []string {
 	return []string{}
 }
 
-func (r *RdsMultiAZClusterPgDatabaseDialect) GetTopology(conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
+func (r *RdsMultiAzClusterPgDatabaseDialect) GetTopology(conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
 	topologyQuery := fmt.Sprintf("SELECT id, endpoint FROM rds_tools.show_topology('aws-advanced-go-wrapper-%v')", driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION)
 	writerHostId := r.getWriterHostId(conn)
 
@@ -397,7 +397,7 @@ func (r *RdsMultiAZClusterPgDatabaseDialect) GetTopology(conn driver.Conn, provi
 	return r.processTopologyQueryResults(provider, writerHostId, rows), nil
 }
 
-func (r *RdsMultiAZClusterPgDatabaseDialect) processTopologyQueryResults(
+func (r *RdsMultiAzClusterPgDatabaseDialect) processTopologyQueryResults(
 	provider HostListProvider,
 	writerHostId string,
 	rows driver.Rows) []*host_info_util.HostInfo {
@@ -430,7 +430,7 @@ func (r *RdsMultiAZClusterPgDatabaseDialect) processTopologyQueryResults(
 	return hosts
 }
 
-func (r *RdsMultiAZClusterPgDatabaseDialect) getHostIdOfCurrentConnection(conn driver.Conn) string {
+func (r *RdsMultiAzClusterPgDatabaseDialect) getHostIdOfCurrentConnection(conn driver.Conn) string {
 	hostIdQuery := "SELECT dbi_resource_id FROM rds_tools.dbi_resource_id()"
 
 	row := utils.GetFirstRowFromQueryAsString(conn, hostIdQuery)
@@ -442,7 +442,7 @@ func (r *RdsMultiAZClusterPgDatabaseDialect) getHostIdOfCurrentConnection(conn d
 	return ""
 }
 
-func (r *RdsMultiAZClusterPgDatabaseDialect) GetHostName(conn driver.Conn) string {
+func (r *RdsMultiAzClusterPgDatabaseDialect) GetHostName(conn driver.Conn) string {
 	hostNameQuery := "SELECT serverid FROM rds_tools.db_instance_identifier()"
 	row := utils.GetFirstRowFromQueryAsString(conn, hostNameQuery)
 
@@ -453,7 +453,7 @@ func (r *RdsMultiAZClusterPgDatabaseDialect) GetHostName(conn driver.Conn) strin
 	return ""
 }
 
-func (r *RdsMultiAZClusterPgDatabaseDialect) getWriterHostId(conn driver.Conn) string {
+func (r *RdsMultiAzClusterPgDatabaseDialect) getWriterHostId(conn driver.Conn) string {
 	fetchWriterHostQuery := "SELECT multi_az_db_cluster_source_dbi_resource_id " +
 		"FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()"
 
@@ -465,7 +465,7 @@ func (r *RdsMultiAZClusterPgDatabaseDialect) getWriterHostId(conn driver.Conn) s
 	return ""
 }
 
-func (r *RdsMultiAZClusterPgDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, error) {
+func (r *RdsMultiAzClusterPgDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, error) {
 	fetchWriterHostNameQuery := "SELECT endpoint FROM rds_tools.show_topology('aws-advanced-go-wrapper') as topology " +
 		"WHERE topology.id = (SELECT multi_az_db_cluster_source_dbi_resource_id FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()) " +
 		"AND topology.id = (SELECT dbi_resource_id FROM rds_tools.dbi_resource_id())"
@@ -489,7 +489,7 @@ func (r *RdsMultiAZClusterPgDatabaseDialect) GetWriterHostName(conn driver.Conn)
 	return "", nil
 }
 
-func (r *RdsMultiAZClusterPgDatabaseDialect) GetHostListProvider(
+func (r *RdsMultiAzClusterPgDatabaseDialect) GetHostListProvider(
 	props map[string]string,
 	initialDsn string,
 	hostListProviderService HostListProviderService,
