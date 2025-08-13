@@ -90,7 +90,6 @@ require (
 
 require (
 	go.opentelemetry.io/otel/metric v1.37.0 // indirect
-	go.uber.org/mock v0.5.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
