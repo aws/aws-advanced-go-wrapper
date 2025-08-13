@@ -18,9 +18,10 @@ package host_info_util
 
 import (
 	"fmt"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"strconv"
 	"time"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 )
 
 type HostAvailability string
@@ -58,12 +59,6 @@ type HostInfo struct {
 func (hostInfo *HostInfo) AddAlias(alias string) {
 	hostInfo.Aliases[alias] = true
 	hostInfo.AllAliases[alias] = true
-}
-
-//nolint:unused
-func (hostInfo *HostInfo) removeAlias(alias string) {
-	delete(hostInfo.Aliases, alias)
-	delete(hostInfo.AllAliases, alias)
 }
 
 func (hostInfo *HostInfo) ResetAliases() {
@@ -106,7 +101,7 @@ func (hostInfo *HostInfo) IsNil() bool {
 		hostInfo.AllAliases == nil &&
 		hostInfo.HostId == "" &&
 		hostInfo.Weight == 0 &&
-		hostInfo.LastUpdateTime == time.Time{}
+		hostInfo.LastUpdateTime.Equal(time.Time{})
 }
 
 func (hostInfo *HostInfo) String() string {

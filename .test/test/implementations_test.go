@@ -43,8 +43,8 @@ import (
 func TestImplementations(t *testing.T) {
 	// Check for correct implementations of interfaces on left.
 
-	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.RdsMultiAzDbClusterMySQLDialect)(nil)
-	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.RdsMultiAzDbClusterPgDialect)(nil)
+	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.RdsMultiAZClusterMySQLDatabaseDialect)(nil)
+	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.RdsMultiAZClusterPgDatabaseDialect)(nil)
 	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.MySQLDatabaseDialect)(nil)
 	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.RdsMySQLDatabaseDialect)(nil)
 	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.AuroraMySQLDatabaseDialect)(nil)
@@ -55,8 +55,8 @@ func TestImplementations(t *testing.T) {
 	var _ driver_infrastructure.TopologyAwareDialect = (*driver_infrastructure.PgTopologyAwareDatabaseDialect)(nil)
 	var _ driver_infrastructure.TopologyAwareDialect = (*driver_infrastructure.AuroraMySQLDatabaseDialect)(nil)
 	var _ driver_infrastructure.TopologyAwareDialect = (*driver_infrastructure.AuroraPgDatabaseDialect)(nil)
-	var _ driver_infrastructure.TopologyAwareDialect = (*driver_infrastructure.RdsMultiAzDbClusterPgDialect)(nil)
-	var _ driver_infrastructure.TopologyAwareDialect = (*driver_infrastructure.RdsMultiAzDbClusterMySQLDialect)(nil)
+	var _ driver_infrastructure.TopologyAwareDialect = (*driver_infrastructure.RdsMultiAZClusterPgDatabaseDialect)(nil)
+	var _ driver_infrastructure.TopologyAwareDialect = (*driver_infrastructure.RdsMultiAZClusterMySQLDatabaseDialect)(nil)
 	var _ driver_infrastructure.DialectProvider = (*driver_infrastructure.DialectManager)(nil)
 	var _ driver_infrastructure.PluginManager = (*plugin_helpers.PluginManagerImpl)(nil)
 	var _ driver_infrastructure.PluginService = (*plugin_helpers.PluginServiceImpl)(nil)

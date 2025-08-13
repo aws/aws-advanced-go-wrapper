@@ -19,10 +19,11 @@ package test
 import (
 	"database/sql/driver"
 	"fmt"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 
 	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
 	mock_database_sql_driver "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/database_sql_driver"
@@ -549,36 +550,36 @@ func TestAuroraRdsMySQLDatabaseDialect_GetWriterHostName(t *testing.T) {
 	assert.Equal(t, "", result)
 }
 
-func TestRdsMultiAzDbClusterMySQLDialect_GetDialectUpdateCandidates(t *testing.T) {
-	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterMySQLDialect{}
+func TestRdsMultiAZClusterMySQLDatabaseDialect_GetDialectUpdateCandidates(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAZClusterMySQLDatabaseDialect{}
 	expectedCandidates := []string{}
 
 	assert.ElementsMatch(t, expectedCandidates, testDatabaseDialect.GetDialectUpdateCandidates())
 }
 
-func TestRdsMultiAzDbClusterMySQLDialect_GetDefaultPort(t *testing.T) {
-	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterMySQLDialect{}
+func TestRdsMultiAZClusterMySQLDatabaseDialect_GetDefaultPort(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAZClusterMySQLDatabaseDialect{}
 	expectedDefaultPort := 3306
 
 	assert.Equal(t, testDatabaseDialect.GetDefaultPort(), expectedDefaultPort)
 }
 
-func TestRdsMultiAzDbClusterMySQLDialect_GetHostAliasQuery(t *testing.T) {
-	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterMySQLDialect{}
+func TestRdsMultiAZClusterMySQLDatabaseDialect_GetHostAliasQuery(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAZClusterMySQLDatabaseDialect{}
 	expectedHostAliasQuery := "SELECT CONCAT(@@hostname, ':', @@port)"
 
 	assert.Equal(t, expectedHostAliasQuery, testDatabaseDialect.GetHostAliasQuery())
 }
 
-func TestRdsMultiAzDbClusterMySQLDialect_GetServerVersion(t *testing.T) {
-	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterMySQLDialect{}
+func TestRdsMultiAZClusterMySQLDatabaseDialect_GetServerVersion(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAZClusterMySQLDatabaseDialect{}
 	expectedGetServerVersionQuery := "SHOW VARIABLES LIKE 'version_comment'"
 
 	assert.Equal(t, expectedGetServerVersionQuery, testDatabaseDialect.GetServerVersionQuery())
 }
 
-func TestRdsMultiAzDbClusterMySQLDialect_GetHostListProvider(t *testing.T) {
-	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterMySQLDialect{}
+func TestRdsMultiAZClusterMySQLDatabaseDialect_GetHostListProvider(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAZClusterMySQLDatabaseDialect{}
 
 	propsNoFailover := make(map[string]string)
 	property_util.PLUGINS.Set(propsNoFailover, "efm")
@@ -605,9 +606,9 @@ func TestRdsMultiAzDbClusterMySQLDialect_GetHostListProvider(t *testing.T) {
 	assert.NotNil(t, monitoringHostListProvider)
 }
 
-func TestRdsMultiAzDbClusterMySQLDialect_GetHostRole(t *testing.T) {
+func TestRdsMultiAZClusterMySQLDatabaseDialect_GetHostRole(t *testing.T) {
 	isReaderQuery := "SELECT @@innodb_read_only"
-	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterMySQLDialect{}
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAZClusterMySQLDatabaseDialect{}
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -662,8 +663,8 @@ func TestRdsMultiAzDbClusterMySQLDialect_GetHostRole(t *testing.T) {
 	assert.Equal(t, host_info_util.UNKNOWN, testDatabaseDialect.GetHostRole(conn))
 }
 
-func TestRdsMultiAzDbClusterMySQLDialect_GetHostName(t *testing.T) {
-	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterMySQLDialect{}
+func TestRdsMultiAZClusterMySQLDatabaseDialect_GetHostName(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAZClusterMySQLDatabaseDialect{}
 	hostIdQuery := "SELECT endpoint from mysql.rds_topology as top where top.id = (SELECT @@server_id)"
 	instanceId := "myinstance"
 	ctrl := gomock.NewController(t)
@@ -706,8 +707,8 @@ func TestRdsMultiAzDbClusterMySQLDialect_GetHostName(t *testing.T) {
 	assert.Equal(t, "", testDatabaseDialect.GetHostName(conn))
 }
 
-func TestRdsMultiAzDbClusterMySQLDialect_GetWriterHostName(t *testing.T) {
-	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterMySQLDialect{}
+func TestRdsMultiAZClusterMySQLDatabaseDialect_GetWriterHostName(t *testing.T) {
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAZClusterMySQLDatabaseDialect{}
 
 	hostId := int64(123456789)
 	hostIdStr := strconv.FormatInt(hostId, 10)
@@ -785,7 +786,7 @@ func TestRdsMultiAzDbClusterMySQLDialect_GetWriterHostName(t *testing.T) {
 	assert.Equal(t, "", result)
 }
 
-func TestRdsMultiAzDbClusterMySQLDialect_GetTopology(t *testing.T) {
+func TestRdsMultiAZClusterMySQLDatabaseDialect_GetTopology(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -795,7 +796,7 @@ func TestRdsMultiAzDbClusterMySQLDialect_GetTopology(t *testing.T) {
 	mockTopologyRows := mock_database_sql_driver.NewMockRows(ctrl)
 	mockHostIdRows := mock_database_sql_driver.NewMockRows(ctrl)
 
-	dialect := &driver_infrastructure.RdsMultiAzDbClusterMySQLDialect{}
+	dialect := &driver_infrastructure.RdsMultiAZClusterMySQLDatabaseDialect{}
 
 	// Mock getting writer host id
 	hostIdQuery := "SHOW REPLICA STATUS"

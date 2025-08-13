@@ -355,11 +355,11 @@ func (m *AuroraMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider Host
 	return hosts, nil
 }
 
-type RdsMultiAzDbClusterMySQLDialect struct {
+type RdsMultiAZClusterMySQLDatabaseDialect struct {
 	MySQLTopologyAwareDatabaseDialect
 }
 
-func (r *RdsMultiAzDbClusterMySQLDialect) IsDialect(conn driver.Conn) bool {
+func (r *RdsMultiAZClusterMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	// We need to check that
 	// 1. rds_topology table exists
 	// 2. we can query the topology table
@@ -390,11 +390,11 @@ func (r *RdsMultiAzDbClusterMySQLDialect) IsDialect(conn driver.Conn) bool {
 	return false
 }
 
-func (r *RdsMultiAzDbClusterMySQLDialect) GetDialectUpdateCandidates() []string {
+func (r *RdsMultiAZClusterMySQLDatabaseDialect) GetDialectUpdateCandidates() []string {
 	return nil
 }
 
-func (r *RdsMultiAzDbClusterMySQLDialect) GetTopology(conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
+func (r *RdsMultiAZClusterMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
 	topologyQuery := "SELECT id, endpoint FROM mysql.rds_topology"
 	writerHostId := r.getWriterHostId(conn)
 
@@ -418,7 +418,7 @@ func (r *RdsMultiAzDbClusterMySQLDialect) GetTopology(conn driver.Conn, provider
 	return r.processTopologyQueryResults(provider, writerHostId, rows), nil
 }
 
-func (r *RdsMultiAzDbClusterMySQLDialect) processTopologyQueryResults(
+func (r *RdsMultiAZClusterMySQLDatabaseDialect) processTopologyQueryResults(
 	provider HostListProvider,
 	writerHostId string,
 	rows driver.Rows) []*host_info_util.HostInfo {
@@ -448,7 +448,7 @@ func (r *RdsMultiAzDbClusterMySQLDialect) processTopologyQueryResults(
 	return hosts
 }
 
-func (r *RdsMultiAzDbClusterMySQLDialect) GetHostName(conn driver.Conn) string {
+func (r *RdsMultiAZClusterMySQLDatabaseDialect) GetHostName(conn driver.Conn) string {
 	hostNameQuery := "SELECT endpoint from mysql.rds_topology as top where top.id = (SELECT @@server_id)"
 	row := utils.GetFirstRowFromQueryAsString(conn, hostNameQuery)
 
@@ -459,7 +459,7 @@ func (r *RdsMultiAzDbClusterMySQLDialect) GetHostName(conn driver.Conn) string {
 	return ""
 }
 
-func (r *RdsMultiAzDbClusterMySQLDialect) getWriterHostId(conn driver.Conn) string {
+func (r *RdsMultiAZClusterMySQLDatabaseDialect) getWriterHostId(conn driver.Conn) string {
 	fetchWriterHostQuery := "SHOW REPLICA STATUS"
 	queryerCtx, ok := conn.(driver.QueryerContext)
 	if !ok {
@@ -502,7 +502,7 @@ func (r *RdsMultiAzDbClusterMySQLDialect) getWriterHostId(conn driver.Conn) stri
 	return strconv.FormatInt(writerHostIdInt, 10)
 }
 
-func (r *RdsMultiAzDbClusterMySQLDialect) GetWriterHostName(conn driver.Conn) (string, error) {
+func (r *RdsMultiAZClusterMySQLDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, error) {
 	writerId := r.getWriterHostId(conn)
 	if writerId == "" {
 		return "", error_util.NewGenericAwsWrapperError("Could not determine writer host name.")
@@ -524,7 +524,7 @@ func (r *RdsMultiAzDbClusterMySQLDialect) GetWriterHostName(conn driver.Conn) (s
 	return "", nil
 }
 
-func (r *RdsMultiAzDbClusterMySQLDialect) getHostIdOfCurrentConnection(conn driver.Conn) string {
+func (r *RdsMultiAZClusterMySQLDatabaseDialect) getHostIdOfCurrentConnection(conn driver.Conn) string {
 	serverIdQuery := "SELECT @@server_id"
 	row := utils.GetFirstRowFromQueryAsString(conn, serverIdQuery)
 
@@ -535,7 +535,7 @@ func (r *RdsMultiAzDbClusterMySQLDialect) getHostIdOfCurrentConnection(conn driv
 	return ""
 }
 
-func (r *RdsMultiAzDbClusterMySQLDialect) GetHostListProvider(
+func (r *RdsMultiAZClusterMySQLDatabaseDialect) GetHostListProvider(
 	props map[string]string,
 	initialDsn string,
 	hostListProviderService HostListProviderService,
