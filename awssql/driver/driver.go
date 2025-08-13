@@ -40,6 +40,8 @@ var pluginFactoryByCode = map[string]driver_infrastructure.ConnectionPluginFacto
 	"executionTime": plugins.NewExecutionTimePluginFactory(),
 }
 
+var underlyingDriverList = map[string]driver.Driver{}
+
 type AwsWrapperDriver struct {
 	DriverDialect    driver_infrastructure.DriverDialect
 	UnderlyingDriver driver.Driver
@@ -139,6 +141,18 @@ func UsePluginFactory(code string, pluginFactory driver_infrastructure.Connectio
 
 func RemovePluginFactory(code string) {
 	delete(pluginFactoryByCode, code)
+}
+
+func RegisterUnderlyingDriver(name string, driver driver.Driver) {
+	underlyingDriverList[name] = driver
+}
+
+func RemoveUnderlyingDriver(name string) {
+	delete(underlyingDriverList, name)
+}
+
+func GetUnderlyingDriver(name string) driver.Driver {
+	return underlyingDriverList[name]
 }
 
 // This cleans up all long standing caches. To be called at the end of program, not each time a Conn is closed.

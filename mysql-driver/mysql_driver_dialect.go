@@ -136,3 +136,7 @@ func (m MySQLDriverDialect) PrepareDsn(properties map[string]string, hostInfo *h
 	}
 	return builder.String()
 }
+
+func (m MySQLDriverDialect) GetDriverRegistrationName() string {
+	return MYSQL_DRIVER_REGISTRATION_NAME
+}

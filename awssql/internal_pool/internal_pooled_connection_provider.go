@@ -20,6 +20,7 @@ import (
 	"database/sql/driver"
 	"time"
 
+	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
@@ -31,23 +32,28 @@ type internalPoolKeyFunc func(*host_info_util.HostInfo, map[string]string) strin
 
 type InternalPooledConnectionProvider struct {
 	acceptedStrategies     map[string]driver_infrastructure.HostSelector
-	targetDriver           driver.Driver
 	databasePools          *utils.SlidingExpirationCache[*InternalConnPool]
 	internalPoolOptions    *InternalPoolConfig
 	poolKeyFunc            internalPoolKeyFunc
 	poolExpirationDuration time.Duration
 }
 
-func NewInternalPooledConnectionProvider(targetDriver driver.Driver,
-	internalPoolOptions *InternalPoolConfig,
-	poolKeyFunc internalPoolKeyFunc,
+var defaultPoolTimeout time.Duration = time.Duration(30) * time.Minute
+
+func NewInternalPooledConnectionProvider(internalPoolOptions *InternalPoolConfig,
 	poolExpirationDuration time.Duration) *InternalPooledConnectionProvider {
+	return NewInternalPooledConnectionProviderWithPoolKeyFunc(internalPoolOptions, poolExpirationDuration, nil)
+}
+
+func NewInternalPooledConnectionProviderWithPoolKeyFunc(internalPoolOptions *InternalPoolConfig,
+	poolExpirationDuration time.Duration,
+	poolKeyFunc internalPoolKeyFunc) *InternalPooledConnectionProvider {
 	acceptedStrategies := make(map[string]driver_infrastructure.HostSelector)
-	acceptedStrategies[driver_infrastructure.SELECTOR_HIGHEST_WEIGHT] = 
+	acceptedStrategies[driver_infrastructure.SELECTOR_HIGHEST_WEIGHT] =
 		&driver_infrastructure.HighestWeightHostSelector{}
-	acceptedStrategies[driver_infrastructure.SELECTOR_RANDOM] = 
+	acceptedStrategies[driver_infrastructure.SELECTOR_RANDOM] =
 		&driver_infrastructure.RandomHostSelector{}
-	acceptedStrategies[driver_infrastructure.SELECTOR_WEIGHTED_RANDOM] = 
+	acceptedStrategies[driver_infrastructure.SELECTOR_WEIGHTED_RANDOM] =
 		&driver_infrastructure.WeightedRandomHostSelector{}
 
 	var disposalFunc utils.DisposalFunc[*InternalConnPool] = func(db *InternalConnPool) bool {
@@ -55,11 +61,10 @@ func NewInternalPooledConnectionProvider(targetDriver driver.Driver,
 		return true
 	}
 	if poolExpirationDuration == 0 {
-		poolExpirationDuration = time.Duration(30) * time.Minute
+		poolExpirationDuration = defaultPoolTimeout
 	}
 	return &InternalPooledConnectionProvider{
 		acceptedStrategies,
-		targetDriver,
 		utils.NewSlidingExpirationCache("internalConnectionPool", disposalFunc),
 		internalPoolOptions,
 		poolKeyFunc,
@@ -76,7 +81,7 @@ func (p *InternalPooledConnectionProvider) AcceptsStrategy(strategy string) bool
 	return exists
 }
 
-func (p *InternalPooledConnectionProvider) GetHostInfoByStrategy(hosts []*host_info_util.HostInfo, 
+func (p *InternalPooledConnectionProvider) GetHostInfoByStrategy(hosts []*host_info_util.HostInfo,
 	role host_info_util.HostRole, strategy string, props map[string]string) (*host_info_util.HostInfo, error) {
 	acceptedStrategy, err := p.GetHostSelectorStrategy(strategy)
 	if err != nil {
@@ -95,22 +100,24 @@ func (p *InternalPooledConnectionProvider) GetHostSelectorStrategy(strategy stri
 	return acceptedStrategy, nil
 }
 
-func (p *InternalPooledConnectionProvider) Connect(hostInfo *host_info_util.HostInfo, 
+func (p *InternalPooledConnectionProvider) Connect(hostInfo *host_info_util.HostInfo,
 	props map[string]string, pluginService driver_infrastructure.PluginService) (driver.Conn, error) {
 	driverDialect := pluginService.GetTargetDriverDialect()
 	dsn := driverDialect.PrepareDsn(props, hostInfo)
+	driverName := driverDialect.GetDriverRegistrationName()
+	underlyingDriver := awsDriver.GetUnderlyingDriver(driverName)
+
 	computeFunc := func() *InternalConnPool {
 		connFunc := func() (driver.Conn, error) {
-			return p.targetDriver.Open(dsn)
+			return underlyingDriver.Open(dsn)
 		}
 		pool := NewConnPool(connFunc, p.internalPoolOptions)
 		return pool
 	}
 	key := p.getPoolKey(hostInfo, props)
+	poolKey := NewPoolKey(hostInfo.GetUrl(), driverName, key)
 
-	poolKey := NewPoolKey(hostInfo.GetUrl(), key)
-
-	connPool := p.databasePools.ComputeIfAbsent(poolKey.GetPoolKeyString(), 
+	connPool := p.databasePools.ComputeIfAbsent(poolKey.GetPoolKeyString(),
 		computeFunc, p.poolExpirationDuration)
 	return connPool.Get()
 }
@@ -126,4 +133,9 @@ func (p *InternalPooledConnectionProvider) getPoolKey(hostInfo *host_info_util.H
 		return user
 	}
 	return property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.DB_USER)
+}
+
+func (p *InternalPooledConnectionProvider) ReleaseResources() {
+	// Close all the pools
+	p.databasePools.Clear()
 }

@@ -117,3 +117,7 @@ func (p PgxDriverDialect) PrepareDsn(properties map[string]string, hostInfo *hos
 	}
 	return builder.String()
 }
+
+func (p PgxDriverDialect) GetDriverRegistrationName() string {
+	return PGX_DRIVER_REGISTRATION_NAME
+}

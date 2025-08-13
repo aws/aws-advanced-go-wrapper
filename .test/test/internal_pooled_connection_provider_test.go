@@ -22,6 +22,7 @@ import (
 
 	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
 	mock_database_sql_driver "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/database_sql_driver"
+	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/internal_pool"
@@ -33,13 +34,12 @@ func TestNewInternalPooledConnectionProvider(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockDriver := mock_database_sql_driver.NewMockDriver(ctrl)
 	opts := internal_pool.NewInternalPoolOptions()
 	poolKeyFunc := func(hostInfo *host_info_util.HostInfo, props map[string]string) string {
 		return "test-key"
 	}
 
-	provider := internal_pool.NewInternalPooledConnectionProvider(mockDriver, opts, poolKeyFunc, time.Minute)
+	provider := internal_pool.NewInternalPooledConnectionProviderWithPoolKeyFunc(opts, time.Minute, poolKeyFunc)
 
 	assert.NotNil(t, provider)
 }
@@ -48,9 +48,8 @@ func TestInternalPooledConnectionProvider_AcceptsUrl(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockDriver := mock_database_sql_driver.NewMockDriver(ctrl)
 	opts := internal_pool.NewInternalPoolOptions()
-	provider := internal_pool.NewInternalPooledConnectionProvider(mockDriver, opts, nil, time.Minute)
+	provider := internal_pool.NewInternalPooledConnectionProvider(opts, time.Minute)
 
 	// RDS URL should be accepted
 	rdsHost := host_info_util.HostInfo{Host: "test.cluster-abc123.us-east-1.rds.amazonaws.com"}
@@ -65,9 +64,8 @@ func TestInternalPooledConnectionProvider_AcceptsStrategy(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockDriver := mock_database_sql_driver.NewMockDriver(ctrl)
 	opts := internal_pool.NewInternalPoolOptions()
-	provider := internal_pool.NewInternalPooledConnectionProvider(mockDriver, opts, nil, time.Minute)
+	provider := internal_pool.NewInternalPooledConnectionProvider(opts, time.Minute)
 
 	assert.True(t, provider.AcceptsStrategy(driver_infrastructure.SELECTOR_RANDOM))
 	assert.True(t, provider.AcceptsStrategy(driver_infrastructure.SELECTOR_HIGHEST_WEIGHT))
@@ -79,9 +77,8 @@ func TestInternalPooledConnectionProvider_GetHostSelectorStrategy(t *testing.T) 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockDriver := mock_database_sql_driver.NewMockDriver(ctrl)
 	opts := internal_pool.NewInternalPoolOptions()
-	provider := internal_pool.NewInternalPooledConnectionProvider(mockDriver, opts, nil, time.Minute)
+	provider := internal_pool.NewInternalPooledConnectionProvider(opts, time.Minute)
 
 	selector, err := provider.GetHostSelectorStrategy(driver_infrastructure.SELECTOR_RANDOM)
 	assert.NoError(t, err)
@@ -101,14 +98,18 @@ func TestInternalPooledConnectionProvider_Connect(t *testing.T) {
 	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
 
 	opts := internal_pool.NewInternalPoolOptions()
-	provider := internal_pool.NewInternalPooledConnectionProvider(mockDriver, opts, nil, time.Minute)
+	provider := internal_pool.NewInternalPooledConnectionProvider(opts, time.Minute)
 
 	hostInfo := &host_info_util.HostInfo{Host: "test.cluster-abc123.us-east-1.rds.amazonaws.com"}
 	props := map[string]string{"user": "testuser"}
 
 	mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect)
 	mockDriverDialect.EXPECT().PrepareDsn(props, hostInfo).Return("test-dsn")
+	mockDriverDialect.EXPECT().GetDriverRegistrationName().Return("test-driver")
 	mockDriver.EXPECT().Open("test-dsn").Return(mockConn, nil)
+
+	awsDriver.RegisterUnderlyingDriver("test-driver", mockDriver)
+	defer awsDriver.RemoveUnderlyingDriver("test-driver")
 
 	conn, err := provider.Connect(hostInfo, props, mockPluginService)
 	assert.NoError(t, err)

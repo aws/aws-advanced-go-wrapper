@@ -31,4 +31,5 @@ type DriverDialect interface {
 	IsClosed(conn driver.Conn) bool
 	IsDriverRegistered(drivers map[string]driver.Driver) bool
 	RegisterDriver()
+	GetDriverRegistrationName() string
 }

@@ -21,14 +21,16 @@ import (
 )
 
 type PoolKey struct {
-	url      string
-	extraKey string
+	url        string
+	driverName string
+	extraKey   string
 }
 
-func NewPoolKey(url string, extraKey string) *PoolKey {
+func NewPoolKey(url string, driverName string, extraKey string) *PoolKey {
 	return &PoolKey{
-		url:      url,
-		extraKey: extraKey,
+		url:        url,
+		driverName: driverName,
+		extraKey:   extraKey,
 	}
 }
 
@@ -40,6 +42,10 @@ func (pk *PoolKey) GetExtraKey() string {
 	return pk.extraKey
 }
 
+func (pk *PoolKey) GetDriverName() string {
+	return pk.driverName
+}
+
 func (pk *PoolKey) GetPoolKeyString() string {
-	return fmt.Sprint("PoolKey [url=", pk.url, ", extraKey=", pk.extraKey, "]")
+	return fmt.Sprint("PoolKey [url=", pk.GetUrl(), ", driverNamey=", pk.GetDriverName(), ", extraKey=", pk.GetExtraKey(), "]")
 }

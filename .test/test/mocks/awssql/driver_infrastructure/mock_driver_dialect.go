@@ -65,6 +65,20 @@ func (mr *MockDriverDialectMockRecorder) GetAllowedOnConnectionMethodNames() *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllowedOnConnectionMethodNames", reflect.TypeOf((*MockDriverDialect)(nil).GetAllowedOnConnectionMethodNames))
 }
 
+// GetDriverRegistrationName mocks base method.
+func (m *MockDriverDialect) GetDriverRegistrationName() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDriverRegistrationName")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetDriverRegistrationName indicates an expected call of GetDriverRegistrationName.
+func (mr *MockDriverDialectMockRecorder) GetDriverRegistrationName() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDriverRegistrationName", reflect.TypeOf((*MockDriverDialect)(nil).GetDriverRegistrationName))
+}
+
 // IsClosed mocks base method.
 func (m *MockDriverDialect) IsClosed(conn driver.Conn) bool {
 	m.ctrl.T.Helper()

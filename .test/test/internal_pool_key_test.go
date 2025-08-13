@@ -25,41 +25,50 @@ import (
 
 func TestNewPoolKey(t *testing.T) {
 	url := "test-url"
+	driverName := "test-driver"
 	extraKey := "test-key"
 
-	poolKey := internal_pool.NewPoolKey(url, extraKey)
+	poolKey := internal_pool.NewPoolKey(url, driverName, extraKey)
 
 	assert.NotNil(t, poolKey)
 	assert.Equal(t, url, poolKey.GetUrl())
+	assert.Equal(t, driverName, poolKey.GetDriverName())
 	assert.Equal(t, extraKey, poolKey.GetExtraKey())
 }
 
 func TestPoolKey_GetUrl(t *testing.T) {
 	url := "test-url"
-	poolKey := internal_pool.NewPoolKey(url, "")
+	poolKey := internal_pool.NewPoolKey(url, "", "")
 
 	assert.Equal(t, url, poolKey.GetUrl())
 }
 
 func TestPoolKey_GetExtraKey(t *testing.T) {
 	extraKey := "test-key"
-	poolKey := internal_pool.NewPoolKey("", extraKey)
+	poolKey := internal_pool.NewPoolKey("", "", extraKey)
 
 	assert.Equal(t, extraKey, poolKey.GetExtraKey())
 }
 
 func TestPoolKey_GetPoolKeyString(t *testing.T) {
 	url := "test-url"
+	driverName := "test-driver"
 	extraKey := "test-key"
-	poolKey := internal_pool.NewPoolKey(url, extraKey)
+	poolKey := internal_pool.NewPoolKey(url, driverName, extraKey)
 
-	expected := "PoolKey [url=test-url, extraKey=test-key]"
+	expected := "PoolKey [url=test-url, driverNamey=test-driver, extraKey=test-key]"
 	assert.Equal(t, expected, poolKey.GetPoolKeyString())
 }
 
 func TestPoolKey_GetPoolKeyString_EmptyValues(t *testing.T) {
-	poolKey := internal_pool.NewPoolKey("", "")
+	poolKey := internal_pool.NewPoolKey("", "", "")
 
-	expected := "PoolKey [url=, extraKey=]"
+	expected := "PoolKey [url=, driverNamey=, extraKey=]"
 	assert.Equal(t, expected, poolKey.GetPoolKeyString())
+}
+func TestPoolKey_GetDriverName(t *testing.T) {
+	driverName := "test-driver"
+	poolKey := internal_pool.NewPoolKey("", driverName, "")
+
+	assert.Equal(t, driverName, poolKey.GetDriverName())
 }
