@@ -1225,6 +1225,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
             && env.info.getRequest().getDatabaseEngineDeployment() == DatabaseEngineDeployment.RDS_MULTI_AZ_INSTANCE;
         env.auroraUtil.addAuroraAwsIamUser(
             env.info.getRequest().getDatabaseEngine(),
+            env.info.getRequest().getDatabaseEngineDeployment(),
             url,
             env.info.getDatabaseInfo().getUsername(),
             env.info.getDatabaseInfo().getPassword(),

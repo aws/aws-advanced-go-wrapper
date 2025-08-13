@@ -270,7 +270,7 @@ func GetDsn(environment *TestEnvironment, props map[string]string) string {
 }
 
 func GetDsnForTestsWithProxy(environment *TestEnvironment, origProps map[string]string) string {
-	return GetDsn(environment, GetPropsForTestsWithProxy(environment, origProps))
+	return GetDsn(environment, GetPropsForTestsWithProxy2(environment, origProps))
 }
 
 func GetPropsForTestsWithProxy(environment *TestEnvironment, origProps map[string]string) map[string]string {
@@ -297,6 +297,43 @@ func GetPropsForTestsWithProxy(environment *TestEnvironment, origProps map[strin
 
 	maps.Copy(origProps, proxyProps)
 	return origProps
+}
+
+func GetPropsForTestsWithProxy2(environment *TestEnvironment, props map[string]string) map[string]string {
+	monitoringConnectTimeoutSeconds := strconv.Itoa(TEST_FAILURE_DETECTION_INTERVAL_SECONDS - 1)
+	monitoringConnectTimeoutParameterName := property_util.MONITORING_PROPERTY_PREFIX
+	switch environment.Info().Request.Engine {
+	case PG:
+		monitoringConnectTimeoutParameterName = monitoringConnectTimeoutParameterName + "connect_timeout"
+	case MYSQL:
+		monitoringConnectTimeoutParameterName = monitoringConnectTimeoutParameterName + "readTimeout"
+		monitoringConnectTimeoutSeconds = monitoringConnectTimeoutSeconds + "s"
+	}
+	if _, ok := props["host"]; ok == false {
+		props["host"] = environment.Info().ProxyDatabaseInfo.ClusterEndpoint
+	}
+	if _, ok := props["port"]; ok == false {
+		props["port"] = strconv.Itoa(environment.Info().ProxyDatabaseInfo.InstanceEndpointPort)
+	}
+	if _, ok := props["clusterInstanceHostPattern"]; ok == false {
+		props["clusterInstanceHostPattern"] = "?." + environment.Info().ProxyDatabaseInfo.InstanceEndpointSuffix
+	}
+	if _, ok := props["failureDetectionIntervalMs"]; ok == false {
+		props["failureDetectionIntervalMs"] = strconv.Itoa(TEST_FAILURE_DETECTION_INTERVAL_SECONDS * 1000) // interval between probes to host
+	}
+	if _, ok := props["failureDetectionCount"]; ok == false {
+		props["failureDetectionCount"] = strconv.Itoa(TEST_FAILURE_DETECTION_COUNT) // consecutive failures before marks host as dead
+	}
+	if _, ok := props["failureDetectionTimeMs"]; ok == false {
+		props["failureDetectionTimeMs"] = strconv.Itoa(TEST_FAILURE_DETECTION_START_TIME_SECONDS * 1000) // time before starting monitoring
+	}
+	if _, ok := props["failoverTimeoutMs"]; ok == false {
+		props["failoverTimeoutMs"] = strconv.Itoa(TEST_MONITORING_TIMEOUT_SECONDS * 1000)
+	}
+	if _, ok := props[monitoringConnectTimeoutParameterName]; ok == false {
+		props[monitoringConnectTimeoutParameterName] = monitoringConnectTimeoutSeconds
+	}
+	return props
 }
 
 func ConfigureProps(environment *TestEnvironment, props map[string]string) map[string]string {

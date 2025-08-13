@@ -147,6 +147,8 @@ func DisableProxy(proxyInfo ProxyInfo) {
 		err := proxy.Disable()
 		if err != nil {
 			slog.Debug(fmt.Sprintf("Error disabling proxy %s:%d: %s.", proxyInfo.controlHost, proxyInfo.controlPort, err.Error()))
+		} else {
+			slog.Debug(fmt.Sprintf("DisableProxy %s:%d.", proxyInfo.controlHost, proxyInfo.controlPort))
 		}
 	}
 }
@@ -166,6 +168,8 @@ func EnableProxy(proxyInfo ProxyInfo) {
 		err := proxy.Enable()
 		if err != nil {
 			slog.Debug(fmt.Sprintf("Error enabling proxy %s:%d: %s.", proxyInfo.controlHost, proxyInfo.controlPort, err.Error()))
+		} else {
+			slog.Debug(fmt.Sprintf("EnableProxy %s:%d.", proxyInfo.controlHost, proxyInfo.controlPort))
 		}
 	}
 }

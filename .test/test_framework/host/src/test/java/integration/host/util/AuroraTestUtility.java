@@ -55,6 +55,8 @@ import java.util.stream.Collectors;
 import static integration.host.DatabaseEngineDeployment.RDS_MULTI_AZ_INSTANCE;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import static integration.host.DatabaseEngineDeployment.RDS_MULTI_AZ_CLUSTER;
+
 /**
  * Creates and destroys AWS RDS Clusters and Instances. To use this functionality the following environment variables
  * must be defined: - AWS_ACCESS_KEY_ID - AWS_SECRET_ACCESS_KEY
@@ -383,6 +385,7 @@ public class AuroraTestUtility {
             .sourceRegion(region)
             .engine(engine)
             .engineVersion(version)
+            .enableIAMDatabaseAuthentication(true)
             .enablePerformanceInsights(false)
             .backupRetentionPeriod(1)
             .storageEncrypted(true)
@@ -1165,6 +1168,7 @@ public class AuroraTestUtility {
 
   public void addAuroraAwsIamUser(
       DatabaseEngine databaseEngine,
+      DatabaseEngineDeployment deployment,
       String connectionUrl,
       String userName,
       String password,
@@ -1187,7 +1191,7 @@ public class AuroraTestUtility {
             stmt.execute("GRANT ALL PRIVILEGES ON `%`.* TO '" + dbUser + "'@'%';");
           }
 
-          // BG switchover status needs it.
+          // BG switchover status and Multi AZ needs it.
           stmt.execute("GRANT SELECT ON mysql.* TO '" + dbUser + "'@'%';");
           break;
         case PG:
@@ -1202,6 +1206,8 @@ public class AuroraTestUtility {
             // BG switchover status needs it.
             stmt.execute("GRANT USAGE ON SCHEMA rds_tools TO " + dbUser + ";");
             stmt.execute("GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA rds_tools TO " + dbUser + ";");
+          } else if (RDS_MULTI_AZ_CLUSTER == deployment) {
+            stmt.execute("GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA rds_tools TO " + dbUser+ ";");
           }
           break;
         default:

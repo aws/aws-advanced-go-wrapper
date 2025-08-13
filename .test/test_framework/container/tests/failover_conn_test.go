@@ -26,7 +26,6 @@ import (
 
 	"database/sql/driver"
 	"log"
-	"strconv"
 	"testing"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -52,8 +51,6 @@ func TestFailoverWriter(t *testing.T) {
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
-		"host":    environment.Info().ProxyDatabaseInfo.ClusterEndpoint,
-		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
 		"plugins": "failover",
 	})
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
@@ -77,7 +74,6 @@ func TestFailoverWriter(t *testing.T) {
 	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryError.Error())
 
 	// Assert that we are connected to the new writer after failover.
-	slog.Debug("TestFailoverWriter - Assert that we are connected to the new writer after failover.")
 	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	assert.Nil(t, err)
 	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
@@ -87,7 +83,6 @@ func TestFailoverWriter(t *testing.T) {
 	if environment.Info().Request.Deployment != test_utils.RDS_MULTI_AZ_CLUSTER {
 		assert.NotEqual(t, instanceId, newInstanceId)
 	}
-	slog.Debug("TestFailoverWriter - finished")
 }
 
 func TestFailoverWriterWithTelemetryOtel(t *testing.T) {
@@ -123,8 +118,8 @@ func TestFailoverWriterWithTelemetryOtel(t *testing.T) {
 	triggerFailoverError := auroraTestUtility.CrashInstance(instanceId, "", "")
 	assert.Nil(t, triggerFailoverError)
 	_, queryErr := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
-	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryErr.Error())
 	require.Error(t, queryErr, "Failover plugin did not complete failover successfully.")
+	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryErr.Error())
 
 	// Assert that we are connected to the new writer after failover.
 	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
