@@ -375,7 +375,7 @@ var FAILOVER_MODE = AwsWrapperProperty{
 
 var FAILOVER_READER_HOST_SELECTOR_STRATEGY = AwsWrapperProperty{
 	Name:                "failoverReaderHostSelectorStrategy",
-	description:         "The strategy that should be used to select a new reader host when opening a new connection for failover.",
+	description:         "The strategy that should be used to select a new reader host when opening a new connection during failover.",
 	defaultValue:        "random",
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
@@ -639,7 +639,7 @@ var ROLLBACK_ON_SWITCH = AwsWrapperProperty{
 
 var READER_HOST_SELECTOR_STRATEGY = AwsWrapperProperty{
 	Name:                "readerHostSelectorStrategy",
-	description:         "The strategy that should be used to select a new reader host when opening a new connection.",
+	description:         "The strategy that should be used to select a new reader host when opening a new connection with the rw-splitting plugin.",
 	defaultValue:        "random",
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }

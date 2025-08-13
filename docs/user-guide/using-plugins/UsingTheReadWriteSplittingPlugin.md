@@ -11,7 +11,7 @@ The Read/Write Splitting Plugin is not loaded by default. To load the plugin, in
 When using the Read/Write Splitting Plugin against Aurora clusters, you do not have to supply multiple instance URLs in the connection string. Instead, supply only the URL for the initial connection. The Read/Write Splitting Plugin will automatically discover the URLs for the other instances in the cluster and will use this info to switch between the writer/reader when `awsctx.setReadOnly` is set.
 
 > [!IMPORTANT]
-> you must set the [`clusterInstanceHostPattern`](./UsingTheFailoverPlugin.md#failover-parameters) if you are connecting using an IP address or custom domain.
+> You must set the [`clusterInstanceHostPattern`](./UsingTheFailoverPlugin.md#failover-parameters) if you are connecting using an IP address or custom domain.
 
 ### Using the Read/Write Splitting Plugin
 
@@ -19,7 +19,9 @@ To use read-only queries with the plugin, set the context with key-value of `aws
 
 ```go
 ctx := context.WithValue(context.Background(), awsctx.SetReadOnly, true)
-rows, err := conn.QueryContext(ctx, "SELECT 1") // or ExecContext(ctx, "SELECT 1")
+// Both calls will be directed to a reader instance.
+rows, queryErr := conn.QueryContext(ctx, "SELECT 1") 
+result, execErr := ExecContext(ctx, "SELECT 1")
 ```
 
 
@@ -32,9 +34,9 @@ The Read/Write Splitting Plugin is not currently supported for non-Aurora cluste
 > [!WARNING]
 > If internal connection pools are enabled, database passwords may not be verified with every connection request. The initial connection request for each database instance in the cluster will verify the password, but subsequent requests may return a cached pool connection without re-verifying the password. This behavior is inherent to the nature of connection pools in general and not a bug with the wrapper. `<name-of-ConnectionProvider>.ReleaseResources()` can be called to close all pools and remove all cached pool connections. See [Internal Connection Pool Password Warning Example for Postgres](../../../examples/aws_internal_connection_pool_password_warning_postgresql_example.go) and [Internal Connection Pool Password Warning Example for MySQL](../../../examples/aws_internal_connection_pool_password_warning_mysql_example.go)
 
-Whenever `awsctx.setReadOnly=true` is first passed in on the same connection object, the `sql.Conn` object, the read/write plugin will internally open a new physical connection to a reader. After this first call, the physical reader connection will be cached for the given `sql.Conn`. Future calls passing `awsctx.setReadOnly=true` on the same `AwsClient` object will not require opening a new physical connection. However, calling `awsctx.setReadOnly=true` for the first time on a new `sql.Conn` object will require the plugin to establish another new physical connection to a reader.
+When `awsctx.setReadOnly=true` is first passed in on a `sql.Conn` object the read/write plugin will internally open a new physical connection to a reader. After this first call, the physical reader connection will be cached. Future calls passing `awsctx.setReadOnly=true` on the same `sql.Conn` object will not require opening a new physical connection. However, calling `awsctx.setReadOnly=true` for the first time on a new `sql.Conn` object, even one from the same `sql.DB` object, will require the plugin to establish another new physical connection to a reader.
 
-Due to the abstraction of go's `database/sql` library, many users may often find themselves executing queries with the `sql.DB` object. `sql.DB` is a high-level connection pool, users do not have control of using and running queries using methods on this object (such as`db.ExecContext`). That is, if a user were to run `db.ExecContext` multiple times, each of those times could result in creating a new connection object each time and making a new physical connection to the reader.
+Due to the abstraction of go's `database/sql` library, many users may often find themselves executing queries with the `sql.DB` object. `sql.DB` is a high-level connection pool, users do not have control of which `sql.Conn` is being used when running queries using methods on this object (such as`db.ExecContext`). That is, if a user were to run `db.ExecContext` multiple times, each of those times could result in creating a new connection object and making a new physical connection to the reader.
 
 If your application uses `sql.DB`, then you can enable internal connection pooling to improve performance. When enabled, the wrapper driver will maintain an internal connection pool for each instance in the cluster. This allows the read/write splitting plugin to reuse connections that were established by queries using `awsctx.setReadOnly=true`.
 
@@ -67,7 +69,7 @@ The following table outlines the options for `InternalPoolConfig`
 | -------------------- | :-----: | :------: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
 | `maxIdleConns`     | int  |    No    | The maximum number of connections to create.                                                                                                                                                                                                                           | `2`                     |
 | `maxConnLifetime`  | int  |    No    | The maximum life a connection object can exist                                                                                                                                                                                                         | `0` (no time limit)                  |
-| `maxConnIdleTime` | int  |    No    | The maximum duration that a connection object can be idle in the pool                                                                                     | `0` (can time limit)|
+| `maxConnIdleTime` | int  |    No    | The maximum duration that a connection object can be idle in the pool                                                                                     | `0` (no time limit)|
 
 
 To avoid collisions, the `InternalPooledConnectionProvider` uses a function called poolKeyFunc to retrieve a value from properties map or host info. The value for this gets combined with the host url, and the underlying database driver that's being used. By default, the driver uses the values from `user`, or `dbUser` if `user` does not exist, from the connection string. If needed, users can override this to get a different property by using the `NewInternalPooledConnectionProviderWithPoolKeyFunc()` constructor like below:
@@ -93,12 +95,12 @@ Please see [Internal Connection Pooling Postgres Example](../../../examples/read
 
 3. By default, the read/write plugin randomly selects a reader instance the first time a query runs with a context containg a key-value pair of `awsctx.setReadOnly` to true. If you would like the plugin to select a reader based on a different selection strategy, please see the [Reader Selection](#reader-selection) section for more information.
 
-4. Continue as normal: create connections and use them as needed.
+4. Continue as normal: create connections and use them as needed. Signal using `awsctx.setReadOnly` whether you want each operation to be on a reader or writer instance. Remember that not providing this value is equivalent to setting `awsctx.setReadOnly` to false.
 
 5. When you are finished using all connections, call `driver.ReleaseResources()`, and then `provider.ReleaseResources()`.
 
 > [!IMPORTANT]
-> To ensure the provider can close the pools, call `driver.ReleaseResources()` first.
+> To ensure the provider can close the pools, call `driver.ClearCaches()` first.
 >
 > You must call `provider.ReleaseResources()` to close the internal connection pools when you are finished using all connections. Unless `provider.ReleaseResources()` is called, the wrapper driver will keep the pools open so that they can be shared between connections.
 
