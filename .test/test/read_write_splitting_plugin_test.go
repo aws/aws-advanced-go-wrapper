@@ -27,6 +27,8 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	read_write_splitting "github.com/aws/aws-advanced-go-wrapper/read-write-splitting"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -77,8 +79,8 @@ func TestReadWriteSplittingPlugin_GetSubscribedMethods(t *testing.T) {
 	assert.Contains(t, methods, plugin_helpers.CONNECT_METHOD)
 	assert.Contains(t, methods, plugin_helpers.INIT_HOST_PROVIDER_METHOD)
 	assert.Contains(t, methods, plugin_helpers.NOTIFY_CONNECTION_CHANGED_METHOD)
-	assert.Contains(t, methods, plugin_helpers.QUERY_CONTEXT_METHOD)
-	assert.Contains(t, methods, plugin_helpers.EXECUTE_CONTEXT_METHOD)
+	assert.Contains(t, methods, utils.CONN_QUERY_CONTEXT)
+	assert.Contains(t, methods, utils.CONN_EXEC_CONTEXT)
 }
 
 func TestReadWriteSplittingPlugin_InitHostProvider(t *testing.T) {
@@ -103,16 +105,25 @@ func TestReadWriteSplittingPlugin_InitHostProvider(t *testing.T) {
 func TestReadWriteSplittingPlugin_Connect_UnsupportedStrategy(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
+	strategy := "unsupported"
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 	mockPluginService.EXPECT().AcceptsStrategy(gomock.Any()).Return(false)
 
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
+	props := make(map[string]string)
+	property_util.READER_HOST_SELECTOR_STRATEGY.Set(props, strategy)
+
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, props)
 
 	conn, err := plugin.Connect(nil, nil, true, nil)
 
 	assert.Nil(t, conn)
 	assert.Error(t, err)
+	assert.Equal(t,
+		error_util.GetMessage("ReadWriteSplittingPlugin.unsupportedHostSelectorStrategy",
+			strategy,
+			property_util.READER_HOST_SELECTOR_STRATEGY.Name),
+		err.Error())
 }
 
 func TestReadWriteSplittingPlugin_Connect_StaticProvider(t *testing.T) {
@@ -160,6 +171,9 @@ func TestReadWriteSplittingPlugin_Connect_UnknownHostRole(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, conn)
+	assert.Equal(t,
+		error_util.GetMessage("ReadWriteSplittingPlugin.errorVerifyingInitialHostRole"),
+		err.Error())
 }
 
 func TestReadWriteSplittingPlugin_Connect_NilHostRole(t *testing.T) {

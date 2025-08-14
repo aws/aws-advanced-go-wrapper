@@ -56,8 +56,8 @@ func NewInternalPooledConnectionProviderWithPoolKeyFunc(internalPoolOptions *Int
 	acceptedStrategies[driver_infrastructure.SELECTOR_WEIGHTED_RANDOM] =
 		&driver_infrastructure.WeightedRandomHostSelector{}
 
-	var disposalFunc utils.DisposalFunc[*InternalConnPool] = func(db *InternalConnPool) bool {
-		db.Close()
+	var disposalFunc utils.DisposalFunc[*InternalConnPool] = func(pool *InternalConnPool) bool {
+		pool.Close()
 		return true
 	}
 	if poolExpirationDuration == 0 {
@@ -117,7 +117,7 @@ func (p *InternalPooledConnectionProvider) Connect(hostInfo *host_info_util.Host
 	key := p.getPoolKey(hostInfo, props)
 	poolKey := NewPoolKey(hostInfo.GetUrl(), driverName, key)
 
-	connPool := p.databasePools.ComputeIfAbsent(poolKey.GetPoolKeyString(),
+	connPool := p.databasePools.ComputeIfAbsent(poolKey.String(),
 		computeFunc, p.poolExpirationDuration)
 	return connPool.Get()
 }

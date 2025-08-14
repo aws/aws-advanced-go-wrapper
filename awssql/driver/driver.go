@@ -317,15 +317,15 @@ func (c *AwsWrapperConn) CheckNamedValue(val *driver.NamedValue) error {
 }
 
 func (c *AwsWrapperConn) setReadWriteMode(ctx context.Context) error {
-	isReadOnlyCtx := utils.GetSetReadOnlyFromCtx(ctx)
+	isReadOnly := utils.GetSetReadOnlyFromCtx(ctx)
 	isReadOnlySession := c.pluginService.IsReadOnly()
 
-	if isReadOnlyCtx == isReadOnlySession {
+	if isReadOnly == isReadOnlySession {
 		return nil
 	}
 
-	query, _ := c.pluginService.GetDialect().GetSetReadOnlyQuery(isReadOnlyCtx)
-	c.pluginService.UpdateState("", query)
+	query, _ := c.pluginService.GetDialect().GetSetReadOnlyQuery(isReadOnly)
+	c.pluginService.UpdateState(query)
 	_, err := c.execContextInternal(context.TODO(), query, []driver.NamedValue{})
 	return err
 }

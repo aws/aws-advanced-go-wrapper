@@ -116,6 +116,7 @@
 	"IamAuthPlugin.unableToDetermineRegion": "Unable to determine connection region. If you are using a non-standard RDS URL, please set the '%v' property.",
 	"IamAuthPlugin.useCachedToken": "Using cached authentication token.",
 	"InternalPooledConn.UnsupportedOperation": "The underlying driver does not implement '%v'.",
+	"InternalPooledConn.CannotResetSession": "Could not reset session for internal pool conn. Closing the connection.",
 	"LimitlessPlugin.expectedShardGroupUrl": "The provided host was not a Limitless DB shard group URL: '%s'.",
 	"LimitlessPlugin.failedToConnectToHost": "Limitless Plugin failed to connect to host %v.",
 	"LimitlessPlugin.invalidDatabaseUrl": "Invalid Limitless Database URL '%v'. Please use a valid Limitless DB Shard Group endpoint URL.",

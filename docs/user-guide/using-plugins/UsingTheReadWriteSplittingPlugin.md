@@ -48,7 +48,7 @@ The wrapper driver creates and maintain its internal connection pools using. The
 1.  Create an instance of `InternalPooledConnectionProvider`.
 
 ```go
-// import "github.com/aws/aws-advanced-go-wrapper/awssql/internal_pool"
+import "github.com/aws/aws-advanced-go-wrapper/awssql/internal_pool"
 
 poolOptions := internal_pool.NewInternalPoolOptions(
 		internal_pool.WithMaxIdleConns(2),
@@ -75,12 +75,16 @@ The following table outlines the options for `InternalPoolConfig`
 To avoid collisions, the `InternalPooledConnectionProvider` uses a function called poolKeyFunc to retrieve a value from properties map or host info. The value for this gets combined with the host url, and the underlying database driver that's being used. By default, the driver uses the values from `user`, or `dbUser` if `user` does not exist, from the connection string. If needed, users can override this to get a different property by using the `NewInternalPooledConnectionProviderWithPoolKeyFunc()` constructor like below:
 
 ```go
+// keyFunc will use the value for plugins in place of the user value in the pool key
+// Note: Signature of keyFunc must match type of internal_pool.internalPoolKeyFunc
+keyFunc := func(host *host_info_util.HostInfo, props map[string]string) string {
+    return props["plugins"]
+}
+
 provider := internal_pool.NewInternalPooledConnectionProviderWithPoolKeyFunc(
   poolOptions,
   0,
-  func(host *host_info_util.HostInfo, props map[string]string) string {
-    return props["plugins"]
-  },
+  keyFunc,
 )
 ```
 

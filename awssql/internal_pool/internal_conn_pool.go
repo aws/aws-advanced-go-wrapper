@@ -42,9 +42,9 @@ func (pc *internalPooledConn) Close() error {
 		pc.mu.Unlock()
 		return nil
 	}
-	pc.mu.Unlock()
 
 	pc.returned = true
+	pc.mu.Unlock()
 	pc.lastUsedAt = time.Now()
 
 	pc.pool.mu.Lock()
@@ -60,7 +60,7 @@ func (pc *internalPooledConn) Close() error {
 		// We must reset the session before it is brought back to the pool
 		err := pc.ResetSession(context.Background())
 		if err != nil {
-			slog.Warn("Could not reset session for pool conn. Closing")
+			slog.Warn("InternalPooledConn.CannotResetSession")
 			return pc.Conn.Close()
 		}
 		pc.pool.idleConns = append(pc.pool.idleConns, pc)

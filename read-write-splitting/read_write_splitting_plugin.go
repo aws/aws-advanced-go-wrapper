@@ -76,8 +76,8 @@ func (r *ReadWriteSplittingPlugin) GetSubscribedMethods() []string {
 	return []string{plugin_helpers.CONNECT_METHOD,
 		plugin_helpers.INIT_HOST_PROVIDER_METHOD,
 		plugin_helpers.NOTIFY_CONNECTION_CHANGED_METHOD,
-		plugin_helpers.QUERY_CONTEXT_METHOD,
-		plugin_helpers.EXECUTE_CONTEXT_METHOD,
+		utils.CONN_QUERY_CONTEXT,
+		utils.CONN_EXEC_CONTEXT,
 	}
 }
 
@@ -195,6 +195,10 @@ func (r *ReadWriteSplittingPlugin) Execute(
 	return
 }
 
+func (r *ReadWriteSplittingPlugin) ReleaseResources() {
+	r.closeIdleConnections()
+}
+
 func (r *ReadWriteSplittingPlugin) switchConnectionIfRequired(readOnly bool) error {
 	currentConn := r.pluginService.GetCurrentConnection()
 	if currentConn != nil && r.pluginService.GetTargetDriverDialect().IsClosed(currentConn) {
@@ -297,9 +301,9 @@ func (r *ReadWriteSplittingPlugin) switchToWriterConnection(hosts []*host_info_u
 		return nil
 	}
 
-	writerHost, err := r.getWriter(hosts)
-	if err != nil {
-		return err
+	writerHost := host_info_util.GetWriter(hosts)
+	if writerHost == nil {
+		return error_util.NewGenericAwsWrapperError(error_util.GetMessage("ReadWriteSplittingPlugin.noWriterFound"))
 	}
 
 	r.inReadWriteSplit = true
@@ -330,9 +334,9 @@ func (r *ReadWriteSplittingPlugin) switchCurrentConnectionTo(newConn driver.Conn
 
 func (r *ReadWriteSplittingPlugin) initializeReaderConnection(hosts []*host_info_util.HostInfo) error {
 	if len(hosts) == 1 {
-		writerHost, err := r.getWriter(hosts)
-		if err != nil {
-			return err
+		writerHost := host_info_util.GetWriter(hosts)
+		if writerHost == nil {
+			return error_util.NewGenericAwsWrapperError(error_util.GetMessage("ReadWriteSplittingPlugin.noWriterFound"))
 		}
 		if !r.isConnectionUsable(r.writerConnection) {
 			return r.getNewWriterConnection(writerHost)
@@ -346,15 +350,6 @@ func (r *ReadWriteSplittingPlugin) initializeReaderConnection(hosts []*host_info
 		slog.Info(error_util.GetMessage("ReadWriteSplittingPlugin.switchedFromWriterToReader", r.readerHostInfo.GetUrl()))
 	}
 	return err
-}
-
-func (r *ReadWriteSplittingPlugin) getWriter(hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
-	for _, host := range hosts {
-		if r.isWriter(host) {
-			return host, nil
-		}
-	}
-	return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("ReadWriteSplittingPlugin.noWriterFound"))
 }
 
 func (r *ReadWriteSplittingPlugin) getNewWriterConnection(writerHost *host_info_util.HostInfo) error {
@@ -422,17 +417,18 @@ func (r ReadWriteSplittingPlugin) isConnectionUsable(conn driver.Conn) bool {
 }
 
 func (r ReadWriteSplittingPlugin) isWriter(hostInfo *host_info_util.HostInfo) bool {
-	return hostInfo.Role == host_info_util.WRITER
+	return hostInfo != nil && hostInfo.Role == host_info_util.WRITER
 }
 
 func (r ReadWriteSplittingPlugin) isReader(hostInfo *host_info_util.HostInfo) bool {
-	return hostInfo.Role == host_info_util.READER
+	return hostInfo != nil && hostInfo.Role == host_info_util.READER
 }
 
 func (r *ReadWriteSplittingPlugin) setWriterConnection(conn driver.Conn, host *host_info_util.HostInfo) {
 	r.writerConnection = conn
 	r.writerHostInfo = host
 }
+
 func (r *ReadWriteSplittingPlugin) setReaderConnection(conn driver.Conn, host *host_info_util.HostInfo) {
 	r.readerConnection = conn
 	r.readerHostInfo = host
