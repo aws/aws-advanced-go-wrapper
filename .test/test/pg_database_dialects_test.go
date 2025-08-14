@@ -19,9 +19,10 @@ package test
 import (
 	"database/sql/driver"
 	"fmt"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"testing"
 	"time"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 
 	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
 	mock_database_sql_driver "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/database_sql_driver"
@@ -696,35 +697,35 @@ func TestAuroraRdsPgDatabaseDialect_GetLimitlessRouterEndpointQuery(t *testing.T
 }
 
 func TestRdsMultiAzDbClusterPgDialect_GetDialectUpdateCandidates(t *testing.T) {
-	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterPgDialect{}
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAzClusterPgDatabaseDialect{}
 	expectedCandidates := []string{}
 
 	assert.ElementsMatch(t, expectedCandidates, testDatabaseDialect.GetDialectUpdateCandidates())
 }
 
 func TestRdsMultiAzDbClusterPgDialect_GetDefaultPort(t *testing.T) {
-	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterPgDialect{}
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAzClusterPgDatabaseDialect{}
 	expectedDefaultPort := 5432
 
 	assert.Equal(t, testDatabaseDialect.GetDefaultPort(), expectedDefaultPort)
 }
 
 func TestRdsMultiAzDbClusterPgDialect_GetHostAliasQuery(t *testing.T) {
-	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterPgDialect{}
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAzClusterPgDatabaseDialect{}
 	expectedHostAliasQuery := "SELECT CONCAT(inet_server_addr(), ':', inet_server_port())"
 
 	assert.Equal(t, expectedHostAliasQuery, testDatabaseDialect.GetHostAliasQuery())
 }
 
 func TestRdsMultiAzDbClusterPgDialect_GetServerVersion(t *testing.T) {
-	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterPgDialect{}
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAzClusterPgDatabaseDialect{}
 	expectedGetServerVersionQuery := "SELECT 'version', VERSION()"
 
 	assert.Equal(t, expectedGetServerVersionQuery, testDatabaseDialect.GetServerVersionQuery())
 }
 
 func TestRdsMultiAzDbClusterPgDialect_GetHostListProvider(t *testing.T) {
-	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterPgDialect{}
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAzClusterPgDatabaseDialect{}
 
 	propsNoFailover := make(map[string]string)
 	property_util.PLUGINS.Set(propsNoFailover, "efm")
@@ -753,7 +754,7 @@ func TestRdsMultiAzDbClusterPgDialect_GetHostListProvider(t *testing.T) {
 
 func TestRdsMultiAzDbClusterPgDialect_GetHostRole(t *testing.T) {
 	isReaderQuery := "SELECT pg_is_in_recovery()"
-	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterPgDialect{}
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAzClusterPgDatabaseDialect{}
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -809,7 +810,7 @@ func TestRdsMultiAzDbClusterPgDialect_GetHostRole(t *testing.T) {
 }
 
 func TestRdsMultiAzDbClusterPgDialect_GetHostName(t *testing.T) {
-	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterPgDialect{}
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAzClusterPgDatabaseDialect{}
 	hostIdQuery := "SELECT serverid FROM rds_tools.db_instance_identifier()"
 	instanceId := "myinstance"
 	ctrl := gomock.NewController(t)
@@ -853,7 +854,7 @@ func TestRdsMultiAzDbClusterPgDialect_GetHostName(t *testing.T) {
 }
 
 func TestRdsMultiAzDbClusterPgDialect_GetWriterHostName(t *testing.T) {
-	testDatabaseDialect := &driver_infrastructure.RdsMultiAzDbClusterPgDialect{}
+	testDatabaseDialect := &driver_infrastructure.RdsMultiAzClusterPgDatabaseDialect{}
 	hostIdQuery := "SELECT endpoint FROM rds_tools.show_topology('aws-advanced-go-wrapper') as topology " +
 		"WHERE topology.id = (SELECT multi_az_db_cluster_source_dbi_resource_id FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()) " +
 		"AND topology.id = (SELECT dbi_resource_id FROM rds_tools.dbi_resource_id())"
@@ -914,7 +915,7 @@ func TestRdsMultiAzDbClusterPgDialect_GetTopology(t *testing.T) {
 	mockTopologyRows := mock_database_sql_driver.NewMockRows(ctrl)
 	mockHostIdRows := mock_database_sql_driver.NewMockRows(ctrl)
 
-	dialect := &driver_infrastructure.RdsMultiAzDbClusterPgDialect{}
+	dialect := &driver_infrastructure.RdsMultiAzClusterPgDatabaseDialect{}
 	expectedWriterHostName := "writer-host"
 	expectedReaderHostName := "reader-host"
 	expectedWriterEndpoint := expectedWriterHostName + ".com"

@@ -507,7 +507,7 @@ func (p *FailoverPlugin) getReaderFailoverConnection(endTime time.Time) (ReaderF
 
 			candidateConn, err := p.createConnectionForHost(readerCandidate)
 			if candidateConn == nil || err != nil {
-				remainingReaders = utils.RemoveFromSlice[*host_info_util.HostInfo](remainingReaders,
+				remainingReaders = utils.RemoveFromSlice(remainingReaders,
 					readerCandidate,
 					func(hostInfo1 *host_info_util.HostInfo, hostInfo2 *host_info_util.HostInfo) bool {
 						return hostInfo1.Equals(hostInfo2)
@@ -521,7 +521,7 @@ func (p *FailoverPlugin) getReaderFailoverConnection(endTime time.Time) (ReaderF
 				}
 
 				// The role is WRITER or UNKNOWN, and we are in STRICT_READER mode, so the connection is not valid.
-				remainingReaders = utils.RemoveFromSlice[*host_info_util.HostInfo](remainingReaders,
+				remainingReaders = utils.RemoveFromSlice(remainingReaders,
 					readerCandidate,
 					func(hostInfo1 *host_info_util.HostInfo, hostInfo2 *host_info_util.HostInfo) bool {
 						return hostInfo1.Equals(hostInfo2)
@@ -532,7 +532,7 @@ func (p *FailoverPlugin) getReaderFailoverConnection(endTime time.Time) (ReaderF
 					// The reader candidate is actually a writer, which is not valid when failoverMode is STRICT_READER.
 					// We will remove it from the list of reader candidates to avoid retrying it in future iterations.
 					isOriginalWriterStillWriter = false
-					readerCandidates = utils.RemoveFromSlice[*host_info_util.HostInfo](readerCandidates,
+					readerCandidates = utils.RemoveFromSlice(readerCandidates,
 						readerCandidate,
 						func(hostInfo1 *host_info_util.HostInfo, hostInfo2 *host_info_util.HostInfo) bool {
 							return hostInfo1.Equals(hostInfo2)

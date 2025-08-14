@@ -19,10 +19,11 @@ package plugin_helpers
 import (
 	"context"
 	"database/sql/driver"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"log/slog"
 	"slices"
 	"time"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -213,16 +214,18 @@ func (p *PluginServiceImpl) compareHostInfos(hostInfoA *host_info_util.HostInfo,
 		changes[driver_infrastructure.HOSTNAME] = true
 	}
 	if hostInfoA.Role != hostInfoB.Role {
-		if hostInfoB.Role == host_info_util.WRITER {
+		switch hostInfoB.Role {
+		case host_info_util.WRITER:
 			changes[driver_infrastructure.PROMOTED_TO_WRITER] = true
-		} else if hostInfoB.Role == host_info_util.READER {
+		case host_info_util.READER:
 			changes[driver_infrastructure.PROMOTED_TO_READER] = true
 		}
 	}
 	if hostInfoA.Availability != hostInfoB.Availability {
-		if hostInfoB.Availability == host_info_util.AVAILABLE {
+		switch hostInfoB.Availability {
+		case host_info_util.AVAILABLE:
 			changes[driver_infrastructure.WENT_UP] = true
-		} else if hostInfoB.Availability == host_info_util.UNAVAILABLE {
+		case host_info_util.UNAVAILABLE:
 			changes[driver_infrastructure.WENT_DOWN] = true
 		}
 	}
