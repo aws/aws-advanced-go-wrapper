@@ -29,7 +29,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/internal_pool"
 	_ "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
-	_ "github.com/aws/aws-advanced-go-wrapper/read-write-splitting"
 )
 
 func main() {

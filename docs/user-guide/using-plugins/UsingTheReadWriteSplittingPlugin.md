@@ -43,7 +43,7 @@ If your application uses `sql.DB`, then you can enable internal connection pooli
 > [!NOTE]
 > Initial connections to a cluster URL will not be pooled. The driver does not pool cluster URLs because it can be problematic to pool a URL that resolves to different instances over time. The main benefit of internal connection pools is when setReadOnly is called. When setReadOnly is called (regardless of the initial connection URL), an internal pool will be created for the writer/reader that the plugin switches to and connections for that instance can be reused in the future.
 
-The wrapper driver creates and maintain its internal connection pools using. The steps to set this up are as follows:
+The wrapper driver can create and maintain a set of internal connection pools using the `InternalPooledConnectionProvider`. The steps to set this up are as follows:
 
 1.  Create an instance of `InternalPooledConnectionProvider`.
 

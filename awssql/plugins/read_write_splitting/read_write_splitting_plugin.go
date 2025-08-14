@@ -21,7 +21,6 @@ import (
 	"log/slog"
 	"slices"
 
-	awssql "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
@@ -30,10 +29,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
-
-func init() {
-	awssql.UsePluginFactory("readWriteSplitting", NewReadWriteSplittingPluginFactory())
-}
 
 type ReadWriteSplittingPluginFactory struct{}
 

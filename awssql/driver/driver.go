@@ -29,15 +29,17 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/efm"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/read_write_splitting"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 )
 
 var pluginFactoryByCode = map[string]driver_infrastructure.ConnectionPluginFactory{
-	"failover":      plugins.NewFailoverPluginFactory(),
-	"efm":           efm.NewHostMonitoringPluginFactory(),
-	"limitless":     limitless.NewLimitlessPluginFactory(),
-	"executionTime": plugins.NewExecutionTimePluginFactory(),
+	"failover":           plugins.NewFailoverPluginFactory(),
+	"efm":                efm.NewHostMonitoringPluginFactory(),
+	"limitless":          limitless.NewLimitlessPluginFactory(),
+	"executionTime":      plugins.NewExecutionTimePluginFactory(),
+	"readWriteSplitting": read_write_splitting.NewReadWriteSplittingPluginFactory(),
 }
 
 var underlyingDriverList = map[string]driver.Driver{}

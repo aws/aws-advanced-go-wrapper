@@ -13,7 +13,6 @@ require (
 	github.com/aws/aws-advanced-go-wrapper/okta v1.0.0
 	github.com/aws/aws-advanced-go-wrapper/otlp v1.0.0
 	github.com/aws/aws-advanced-go-wrapper/pgx-driver v1.0.0
-	github.com/aws/aws-advanced-go-wrapper/read-write-splitting v1.0.0
 	github.com/aws/aws-advanced-go-wrapper/xray v1.0.0
 	github.com/aws/aws-sdk-go-v2 v1.37.0
 	github.com/aws/aws-sdk-go-v2/config v1.30.1
@@ -112,5 +111,3 @@ replace github.com/aws/aws-advanced-go-wrapper/auth-helpers => ./../auth-helpers
 replace github.com/aws/aws-advanced-go-wrapper/otlp => ./../otlp
 
 replace github.com/aws/aws-advanced-go-wrapper/xray => ./../xray
-
-replace github.com/aws/aws-advanced-go-wrapper/read-write-splitting => ./../read-write-splitting

@@ -27,9 +27,9 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/read_write_splitting"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	read_write_splitting "github.com/aws/aws-advanced-go-wrapper/read-write-splitting"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
