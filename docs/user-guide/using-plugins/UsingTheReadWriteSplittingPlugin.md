@@ -101,7 +101,7 @@ Please see [Internal Connection Pooling Postgres Example](../../../examples/read
 
 4. Continue as normal: create connections and use them as needed. Signal using `awsctx.setReadOnly` whether you want each operation to be on a reader or writer instance. Remember that not providing this value is equivalent to setting `awsctx.setReadOnly` to false.
 
-5. When you are finished using all connections, call `driver.ReleaseResources()`, and then `provider.ReleaseResources()`.
+5. When you are finished using all connections, call `driver.ClearCaches()`, and then `provider.ReleaseResources()`.
 
 > [!IMPORTANT]
 > To ensure the provider can close the pools, call `driver.ClearCaches()` first.
