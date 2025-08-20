@@ -20,14 +20,15 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -134,4 +135,8 @@ func (m MySQLDriverDialect) PrepareDsn(properties map[string]string, hostInfo *h
 		builder.WriteString(fmt.Sprintf("?%s", params.String()))
 	}
 	return builder.String()
+}
+
+func (m MySQLDriverDialect) GetDriverRegistrationName() string {
+	return MYSQL_DRIVER_REGISTRATION_NAME
 }

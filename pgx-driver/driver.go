@@ -19,6 +19,7 @@ package pgx_driver
 import (
 	"database/sql"
 	"database/sql/driver"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/jackc/pgx/v5/stdlib"
 
@@ -43,4 +44,8 @@ func init() {
 	sql.Register(
 		driver_infrastructure.AWS_PGX_DRIVER_CODE,
 		&PgxDriver{})
+
+	awsDriver.RegisterUnderlyingDriver(
+		PGX_DRIVER_REGISTRATION_NAME,
+		&stdlib.Driver{})
 }

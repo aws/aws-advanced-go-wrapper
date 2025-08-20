@@ -29,16 +29,20 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/efm"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/read_write_splitting"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 )
 
 var pluginFactoryByCode = map[string]driver_infrastructure.ConnectionPluginFactory{
-	"failover":      plugins.NewFailoverPluginFactory(),
-	"efm":           efm.NewHostMonitoringPluginFactory(),
-	"limitless":     limitless.NewLimitlessPluginFactory(),
-	"executionTime": plugins.NewExecutionTimePluginFactory(),
+	"failover":           plugins.NewFailoverPluginFactory(),
+	"efm":                efm.NewHostMonitoringPluginFactory(),
+	"limitless":          limitless.NewLimitlessPluginFactory(),
+	"executionTime":      plugins.NewExecutionTimePluginFactory(),
+	"readWriteSplitting": read_write_splitting.NewReadWriteSplittingPluginFactory(),
 }
+
+var underlyingDriverList = map[string]driver.Driver{}
 
 type AwsWrapperDriver struct {
 	DriverDialect    driver_infrastructure.DriverDialect
@@ -141,6 +145,18 @@ func RemovePluginFactory(code string) {
 	delete(pluginFactoryByCode, code)
 }
 
+func RegisterUnderlyingDriver(name string, driver driver.Driver) {
+	underlyingDriverList[name] = driver
+}
+
+func RemoveUnderlyingDriver(name string) {
+	delete(underlyingDriverList, name)
+}
+
+func GetUnderlyingDriver(name string) driver.Driver {
+	return underlyingDriverList[name]
+}
+
 // This cleans up all long standing caches. To be called at the end of program, not each time a Conn is closed.
 func ClearCaches() {
 	driver_infrastructure.ClearCaches()
@@ -211,6 +227,9 @@ func (c *AwsWrapperConn) BeginTx(ctx context.Context, opts driver.TxOptions) (dr
 		result, err := beginTx.BeginTx(ctx, opts)
 		return result, nil, false, err
 	}
+	if err := c.setReadWriteMode(ctx); err != nil {
+		return nil, err
+	}
 	return beginWithPlugins(c.pluginService.GetCurrentConnection(), c.pluginManager, c.pluginService, utils.CONN_BEGIN_TX, beginFunc)
 }
 
@@ -224,10 +243,21 @@ func (c *AwsWrapperConn) QueryContext(ctx context.Context, query string, args []
 		result, err := queryerCtx.QueryContext(ctx, query, args)
 		return result, nil, false, err
 	}
+
+	if err := c.setReadWriteMode(ctx); err != nil {
+		return nil, err
+	}
 	return queryWithPlugins(c.pluginService.GetCurrentConnection(), c.pluginManager, utils.CONN_QUERY_CONTEXT, queryFunc, c.engine, query)
 }
 
 func (c *AwsWrapperConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
+	if err := c.setReadWriteMode(ctx); err != nil {
+		return nil, err
+	}
+	return c.execContextInternal(ctx, query, args)
+}
+
+func (c *AwsWrapperConn) execContextInternal(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
 	execFunc := func() (any, any, bool, error) {
 		c.pluginService.UpdateState(query)
 		execerCtx, ok := c.pluginService.GetCurrentConnection().(driver.ExecerContext)
@@ -285,6 +315,20 @@ func (c *AwsWrapperConn) CheckNamedValue(val *driver.NamedValue) error {
 		return nil, nil, false, namedValueChecker.CheckNamedValue(val)
 	}
 	_, _, _, err := ExecuteWithPlugins(c.pluginService.GetCurrentConnection(), c.pluginManager, utils.CONN_CHECK_NAMED_VALUE, checkNamedValueFunc)
+	return err
+}
+
+func (c *AwsWrapperConn) setReadWriteMode(ctx context.Context) error {
+	isReadOnly := utils.GetSetReadOnlyFromCtx(ctx)
+	isReadOnlySession := c.pluginService.IsReadOnly()
+
+	if isReadOnly == isReadOnlySession {
+		return nil
+	}
+
+	query, _ := c.pluginService.GetDialect().GetSetReadOnlyQuery(isReadOnly)
+	c.pluginService.UpdateState(query)
+	_, err := c.execContextInternal(context.TODO(), query, []driver.NamedValue{})
 	return err
 }
 

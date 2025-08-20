@@ -14,22 +14,10 @@
   limitations under the License.
 */
 
-package driver_infrastructure
+package awsctx
 
-import (
-	"database/sql/driver"
+type AwssqlCtx string
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+const (
+	SetReadOnly AwssqlCtx = "awssql.setReadOnly"
 )
-
-type DriverDialect interface {
-	IsDialect(driver driver.Driver) bool
-	GetAllowedOnConnectionMethodNames() []string
-	PrepareDsn(properties map[string]string, info *host_info_util.HostInfo) string
-	IsNetworkError(err error) bool
-	IsLoginError(err error) bool
-	IsClosed(conn driver.Conn) bool
-	IsDriverRegistered(drivers map[string]driver.Driver) bool
-	RegisterDriver()
-	GetDriverRegistrationName() string
-}

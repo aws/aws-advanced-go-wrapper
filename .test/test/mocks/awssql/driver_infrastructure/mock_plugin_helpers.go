@@ -569,6 +569,20 @@ func (mr *MockPluginServiceMockRecorder) IsNetworkError(err interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsNetworkError", reflect.TypeOf((*MockPluginService)(nil).IsNetworkError), err)
 }
 
+// IsReadOnly mocks base method.
+func (m *MockPluginService) IsReadOnly() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsReadOnly")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsReadOnly indicates an expected call of IsReadOnly.
+func (mr *MockPluginServiceMockRecorder) IsReadOnly() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsReadOnly", reflect.TypeOf((*MockPluginService)(nil).IsReadOnly))
+}
+
 // IsStaticHostListProvider mocks base method.
 func (m *MockPluginService) IsStaticHostListProvider() bool {
 	m.ctrl.T.Helper()

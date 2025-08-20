@@ -20,14 +20,15 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"reflect"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 
 	"github.com/jackc/pgx/v5/stdlib"
 )
@@ -71,6 +72,13 @@ func (p PgxDriverDialect) IsLoginError(err error) bool {
 }
 
 func (p PgxDriverDialect) IsClosed(conn driver.Conn) bool {
+	// If pgx implements driver.Validator, use this
+	validator, ok := conn.(driver.Validator)
+	if ok {
+		return !validator.IsValid()
+	}
+
+	// If driver.Validator isn't implemented, use the lower-level method
 	stdLibConn, ok := conn.(*stdlib.Conn)
 	if ok {
 		return stdLibConn.Conn().IsClosed()
@@ -108,4 +116,8 @@ func (p PgxDriverDialect) PrepareDsn(properties map[string]string, hostInfo *hos
 		}
 	}
 	return builder.String()
+}
+
+func (p PgxDriverDialect) GetDriverRegistrationName() string {
+	return PGX_DRIVER_REGISTRATION_NAME
 }

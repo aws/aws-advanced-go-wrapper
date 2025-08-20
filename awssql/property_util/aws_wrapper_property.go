@@ -29,6 +29,7 @@ const DEFAULT_PLUGINS = "failover,efm"
 const MONITORING_PROPERTY_PREFIX = "monitoring-"
 const LIMITLESS_PROPERTY_PREFIX = "limitless"
 const INTERNAL_CONNECT_PROPERTY_NAME string = "76c06979-49c4-4c86-9600-a63605b83f50"
+const SET_READ_ONLY_CTX_KEY string = "setReadOnly"
 
 type WrapperPropertyType int
 
@@ -183,6 +184,7 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	TRANSFER_SESSION_STATE_ON_SWITCH.Name:          true,
 	RESET_SESSION_STATE_ON_CLOSE.Name:              true,
 	ROLLBACK_ON_SWITCH.Name:                        true,
+	READER_HOST_SELECTOR_STRATEGY.Name:             true,
 }
 
 var USER = AwsWrapperProperty{
@@ -373,7 +375,7 @@ var FAILOVER_MODE = AwsWrapperProperty{
 
 var FAILOVER_READER_HOST_SELECTOR_STRATEGY = AwsWrapperProperty{
 	Name:                "failoverReaderHostSelectorStrategy",
-	description:         "The strategy that should be used to select a new reader host when opening a new connection.",
+	description:         "The strategy that should be used to select a new reader host when opening a new connection during failover.",
 	defaultValue:        "random",
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
@@ -633,6 +635,13 @@ var ROLLBACK_ON_SWITCH = AwsWrapperProperty{
 	"Enables rollback of an in progress transaction when switching to a new connection.",
 	"true",
 	WRAPPER_TYPE_BOOL,
+}
+
+var READER_HOST_SELECTOR_STRATEGY = AwsWrapperProperty{
+	Name:                "readerHostSelectorStrategy",
+	description:         "The strategy that should be used to select a new reader host when opening a new connection with the rw-splitting plugin.",
+	defaultValue:        "random",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
 func RemoveInternalAwsWrapperProperties(props map[string]string) map[string]string {

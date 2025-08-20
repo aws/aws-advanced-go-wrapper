@@ -18,13 +18,14 @@ package driver
 
 import (
 	"fmt"
+	"log/slog"
+	"sort"
+	"strings"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"log/slog"
-	"sort"
-	"strings"
 )
 
 const WEIGHT_RELATIVE_TO_PRIOR_PLUGIN = -1
@@ -35,14 +36,15 @@ type PluginFactoryWeight struct {
 }
 
 var pluginWeightByCode = map[string]int{
-	"failover":          700,
-	"efm":               800,
-	"limitless":         950,
-	"iam":               1000,
-	"awsSecretsManager": 1100,
-	"federatedAuth":     1200,
-	"okta":              1300,
-	"executionTime":     WEIGHT_RELATIVE_TO_PRIOR_PLUGIN,
+	"readWriteSplitting": 600,
+	"failover":           700,
+	"efm":                800,
+	"limitless":          950,
+	"iam":                1000,
+	"awsSecretsManager":  1100,
+	"federatedAuth":      1200,
+	"okta":               1300,
+	"executionTime":      WEIGHT_RELATIVE_TO_PRIOR_PLUGIN,
 }
 
 type ConnectionPluginChainBuilder struct {

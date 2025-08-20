@@ -27,6 +27,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/aws/aws-advanced-go-wrapper/awssql/awsctx"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 )
@@ -265,14 +266,30 @@ func GetQueryFromSqlOrMethodArgs(sql string, methodArgs ...any) string {
 	query := sql
 
 	if sql == "" {
-		if methodArgs == nil {
+		if len(methodArgs) == 0 {
 			return query
 		}
-		query, ok := methodArgs[0].(string)
-		if !ok || len(query) == 0 {
-			return query
+
+		// Try direct string access first
+		if str, ok := methodArgs[0].(string); ok {
+			return str
+		}
+
+		// Handle nested slice structure
+		if slice, ok := methodArgs[0].([]interface{}); ok && len(slice) > 0 {
+			if str, ok := slice[0].(string); ok {
+				return str
+			}
 		}
 	}
 
 	return query
+}
+
+func GetSetReadOnlyFromCtx(ctx context.Context) bool {
+	setReadOnly, ok := ctx.Value(awsctx.SetReadOnly).(bool)
+	if !ok {
+		return false
+	}
+	return setReadOnly
 }

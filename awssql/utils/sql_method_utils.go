@@ -73,6 +73,22 @@ func GetSeparateSqlStatements(query string) []string {
 	return statements
 }
 
+func DoesSetReadOnly(query string, dialectFunc func(string) (bool, bool)) (bool, bool) {
+	re := regexp.MustCompile(`\s*/\*(.*?)\*/\s*`)
+	statements := parseMultiStatementQueries(query)
+	for _, statement := range statements {
+		cleanStmt := strings.TrimSpace(re.ReplaceAllString(statement, " "))
+		if cleanStmt == "" {
+			continue
+		}
+		readOnly, found := dialectFunc(cleanStmt)
+		if found {
+			return readOnly, true
+		}
+	}
+	return false, false
+}
+
 func parseMultiStatementQueries(query string) []string {
 	if query == "" {
 		return []string{}
