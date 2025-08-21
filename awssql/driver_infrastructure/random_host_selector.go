@@ -17,10 +17,11 @@
 package driver_infrastructure
 
 import (
+	"math/rand"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"math/rand"
 )
 
 type RandomHostSelector struct{}

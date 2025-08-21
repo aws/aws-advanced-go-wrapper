@@ -168,17 +168,46 @@ func GetFirstItemFromQueryAsInt(conn driver.Conn, query string) (int, error) {
 	return -1, errors.New("unable to cast result")
 }
 
-func ExecuteInstanceQueryWithTimeout(engine DatabaseEngine, deployment DatabaseEngineDeployment, db *sql.DB, seconds int) (string, error) {
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Second*time.Duration(seconds))
+func ExecuteInstanceQueryDbWithTimeout(engine DatabaseEngine, deployment DatabaseEngineDeployment, db *sql.DB, seconds int) (string, error) {
+	return ExecuteInstanceQueryDbContextWithTimeout(engine, deployment, db, seconds, context.TODO())
+}
+
+func ExecuteInstanceQueryDbContextWithTimeout(
+	engine DatabaseEngine,
+	deployment DatabaseEngineDeployment,
+	db *sql.DB,
+	seconds int,
+	ctx context.Context) (string, error) {
+	return ExecuteInstanceQueryContextWithTimeout(engine, deployment, db, seconds, ctx)
+}
+
+func ExecuteInstanceQueryContextWithTimeout(
+	engine DatabaseEngine,
+	deployment DatabaseEngineDeployment,
+	db interface{},
+	seconds int,
+	ctx context.Context) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(seconds))
 	defer cancel()
 	var instanceId string
-	sql, err := GetInstanceIdSql(engine, deployment)
-	if err != nil || sql == "" {
+	query, err := GetInstanceIdSql(engine, deployment)
+	if err != nil || query == "" {
 		return "", err
 	}
-	if e := db.QueryRowContext(ctx, sql).Scan(&instanceId); e != nil {
-		return "", e
+
+	switch v := db.(type) {
+	case *sql.DB:
+		if e := v.QueryRowContext(ctx, query).Scan(&instanceId); e != nil {
+			return "", e
+		}
+	case *sql.Conn:
+		if e := v.QueryRowContext(ctx, query).Scan(&instanceId); e != nil {
+			return "", e
+		}
+	default:
+		return "", fmt.Errorf("unsupported type: %T, expected *sql.DB or *sql.Conn", db)
 	}
+
 	return instanceId, nil
 }
 
