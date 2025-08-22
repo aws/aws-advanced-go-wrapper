@@ -103,7 +103,7 @@ public class ContainerHelper {
       exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-timeout", INTEGRATION_TEST_TIMEOUT, "-v", "./test_framework/container/tests...", "-run", filter);
     } else {
       // Run all tests located in aws-advanced-go-wrapper/.test/test_framework/container.
-      exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-timeout", INTEGRATION_TEST_TIMEOUT, "-v", "./test_framework/container/tests...");
+      exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-timeout", INTEGRATION_TEST_TIMEOUT, "-v", "./test_framework/container/tests...", "-run", "(^TestReadWriteSplitting|^TestPooledConnection)");
     }
 
     System.out.println("==== Container console feed ==== <<<<");

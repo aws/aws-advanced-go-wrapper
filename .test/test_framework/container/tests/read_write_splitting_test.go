@@ -74,9 +74,9 @@ func executeInstanceQueryWrite(env *test_utils.TestEnvironment, dbOrConn interfa
 }
 
 func skipIfInsufficientInstances(t *testing.T, env *test_utils.TestEnvironment, minInstances int) {
-	// if env.Info().Request.InstanceCount < minInstances {
-	// 	t.Skipf("Skipping integration test %s, instanceCount = %v.", t.Name(), env.Info().Request.InstanceCount)
-	// }
+	if env.Info().Request.InstanceCount < minInstances {
+		t.Skipf("Skipping integration test %s, instanceCount = %v.", t.Name(), env.Info().Request.InstanceCount)
+	}
 }
 
 func rwsplit_getDsnForTestsWithProxy(environment *test_utils.TestEnvironment, host string, plugins string, timeout int) string {
