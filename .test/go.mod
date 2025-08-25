@@ -14,7 +14,7 @@ require (
 	github.com/aws/aws-advanced-go-wrapper/otlp v1.0.0
 	github.com/aws/aws-advanced-go-wrapper/pgx-driver v1.0.0
 	github.com/aws/aws-advanced-go-wrapper/xray v1.0.0
-	github.com/aws/aws-sdk-go-v2 v1.37.0
+	github.com/aws/aws-sdk-go-v2 v1.38.1
 	github.com/aws/aws-sdk-go-v2/config v1.30.1
 	github.com/aws/aws-sdk-go-v2/service/rds v1.100.0
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.36.0
@@ -42,7 +42,7 @@ require (
 	github.com/aws/aws-sdk-go v1.55.7 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.18.1 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.0 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/rds/auth v1.6.0
+	github.com/aws/aws-sdk-go-v2/feature/rds/auth v1.6.4
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.0 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.0 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3 // indirect
