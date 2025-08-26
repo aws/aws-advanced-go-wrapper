@@ -19,31 +19,33 @@ package bg
 import (
 	"fmt"
 	"hash/fnv"
+	"log/slog"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 type BlueGreenInterimStatus struct {
-	Phase                            driver_infrastructure.BlueGreenPhase
-	Version                          string
-	Port                             int
-	StartTopology                    []*host_info_util.HostInfo
+	phase                            driver_infrastructure.BlueGreenPhase
+	version                          string
+	port                             int
+	startTopology                    []*host_info_util.HostInfo
 	endTopology                      []*host_info_util.HostInfo
-	StartIpAddressesByHostMap        map[string]string
+	startIpAddressesByHostMap        map[string]string
 	currentIpAddressesByHostMap      map[string]string
 	hostNames                        map[string]bool
-	AllStartTopologyIpChanged        bool
-	AllStartTopologyEndpointsRemoved bool
-	AllTopologyChanged               bool
+	allStartTopologyIpChanged        bool
+	allStartTopologyEndpointsRemoved bool
+	allTopologyChanged               bool
 }
 
 func (b *BlueGreenInterimStatus) IsZero() bool {
-	return b == nil || (b.Version == "" && b.Port == 0 && b.Phase.IsZero())
+	return b == nil || (b.version == "" && b.port == 0 && b.phase.IsZero())
 }
 
 func (b *BlueGreenInterimStatus) String() string {
@@ -54,19 +56,19 @@ func (b *BlueGreenInterimStatus) String() string {
 	currentIpMap := strings.Join(currentIpMapParts, "\n   ")
 
 	var startIpMapParts []string
-	for key, value := range b.StartIpAddressesByHostMap {
+	for key, value := range b.startIpAddressesByHostMap {
 		startIpMapParts = append(startIpMapParts, fmt.Sprintf("%s -> %s", key, value))
 	}
 	startIpMap := strings.Join(startIpMapParts, "\n   ")
 
 	allHostNamesStr := strings.Join(utils.AllKeys(b.hostNames), "\n   ")
 
-	startTopologyStr := utils.LogTopology(b.StartTopology, "")
+	startTopologyStr := utils.LogTopology(b.startTopology, "")
 	endTopologyStr := utils.LogTopology(b.endTopology, "")
 
 	phaseStr := "<null>"
-	if b.Phase.GetName() != "" {
-		phaseStr = b.Phase.GetName()
+	if b.phase.GetName() != "" {
+		phaseStr = b.phase.GetName()
 	}
 
 	emptyOrValue := func(s string) string {
@@ -93,30 +95,30 @@ func (b *BlueGreenInterimStatus) String() string {
 		" allTopologyChanged: %t \n"+
 		"]",
 		phaseStr,
-		b.Version,
-		b.Port,
+		b.version,
+		b.port,
 		emptyOrValue(allHostNamesStr),
 		emptyOrValue(startTopologyStr),
 		emptyOrValue(startIpMap),
 		emptyOrValue(endTopologyStr),
 		emptyOrValue(currentIpMap),
-		b.AllStartTopologyIpChanged,
-		b.AllStartTopologyEndpointsRemoved,
-		b.AllTopologyChanged)
+		b.allStartTopologyIpChanged,
+		b.allStartTopologyEndpointsRemoved,
+		b.allTopologyChanged)
 }
 
 func (b *BlueGreenInterimStatus) GetCustomHashCode() uint64 {
-	result := getValueHash(1, b.Phase.GetName())
-	result = getValueHash(result, b.Version)
-	result = getValueHash(result, strconv.Itoa(b.Port))
-	result = getValueHash(result, strconv.FormatBool(b.AllStartTopologyIpChanged))
-	result = getValueHash(result, strconv.FormatBool(b.AllStartTopologyEndpointsRemoved))
-	result = getValueHash(result, strconv.FormatBool(b.AllTopologyChanged))
+	result := getValueHash(1, b.phase.GetName())
+	result = getValueHash(result, b.version)
+	result = getValueHash(result, strconv.Itoa(b.port))
+	result = getValueHash(result, strconv.FormatBool(b.allStartTopologyIpChanged))
+	result = getValueHash(result, strconv.FormatBool(b.allStartTopologyEndpointsRemoved))
+	result = getValueHash(result, strconv.FormatBool(b.allTopologyChanged))
 
 	result = getValueHash(result, b.getHostNamesString())
-	result = getValueHash(result, b.getTopologyString(b.StartTopology))
+	result = getValueHash(result, b.getTopologyString(b.startTopology))
 	result = getValueHash(result, b.getTopologyString(b.endTopology))
-	result = getValueHash(result, b.getIpMapString(b.StartIpAddressesByHostMap))
+	result = getValueHash(result, b.getIpMapString(b.startIpAddressesByHostMap))
 	result = getValueHash(result, b.getIpMapString(b.currentIpAddressesByHostMap))
 
 	return result
@@ -172,6 +174,7 @@ func getValueHash(currentHash uint64, val string) uint64 {
 	h := fnv.New64a()
 	_, err := h.Write([]byte(val))
 	if err != nil {
+		slog.Warn(error_util.GetMessage("BlueGreenDeployment.errorGeneratingHash", err))
 		return 0
 	}
 	stringHash := h.Sum64()

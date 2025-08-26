@@ -117,12 +117,7 @@ func (b *BlueGreenStatusMonitor) runMonitoringLoop() {
 
 		b.OpenConnection()
 		b.CollectStatus()
-		err := b.CollectTopology()
-		if err != nil {
-			// Unable to collect topology, try and open connection again.
-			slog.Warn(err.Error())
-			continue
-		}
+		_ = b.CollectTopology()
 		b.CollectHostIpAddresses()
 		b.UpdateIpAddressFlags()
 
@@ -185,15 +180,14 @@ func (b *BlueGreenStatusMonitor) GetIntervalRate() driver_infrastructure.BlueGre
 
 func mapToBlueGreenIntervalRate(value int32) driver_infrastructure.BlueGreenIntervalRate {
 	switch value {
-	case 0:
+	case int32(driver_infrastructure.BASELINE):
 		return driver_infrastructure.BASELINE
-	case 1:
+	case int32(driver_infrastructure.INCREASED):
 		return driver_infrastructure.INCREASED
-	case 2:
+	case int32(driver_infrastructure.HIGH):
 		return driver_infrastructure.HIGH
 	default:
-		var invalidRate driver_infrastructure.BlueGreenIntervalRate = -1
-		return invalidRate
+		return driver_infrastructure.INVALID
 	}
 }
 
@@ -266,6 +260,7 @@ func (b *BlueGreenStatusMonitor) CollectTopology() error {
 	}
 	hosts, err := b.hostListProvider.ForceRefresh(*conn)
 	if err != nil {
+		slog.Warn(err.Error())
 		return err
 	}
 	b.currentTopology.Store(&hosts)
@@ -344,7 +339,7 @@ func (b *BlueGreenStatusMonitor) CollectStatus() {
 		}
 	} else {
 		b.currentPhase = statusInfo.phase
-		b.version = statusInfo.Version
+		b.version = statusInfo.version
 		b.port = statusInfo.port
 	}
 

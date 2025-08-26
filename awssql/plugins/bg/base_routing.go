@@ -49,7 +49,7 @@ func (b BaseRouting) Delay(delayNanos time.Duration, bgStatus driver_infrastruct
 	if bgStatus.IsZero() {
 		time.Sleep(delayNanos)
 	} else {
-		status, ok := pluginService.GetStatus(bgId)
+		status, ok := pluginService.GetBgStatus(bgId)
 		for ok && bgStatus.MatchIdPhaseAndLen(status) && time.Now().Before(endTime) {
 			time.Sleep(minDelay)
 		}

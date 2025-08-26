@@ -37,4 +37,5 @@ type ConnectionPlugin interface {
 	NotifyConnectionChanged(changes map[HostChangeOptions]bool) OldConnectionSuggestedAction
 	NotifyHostListChanged(changes map[string]map[HostChangeOptions]bool)
 	InitHostProvider(props map[string]string, hostListProviderService HostListProviderService, initHostProviderFunc func() error) error
+	GetPluginCode() string
 }

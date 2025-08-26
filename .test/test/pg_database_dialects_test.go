@@ -1242,7 +1242,8 @@ func TestAuroraPgDatabaseDialect_GetBlueGreenStatus(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT * FROM get_blue_green_fast_switchover_metadata('aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
+	expectedQuery := "SELECT version, endpoint, port, role, status FROM get_blue_green_fast_switchover_metadata(" +
+		"'aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
 
 	mockQueryer.EXPECT().
 		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
@@ -1251,22 +1252,20 @@ func TestAuroraPgDatabaseDialect_GetBlueGreenStatus(t *testing.T) {
 	mockRows.EXPECT().Columns().Return([]string{"id", "endpoint", "port", "role", "status", "version"})
 
 	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
-		dest[0] = "1"                                                                    // id
 		dest[1] = "prod-aurora-cluster.cluster-abc123def456.us-east-1.rds.amazonaws.com" // endpoint
 		dest[2] = int64(5432)                                                            // port
 		dest[3] = "BLUE_GREEN_DEPLOYMENT_SOURCE"                                         // role
 		dest[4] = "AVAILABLE"                                                            // status
-		dest[5] = "1.0"                                                                  // version
+		dest[0] = "1.0"                                                                  // version
 		return nil
 	})
 
 	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
-		dest[0] = "2"                                                                           // id
 		dest[1] = "prod-aurora-cluster-target.cluster-xyz789def456.us-east-1.rds.amazonaws.com" // endpoint
 		dest[2] = int64(5432)                                                                   // port
 		dest[3] = "BLUE_GREEN_DEPLOYMENT_TARGET"                                                // role
 		dest[4] = "SWITCHOVER_IN_PROGRESS"                                                      // status
-		dest[5] = "1.1"                                                                         // version
+		dest[0] = "1.1"                                                                         // version
 		return nil
 	})
 
@@ -1306,7 +1305,8 @@ func TestAuroraPgDatabaseDialect_GetBlueGreenStatus_QueryError(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT * FROM get_blue_green_fast_switchover_metadata('aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
+	expectedQuery := "SELECT version, endpoint, port, role, status FROM get_blue_green_fast_switchover_metadata(" +
+		"'aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
 
 	mockQueryer.EXPECT().
 		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
@@ -1390,7 +1390,7 @@ func TestRdsPgDatabaseDialect_GetBlueGreenStatus(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT * FROM rds_tools.show_topology('aws_advanced_go_wrapper-1.0.0')"
+	expectedQuery := "SELECT version, endpoint, port, role, status FROM rds_tools.show_topology('aws_advanced_go_wrapper-1.0.0')"
 
 	mockQueryer.EXPECT().
 		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
@@ -1399,12 +1399,11 @@ func TestRdsPgDatabaseDialect_GetBlueGreenStatus(t *testing.T) {
 	mockRows.EXPECT().Columns().Return([]string{"id", "endpoint", "port", "role", "status", "version"})
 
 	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
-		dest[0] = "1"
+		dest[0] = "2.0"
 		dest[1] = "analytics-postgres.s1t2u3v4w5x6.us-west-2.rds.amazonaws.com"
 		dest[2] = int64(5432)
 		dest[3] = "BLUE_GREEN_DEPLOYMENT_SOURCE"
 		dest[4] = "AVAILABLE"
-		dest[5] = "2.0"
 		return nil
 	})
 
@@ -1438,7 +1437,7 @@ func TestRdsPgDatabaseDialect_GetBlueGreenStatus_EmptyResults(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT * FROM rds_tools.show_topology('aws_advanced_go_wrapper-1.0.0')"
+	expectedQuery := "SELECT version, endpoint, port, role, status FROM rds_tools.show_topology('aws_advanced_go_wrapper-1.0.0')"
 
 	mockQueryer.EXPECT().
 		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
@@ -1511,7 +1510,8 @@ func TestPgGetBlueGreenStatus_InvalidRowData(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT * FROM get_blue_green_fast_switchover_metadata('aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
+	expectedQuery := "SELECT version, endpoint, port, role, status FROM get_blue_green_fast_switchover_metadata(" +
+		"'aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
 
 	mockQueryer.EXPECT().
 		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
@@ -1520,22 +1520,20 @@ func TestPgGetBlueGreenStatus_InvalidRowData(t *testing.T) {
 	mockRows.EXPECT().Columns().Return([]string{"id", "endpoint", "port", "role", "status", "version"})
 
 	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
-		dest[0] = "1"
 		dest[1] = 12345
 		dest[2] = int64(5432)
 		dest[3] = "BLUE_GREEN_DEPLOYMENT_SOURCE"
 		dest[4] = "AVAILABLE"
-		dest[5] = "1.0"
+		dest[0] = "1.0"
 		return nil
 	})
 
 	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
-		dest[0] = "2"
 		dest[1] = "valid-endpoint.amazonaws.com"
 		dest[2] = int64(5432)
 		dest[3] = "BLUE_GREEN_DEPLOYMENT_TARGET"
 		dest[4] = "AVAILABLE"
-		dest[5] = "1.0"
+		dest[0] = "1.0"
 		return nil
 	})
 
@@ -1565,7 +1563,7 @@ func TestPgGetBlueGreenStatus_InsufficientColumns(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT * FROM rds_tools.show_topology('aws_advanced_go_wrapper-1.0.0')"
+	expectedQuery := "SELECT version, endpoint, port, role, status FROM rds_tools.show_topology('aws_advanced_go_wrapper-1.0.0')"
 
 	mockQueryer.EXPECT().
 		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).

@@ -193,7 +193,7 @@ func (m *RdsMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 }
 
 func (m *RdsMySQLDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) []BlueGreenResult {
-	bgStatusQuery := "SELECT * FROM mysql.rds_topology"
+	bgStatusQuery := "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
 	return mySqlGetBlueGreenStatus(conn, bgStatusQuery)
 }
 
@@ -362,7 +362,7 @@ func (m *AuroraMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider Host
 }
 
 func (m *AuroraMySQLDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) []BlueGreenResult {
-	bgStatusQuery := "SELECT * FROM mysql.rds_topology"
+	bgStatusQuery := "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
 	return mySqlGetBlueGreenStatus(conn, bgStatusQuery)
 }
 
@@ -559,9 +559,14 @@ func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetHostListProvider(
 }
 
 func mySqlGetBlueGreenStatus(conn driver.Conn, query string) []BlueGreenResult {
+	return getBlueGreenStatus(conn, query, utils.MySqlConvertValToString)
+}
+
+func getBlueGreenStatus(conn driver.Conn, query string, convertFunc func(driver.Value) (string, bool)) []BlueGreenResult {
 	queryerCtx, ok := conn.(driver.QueryerContext)
 	if !ok {
 		// Unable to query, conn does not implement QueryerContext.
+		slog.Warn(error_util.GetMessage("Conn.doesNotImplementRequiredInterface", "driver.QueryerContext"))
 		return nil
 	}
 
@@ -578,22 +583,22 @@ func mySqlGetBlueGreenStatus(conn driver.Conn, query string) []BlueGreenResult {
 	var statuses []BlueGreenResult
 	row := make([]driver.Value, len(rows.Columns()))
 	for rows.Next(row) == nil {
-		if len(row) > 5 {
-			versionAsInt, ok1 := row[5].([]uint8)
-			endpointAsInt, ok2 := row[1].([]uint8)
+		if len(row) > 4 {
+			version, ok1 := convertFunc(row[0])
+			endpoint, ok2 := convertFunc(row[1])
 			portAsFloat, ok3 := row[2].(int64)
-			roleAsInt, ok4 := row[3].([]uint8)
-			statusAsInt, ok5 := row[4].([]uint8)
+			role, ok4 := convertFunc(row[3])
+			status, ok5 := convertFunc(row[4])
 
 			if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 {
 				continue
 			}
 			statuses = append(statuses, BlueGreenResult{
-				Version:  string(versionAsInt),
-				Endpoint: string(endpointAsInt),
+				Version:  version,
+				Endpoint: endpoint,
 				Port:     int(portAsFloat),
-				Role:     string(roleAsInt),
-				Status:   string(statusAsInt),
+				Role:     role,
+				Status:   status,
 			})
 		}
 	}

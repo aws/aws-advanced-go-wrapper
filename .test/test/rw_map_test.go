@@ -176,19 +176,18 @@ func TestRWMapClear(t *testing.T) {
 }
 
 func TestRWMapClearWithDisposalFunc(t *testing.T) {
-	rwMap := utils.NewRWMap[int]()
-
-	rwMap.Put("key1", 1)
-	rwMap.Put("key2", 2)
-	rwMap.Put("key3", 3)
-
 	disposedValues := make([]int, 0)
 	disposalFunc := func(value int) bool {
 		disposedValues = append(disposedValues, value)
 		return true
 	}
+	rwMap := utils.NewRWMapWithDisposalFunc[int](disposalFunc)
 
-	rwMap.ClearWithDisposalFunc(disposalFunc)
+	rwMap.Put("key1", 1)
+	rwMap.Put("key2", 2)
+	rwMap.Put("key3", 3)
+
+	rwMap.Clear()
 
 	assert.Equal(t, 0, rwMap.Size(), "Map should be empty after clear")
 

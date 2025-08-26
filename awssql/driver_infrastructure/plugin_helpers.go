@@ -81,8 +81,8 @@ type PluginService interface {
 	SetTelemetryContext(ctx context.Context)
 	UpdateState(sql string, methodArgs ...any)
 	IsReadOnly() bool
-	GetStatus(id string) (BlueGreenStatus, bool)
-	SetStatus(status BlueGreenStatus, id string)
+	GetBgStatus(id string) (BlueGreenStatus, bool)
+	SetBgStatus(status BlueGreenStatus, id string)
 	IsPluginInUse(pluginName string) bool
 }
 
@@ -117,6 +117,7 @@ type PluginManager interface {
 	SetTelemetryContext(ctx context.Context)
 	IsPluginInUse(pluginName string) bool
 	ReleaseResources()
+	UnwrapPlugin(pluginCode string) ConnectionPlugin
 }
 
 type PluginManagerProvider func(
@@ -129,7 +130,7 @@ type CanReleaseResources interface {
 	ReleaseResources()
 }
 
-// ClearCaches This cleans up all long-standing caches. To be called at the end of program, not each time a Conn is closed.
+// This cleans up all long-standing caches. To be called at the end of program, not each time a Conn is closed.
 func ClearCaches() {
 	if knownEndpointDialectsCache != nil {
 		knownEndpointDialectsCache.Clear()

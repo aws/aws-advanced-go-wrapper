@@ -28,7 +28,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/bg"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
@@ -123,7 +122,7 @@ func TestBlueGreenPlugin_Connect(t *testing.T) {
 		assert.NoError(t, err)
 
 		mockPluginService.EXPECT().GetStatus("test-bg-id").Return(bgStatus, true)
-		mockPluginService.EXPECT().IsPluginInUse(plugin_helpers.IAM_PLUGIN_TYPE).Return(true)
+		mockPluginService.EXPECT().IsPluginInUse(driver_infrastructure.IAM_PLUGIN_CODE).Return(true)
 		mockPluginService.EXPECT().GetDialect().Return(&driver_infrastructure.MySQLDatabaseDialect{}).AnyTimes()
 
 		conn, err := plugin.Connect(hostInfo, props, true, connectFunc)
@@ -139,7 +138,7 @@ func TestBlueGreenPlugin_Connect(t *testing.T) {
 		assert.NoError(t, err)
 
 		mockPluginService.EXPECT().GetStatus("test-bg-id").Return(bgStatus, true)
-		mockPluginService.EXPECT().IsPluginInUse(plugin_helpers.IAM_PLUGIN_TYPE).Return(false)
+		mockPluginService.EXPECT().IsPluginInUse(driver_infrastructure.IAM_PLUGIN_CODE).Return(false)
 		mockPluginService.EXPECT().GetDialect().Return(&driver_infrastructure.MySQLDatabaseDialect{}).AnyTimes()
 
 		conn, err := plugin.Connect(hostInfo, props, true, connectFunc)
@@ -156,7 +155,7 @@ func TestBlueGreenPlugin_Connect(t *testing.T) {
 		assert.NoError(t, err)
 
 		mockPluginService.EXPECT().GetStatus("test-bg-id").Return(bgStatus, true)
-		mockPluginService.EXPECT().IsPluginInUse(plugin_helpers.IAM_PLUGIN_TYPE).Return(false)
+		mockPluginService.EXPECT().IsPluginInUse(driver_infrastructure.IAM_PLUGIN_CODE).Return(false)
 		mockPluginService.EXPECT().GetDialect().Return(&driver_infrastructure.MySQLDatabaseDialect{}).AnyTimes()
 
 		conn, err := plugin.Connect(hostInfo, props, true, connectFunc)
@@ -174,7 +173,7 @@ func TestBlueGreenPlugin_Connect(t *testing.T) {
 
 		mockPluginService.EXPECT().GetStatus("test-bg-id").Return(bgStatus, true)
 		mockPluginService.EXPECT().GetDialect().Return(&driver_infrastructure.MySQLDatabaseDialect{}).AnyTimes()
-		mockPluginService.EXPECT().IsPluginInUse(plugin_helpers.IAM_PLUGIN_TYPE).Return(false).AnyTimes()
+		mockPluginService.EXPECT().IsPluginInUse(driver_infrastructure.IAM_PLUGIN_CODE).Return(false).AnyTimes()
 		mockPluginService.EXPECT().Connect(hostInfo, props, gomock.Any()).Return(mockConn, nil)
 
 		conn, err := plugin.Connect(hostInfo, props, true, connectFunc)

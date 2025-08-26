@@ -35,7 +35,8 @@ import (
 )
 
 func init() {
-	awssql.UsePluginFactory("okta", NewOktaAuthPluginFactory())
+	awssql.UsePluginFactory(driver_infrastructure.OKTA_PLUGIN_CODE,
+		NewOktaAuthPluginFactory())
 }
 
 type OktaAuthPluginFactory struct{}
@@ -81,6 +82,10 @@ func NewOktaAuthPlugin(
 		iamTokenUtility:            iamTokenUtility,
 		fetchTokenCounter:          fetchTokenCounter,
 	}, nil
+}
+
+func (o *OktaAuthPlugin) GetPluginCode() string {
+	return driver_infrastructure.OKTA_PLUGIN_CODE
 }
 
 func (o *OktaAuthPlugin) GetSubscribedMethods() []string {

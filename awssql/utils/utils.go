@@ -334,3 +334,13 @@ func GetSetReadOnlyFromCtx(ctx context.Context) bool {
 	}
 	return setReadOnly
 }
+
+func MySqlConvertValToString(value driver.Value) (string, bool) {
+	stringAsInt, ok := value.([]uint8)
+	return string(stringAsInt), ok
+}
+
+func PgConvertValToString(value driver.Value) (string, bool) {
+	stringVal, ok := value.(string)
+	return stringVal, ok
+}

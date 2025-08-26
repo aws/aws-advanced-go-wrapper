@@ -28,7 +28,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/bg"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
@@ -156,7 +155,7 @@ func TestSubstituteConnectRoutingApply(t *testing.T) {
 	t.Run("IamNotInUse", func(t *testing.T) {
 		mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 		mockPluginService.EXPECT().Connect(substituteHost, nil, nil).Return(mockDriverConn, errors.New("no iam connect"))
-		mockPluginService.EXPECT().IsPluginInUse(plugin_helpers.IAM_PLUGIN_TYPE).Return(false)
+		mockPluginService.EXPECT().IsPluginInUse(driver_infrastructure.IAM_PLUGIN_CODE).Return(false)
 
 		routing := bg.NewSubstituteConnectRouting(hostAndPort, role, substituteHost, []*host_info_util.HostInfo{}, nil)
 		assert.NotNil(t, routing, "Should create SubstituteConnectRouting instance")
@@ -168,7 +167,7 @@ func TestSubstituteConnectRoutingApply(t *testing.T) {
 
 	t.Run("NilIamHosts", func(t *testing.T) {
 		mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-		mockPluginService.EXPECT().IsPluginInUse(plugin_helpers.IAM_PLUGIN_TYPE).Return(true)
+		mockPluginService.EXPECT().IsPluginInUse(driver_infrastructure.IAM_PLUGIN_CODE).Return(true)
 
 		routing := bg.NewSubstituteConnectRouting(hostAndPort, role, substituteHost, []*host_info_util.HostInfo{}, nil)
 		assert.NotNil(t, routing, "Should create SubstituteConnectRouting instance")
@@ -181,7 +180,7 @@ func TestSubstituteConnectRoutingApply(t *testing.T) {
 	t.Run("UnsuccessfulConnect", func(t *testing.T) {
 		mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 		mockPluginService.EXPECT().Connect(gomock.Any(), gomock.Any(), nil).Return(nil, errors.New("unsuccessful connect"))
-		mockPluginService.EXPECT().IsPluginInUse(plugin_helpers.IAM_PLUGIN_TYPE).Return(true)
+		mockPluginService.EXPECT().IsPluginInUse(driver_infrastructure.IAM_PLUGIN_CODE).Return(true)
 
 		routing := bg.NewSubstituteConnectRouting(hostAndPort, role, nil, []*host_info_util.HostInfo{hostInfo}, nil)
 		assert.NotNil(t, routing, "Should create SubstituteConnectRouting instance")
@@ -194,7 +193,7 @@ func TestSubstituteConnectRoutingApply(t *testing.T) {
 	t.Run("SuccessfulConnect", func(t *testing.T) {
 		mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 		mockPluginService.EXPECT().Connect(gomock.Any(), gomock.Any(), nil).Return(mockDriverConn, nil)
-		mockPluginService.EXPECT().IsPluginInUse(plugin_helpers.IAM_PLUGIN_TYPE).Return(true)
+		mockPluginService.EXPECT().IsPluginInUse(driver_infrastructure.IAM_PLUGIN_CODE).Return(true)
 		var iamHost string
 		iamSuccessfulConnectNotify := func(s string) {
 			iamHost = s
@@ -381,8 +380,7 @@ func TestSuspendUntilCorrespondingHostFoundConnectRoutingApply(t *testing.T) {
 
 		start := time.Now()
 		conn, err := routing.Apply(nil, hostInfo, props, true, mockPluginService)
-		require.NotNil(t, err, "Should return error")
-		assert.True(t, strings.Contains(err.Error(), "A corresponding host for 'test-host' is found. Continue with connect call."))
+		assert.Nil(t, err, "Should not return error")
 		assert.Nil(t, conn, "Should not create a connection")
 
 		elapsed := time.Since(start)

@@ -456,9 +456,9 @@ func (mr *MockPluginServiceMockRecorder) GetProperties() *gomock.Call {
 }
 
 // GetStatus mocks base method.
-func (m *MockPluginService) GetStatus(id string) (driver_infrastructure.BlueGreenStatus, bool) {
+func (m *MockPluginService) GetBgStatus(id string) (driver_infrastructure.BlueGreenStatus, bool) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetStatus", id)
+	ret := m.ctrl.Call(m, "GetBgStatus", id)
 	ret0, _ := ret[0].(driver_infrastructure.BlueGreenStatus)
 	ret1, _ := ret[1].(bool)
 	return ret0, ret1
@@ -467,7 +467,7 @@ func (m *MockPluginService) GetStatus(id string) (driver_infrastructure.BlueGree
 // GetStatus indicates an expected call of GetStatus.
 func (mr *MockPluginServiceMockRecorder) GetStatus(id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStatus", reflect.TypeOf((*MockPluginService)(nil).GetStatus), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBgStatus", reflect.TypeOf((*MockPluginService)(nil).GetBgStatus), id)
 }
 
 // GetTargetDriverDialect mocks base method.
@@ -584,20 +584,6 @@ func (mr *MockPluginServiceMockRecorder) IsNetworkError(err interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsNetworkError", reflect.TypeOf((*MockPluginService)(nil).IsNetworkError), err)
 }
 
-// IsReadOnly mocks base method.
-func (m *MockPluginService) IsReadOnly() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsReadOnly")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// IsReadOnly indicates an expected call of IsReadOnly.
-func (mr *MockPluginServiceMockRecorder) IsReadOnly() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsReadOnly", reflect.TypeOf((*MockPluginService)(nil).IsReadOnly))
-}
-
 // IsPluginInUse mocks base method.
 func (m *MockPluginService) IsPluginInUse(pluginName string) bool {
 	m.ctrl.T.Helper()
@@ -610,6 +596,20 @@ func (m *MockPluginService) IsPluginInUse(pluginName string) bool {
 func (mr *MockPluginServiceMockRecorder) IsPluginInUse(pluginName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsPluginInUse", reflect.TypeOf((*MockPluginService)(nil).IsPluginInUse), pluginName)
+}
+
+// IsReadOnly mocks base method.
+func (m *MockPluginService) IsReadOnly() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsReadOnly")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsReadOnly indicates an expected call of IsReadOnly.
+func (mr *MockPluginServiceMockRecorder) IsReadOnly() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsReadOnly", reflect.TypeOf((*MockPluginService)(nil).IsReadOnly))
 }
 
 // IsStaticHostListProvider mocks base method.
@@ -727,15 +727,15 @@ func (mr *MockPluginServiceMockRecorder) SetInitialConnectionHostInfo(info inter
 }
 
 // SetStatus mocks base method.
-func (m *MockPluginService) SetStatus(status driver_infrastructure.BlueGreenStatus, id string) {
+func (m *MockPluginService) SetBgStatus(status driver_infrastructure.BlueGreenStatus, id string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetStatus", status, id)
+	m.ctrl.Call(m, "SetBgStatus", status, id)
 }
 
 // SetStatus indicates an expected call of SetStatus.
 func (mr *MockPluginServiceMockRecorder) SetStatus(status, id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatus", reflect.TypeOf((*MockPluginService)(nil).SetStatus), status, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetBgStatus", reflect.TypeOf((*MockPluginService)(nil).SetBgStatus), status, id)
 }
 
 // SetTelemetryContext mocks base method.
@@ -1072,6 +1072,20 @@ func (m *MockPluginManager) SetTelemetryContext(ctx context.Context) {
 func (mr *MockPluginManagerMockRecorder) SetTelemetryContext(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTelemetryContext", reflect.TypeOf((*MockPluginManager)(nil).SetTelemetryContext), ctx)
+}
+
+// UnwrapPlugin mocks base method.
+func (m *MockPluginManager) UnwrapPlugin(pluginCode string) driver_infrastructure.ConnectionPlugin {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UnwrapPlugin", pluginCode)
+	ret0, _ := ret[0].(driver_infrastructure.ConnectionPlugin)
+	return ret0
+}
+
+// UnwrapPlugin indicates an expected call of UnwrapPlugin.
+func (mr *MockPluginManagerMockRecorder) UnwrapPlugin(pluginCode interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnwrapPlugin", reflect.TypeOf((*MockPluginManager)(nil).UnwrapPlugin), pluginCode)
 }
 
 // MockCanReleaseResources is a mock of CanReleaseResources interface.

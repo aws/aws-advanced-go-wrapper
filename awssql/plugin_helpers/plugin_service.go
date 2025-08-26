@@ -187,7 +187,7 @@ func (p *PluginServiceImpl) SetCurrentConnection(
 			shouldCloseConnection := connectionObjectHasChanged && !p.GetTargetDriverDialect().IsClosed(oldConnection) && !preserve
 			if shouldCloseConnection {
 				_ = p.sessionStateService.ApplyPristineSessionState(oldConnection)
-				oldConnection.Close()
+				_ = oldConnection.Close()
 			}
 		}
 	}
@@ -568,7 +568,7 @@ func (p *PluginServiceImpl) UpdateState(sql string, methodArgs ...any) {
 func (p *PluginServiceImpl) ReleaseResources() {
 	slog.Debug(error_util.GetMessage("PluginServiceImpl.releaseResources"))
 	if p.currentConnection != nil {
-		(*p.currentConnection).Close() // Ignore any error.
+		_ = (*p.currentConnection).Close() // Ignore any error.
 		p.currentConnection = nil
 	}
 
@@ -589,11 +589,11 @@ func (p *PluginServiceImpl) IsReadOnly() bool {
 	return *readOnly
 }
 
-func (p *PluginServiceImpl) GetStatus(id string) (driver_infrastructure.BlueGreenStatus, bool) {
+func (p *PluginServiceImpl) GetBgStatus(id string) (driver_infrastructure.BlueGreenStatus, bool) {
 	return statusesExpiringCache.Get(p.getStatusCacheKey(id))
 }
 
-func (p *PluginServiceImpl) SetStatus(status driver_infrastructure.BlueGreenStatus, id string) {
+func (p *PluginServiceImpl) SetBgStatus(status driver_infrastructure.BlueGreenStatus, id string) {
 	cacheKey := p.getStatusCacheKey(id)
 	if status.IsZero() {
 		statusesExpiringCache.Remove(cacheKey)
@@ -613,7 +613,7 @@ func (p *PluginServiceImpl) IsPluginInUse(pluginName string) bool {
 	return p.pluginManager.IsPluginInUse(pluginName)
 }
 
-// This cleans up all long standing caches. To be called at the end of program, not each time a Conn is closed.
+// This cleans up all long-standing caches. To be called at the end of program, not each time a Conn is closed.
 func ClearCaches() {
 	if hostAvailabilityExpiringCache != nil {
 		hostAvailabilityExpiringCache.Clear()

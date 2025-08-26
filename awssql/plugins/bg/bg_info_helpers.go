@@ -23,7 +23,7 @@ import (
 )
 
 type StatusInfo struct {
-	Version  string
+	version  string
 	endpoint string
 	port     int
 	phase    driver_infrastructure.BlueGreenPhase
@@ -31,7 +31,7 @@ type StatusInfo struct {
 }
 
 func (s *StatusInfo) IsZero() bool {
-	return s == nil || (s.Version == "" && s.endpoint == "" && s.port == 0)
+	return s == nil || (s.version == "" && s.endpoint == "" && s.port == 0)
 }
 
 type PhaseTimeInfo struct {

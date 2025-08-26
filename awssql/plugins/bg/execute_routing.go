@@ -45,7 +45,7 @@ func (r *SuspendExecuteRouting) Apply(_ driver_infrastructure.ConnectionPlugin, 
 		pluginService.SetTelemetryContext(parentCtx)
 	}()
 
-	bgStatus, ok := pluginService.GetStatus(r.bgId)
+	bgStatus, ok := pluginService.GetBgStatus(r.bgId)
 
 	timeoutMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.BG_CONNECT_TIMEOUT_MS)
 	holdStartTime := time.Now()
@@ -55,7 +55,7 @@ func (r *SuspendExecuteRouting) Apply(_ driver_infrastructure.ConnectionPlugin, 
 		r.Delay(SLEEP_TIME_DURATION, bgStatus, pluginService, r.bgId)
 	}
 
-	bgStatus, ok = pluginService.GetStatus(r.bgId)
+	bgStatus, ok = pluginService.GetBgStatus(r.bgId)
 
 	if ok && !bgStatus.IsZero() && bgStatus.GetCurrentPhase() == driver_infrastructure.IN_PROGRESS {
 		return driver_infrastructure.RoutingResultHolder{WrappedErr: error_util.NewGenericAwsWrapperError(

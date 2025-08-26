@@ -291,3 +291,23 @@ func (t *TestBlueGreenStatusProvider) SetPostStatusEndTime(val time.Time) {
 func (t *TestBlueGreenStatusProvider) GetPostStatusEndTime() time.Time {
 	return t.postStatusEndTime
 }
+
+func NewTestBlueGreenInterimStatus(phase driver_infrastructure.BlueGreenPhase, startTopology []*host_info_util.HostInfo,
+	startIpAddressesByHostMap map[string]string, ipChanged bool, endpointsRemoved bool, allChanged bool) BlueGreenInterimStatus {
+	return BlueGreenInterimStatus{
+		phase:                            phase,
+		version:                          "1.0",
+		port:                             1234,
+		startTopology:                    startTopology,
+		startIpAddressesByHostMap:        startIpAddressesByHostMap,
+		allStartTopologyIpChanged:        ipChanged,
+		allStartTopologyEndpointsRemoved: endpointsRemoved,
+		allTopologyChanged:               allChanged,
+	}
+}
+
+func NewTestStatusInfo() StatusInfo {
+	return StatusInfo{
+		version: "1.0",
+	}
+}

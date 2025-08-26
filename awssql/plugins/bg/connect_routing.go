@@ -27,7 +27,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
@@ -63,7 +62,7 @@ func (r *SubstituteConnectRouting) Apply(plugin driver_infrastructure.Connection
 		return pluginService.Connect(r.substituteHostInfo, props, plugin)
 	}
 
-	iamInUse := pluginService.IsPluginInUse(plugin_helpers.IAM_PLUGIN_TYPE)
+	iamInUse := pluginService.IsPluginInUse(driver_infrastructure.IAM_PLUGIN_CODE)
 	if !iamInUse {
 		return pluginService.Connect(r.substituteHostInfo, props, plugin)
 	}
@@ -158,7 +157,7 @@ func (r *SuspendConnectRouting) Apply(_ driver_infrastructure.ConnectionPlugin, 
 		pluginService.SetTelemetryContext(parentCtx)
 	}()
 
-	bgStatus, ok := pluginService.GetStatus(r.bgId)
+	bgStatus, ok := pluginService.GetBgStatus(r.bgId)
 
 	timeoutMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.BG_CONNECT_TIMEOUT_MS)
 	holdStartTime := time.Now()
@@ -168,7 +167,7 @@ func (r *SuspendConnectRouting) Apply(_ driver_infrastructure.ConnectionPlugin, 
 		r.Delay(SLEEP_TIME_DURATION, bgStatus, pluginService, r.bgId)
 	}
 
-	bgStatus, ok = pluginService.GetStatus(r.bgId)
+	bgStatus, ok = pluginService.GetBgStatus(r.bgId)
 
 	if ok && !bgStatus.IsZero() && bgStatus.GetCurrentPhase() == driver_infrastructure.IN_PROGRESS {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("BlueGreenDeployment.inProgressTryConnectLater", timeoutMs))
@@ -190,7 +189,7 @@ type SuspendUntilCorrespondingHostFoundConnectRouting struct {
 
 func (r *SuspendUntilCorrespondingHostFoundConnectRouting) Apply(_ driver_infrastructure.ConnectionPlugin, hostInfo *host_info_util.HostInfo, props map[string]string,
 	_ bool, pluginService driver_infrastructure.PluginService) (driver.Conn, error) {
-	slog.Debug(error_util.GetMessage("BlueGreenDeployment.waitConnectUntilCorrespondingHostFound", hostInfo.Host))
+	slog.Debug(error_util.GetMessage("BlueGreenDeployment.waitConnectUntilCorrespondingHostFound", hostInfo.GetHost()))
 	parentCtx := pluginService.GetTelemetryContext()
 	telemetryFactory := pluginService.GetTelemetryFactory()
 	telemetryCtx, ctx := telemetryFactory.OpenTelemetryContext(TELEMETRY_SWITCHOVER, telemetry.NESTED, parentCtx)
@@ -201,7 +200,7 @@ func (r *SuspendUntilCorrespondingHostFoundConnectRouting) Apply(_ driver_infras
 		pluginService.SetTelemetryContext(parentCtx)
 	}()
 
-	bgStatus, ok := pluginService.GetStatus(r.bgId)
+	bgStatus, ok := pluginService.GetBgStatus(r.bgId)
 	var correspondingPair utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]
 	if ok && !bgStatus.IsZero() {
 		correspondingPair = bgStatus.GetCorrespondingHosts()[hostInfo.Host]
@@ -214,7 +213,7 @@ func (r *SuspendUntilCorrespondingHostFoundConnectRouting) Apply(_ driver_infras
 	for time.Now().Before(endTime) && ok && !bgStatus.IsZero() && bgStatus.GetCurrentPhase() != driver_infrastructure.COMPLETED &&
 		correspondingPair.GetRight().IsNil() {
 		r.Delay(SLEEP_TIME_DURATION, bgStatus, pluginService, r.bgId)
-		bgStatus, ok = pluginService.GetStatus(r.bgId)
+		bgStatus, ok = pluginService.GetBgStatus(r.bgId)
 		if ok && !bgStatus.IsZero() {
 			correspondingPair = bgStatus.GetCorrespondingHosts()[hostInfo.Host]
 		}
@@ -225,14 +224,13 @@ func (r *SuspendUntilCorrespondingHostFoundConnectRouting) Apply(_ driver_infras
 		slog.Debug(message)
 		return nil, error_util.NewGenericAwsWrapperError(message)
 	} else if time.Now().After(endTime) {
-		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("BlueGreenDeployment.correspondingHostNotFoundTryConnectLater", hostInfo.Host, timeoutMs))
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("BlueGreenDeployment.correspondingHostNotFoundTryConnectLater", hostInfo.GetHost(), timeoutMs))
 	}
 
-	message := error_util.GetMessage("BlueGreenDeployment.correspondingHostFoundContinueWithConnect", hostInfo.Host, time.Since(holdStartTime))
+	message := error_util.GetMessage("BlueGreenDeployment.correspondingHostFoundContinueWithConnect", hostInfo.GetHost(), time.Since(holdStartTime))
 	slog.Debug(message)
-	// review if we shpould be returning an err here
 
-	return nil, error_util.NewGenericAwsWrapperError(message)
+	return nil, nil
 }
 
 func NewSuspendUntilCorrespondingHostFoundConnectRouting(hostAndPort string, role driver_infrastructure.BlueGreenRole,

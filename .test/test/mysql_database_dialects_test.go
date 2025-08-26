@@ -1074,31 +1074,29 @@ func TestAuroraMySQLDatabaseDialect_GetBlueGreenStatus(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT * FROM mysql.rds_topology"
+	expectedQuery := "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
 
 	mockQueryer.EXPECT().
 		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
 		Return(mockRows, nil)
 
-	mockRows.EXPECT().Columns().Return([]string{"id", "endpoint", "port", "role", "status", "version"})
+	mockRows.EXPECT().Columns().Return([]string{"version", "endpoint", "port", "role", "status"})
 
 	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
-		dest[0] = []uint8("1")
 		dest[1] = []uint8("myapp-prod-db.c1a2b3c4d5e6.us-east-1.rds.amazonaws.com")
 		dest[2] = int64(3306)
 		dest[3] = []uint8("BLUE_GREEN_DEPLOYMENT_SOURCE")
 		dest[4] = []uint8("AVAILABLE")
-		dest[5] = []uint8("1.0")
+		dest[0] = []uint8("1.0")
 		return nil
 	})
 
 	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
-		dest[0] = []uint8("2")
 		dest[1] = []uint8("myapp-prod-db-target.c1a2b3c4d5e6.us-east-1.rds.amazonaws.com")
 		dest[2] = int64(3306)
 		dest[3] = []uint8("BLUE_GREEN_DEPLOYMENT_TARGET")
 		dest[4] = []uint8("SWITCHOVER_INITIATED")
-		dest[5] = []uint8("1.1")
+		dest[0] = []uint8("1.1")
 		return nil
 	})
 
@@ -1138,7 +1136,7 @@ func TestAuroraMySQLDatabaseDialect_GetBlueGreenStatus_QueryError(t *testing.T) 
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT * FROM mysql.rds_topology"
+	expectedQuery := "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
 
 	mockQueryer.EXPECT().
 		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
@@ -1221,21 +1219,20 @@ func TestRdsMySQLDatabaseDialect_GetBlueGreenStatus(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT * FROM mysql.rds_topology"
+	expectedQuery := "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
 
 	mockQueryer.EXPECT().
 		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
 		Return(mockRows, nil)
 
-	mockRows.EXPECT().Columns().Return([]string{"id", "endpoint", "port", "role", "status", "version"})
+	mockRows.EXPECT().Columns().Return([]string{"version", "endpoint", "port", "role", "status"})
 
 	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
-		dest[0] = []uint8("1")
 		dest[1] = []uint8("user-service-db.x7y8z9a1b2c3.eu-west-1.rds.amazonaws.com")
 		dest[2] = int64(3306)
 		dest[3] = []uint8("BLUE_GREEN_DEPLOYMENT_SOURCE")
 		dest[4] = []uint8("AVAILABLE")
-		dest[5] = []uint8("2.0")
+		dest[0] = []uint8("2.0")
 		return nil
 	})
 
@@ -1269,13 +1266,13 @@ func TestRdsMySQLDatabaseDialect_GetBlueGreenStatus_EmptyResults(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT * FROM mysql.rds_topology"
+	expectedQuery := "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
 
 	mockQueryer.EXPECT().
 		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
 		Return(mockRows, nil)
 
-	mockRows.EXPECT().Columns().Return([]string{"id", "endpoint", "port", "role", "status", "version"})
+	mockRows.EXPECT().Columns().Return([]string{"endpoint", "port", "role", "status", "version"})
 	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip) // No rows
 	mockRows.EXPECT().Close().Return(nil)
 
@@ -1361,7 +1358,7 @@ func TestGetBlueGreenStatus_InvalidRowData(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT * FROM mysql.rds_topology"
+	expectedQuery := "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
 
 	mockQueryer.EXPECT().
 		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
@@ -1418,7 +1415,7 @@ func TestGetBlueGreenStatus_InsufficientColumns(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT * FROM mysql.rds_topology"
+	expectedQuery := "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
 
 	mockQueryer.EXPECT().
 		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).

@@ -30,9 +30,10 @@ import (
 type BlueGreenIntervalRate int
 
 const (
-	BASELINE  BlueGreenIntervalRate = 0
-	INCREASED BlueGreenIntervalRate = 1
-	HIGH      BlueGreenIntervalRate = 2
+	INVALID BlueGreenIntervalRate = iota - 1
+	BASELINE
+	INCREASED
+	HIGH
 )
 
 const (
@@ -145,19 +146,19 @@ func (b BlueGreenRole) String() string {
 type BlueGreenStatus struct {
 	bgId               string
 	currentPhase       BlueGreenPhase
-	connectRouting     []ConnectRouting
-	executeRouting     []ExecuteRouting
+	connectRoutings    []ConnectRouting
+	executeRoutings    []ExecuteRouting
 	roleByHost         *utils.RWMap[BlueGreenRole]
 	correspondingHosts *utils.RWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]
 }
 
-func NewBgStatus(id string, phase BlueGreenPhase, connectRouting []ConnectRouting, executeRouting []ExecuteRouting,
+func NewBgStatus(id string, phase BlueGreenPhase, connectRoutings []ConnectRouting, executeRoutings []ExecuteRouting,
 	roleByHost *utils.RWMap[BlueGreenRole], correspondingHosts *utils.RWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]) BlueGreenStatus {
 	return BlueGreenStatus{
 		bgId:               id,
 		currentPhase:       phase,
-		connectRouting:     connectRouting,
-		executeRouting:     executeRouting,
+		connectRoutings:    connectRoutings,
+		executeRoutings:    executeRoutings,
 		roleByHost:         roleByHost,
 		correspondingHosts: correspondingHosts,
 	}
@@ -167,12 +168,12 @@ func (b BlueGreenStatus) GetCurrentPhase() BlueGreenPhase {
 	return b.currentPhase
 }
 
-func (b BlueGreenStatus) GetConnectRouting() []ConnectRouting {
-	return b.connectRouting
+func (b BlueGreenStatus) GetConnectRoutings() []ConnectRouting {
+	return b.connectRoutings
 }
 
-func (b BlueGreenStatus) GetExecuteRouting() []ExecuteRouting {
-	return b.executeRouting
+func (b BlueGreenStatus) GetExecuteRoutings() []ExecuteRouting {
+	return b.executeRoutings
 }
 
 func (b BlueGreenStatus) GetBgId() string {
@@ -180,6 +181,9 @@ func (b BlueGreenStatus) GetBgId() string {
 }
 
 func (b BlueGreenStatus) GetCorrespondingHosts() map[string]utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo] {
+	if b.correspondingHosts == nil {
+		return nil
+	}
 	return b.correspondingHosts.GetAllEntries()
 }
 
@@ -193,8 +197,8 @@ func (b BlueGreenStatus) GetRole(hostInfo *host_info_util.HostInfo) (role BlueGr
 func (b BlueGreenStatus) IsZero() bool {
 	return b.bgId == "" &&
 		b.currentPhase.IsZero() &&
-		b.connectRouting == nil &&
-		b.executeRouting == nil &&
+		b.connectRoutings == nil &&
+		b.executeRoutings == nil &&
 		b.roleByHost == nil &&
 		b.correspondingHosts == nil
 }
@@ -202,8 +206,8 @@ func (b BlueGreenStatus) IsZero() bool {
 func (b BlueGreenStatus) MatchIdPhaseAndLen(other BlueGreenStatus) bool {
 	return b.bgId == other.bgId &&
 		b.currentPhase == other.currentPhase &&
-		len(b.connectRouting) == len(other.connectRouting) &&
-		len(b.executeRouting) == len(other.executeRouting) &&
+		len(b.connectRoutings) == len(other.connectRoutings) &&
+		len(b.executeRoutings) == len(other.executeRoutings) &&
 		b.roleByHost.Size() == other.roleByHost.Size() &&
 		b.correspondingHosts.Size() == other.correspondingHosts.Size()
 }

@@ -148,6 +148,20 @@ func (mr *MockConnectionPluginMockRecorder) GetHostSelectorStrategy(strategy int
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHostSelectorStrategy", reflect.TypeOf((*MockConnectionPlugin)(nil).GetHostSelectorStrategy), strategy)
 }
 
+// GetPluginCode mocks base method.
+func (m *MockConnectionPlugin) GetPluginCode() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPluginCode")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetPluginCode indicates an expected call of GetPluginCode.
+func (mr *MockConnectionPluginMockRecorder) GetPluginCode() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPluginCode", reflect.TypeOf((*MockConnectionPlugin)(nil).GetPluginCode))
+}
+
 // GetSubscribedMethods mocks base method.
 func (m *MockConnectionPlugin) GetSubscribedMethods() []string {
 	m.ctrl.T.Helper()

@@ -382,15 +382,15 @@ func TestBlueGreenParseRole(t *testing.T) {
 func TestNewBgStatus(t *testing.T) {
 	id := "test-bg-id"
 	phase := driver_infrastructure.CREATED
-	var connectRouting []driver_infrastructure.ConnectRouting
-	var executeRouting []driver_infrastructure.ExecuteRouting
+	var connectRoutings []driver_infrastructure.ConnectRouting
+	var executeRoutings []driver_infrastructure.ExecuteRouting
 	roleByHost := utils.NewRWMap[driver_infrastructure.BlueGreenRole]()
 	correspondingHosts := utils.NewRWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]()
 
-	status := driver_infrastructure.NewBgStatus(id, phase, connectRouting, executeRouting, roleByHost, correspondingHosts)
+	status := driver_infrastructure.NewBgStatus(id, phase, connectRoutings, executeRoutings, roleByHost, correspondingHosts)
 	assert.Equal(t, phase, status.GetCurrentPhase())
-	assert.Equal(t, connectRouting, status.GetConnectRouting())
-	assert.Equal(t, executeRouting, status.GetExecuteRouting())
+	assert.Equal(t, connectRoutings, status.GetConnectRoutings())
+	assert.Equal(t, executeRoutings, status.GetExecuteRoutings())
 	assert.NotNil(t, status.GetCorrespondingHosts())
 }
 
@@ -708,44 +708,32 @@ func TestBlueGreenInterimStatus_IsZero(t *testing.T) {
 	zeroStatus := &bg.BlueGreenInterimStatus{}
 	assert.True(t, zeroStatus.IsZero(), "Empty status should be zero")
 
-	nonZeroStatus := &bg.BlueGreenInterimStatus{
-		Version: "1.0",
-	}
+	nonZeroStatus := bg.NewTestBlueGreenInterimStatus(driver_infrastructure.BlueGreenPhase{},
+		nil, nil, false, false, false)
+
 	assert.False(t, nonZeroStatus.IsZero(), "Status with version should not be zero")
 }
 
 func TestBlueGreenInterimStatus_String(t *testing.T) {
-	status := &bg.BlueGreenInterimStatus{
-		Phase:   driver_infrastructure.CREATED,
-		Version: "1.0",
-		Port:    5432,
-	}
+	status := bg.NewTestBlueGreenInterimStatus(driver_infrastructure.CREATED,
+		nil, nil, false, false, false)
 
 	result := status.String()
 	assert.Contains(t, result, "BlueGreenInterimStatus", "String should contain type name")
 	assert.Contains(t, result, "CREATED", "String should contain phase")
 	assert.Contains(t, result, "1.0", "String should contain version")
-	assert.Contains(t, result, "5432", "String should contain port")
+	assert.Contains(t, result, "1234", "String should contain port")
 }
 
 func TestBlueGreenInterimStatus_GetCustomHashCode(t *testing.T) {
-	status1 := &bg.BlueGreenInterimStatus{
-		Phase:   driver_infrastructure.CREATED,
-		Version: "1.0",
-		Port:    5432,
-	}
+	status1 := bg.NewTestBlueGreenInterimStatus(driver_infrastructure.CREATED,
+		nil, nil, false, false, false)
 
-	status2 := &bg.BlueGreenInterimStatus{
-		Phase:   driver_infrastructure.CREATED,
-		Version: "1.0",
-		Port:    5432,
-	}
+	status2 := bg.NewTestBlueGreenInterimStatus(driver_infrastructure.CREATED,
+		nil, nil, false, false, false)
 
-	status3 := &bg.BlueGreenInterimStatus{
-		Phase:   driver_infrastructure.PREPARATION,
-		Version: "1.0",
-		Port:    5432,
-	}
+	status3 := bg.NewTestBlueGreenInterimStatus(driver_infrastructure.PREPARATION,
+		nil, nil, false, false, false)
 
 	// Same content should produce same hash
 	hash1 := status1.GetCustomHashCode()
@@ -763,8 +751,7 @@ func TestStatusInfo_IsZero(t *testing.T) {
 	zeroStatus := &bg.StatusInfo{}
 	assert.True(t, zeroStatus.IsZero(), "Empty StatusInfo should be zero")
 
-	nonZeroStatus := &bg.StatusInfo{
-		Version: "1.0",
-	}
+	nonZeroStatus := bg.NewTestStatusInfo()
+
 	assert.False(t, nonZeroStatus.IsZero(), "StatusInfo with version should not be zero")
 }

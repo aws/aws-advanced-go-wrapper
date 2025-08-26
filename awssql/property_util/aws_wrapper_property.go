@@ -32,7 +32,7 @@ const INTERNAL_CONNECT_PROPERTY_NAME = "76c06979-49c4-4c86-9600-a63605b83f50"
 const SET_READ_ONLY_CTX_KEY = "setReadOnly"
 const BG_PROPERTY_PREFIX = "blue-green-monitoring-"
 
-var PREFIXES = []string{
+var INTERNAL_PROPS_PREFIXES = []string{
 	MONITORING_PROPERTY_PREFIX,
 	INTERNAL_CONNECT_PROPERTY_NAME,
 	LIMITLESS_PROPERTY_PREFIX,
@@ -722,7 +722,7 @@ func RemoveInternalAwsWrapperProperties(props map[string]string) map[string]stri
 }
 
 func startsWithPrefix(key string) bool {
-	for _, prefix := range PREFIXES {
+	for _, prefix := range INTERNAL_PROPS_PREFIXES {
 		if strings.HasPrefix(key, prefix) {
 			return true
 		}

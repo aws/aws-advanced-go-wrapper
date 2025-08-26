@@ -146,6 +146,10 @@ func NewFailoverPlugin(pluginService driver_infrastructure.PluginService, props 
 	}, nil
 }
 
+func (p *FailoverPlugin) GetPluginCode() string {
+	return driver_infrastructure.FAILOVER_PLUGIN_CODE
+}
+
 func (p *FailoverPlugin) GetSubscribedMethods() []string {
 	return append([]string{
 		plugin_helpers.CONNECT_METHOD,

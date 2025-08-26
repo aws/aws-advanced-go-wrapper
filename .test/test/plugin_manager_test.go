@@ -618,8 +618,8 @@ func TestIsPluginInUse(t *testing.T) {
 	pluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager, telemetryFactory)
 	pluginService := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
 
-	assert.False(t, pluginManager.IsPluginInUse("*test.TestPlugin"), "Should return false when no plugins are loaded")
-	assert.False(t, pluginManager.IsPluginInUse("nonexistent.Plugin"), "Should return false for nonexistent plugin")
+	assert.False(t, pluginManager.IsPluginInUse(testPluginCode), "Should return false when no plugins are loaded")
+	assert.False(t, pluginManager.IsPluginInUse("nonexistentPlugin"), "Should return false for nonexistent plugin")
 
 	var calls []string
 	plugins := []driver_infrastructure.ConnectionPlugin{
@@ -632,18 +632,17 @@ func TestIsPluginInUse(t *testing.T) {
 	err := pluginManager.Init(pluginService, plugins)
 	require.Nil(t, err)
 
-	assert.True(t, pluginManager.IsPluginInUse("*test.TestPlugin"), "Should return true when TestPlugin is loaded")
-	assert.True(t, pluginManager.IsPluginInUse(plugin_helpers.IAM_PLUGIN_TYPE), "Should return true when TestPlugin is loaded")
+	assert.True(t, pluginManager.IsPluginInUse(testPluginCode), "Should return true when TestPlugin is loaded")
+	assert.True(t, pluginManager.IsPluginInUse(driver_infrastructure.IAM_PLUGIN_CODE), "Should return true when iam plugin is loaded")
 
-	assert.False(t, pluginManager.IsPluginInUse("*test.NonExistentPlugin"), "Should return false for non-existent plugin type")
-	assert.False(t, pluginManager.IsPluginInUse("*plugins.DefaultPlugin"), "Should return false for DefaultPlugin when not loaded")
-	assert.False(t, pluginManager.IsPluginInUse("*plugins.FailoverPlugin"), "Should return false for FailoverPlugin when not loaded")
+	assert.False(t, pluginManager.IsPluginInUse("nonexistentPlugin"), "Should return false for non-existent plugin type")
+	assert.False(t, pluginManager.IsPluginInUse("default"), "Should return false for DefaultPlugin when not loaded")
+	assert.False(t, pluginManager.IsPluginInUse(driver_infrastructure.FAILOVER_PLUGIN_CODE), "Should return false for FailoverPlugin when not loaded")
 
-	assert.False(t, pluginManager.IsPluginInUse("*test.testplugin"), "Should return false for case-sensitive mismatch")
-	assert.False(t, pluginManager.IsPluginInUse("test.TestPlugin"), "Should return false when missing asterisk prefix")
-	assert.False(t, pluginManager.IsPluginInUse("TestPlugin"), "Should return false for partial name match")
+	assert.False(t, pluginManager.IsPluginInUse("Test"), "Should return false for case-sensitive mismatch")
+	assert.False(t, pluginManager.IsPluginInUse(" test"), "Should return false when there is additional spacing")
+	assert.False(t, pluginManager.IsPluginInUse("tes"), "Should return false for partial name match")
 	assert.False(t, pluginManager.IsPluginInUse(""), "Should return false for empty string")
-	assert.False(t, pluginManager.IsPluginInUse(" *test.TestPlugin "), "Should return false for name with whitespace")
 
 	// Re-initialize with empty plugin list
 	err = pluginManager.Init(pluginService, []driver_infrastructure.ConnectionPlugin{})

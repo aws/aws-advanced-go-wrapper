@@ -50,6 +50,10 @@ func NewExecutionTimePlugin(pluginService driver_infrastructure.PluginService,
 	return &ExecutionTimePlugin{}, nil
 }
 
+func (d *ExecutionTimePlugin) GetPluginCode() string {
+	return driver_infrastructure.EXECUTION_TIME_PLUGIN_CODE
+}
+
 func (d *ExecutionTimePlugin) GetSubscribedMethods() []string {
 	return []string{plugin_helpers.ALL_METHODS}
 }

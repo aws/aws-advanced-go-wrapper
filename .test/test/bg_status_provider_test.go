@@ -82,8 +82,10 @@ func TestBlueGreenStatusProviderUpdatePhaseForward(t *testing.T) {
 	provider := bg.NewTestBlueGreenStatusProvider(mockPluginService, nil, "test-bg-id")
 	provider.ClearMonitors()
 
-	interimStatus1 := bg.BlueGreenInterimStatus{Phase: driver_infrastructure.CREATED}
-	interimStatus2 := bg.BlueGreenInterimStatus{Phase: driver_infrastructure.PREPARATION}
+	interimStatus1 := bg.NewTestBlueGreenInterimStatus(driver_infrastructure.CREATED,
+		nil, nil, false, false, false)
+	interimStatus2 := bg.NewTestBlueGreenInterimStatus(driver_infrastructure.PREPARATION,
+		nil, nil, false, false, false)
 
 	provider.UpdatePhase(driver_infrastructure.SOURCE, interimStatus1)
 	assert.Equal(t, driver_infrastructure.CREATED, provider.GetLatestStatusPhase())
@@ -104,12 +106,14 @@ func TestBlueGreenStatusProviderUpdatePhaseRollback(t *testing.T) {
 
 	provider := bg.NewTestBlueGreenStatusProvider(mockPluginService, nil, "test-bg-id")
 	provider.ClearMonitors()
-	interimStatus1 := bg.BlueGreenInterimStatus{Phase: driver_infrastructure.PREPARATION}
+	interimStatus1 := bg.NewTestBlueGreenInterimStatus(driver_infrastructure.PREPARATION,
+		nil, nil, false, false, false)
 	provider.GetInterimStatuses()[driver_infrastructure.SOURCE.GetValue()] = interimStatus1
 	provider.UpdatePhase(driver_infrastructure.SOURCE, interimStatus1)
 	assert.Equal(t, driver_infrastructure.PREPARATION, provider.GetLatestStatusPhase())
 
-	interimStatus2 := bg.BlueGreenInterimStatus{Phase: driver_infrastructure.CREATED}
+	interimStatus2 := bg.NewTestBlueGreenInterimStatus(driver_infrastructure.CREATED,
+		nil, nil, false, false, false)
 	provider.UpdatePhase(driver_infrastructure.SOURCE, interimStatus2)
 	assert.True(t, provider.GetRollback())
 	assert.Equal(t, driver_infrastructure.CREATED, provider.GetLatestStatusPhase())
@@ -130,8 +134,8 @@ func TestBlueGreenStatusProviderGetStatusOfCreated(t *testing.T) {
 
 	assert.Equal(t, "test-bg-id", status.GetBgId())
 	assert.Equal(t, driver_infrastructure.CREATED, status.GetCurrentPhase())
-	assert.Empty(t, status.GetConnectRouting())
-	assert.Empty(t, status.GetExecuteRouting())
+	assert.Empty(t, status.GetConnectRoutings())
+	assert.Empty(t, status.GetExecuteRoutings())
 }
 
 func TestBlueGreenStatusProviderGetStatusOfPreparation(t *testing.T) {
@@ -149,7 +153,7 @@ func TestBlueGreenStatusProviderGetStatusOfPreparation(t *testing.T) {
 	status := provider.GetStatusOfPreparation()
 	assert.Equal(t, "test-bg-id", status.GetBgId())
 	assert.Equal(t, driver_infrastructure.PREPARATION, status.GetCurrentPhase())
-	assert.NotNil(t, status.GetConnectRouting())
+	assert.NotNil(t, status.GetConnectRoutings())
 
 	provider.SetPostStatusEndTime(time.Now())
 	status = provider.GetStatusOfPreparation()
@@ -179,8 +183,8 @@ func TestBlueGreenStatusProviderGetStatusOfInProgress(t *testing.T) {
 		status := provider.GetStatusOfInProgress()
 		assert.Equal(t, "test-bg-id", status.GetBgId())
 		assert.Equal(t, driver_infrastructure.IN_PROGRESS, status.GetCurrentPhase())
-		assert.Equal(t, 1, len(status.GetConnectRouting()))
-		assert.Equal(t, 2, len(status.GetExecuteRouting()))
+		assert.Equal(t, 1, len(status.GetConnectRoutings()))
+		assert.Equal(t, 2, len(status.GetExecuteRoutings()))
 	})
 
 	t.Run("NilGetInterimStatuses()", func(t *testing.T) {
@@ -191,8 +195,8 @@ func TestBlueGreenStatusProviderGetStatusOfInProgress(t *testing.T) {
 		status := provider.GetStatusOfInProgress()
 		assert.Equal(t, "test-bg-id", status.GetBgId())
 		assert.Equal(t, driver_infrastructure.IN_PROGRESS, status.GetCurrentPhase())
-		assert.Equal(t, 1, len(status.GetConnectRouting()))
-		assert.Equal(t, 4, len(status.GetExecuteRouting()))
+		assert.Equal(t, 1, len(status.GetConnectRoutings()))
+		assert.Equal(t, 4, len(status.GetExecuteRoutings()))
 	})
 
 	t.Run("SuspendNewBlueConnectionsWhenInProgressFalse", func(t *testing.T) {
@@ -200,19 +204,17 @@ func TestBlueGreenStatusProviderGetStatusOfInProgress(t *testing.T) {
 		provider.ClearMonitors()
 		provider.GetHostIpAddresses().Put("blue-host", "192.168.1.1")
 		provider.GetHostIpAddresses().Put("green-host", "192.168.1.2")
-		provider.GetInterimStatuses()[driver_infrastructure.SOURCE.GetValue()] = bg.BlueGreenInterimStatus{
-			Port:                      1234,
-			StartIpAddressesByHostMap: map[string]string{"blue-host": "192.168.1.1"},
-		}
-		provider.GetInterimStatuses()[driver_infrastructure.TARGET.GetValue()] = bg.BlueGreenInterimStatus{
-			Port:                      1234,
-			StartIpAddressesByHostMap: map[string]string{"green-host": "192.168.1.2"},
-		}
+		provider.GetInterimStatuses()[driver_infrastructure.SOURCE.GetValue()] =
+			bg.NewTestBlueGreenInterimStatus(driver_infrastructure.IN_PROGRESS,
+				nil, map[string]string{"blue-host": "192.168.1.1"}, false, false, false)
+		provider.GetInterimStatuses()[driver_infrastructure.TARGET.GetValue()] =
+			bg.NewTestBlueGreenInterimStatus(driver_infrastructure.IN_PROGRESS,
+				nil, map[string]string{"green-host": "192.168.1.2"}, false, false, false)
 		status := provider.GetStatusOfInProgress()
 		assert.Equal(t, "test-bg-id", status.GetBgId())
 		assert.Equal(t, driver_infrastructure.IN_PROGRESS, status.GetCurrentPhase())
-		assert.Equal(t, 3, len(status.GetConnectRouting()))
-		assert.Equal(t, 5, len(status.GetExecuteRouting()))
+		assert.Equal(t, 3, len(status.GetConnectRoutings()))
+		assert.Equal(t, 5, len(status.GetExecuteRoutings()))
 	})
 
 	t.Run("SuspendNewBlueConnectionsWhenInProgressTrue", func(t *testing.T) {
@@ -222,19 +224,17 @@ func TestBlueGreenStatusProviderGetStatusOfInProgress(t *testing.T) {
 		provider.ClearMonitors()
 		provider.GetHostIpAddresses().Put("blue-host", "192.168.1.1")
 		provider.GetHostIpAddresses().Put("green-host", "192.168.1.2")
-		provider.GetInterimStatuses()[driver_infrastructure.SOURCE.GetValue()] = bg.BlueGreenInterimStatus{
-			Port:                      1234,
-			StartIpAddressesByHostMap: map[string]string{"blue-host": "192.168.1.1"},
-		}
-		provider.GetInterimStatuses()[driver_infrastructure.TARGET.GetValue()] = bg.BlueGreenInterimStatus{
-			Port:                      1234,
-			StartIpAddressesByHostMap: map[string]string{"green-host": "192.168.1.2"},
-		}
+		provider.GetInterimStatuses()[driver_infrastructure.SOURCE.GetValue()] =
+			bg.NewTestBlueGreenInterimStatus(driver_infrastructure.IN_PROGRESS,
+				nil, map[string]string{"blue-host": "192.168.1.1"}, false, false, false)
+		provider.GetInterimStatuses()[driver_infrastructure.TARGET.GetValue()] =
+			bg.NewTestBlueGreenInterimStatus(driver_infrastructure.IN_PROGRESS,
+				nil, map[string]string{"green-host": "192.168.1.2"}, false, false, false)
 		status := provider.GetStatusOfInProgress()
 		assert.Equal(t, "test-bg-id", status.GetBgId())
 		assert.Equal(t, driver_infrastructure.IN_PROGRESS, status.GetCurrentPhase())
-		assert.Equal(t, 6, len(status.GetConnectRouting()))
-		assert.Equal(t, 6, len(status.GetExecuteRouting()))
+		assert.Equal(t, 6, len(status.GetConnectRoutings()))
+		assert.Equal(t, 6, len(status.GetExecuteRoutings()))
 	})
 
 	t.Run("PastEndTime", func(t *testing.T) {
@@ -274,8 +274,8 @@ func TestBlueGreenStatusProviderGetStatusOfPost(t *testing.T) {
 
 	assert.Equal(t, "test-bg-id", status.GetBgId())
 	assert.Equal(t, driver_infrastructure.POST, status.GetCurrentPhase())
-	assert.NotNil(t, status.GetConnectRouting())
-	assert.Empty(t, status.GetExecuteRouting())
+	assert.NotNil(t, status.GetConnectRoutings())
+	assert.Empty(t, status.GetExecuteRoutings())
 
 	provider.SetPostStatusEndTime(time.Now())
 	status = provider.GetStatusOfPost()
@@ -306,8 +306,8 @@ func TestBlueGreenStatusProviderGetStatusOfCompleted(t *testing.T) {
 	status := provider.GetStatusOfCompleted()
 	assert.Equal(t, "test-bg-id", status.GetBgId())
 	assert.Equal(t, driver_infrastructure.COMPLETED, status.GetCurrentPhase())
-	assert.Empty(t, status.GetConnectRouting())
-	assert.Empty(t, status.GetExecuteRouting())
+	assert.Empty(t, status.GetConnectRoutings())
+	assert.Empty(t, status.GetExecuteRoutings())
 
 	provider.SetBlueDnsUpdateCompleted(false)
 	status = provider.GetStatusOfCompleted()
@@ -371,10 +371,8 @@ func TestBlueGreenStatusProviderGetWriterHost(t *testing.T) {
 	writerHostInfo, _ := host_info_util.NewHostInfoBuilder().SetHost("writer-host").SetRole(host_info_util.WRITER).Build()
 	readerHostInfo, _ := host_info_util.NewHostInfoBuilder().SetHost("reader-host").SetRole(host_info_util.READER).Build()
 
-	provider.GetInterimStatuses()[driver_infrastructure.SOURCE.GetValue()] = bg.BlueGreenInterimStatus{
-		StartTopology: []*host_info_util.HostInfo{writerHostInfo, readerHostInfo},
-		Port:          1234,
-	}
+	provider.GetInterimStatuses()[driver_infrastructure.SOURCE.GetValue()] = bg.NewTestBlueGreenInterimStatus(driver_infrastructure.BlueGreenPhase{},
+		[]*host_info_util.HostInfo{writerHostInfo, readerHostInfo}, nil, false, false, false)
 
 	writerHost = provider.GetWriterHost(driver_infrastructure.SOURCE)
 	assert.NotNil(t, writerHost)
@@ -402,10 +400,8 @@ func TestBlueGreenStatusProviderGetReaderHosts(t *testing.T) {
 	readerHostInfo1, _ := host_info_util.NewHostInfoBuilder().SetHost("reader-host-1").SetRole(host_info_util.READER).Build()
 	readerHostInfo2, _ := host_info_util.NewHostInfoBuilder().SetHost("reader-host-2").SetRole(host_info_util.READER).Build()
 
-	provider.GetInterimStatuses()[driver_infrastructure.SOURCE.GetValue()] = bg.BlueGreenInterimStatus{
-		StartTopology: []*host_info_util.HostInfo{writerHostInfo, readerHostInfo1, readerHostInfo2},
-		Port:          1234,
-	}
+	provider.GetInterimStatuses()[driver_infrastructure.SOURCE.GetValue()] = bg.NewTestBlueGreenInterimStatus(driver_infrastructure.BlueGreenPhase{},
+		[]*host_info_util.HostInfo{writerHostInfo, readerHostInfo1, readerHostInfo2}, nil, false, false, false)
 
 	readerHosts = provider.GetReaderHosts(driver_infrastructure.SOURCE)
 	assert.NotNil(t, readerHosts)
@@ -522,27 +518,24 @@ func TestBlueGreenStatusProviderUpdateDnsFlags(t *testing.T) {
 	provider.ClearMonitors()
 
 	// Test blue DNS update completion
-	interimStatus := bg.BlueGreenInterimStatus{
-		AllStartTopologyIpChanged: true,
-	}
+	interimStatus := bg.NewTestBlueGreenInterimStatus(driver_infrastructure.BlueGreenPhase{},
+		nil, nil, true, false, false)
 
 	assert.False(t, provider.GetBlueDnsUpdateCompleted())
 	provider.UpdateDnsFlags(driver_infrastructure.SOURCE, interimStatus)
 	assert.True(t, provider.GetBlueDnsUpdateCompleted())
 
 	// Test green DNS removal
-	interimStatus = bg.BlueGreenInterimStatus{
-		AllStartTopologyEndpointsRemoved: true,
-	}
+	interimStatus = bg.NewTestBlueGreenInterimStatus(driver_infrastructure.BlueGreenPhase{},
+		nil, nil, false, true, false)
 
 	assert.False(t, provider.GetGreenDnsRemoved())
 	provider.UpdateDnsFlags(driver_infrastructure.TARGET, interimStatus)
 	assert.True(t, provider.GetGreenDnsRemoved())
 
 	// Test green topology change
-	interimStatus = bg.BlueGreenInterimStatus{
-		AllTopologyChanged: true,
-	}
+	interimStatus = bg.NewTestBlueGreenInterimStatus(driver_infrastructure.BlueGreenPhase{},
+		nil, nil, false, false, true)
 
 	assert.False(t, provider.GetGreenTopologyChanged())
 	provider.UpdateDnsFlags(driver_infrastructure.TARGET, interimStatus)
@@ -566,9 +559,8 @@ func TestBlueGreenStatusProviderAddSubstituteBlueWithIpAddressConnectRouting(t *
 	provider.GetRoleByHost().Put("blue-host", driver_infrastructure.SOURCE)
 	provider.GetCorrespondingHosts().Put("blue-host", utils.NewPair(blueHost, blueHost))
 	provider.GetHostIpAddresses().Put("blue-host", "192.168.1.1")
-	provider.GetInterimStatuses()[driver_infrastructure.SOURCE.GetValue()] = bg.BlueGreenInterimStatus{
-		Port: 3306,
-	}
+	provider.GetInterimStatuses()[driver_infrastructure.SOURCE.GetValue()] = bg.NewTestBlueGreenInterimStatus(driver_infrastructure.BlueGreenPhase{},
+		nil, nil, false, false, false)
 
 	// Test the method
 	routing := provider.AddSubstituteBlueWithIpAddressConnectRouting()
@@ -648,29 +640,6 @@ func TestBlueGreenStatusProviderResetContextWhenCompleted(t *testing.T) {
 	assert.False(t, provider.GetGreenTopologyChanged())
 	assert.False(t, provider.GetAllGreenHostsChangedName())
 	assert.Equal(t, 0, provider.GetPhaseTimeNano().Size())
-}
-
-func TestBlueGreenStatusProviderGetValueHash(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	mockDialect := mock_driver_infrastructure.NewMockBlueGreenDialect(ctrl)
-	mockPluginService.EXPECT().GetDialect().Return(mockDialect).AnyTimes()
-	mockPluginService.EXPECT().GetCurrentHostInfo().Return(&host_info_util.HostInfo{Host: "test-host"}, nil).AnyTimes()
-
-	provider := bg.NewTestBlueGreenStatusProvider(mockPluginService, nil, "test-bg-id")
-	provider.ClearMonitors()
-
-	// Test hash generation
-	hash1 := provider.GetValueHash(1, "test-value")
-	hash2 := provider.GetValueHash(1, "test-value")
-	hash3 := provider.GetValueHash(1, "different-value")
-
-	// Same inputs should produce same hash
-	assert.Equal(t, hash1, hash2)
-	// Different inputs should produce different hash
-	assert.NotEqual(t, hash1, hash3)
 }
 
 func TestBlueGreenStatusProviderPutIfAbsentPhaseTime(t *testing.T) {

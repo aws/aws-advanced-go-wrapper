@@ -28,6 +28,10 @@ import (
 type BaseConnectionPlugin struct {
 }
 
+func (b BaseConnectionPlugin) GetPluginCode() string {
+	return ""
+}
+
 func (b BaseConnectionPlugin) GetSubscribedMethods() []string {
 	return []string{}
 }

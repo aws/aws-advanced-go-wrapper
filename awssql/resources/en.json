@@ -37,6 +37,7 @@
   "BlueGreenDeployment.correspondingHostFoundContinueWithConnect": "A corresponding host for '%v' is found. Continue with connect call. The call was held for '%v' ms.",
   "BlueGreenDeployment.correspondingHostNotFoundTryConnectLater": "Blue/Green Deployment switchover is still in progress and a corresponding host for '%v' is not found after '%v' ms. Try to connect again later.",
   "BlueGreenDeployment.createHostListProvider": "[%v] Creating a new HostListProvider, clusterId: %v.",
+  "BlueGreenDeployment.errorGeneratingHash": "Unable to generate hash. Error: %v.",
   "BlueGreenDeployment.errorQueryingStatusTable": "Unable to retrieve status table. Error: %v.",
   "BlueGreenDeployment.greenDnsRemoved": "[bgdId: '%v'] Green DNS removed.",
   "BlueGreenDeployment.greenHostChangedName": "Green host '%v' has changed names, using IAM host '%v'.",

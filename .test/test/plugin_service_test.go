@@ -357,7 +357,7 @@ func TestGetStatusEmptyCache(t *testing.T) {
 
 	plugin_helpers.ClearCaches()
 
-	status, found := target.GetStatus("test-id")
+	status, found := target.GetBgStatus("test-id")
 	assert.False(t, found, "Should return false when status not found in cache")
 	assert.True(t, status.IsZero(), "Should return zero BlueGreenStatus when not found")
 }
@@ -368,7 +368,7 @@ func TestGetSetStatus(t *testing.T) {
 
 	plugin_helpers.ClearCaches()
 
-	target.SetStatus(driver_infrastructure.NewBgStatus(
+	target.SetBgStatus(driver_infrastructure.NewBgStatus(
 		"test-id",
 		driver_infrastructure.IN_PROGRESS,
 		[]driver_infrastructure.ConnectRouting{},
@@ -391,7 +391,7 @@ func TestGetSetStatus(t *testing.T) {
 	}
 
 	for _, testId := range testCases {
-		retrievedStatus, found := target.GetStatus(testId)
+		retrievedStatus, found := target.GetBgStatus(testId)
 		assert.True(t, found, "Should find status regardless of case for ID: %s", testId)
 		assert.False(t, retrievedStatus.IsZero(), "Status should not be zero for ID: %s", testId)
 		assert.Equal(t, driver_infrastructure.IN_PROGRESS, retrievedStatus.GetCurrentPhase(), "Should retrieve correct phase for ID: %s", testId)
@@ -405,27 +405,27 @@ func TestSetStatusUpdateExistingStatus(t *testing.T) {
 	plugin_helpers.ClearCaches()
 
 	testId := "deployment-update-test"
-	connectRouting := []driver_infrastructure.ConnectRouting{}
-	executeRouting := []driver_infrastructure.ExecuteRouting{}
+	connectRoutings := []driver_infrastructure.ConnectRouting{}
+	executeRoutings := []driver_infrastructure.ExecuteRouting{}
 	roleByHost := utils.NewRWMap[driver_infrastructure.BlueGreenRole]()
 	correspondingHosts := utils.NewRWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]()
 
-	initialStatus := driver_infrastructure.NewBgStatus(testId, driver_infrastructure.CREATED, connectRouting, executeRouting, roleByHost, correspondingHosts)
-	target.SetStatus(initialStatus, testId)
+	initialStatus := driver_infrastructure.NewBgStatus(testId, driver_infrastructure.CREATED, connectRoutings, executeRoutings, roleByHost, correspondingHosts)
+	target.SetBgStatus(initialStatus, testId)
 
-	retrievedStatus, found := target.GetStatus(testId)
+	retrievedStatus, found := target.GetBgStatus(testId)
 	assert.True(t, found, "Should find initial status")
 	assert.Equal(t, driver_infrastructure.CREATED, retrievedStatus.GetCurrentPhase(), "Should have initial phase")
 
-	updatedStatus := driver_infrastructure.NewBgStatus(testId, driver_infrastructure.COMPLETED, connectRouting, executeRouting, roleByHost, correspondingHosts)
-	target.SetStatus(updatedStatus, testId)
+	updatedStatus := driver_infrastructure.NewBgStatus(testId, driver_infrastructure.COMPLETED, connectRoutings, executeRoutings, roleByHost, correspondingHosts)
+	target.SetBgStatus(updatedStatus, testId)
 
-	retrievedStatus, found = target.GetStatus(testId)
+	retrievedStatus, found = target.GetBgStatus(testId)
 	assert.True(t, found, "Should find updated status")
 	assert.Equal(t, driver_infrastructure.COMPLETED, retrievedStatus.GetCurrentPhase(), "Should have updated phase")
 
-	target.SetStatus(driver_infrastructure.BlueGreenStatus{}, testId)
+	target.SetBgStatus(driver_infrastructure.BlueGreenStatus{}, testId)
 
-	_, found = target.GetStatus(testId)
+	_, found = target.GetBgStatus(testId)
 	assert.False(t, found, "Should remove status")
 }

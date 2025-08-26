@@ -19,6 +19,7 @@ package host_info_util
 import (
 	"fmt"
 	"slices"
+	"strings"
 )
 
 func AreHostListsEqual(s1 []*HostInfo, s2 []*HostInfo) bool {
@@ -52,13 +53,7 @@ func GetReaders(hosts []*HostInfo) []*HostInfo {
 		}
 	}
 	slices.SortFunc(readerHosts, func(i, j *HostInfo) int {
-		if i.Host < j.Host {
-			return -1
-		} else if i.Host > j.Host {
-			return 1
-		} else {
-			return 0
-		}
+		return strings.Compare(i.GetHost(), j.GetHost())
 	})
 	return readerHosts
 }
@@ -75,7 +70,7 @@ func HaveNoHostsInCommon(hosts1 []*HostInfo, hosts2 []*HostInfo) bool {
 	if len(hosts1) <= len(hosts2) {
 		mapSlice, checkSlice = hosts1, hosts2
 	} else {
-		mapSlice, checkSlice = hosts1, hosts2
+		mapSlice, checkSlice = hosts2, hosts1
 	}
 
 	checkMap := make(map[string]int, len(mapSlice))

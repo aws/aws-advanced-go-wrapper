@@ -82,6 +82,10 @@ type HostMonitorConnectionPlugin struct {
 	plugins.BaseConnectionPlugin
 }
 
+func (b *HostMonitorConnectionPlugin) GetPluginCode() string {
+	return driver_infrastructure.EFM_PLUGIN_CODE
+}
+
 func (b *HostMonitorConnectionPlugin) GetSubscribedMethods() []string {
 	return []string{"*"}
 }

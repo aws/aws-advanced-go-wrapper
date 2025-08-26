@@ -20,7 +20,6 @@ import (
 	"context"
 	"database/sql/driver"
 	"log/slog"
-	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -43,8 +42,6 @@ const (
 	NOTIFY_CONNECTION_CHANGED_METHOD = "notifyConnectionChanged"
 	NOTIFY_HOST_LIST_CHANGED_METHOD  = "notifyHostListChanged"
 )
-
-const IAM_PLUGIN_TYPE = "*iam.IamAuthPlugin"
 
 type PluginChain struct {
 	execChain    func(pluginFunc driver_infrastructure.PluginExecFunc, execFunc func() (any, any, bool, error)) (any, any, bool, error)
@@ -460,11 +457,20 @@ func (pluginManager *PluginManagerImpl) SetTelemetryContext(ctx context.Context)
 	pluginManager.telemetryCtx = ctx
 }
 
-func (pluginManager *PluginManagerImpl) IsPluginInUse(pluginName string) bool {
+func (pluginManager *PluginManagerImpl) IsPluginInUse(pluginCode string) bool {
 	for _, plugin := range pluginManager.plugins {
-		if reflect.TypeOf(plugin).String() == pluginName {
+		if plugin.GetPluginCode() == pluginCode {
 			return true
 		}
 	}
 	return false
+}
+
+func (pluginManager *PluginManagerImpl) UnwrapPlugin(pluginCode string) driver_infrastructure.ConnectionPlugin {
+	for _, plugin := range pluginManager.plugins {
+		if plugin.GetPluginCode() == pluginCode {
+			return plugin
+		}
+	}
+	return nil
 }

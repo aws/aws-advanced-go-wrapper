@@ -21,8 +21,9 @@ import (
 )
 
 type RWMap[T any] struct {
-	cache map[string]T
-	lock  sync.RWMutex
+	cache        map[string]T
+	disposalFunc DisposalFunc[T]
+	lock         sync.RWMutex
 }
 
 func NewRWMap[T any]() *RWMap[T] {
@@ -31,16 +32,24 @@ func NewRWMap[T any]() *RWMap[T] {
 	}
 }
 
+func NewRWMapWithDisposalFunc[T any](disposalFunc DisposalFunc[T]) *RWMap[T] {
+	return &RWMap[T]{
+		cache:        make(map[string]T),
+		disposalFunc: disposalFunc,
+	}
+}
+
 func (c *RWMap[T]) Put(key string, value T) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
+	val, ok := c.cache[key]
+	if ok && c.disposalFunc != nil {
+		c.disposalFunc(val)
+	}
 	c.cache[key] = value
 }
 
-func (c *RWMap[T]) Get(key string) (t T, ok bool) {
-	if c == nil {
-		return
-	}
+func (c *RWMap[T]) Get(key string) (T, bool) {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -49,69 +58,65 @@ func (c *RWMap[T]) Get(key string) (t T, ok bool) {
 }
 
 func (c *RWMap[T]) ComputeIfAbsent(key string, computeFunc func() T) T {
-	c.lock.RLock()
-	item, ok := c.cache[key]
-	c.lock.RUnlock()
+	c.lock.Lock()
+	defer c.lock.Unlock()
 
+	item, ok := c.cache[key]
 	if ok {
 		return item
 	}
 
-	c.lock.Lock()
-	defer c.lock.Unlock()
 	c.cache[key] = computeFunc()
 	return c.cache[key]
 }
 
 func (c *RWMap[T]) PutIfAbsent(key string, value T) {
-	c.lock.RLock()
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	_, ok := c.cache[key]
-	c.lock.RUnlock()
 
 	if !ok {
-		c.Put(key, value)
+		c.cache[key] = value
 	}
 }
 
 func (c *RWMap[T]) Remove(key string) {
-	if c == nil {
-		return
-	}
 	c.lock.Lock()
-	delete(c.cache, key)
+	val, ok := c.cache[key]
+	if ok {
+		if c.disposalFunc != nil {
+			c.disposalFunc(val)
+		}
+		delete(c.cache, key)
+	}
 	c.lock.Unlock()
 }
 
 func (c *RWMap[T]) Clear() {
-	if c == nil {
+	if c.disposalFunc != nil {
+		c.clearWithDisposalFunc()
 		return
 	}
+
 	c.lock.Lock()
 	defer c.lock.Unlock()
-
-	for k := range c.cache {
-		delete(c.cache, k)
+	for key := range c.cache {
+		delete(c.cache, key)
 	}
 }
 
-func (c *RWMap[T]) ClearWithDisposalFunc(disposalFunc DisposalFunc[T]) {
-	if c == nil {
-		return
-	}
+func (c *RWMap[T]) clearWithDisposalFunc() {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	for k, v := range c.cache {
-		disposalFunc(v)
-		delete(c.cache, k)
+	for key, value := range c.cache {
+		c.disposalFunc(value)
+		delete(c.cache, key)
 	}
 }
 
-// GetAllEntries Returns a map copy of all entries in the cache.
+// Returns a map copy of all entries in the cache.
 func (c *RWMap[T]) GetAllEntries() map[string]T {
-	if c == nil {
-		return make(map[string]T)
-	}
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -127,8 +132,10 @@ func (c *RWMap[T]) ReplaceCacheWithCopy(mapToCopy *RWMap[T]) {
 
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	for k := range c.cache {
-		delete(c.cache, k)
+	if c.disposalFunc != nil {
+		for _, value := range c.cache {
+			c.disposalFunc(value)
+		}
 	}
 	c.cache = entryMap
 }

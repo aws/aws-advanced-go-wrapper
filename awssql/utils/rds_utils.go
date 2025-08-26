@@ -58,9 +58,9 @@ var (
 	IP_V6_COMPRESSED_REGEXP = regexp.MustCompile("^(([0-9A-Fa-f]{1,4}(:[0-9A-Fa-f]{1,4}){0,5})?)" +
 		"::(([0-9A-Fa-f]{1,4}(:[0-9A-Fa-f]{1,4}){0,5})?)$")
 
-	BG_OLD_HOST_PATTERN     = regexp.MustCompile("(?i).*(?P<prefix>-old1\\.)...*") //nolint:all
+	BG_OLD_HOST_PATTERN     = regexp.MustCompile("(?i).*(?P<prefix>-old1\\.)..*") //nolint:all
 	BG_GREEN_HOSTID_PATTERN = regexp.MustCompile("(?i)(.*)-green-[0-9a-z]{6}")
-	BG_GREEN_HOST_PATTERN   = regexp.MustCompile("(?i).*(?P<prefix>-green-[0-9a-z]{6})...*")
+	BG_GREEN_HOST_PATTERN   = regexp.MustCompile("(?i).*(?P<prefix>-green-[0-9a-z]{6})..*")
 
 	dnsRegexpArray    = [4]*regexp.Regexp{AURORA_DNS_PATTERN, AURORA_CHINA_DNS_PATTERN, AURORA_OLD_CHINA_DNS_PATTERN, AURORA_GOV_DNS_PATTERN}
 	cachedDnsRegexp   = sync.Map{}
@@ -279,6 +279,10 @@ func findAndCacheRegexp(host string) (regexp.Regexp, bool) {
 
 func SetPreparedHostFunc(newPrepareHostFunc func(string) string) {
 	prepareHostFunc = newPrepareHostFunc
+}
+
+func ResetPreparedHostFunc() {
+	prepareHostFunc = nil
 }
 
 func GetPreparedHost(host string) string {

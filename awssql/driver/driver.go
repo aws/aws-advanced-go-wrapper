@@ -36,12 +36,12 @@ import (
 )
 
 var pluginFactoryByCode = map[string]driver_infrastructure.ConnectionPluginFactory{
-	"failover":           plugins.NewFailoverPluginFactory(),
-	"efm":                efm.NewHostMonitoringPluginFactory(),
-	"limitless":          limitless.NewLimitlessPluginFactory(),
-	"executionTime":      plugins.NewExecutionTimePluginFactory(),
-	"readWriteSplitting": read_write_splitting.NewReadWriteSplittingPluginFactory(),
-	"bg":                 bg.NewBlueGreenPluginFactory(),
+	driver_infrastructure.FAILOVER_PLUGIN_CODE:             plugins.NewFailoverPluginFactory(),
+	driver_infrastructure.EFM_PLUGIN_CODE:                  efm.NewHostMonitoringPluginFactory(),
+	driver_infrastructure.LIMITLESS_PLUGIN_CODE:            limitless.NewLimitlessPluginFactory(),
+	driver_infrastructure.EXECUTION_TIME_PLUGIN_CODE:       plugins.NewExecutionTimePluginFactory(),
+	driver_infrastructure.READ_WRITE_SPLITTING_PLUGIN_CODE: read_write_splitting.NewReadWriteSplittingPluginFactory(),
+	driver_infrastructure.BLUE_GREEN_PLUGIN_CODE:           bg.NewBlueGreenPluginFactory(),
 }
 
 var underlyingDriverList = map[string]driver.Driver{}
@@ -159,7 +159,7 @@ func GetUnderlyingDriver(name string) driver.Driver {
 	return underlyingDriverList[name]
 }
 
-// This cleans up all long standing caches. To be called at the end of program, not each time a Conn is closed.
+// This cleans up all long-standing caches. To be called at the end of program, not each time a Conn is closed.
 func ClearCaches() {
 	driver_infrastructure.ClearCaches()
 	plugin_helpers.ClearCaches()
@@ -332,6 +332,10 @@ func (c *AwsWrapperConn) setReadWriteMode(ctx context.Context) error {
 	c.pluginService.UpdateState(query)
 	_, err := c.execContextInternal(context.TODO(), query, []driver.NamedValue{})
 	return err
+}
+
+func (c *AwsWrapperConn) UnwrapPlugin(pluginCode string) driver_infrastructure.ConnectionPlugin {
+	return c.pluginManager.UnwrapPlugin(pluginCode)
 }
 
 type AwsWrapperStmt struct {

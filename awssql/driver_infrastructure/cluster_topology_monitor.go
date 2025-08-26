@@ -253,12 +253,12 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 
 				if utils.IsRdsInstance(c.initialHostInfo.GetHost()) {
 					c.writerHostInfo.Store(c.initialHostInfo)
-					slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.writerMonitoringConnection", c.writerHostInfo.Load().Host))
+					slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.writerMonitoringConnection", c.writerHostInfo.Load().GetHost()))
 				} else {
 					hostId := c.databaseDialect.GetHostName(c.loadConn(c.monitoringConn))
 					if hostId != "" {
 						c.writerHostInfo.Store(c.createHost(hostId, true, 0, time.Time{}))
-						slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.writerMonitoringConnection", c.writerHostInfo.Load().Host))
+						slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.writerMonitoringConnection", c.writerHostInfo.Load().GetHost()))
 					}
 				}
 			}

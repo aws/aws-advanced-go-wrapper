@@ -177,7 +177,7 @@ func (m *RdsPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 }
 
 func (m *RdsPgDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) []BlueGreenResult {
-	bgStatusQuery := "SELECT * FROM rds_tools.show_topology('aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
+	bgStatusQuery := "SELECT version, endpoint, port, role, status FROM rds_tools.show_topology('aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
 	return pgGetBlueGreenStatus(conn, bgStatusQuery)
 }
 
@@ -356,7 +356,8 @@ func (m *AuroraPgDatabaseDialect) GetLimitlessRouterEndpointQuery() string {
 }
 
 func (m *AuroraPgDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) []BlueGreenResult {
-	bgStatusQuery := "SELECT * FROM get_blue_green_fast_switchover_metadata('aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
+	bgStatusQuery := "SELECT version, endpoint, port, role, status FROM get_blue_green_fast_switchover_metadata(" +
+		"'aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
 	return pgGetBlueGreenStatus(conn, bgStatusQuery)
 }
 
@@ -513,44 +514,5 @@ func (r *RdsMultiAzClusterPgDatabaseDialect) GetHostListProvider(
 }
 
 func pgGetBlueGreenStatus(conn driver.Conn, query string) []BlueGreenResult {
-	queryerCtx, ok := conn.(driver.QueryerContext)
-	if !ok {
-		// Unable to query, conn does not implement QueryerContext.
-		return nil
-	}
-
-	rows, err := queryerCtx.QueryContext(context.Background(), query, nil)
-	if err != nil {
-		// Query failed.
-		slog.Warn(error_util.GetMessage("BlueGreenDeployment.errorQueryingStatusTable", err))
-		return nil
-	}
-	if rows != nil {
-		defer rows.Close()
-	}
-
-	var statuses []BlueGreenResult
-	row := make([]driver.Value, len(rows.Columns()))
-	for rows.Next(row) == nil {
-		if len(row) > 5 {
-			version, ok1 := row[5].(string)
-			endpoint, ok2 := row[1].(string)
-			portAsFloat, ok3 := row[2].(int64)
-			role, ok4 := row[3].(string)
-			status, ok5 := row[4].(string)
-
-			if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 {
-				continue
-			}
-			statuses = append(statuses, BlueGreenResult{
-				Version:  version,
-				Endpoint: endpoint,
-				Port:     int(portAsFloat),
-				Role:     role,
-				Status:   status,
-			})
-		}
-	}
-
-	return statuses
+	return getBlueGreenStatus(conn, query, utils.PgConvertValToString)
 }

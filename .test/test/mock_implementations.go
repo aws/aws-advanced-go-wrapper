@@ -51,12 +51,18 @@ var defaultPluginFactoryByCode = map[string]driver_infrastructure.ConnectionPlug
 	"executionTime": plugins.NewExecutionTimePluginFactory(),
 }
 
+var testPluginCode string = "test"
+
 type TestPlugin struct {
 	calls      *[]string
 	id         int
 	connection driver.Conn
 	error      error
 	isBefore   bool
+}
+
+func (t TestPlugin) GetPluginCode() string {
+	return testPluginCode
 }
 
 func (t TestPlugin) GetSubscribedMethods() []string {
@@ -185,7 +191,7 @@ func CreateTestPlugin(calls *[]string, id int, connection driver.Conn, err error
 	if calls == nil {
 		calls = &[]string{}
 	}
-	testPlugin := driver_infrastructure.ConnectionPlugin(&TestPlugin{calls: calls, id: id, connection: connection, error: err, isBefore: isBefore})
+	testPlugin := &TestPlugin{calls: calls, id: id, connection: connection, error: err, isBefore: isBefore}
 	return testPlugin
 }
 
@@ -514,11 +520,11 @@ func (m *MockPluginService) IsReadOnly() bool {
 	return false
 }
 
-func (p *MockPluginService) GetStatus(id string) (driver_infrastructure.BlueGreenStatus, bool) {
+func (p *MockPluginService) GetBgStatus(id string) (driver_infrastructure.BlueGreenStatus, bool) {
 	return driver_infrastructure.BlueGreenStatus{}, true
 }
 
-func (p *MockPluginService) SetStatus(status driver_infrastructure.BlueGreenStatus, id string) {
+func (p *MockPluginService) SetBgStatus(status driver_infrastructure.BlueGreenStatus, id string) {
 }
 
 func (p *MockPluginService) IsPluginInUse(pluginCode string) bool {

@@ -74,6 +74,10 @@ func NewLimitlessPluginWithRouterService(pluginService driver_infrastructure.Plu
 	}
 }
 
+func (plugin *LimitlessPlugin) GetPluginCode() string {
+	return driver_infrastructure.LIMITLESS_PLUGIN_CODE
+}
+
 func (plugin *LimitlessPlugin) GetSubscribedMethods() []string {
 	return []string{plugin_helpers.CONNECT_METHOD}
 }

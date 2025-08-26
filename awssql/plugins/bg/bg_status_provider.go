@@ -19,10 +19,10 @@ package bg
 import (
 	"context"
 	"fmt"
-	"hash/fnv"
 	"log/slog"
 	"reflect"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -168,7 +168,7 @@ func (b *BlueGreenStatusProvider) PrepareStatus(role driver_infrastructure.BlueG
 	b.lastContextHash = contextHash
 
 	// Update map of IP addresses.
-	for key, val := range interimStatus.StartIpAddressesByHostMap {
+	for key, val := range interimStatus.startIpAddressesByHostMap {
 		b.hostIpAddresses.Put(key, val)
 	}
 
@@ -202,32 +202,32 @@ func (b *BlueGreenStatusProvider) UpdatePhase(role driver_infrastructure.BlueGre
 	roleStatus := b.interimStatuses[role.GetValue()]
 	latestInterimPhase := driver_infrastructure.NOT_CREATED
 	if !roleStatus.IsZero() {
-		latestInterimPhase = roleStatus.Phase
+		latestInterimPhase = roleStatus.phase
 	}
 
-	if interimStatus.IsZero() || interimStatus.Phase.IsZero() {
+	if interimStatus.IsZero() || interimStatus.phase.IsZero() {
 		return
 	}
 
-	if !latestInterimPhase.IsZero() && interimStatus.Phase.GetPhase() < latestInterimPhase.GetPhase() {
+	if !latestInterimPhase.IsZero() && interimStatus.phase.GetPhase() < latestInterimPhase.GetPhase() {
 		b.rollback = true
 		slog.Debug(error_util.GetMessage("BlueGreenDeployment.rollback", b.bgdId))
 	}
 
-	// Do not allow status moves backward, unless it is a rollback.
-	if !b.rollback {
-		if interimStatus.Phase.GetPhase() >= b.latestStatusPhase.GetPhase() {
-			b.latestStatusPhase = interimStatus.Phase
-		}
+	// Do not allow status to move backward unless it is a rollback.
+	shouldUpdate := false
+	if b.rollback {
+		shouldUpdate = interimStatus.phase.GetPhase() < b.latestStatusPhase.GetPhase()
 	} else {
-		if interimStatus.Phase.GetPhase() < b.latestStatusPhase.GetPhase() {
-			b.latestStatusPhase = interimStatus.Phase
-		}
+		shouldUpdate = interimStatus.phase.GetPhase() >= b.latestStatusPhase.GetPhase()
+	}
+	if shouldUpdate {
+		b.latestStatusPhase = interimStatus.phase
 	}
 }
 
 func (b *BlueGreenStatusProvider) updateStatusCache() {
-	b.pluginService.SetStatus(b.summaryStatus, b.bgdId)
+	b.pluginService.SetBgStatus(b.summaryStatus, b.bgdId)
 	b.StorePhaseTime(b.summaryStatus.GetCurrentPhase())
 }
 
@@ -237,7 +237,7 @@ func (b *BlueGreenStatusProvider) updateCorrespondingHosts() {
 	sourceInterimStatus := b.interimStatuses[driver_infrastructure.SOURCE.GetValue()]
 	targetInterimStatus := b.interimStatuses[driver_infrastructure.TARGET.GetValue()]
 
-	if len(sourceInterimStatus.StartTopology) > 0 && len(targetInterimStatus.StartTopology) > 0 {
+	if len(sourceInterimStatus.startTopology) > 0 && len(targetInterimStatus.startTopology) > 0 {
 		blueWriterHostInfo := b.GetWriterHost(driver_infrastructure.SOURCE)
 		greenWriterHostInfo := b.GetWriterHost(driver_infrastructure.TARGET)
 		sortedBlueReaderHostInfos := b.GetReaderHosts(driver_infrastructure.SOURCE)
@@ -316,7 +316,7 @@ func (b *BlueGreenStatusProvider) GetWriterHost(role driver_infrastructure.BlueG
 	if interimStatus.IsZero() {
 		return nil
 	}
-	return host_info_util.GetWriter(interimStatus.StartTopology)
+	return host_info_util.GetWriter(interimStatus.startTopology)
 }
 
 func (b *BlueGreenStatusProvider) GetReaderHosts(role driver_infrastructure.BlueGreenRole) []*host_info_util.HostInfo {
@@ -324,7 +324,7 @@ func (b *BlueGreenStatusProvider) GetReaderHosts(role driver_infrastructure.Blue
 	if interimStatus.IsZero() {
 		return nil
 	}
-	return host_info_util.GetReaders(interimStatus.StartTopology)
+	return host_info_util.GetReaders(interimStatus.startTopology)
 }
 
 func (b *BlueGreenStatusProvider) UpdateSummaryStatus(role driver_infrastructure.BlueGreenRole, interimStatus BlueGreenInterimStatus) error {
@@ -402,19 +402,19 @@ func (b *BlueGreenStatusProvider) UpdateMonitors() error {
 }
 
 func (b *BlueGreenStatusProvider) UpdateDnsFlags(role driver_infrastructure.BlueGreenRole, interimStatus BlueGreenInterimStatus) {
-	if role == driver_infrastructure.SOURCE && !b.blueDnsUpdateCompleted && interimStatus.AllStartTopologyIpChanged {
+	if role == driver_infrastructure.SOURCE && !b.blueDnsUpdateCompleted && interimStatus.allStartTopologyIpChanged {
 		slog.Debug(error_util.GetMessage("BlueGreenDeployment.blueDnsCompleted", b.bgdId))
 		b.blueDnsUpdateCompleted = true
 		b.StoreBlueDnsUpdateTime()
 	}
 
-	if role == driver_infrastructure.TARGET && !b.greenDnsRemoved && interimStatus.AllStartTopologyEndpointsRemoved {
+	if role == driver_infrastructure.TARGET && !b.greenDnsRemoved && interimStatus.allStartTopologyEndpointsRemoved {
 		slog.Debug(error_util.GetMessage("BlueGreenDeployment.greenDnsRemoved", b.bgdId))
 		b.greenDnsRemoved = true
 		b.StoreGreenDnsRemoveTime()
 	}
 
-	if role == driver_infrastructure.TARGET && !b.greenTopologyChanged && interimStatus.AllTopologyChanged {
+	if role == driver_infrastructure.TARGET && !b.greenTopologyChanged && interimStatus.allTopologyChanged {
 		slog.Debug(error_util.GetMessage("BlueGreenDeployment.greenTopologyChanged", b.bgdId))
 		b.greenTopologyChanged = true
 		b.StoreGreenTopologyChangeTime()
@@ -440,11 +440,11 @@ func (b *BlueGreenStatusProvider) GetStatusOfPreparation() driver_infrastructure
 		}
 		return b.GetStatusOfCompleted()
 	}
-	connectRouting := b.AddSubstituteBlueWithIpAddressConnectRouting()
+	connectRoutings := b.AddSubstituteBlueWithIpAddressConnectRouting()
 	return driver_infrastructure.NewBgStatus(
 		b.bgdId,
 		driver_infrastructure.PREPARATION,
-		connectRouting,
+		connectRoutings,
 		nil,
 		b.roleByHost,
 		b.correspondingHosts,
@@ -452,7 +452,7 @@ func (b *BlueGreenStatusProvider) GetStatusOfPreparation() driver_infrastructure
 }
 
 func (b *BlueGreenStatusProvider) AddSubstituteBlueWithIpAddressConnectRouting() []driver_infrastructure.ConnectRouting {
-	connectRouting := make([]driver_infrastructure.ConnectRouting, 0, b.roleByHost.Size()*2)
+	connectRoutings := make([]driver_infrastructure.ConnectRouting, 0, b.roleByHost.Size()*2)
 	for host, role := range b.roleByHost.GetAllEntries() {
 		hostPair, ok := b.correspondingHosts.Get(host)
 		if !ok || role != driver_infrastructure.SOURCE {
@@ -466,7 +466,7 @@ func (b *BlueGreenStatusProvider) AddSubstituteBlueWithIpAddressConnectRouting()
 			blueIpHostInfo, _ = host_info_util.NewHostInfoBuilder().CopyFrom(blueHostInfo).SetHost(blueIp).Build()
 		}
 
-		connectRouting = append(connectRouting, NewSubstituteConnectRouting(
+		connectRoutings = append(connectRoutings, NewSubstituteConnectRouting(
 			host,
 			role,
 			blueIpHostInfo,
@@ -479,15 +479,15 @@ func (b *BlueGreenStatusProvider) AddSubstituteBlueWithIpAddressConnectRouting()
 			continue
 		}
 
-		connectRouting = append(connectRouting, NewSubstituteConnectRouting(
-			host_info_util.GetHostAndPort(host, interimStatus.Port),
+		connectRoutings = append(connectRoutings, NewSubstituteConnectRouting(
+			host_info_util.GetHostAndPort(host, interimStatus.port),
 			role,
 			blueIpHostInfo,
 			[]*host_info_util.HostInfo{blueHostInfo},
 			nil,
 		))
 	}
-	return connectRouting
+	return connectRoutings
 }
 
 func (b *BlueGreenStatusProvider) GetStatusOfInProgress() driver_infrastructure.BlueGreenStatus {
@@ -499,87 +499,87 @@ func (b *BlueGreenStatusProvider) GetStatusOfInProgress() driver_infrastructure.
 		return b.GetStatusOfCompleted()
 	}
 
-	var connectRouting []driver_infrastructure.ConnectRouting
+	var connectRoutings []driver_infrastructure.ConnectRouting
 	if b.suspendNewBlueConnectionsWhenInProgress {
 		// All blue and green connect calls should be suspended.
-		connectRouting = []driver_infrastructure.ConnectRouting{NewSuspendConnectRouting("", driver_infrastructure.SOURCE, b.bgdId)}
+		connectRoutings = []driver_infrastructure.ConnectRouting{NewSuspendConnectRouting("", driver_infrastructure.SOURCE, b.bgdId)}
 	} else {
 		// If we're not suspending new connections then, at least, we need to use IP addresses.
-		connectRouting = b.AddSubstituteBlueWithIpAddressConnectRouting()
+		connectRoutings = b.AddSubstituteBlueWithIpAddressConnectRouting()
 	}
 
-	connectRouting = append(connectRouting, NewSuspendConnectRouting("", driver_infrastructure.TARGET, b.bgdId))
+	connectRoutings = append(connectRoutings, NewSuspendConnectRouting("", driver_infrastructure.TARGET, b.bgdId))
 
 	// All connect calls with IP address that belongs to blue or green host should be suspended.
-	uniqueIpAddresses := make(map[string]bool, b.hostIpAddresses.Size())
-	for _, ipAddress := range b.hostIpAddresses.GetAllEntries() {
-		if _, ok := uniqueIpAddresses[ipAddress]; ipAddress != "" && !ok {
-			uniqueIpAddresses[ipAddress] = true
-			if b.suspendNewBlueConnectionsWhenInProgress {
-				interimStatus := b.interimStatuses[driver_infrastructure.SOURCE.GetValue()]
-				if !interimStatus.IsZero() && utils.FilterMapFindFirstValue(interimStatus.StartIpAddressesByHostMap, func(s string) bool {
-					return s != "" && s == ipAddress
-				}) != "" {
-					connectRouting = append(connectRouting, NewSuspendConnectRouting(ipAddress, driver_infrastructure.BlueGreenRole{}, b.bgdId))
-					connectRouting = append(connectRouting, NewSuspendConnectRouting(host_info_util.GetHostAndPort(ipAddress, interimStatus.Port),
-						driver_infrastructure.BlueGreenRole{}, b.bgdId))
-					continue
-				}
-			}
-			// Try to confirm that the ipAddress belongs to one of the green hosts
-			interimStatus := b.interimStatuses[driver_infrastructure.TARGET.GetValue()]
-			if !interimStatus.IsZero() && utils.FilterMapFindFirstValue(interimStatus.StartIpAddressesByHostMap, func(s string) bool {
-				return s != "" && s == ipAddress
-			}) != "" {
-				connectRouting = append(connectRouting, NewSuspendConnectRouting(ipAddress, driver_infrastructure.BlueGreenRole{}, b.bgdId))
-				connectRouting = append(connectRouting, NewSuspendConnectRouting(host_info_util.GetHostAndPort(ipAddress, interimStatus.Port),
-					driver_infrastructure.BlueGreenRole{}, b.bgdId))
+	uniqueIpAddresses := b.getUniqueIpAddresses()
+	for ipAddress := range uniqueIpAddresses {
+		if b.suspendNewBlueConnectionsWhenInProgress {
+			interimStatus := b.interimStatuses[driver_infrastructure.SOURCE.GetValue()]
+			if interimStatusHasIpAddress(interimStatus, ipAddress) {
+				connectRoutings = b.appendSuspendConnectRouting(connectRoutings, ipAddress)
+				connectRoutings = b.appendSuspendConnectRouting(connectRoutings, host_info_util.GetHostAndPort(ipAddress, interimStatus.port))
 				continue
 			}
 		}
+		// Try to confirm that the ipAddress belongs to one of the green hosts
+		interimStatus := b.interimStatuses[driver_infrastructure.TARGET.GetValue()]
+		if interimStatusHasIpAddress(interimStatus, ipAddress) {
+			connectRoutings = b.appendSuspendConnectRouting(connectRoutings, ipAddress)
+			connectRoutings = b.appendSuspendConnectRouting(connectRoutings, host_info_util.GetHostAndPort(ipAddress, interimStatus.port))
+		}
 	}
 
-	executeRouting := []driver_infrastructure.ExecuteRouting{
+	executeRoutings := []driver_infrastructure.ExecuteRouting{
 		NewSuspendExecuteRouting("", driver_infrastructure.SOURCE, b.bgdId),
 		NewSuspendExecuteRouting("", driver_infrastructure.TARGET, b.bgdId),
 	}
 
 	// All traffic through connections with IP addresses that belong to blue or green hosts should be on hold.
 	for ipAddress := range uniqueIpAddresses {
-		if ipAddress != "" {
-			if b.suspendNewBlueConnectionsWhenInProgress {
-				interimStatus := b.interimStatuses[driver_infrastructure.SOURCE.GetValue()]
-				if !interimStatus.IsZero() && utils.FilterMapFindFirstValue(interimStatus.StartIpAddressesByHostMap, func(s string) bool {
-					return s != "" && s == ipAddress
-				}) != "" {
-					executeRouting = append(executeRouting, NewSuspendExecuteRouting(ipAddress, driver_infrastructure.BlueGreenRole{}, b.bgdId))
-					executeRouting = append(executeRouting, NewSuspendExecuteRouting(host_info_util.GetHostAndPort(ipAddress, interimStatus.Port),
-						driver_infrastructure.BlueGreenRole{}, b.bgdId))
-					continue
-				}
-			}
-			// Try to confirm that the ipAddress belongs to one of the green hosts
-			interimStatus := b.interimStatuses[driver_infrastructure.TARGET.GetValue()]
-			if !interimStatus.IsZero() && utils.FilterMapFindFirstValue(interimStatus.StartIpAddressesByHostMap, func(s string) bool {
-				return s != "" && s == ipAddress
-			}) != "" {
-				executeRouting = append(executeRouting, NewSuspendExecuteRouting(ipAddress, driver_infrastructure.BlueGreenRole{}, b.bgdId))
-				executeRouting = append(executeRouting, NewSuspendExecuteRouting(host_info_util.GetHostAndPort(ipAddress, interimStatus.Port),
-					driver_infrastructure.BlueGreenRole{}, b.bgdId))
+		if b.suspendNewBlueConnectionsWhenInProgress {
+			interimStatus := b.interimStatuses[driver_infrastructure.SOURCE.GetValue()]
+			if interimStatusHasIpAddress(interimStatus, ipAddress) {
+				executeRoutings = b.appendSuspendExecuteRouting(executeRoutings, ipAddress)
+				executeRoutings = b.appendSuspendExecuteRouting(executeRoutings, host_info_util.GetHostAndPort(ipAddress, interimStatus.port))
 				continue
 			}
-			executeRouting = append(executeRouting, NewSuspendExecuteRouting(ipAddress, driver_infrastructure.BlueGreenRole{}, b.bgdId))
 		}
+		// Try to confirm that the ipAddress belongs to one of the green hosts
+		interimStatus := b.interimStatuses[driver_infrastructure.TARGET.GetValue()]
+		if interimStatusHasIpAddress(interimStatus, ipAddress) {
+			executeRoutings = b.appendSuspendExecuteRouting(executeRoutings, ipAddress)
+			executeRoutings = b.appendSuspendExecuteRouting(executeRoutings, host_info_util.GetHostAndPort(ipAddress, interimStatus.port))
+			continue
+		}
+		executeRoutings = b.appendSuspendExecuteRouting(executeRoutings, ipAddress)
 	}
 
 	return driver_infrastructure.NewBgStatus(
 		b.bgdId,
 		driver_infrastructure.IN_PROGRESS,
-		connectRouting,
-		executeRouting,
+		connectRoutings,
+		executeRoutings,
 		b.roleByHost,
 		b.correspondingHosts,
 	)
+}
+
+func (b *BlueGreenStatusProvider) getUniqueIpAddresses() map[string]bool {
+	uniqueIpAddresses := make(map[string]bool, b.hostIpAddresses.Size())
+	for _, ipAddress := range b.hostIpAddresses.GetAllEntries() {
+		if _, ok := uniqueIpAddresses[ipAddress]; ipAddress != "" && !ok {
+			uniqueIpAddresses[ipAddress] = true
+		}
+	}
+	return uniqueIpAddresses
+}
+
+func (b *BlueGreenStatusProvider) appendSuspendConnectRouting(connectRoutings []driver_infrastructure.ConnectRouting, host string) []driver_infrastructure.ConnectRouting {
+	return append(connectRoutings, NewSuspendConnectRouting(host, driver_infrastructure.BlueGreenRole{}, b.bgdId))
+}
+
+func (b *BlueGreenStatusProvider) appendSuspendExecuteRouting(executeRoutings []driver_infrastructure.ExecuteRouting, host string) []driver_infrastructure.ExecuteRouting {
+	return append(executeRoutings, NewSuspendExecuteRouting(host, driver_infrastructure.BlueGreenRole{}, b.bgdId))
 }
 
 func (b *BlueGreenStatusProvider) GetStatusOfPost() driver_infrastructure.BlueGreenStatus {
@@ -600,84 +600,84 @@ func (b *BlueGreenStatusProvider) GetStatusOfPost() driver_infrastructure.BlueGr
 	)
 }
 
-func (b *BlueGreenStatusProvider) CreatePostRouting() []driver_infrastructure.ConnectRouting {
-	var connectRouting []driver_infrastructure.ConnectRouting
-	if !b.blueDnsUpdateCompleted || !b.allGreenHostsChangedName.Load() {
-		for host, role := range b.roleByHost.GetAllEntries() {
-			if role == driver_infrastructure.SOURCE && utils.FilterSetFindFirst(b.correspondingHosts.GetAllEntries(), func(s string) bool {
-				return s == host
-			}) != "" {
-				hostPair, ok := b.correspondingHosts.Get(host)
-				greenHostInfo := hostPair.GetRight()
-				if !ok || greenHostInfo.IsNil() {
-					// A corresponding host is not found. We need to suspend this call.
-					connectRouting = append(connectRouting, NewSuspendUntilCorrespondingHostFoundConnectRouting(
-						host,
-						role,
-						b.bgdId,
-					))
-					interimStatus := b.interimStatuses[role.GetValue()]
-					if !interimStatus.IsZero() {
-						connectRouting = append(connectRouting, NewSuspendUntilCorrespondingHostFoundConnectRouting(
-							host_info_util.GetHostAndPort(host, interimStatus.Port),
-							role,
-							b.bgdId,
-						))
-					}
-				} else {
-					greenHost := greenHostInfo.Host
-					greenIp, ok := b.hostIpAddresses.Get(greenHost)
-					var greenHostInfoWithIp *host_info_util.HostInfo
-					if ok && greenIp != "" {
-						greenHostInfoWithIp, _ = host_info_util.NewHostInfoBuilder().CopyFrom(greenHostInfo).SetHost(greenIp).Build()
-					} else {
-						greenHostInfoWithIp = greenHostInfo
-					}
-					blueHostInfo := hostPair.GetLeft()
-					var iamHosts []*host_info_util.HostInfo
-					if b.IsAlreadySuccessfullyConnected(greenHost, host) && !blueHostInfo.IsNil() {
-						// Green host has already changed its name, and it's not a new blue host (no prefixes).
-						iamHosts = []*host_info_util.HostInfo{blueHostInfo}
-					} else if !blueHostInfo.IsNil() {
-						// Green host isn't yet changed its name, so we need to try both possible IAM host options.
-						iamHosts = []*host_info_util.HostInfo{greenHostInfo, blueHostInfo}
-					} else {
-						iamHosts = []*host_info_util.HostInfo{greenHostInfo}
-					}
-					var iamSuccessfulConnectNotify func(iamHost string) = nil
-					if utils.IsRdsInstance(host) {
-						iamSuccessfulConnectNotify = func(iamHost string) {
-							b.RegisterIamHost(greenHost, iamHost)
-						}
-					}
+func (b *BlueGreenStatusProvider) CreatePostRouting() (connectRoutings []driver_infrastructure.ConnectRouting) {
+	if b.blueDnsUpdateCompleted && b.allGreenHostsChangedName.Load() {
+		return
+	}
 
-					connectRouting = append(connectRouting, NewSubstituteConnectRouting(
-						host,
-						role,
-						greenHostInfoWithIp,
-						iamHosts,
-						iamSuccessfulConnectNotify,
-					))
-					interimStatus := b.interimStatuses[role.GetValue()]
-					if !interimStatus.IsZero() {
-						connectRouting = append(connectRouting, NewSubstituteConnectRouting(
-							host_info_util.GetHostAndPort(host, interimStatus.Port),
-							role,
-							greenHostInfoWithIp,
-							iamHosts,
-							iamSuccessfulConnectNotify,
-						))
-					}
+	for host, role := range b.roleByHost.GetAllEntries() {
+		if !b.blueHostInCorrespondingHosts(host, role) {
+			continue
+		}
+		hostPair, ok := b.correspondingHosts.Get(host)
+		greenHostInfo := hostPair.GetRight()
+		if !ok || greenHostInfo.IsNil() {
+			// A corresponding host is not found. We need to suspend this call.
+			connectRoutings = append(connectRoutings, NewSuspendUntilCorrespondingHostFoundConnectRouting(
+				host,
+				role,
+				b.bgdId,
+			))
+			interimStatus := b.interimStatuses[role.GetValue()]
+			if !interimStatus.IsZero() {
+				connectRoutings = append(connectRoutings, NewSuspendUntilCorrespondingHostFoundConnectRouting(
+					host_info_util.GetHostAndPort(host, interimStatus.port),
+					role,
+					b.bgdId,
+				))
+			}
+		} else {
+			greenHost := greenHostInfo.Host
+			greenIp, ok := b.hostIpAddresses.Get(greenHost)
+			var greenHostInfoWithIp *host_info_util.HostInfo
+			if ok && greenIp != "" {
+				greenHostInfoWithIp, _ = host_info_util.NewHostInfoBuilder().CopyFrom(greenHostInfo).SetHost(greenIp).Build()
+			} else {
+				greenHostInfoWithIp = greenHostInfo
+			}
+			blueHostInfo := hostPair.GetLeft()
+			var iamHosts []*host_info_util.HostInfo
+			if b.IsAlreadySuccessfullyConnected(greenHost, host) && !blueHostInfo.IsNil() {
+				// Green host has already changed its name, and it's not a new blue host (no prefixes).
+				iamHosts = []*host_info_util.HostInfo{blueHostInfo}
+			} else if !blueHostInfo.IsNil() {
+				// Green host hasn't yet changed its name, so we need to try both possible IAM host options.
+				iamHosts = []*host_info_util.HostInfo{greenHostInfo, blueHostInfo}
+			} else {
+				iamHosts = []*host_info_util.HostInfo{greenHostInfo}
+			}
+			var iamSuccessfulConnectNotify func(iamHost string) = nil
+			if utils.IsRdsInstance(host) {
+				iamSuccessfulConnectNotify = func(iamHost string) {
+					b.RegisterIamHost(greenHost, iamHost)
 				}
 			}
-		}
 
-		if !b.greenDnsRemoved {
-			// New connect calls to green endpoints should be rejected.
-			connectRouting = append(connectRouting, NewRejectConnectRouting("", driver_infrastructure.TARGET))
+			connectRoutings = append(connectRoutings, NewSubstituteConnectRouting(
+				host,
+				role,
+				greenHostInfoWithIp,
+				iamHosts,
+				iamSuccessfulConnectNotify,
+			))
+			interimStatus := b.interimStatuses[role.GetValue()]
+			if !interimStatus.IsZero() {
+				connectRoutings = append(connectRoutings, NewSubstituteConnectRouting(
+					host_info_util.GetHostAndPort(host, interimStatus.port),
+					role,
+					greenHostInfoWithIp,
+					iamHosts,
+					iamSuccessfulConnectNotify,
+				))
+			}
 		}
 	}
-	return connectRouting
+
+	if !b.greenDnsRemoved {
+		// New connect calls to green endpoints should be rejected.
+		connectRoutings = append(connectRoutings, NewRejectConnectRouting("", driver_infrastructure.TARGET))
+	}
+	return connectRoutings
 }
 
 func (b *BlueGreenStatusProvider) GetStatusOfCompleted() driver_infrastructure.BlueGreenStatus {
@@ -748,19 +748,7 @@ func (b *BlueGreenStatusProvider) IsAlreadySuccessfullyConnected(connectHost str
 }
 
 func (b *BlueGreenStatusProvider) getContextHash() uint64 {
-	return b.GetValueHash(b.GetValueHash(1, strconv.FormatBool(b.allGreenHostsChangedName.Load())), strconv.Itoa(b.iamHostSuccessfulConnects.Size()))
-}
-
-func (b *BlueGreenStatusProvider) GetValueHash(currentHash uint64, val string) uint64 {
-	// Use FNV-1a hash algorithm for string hashing
-	h := fnv.New64a()
-	_, err := h.Write([]byte(val))
-	if err != nil {
-		return 0
-	}
-	stringHash := h.Sum64()
-
-	return currentHash*31 + stringHash
+	return getValueHash(getValueHash(1, strconv.FormatBool(b.allGreenHostsChangedName.Load())), strconv.Itoa(b.iamHostSuccessfulConnects.Size()))
 }
 
 func (b *BlueGreenStatusProvider) StorePhaseTime(phase driver_infrastructure.BlueGreenPhase) {
@@ -878,15 +866,9 @@ func (b *BlueGreenStatusProvider) LogSwitchoverFinalSummary() {
 		entries = append(entries, phaseEntry{key: key, phaseTime: phaseTime})
 	}
 
-	// Sort by timestamp nano (we need to add timestampNano field to PhaseTimeInfo)
-	// For now, sort by timestamp
-	for i := 0; i < len(entries)-1; i++ {
-		for j := i + 1; j < len(entries); j++ {
-			if entries[i].phaseTime.Timestamp.After(entries[j].phaseTime.Timestamp) {
-				entries[i], entries[j] = entries[j], entries[i]
-			}
-		}
-	}
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].phaseTime.Timestamp.Before(entries[j].phaseTime.Timestamp)
+	})
 
 	var logMessage strings.Builder
 	logMessage.WriteString(fmt.Sprintf("[bgdId: '%s']", b.bgdId))
@@ -979,4 +961,17 @@ func (b *BlueGreenStatusProvider) LogCurrentContext() {
 
 func (b *BlueGreenStatusProvider) isZero() bool {
 	return b == nil || (b.pluginService == nil && b.props == nil && b.bgdId == "")
+}
+
+func (b *BlueGreenStatusProvider) blueHostInCorrespondingHosts(host string, role driver_infrastructure.BlueGreenRole) bool {
+	return role == driver_infrastructure.SOURCE && utils.FilterSetFindFirst(b.correspondingHosts.GetAllEntries(), func(s string) bool {
+		return s == host
+	}) != ""
+}
+
+func interimStatusHasIpAddress(interimStatus BlueGreenInterimStatus, ipAddress string) bool {
+	firstMatchToIpAddress := utils.FilterMapFindFirstValue(interimStatus.startIpAddressesByHostMap, func(s string) bool {
+		return s != "" && s == ipAddress
+	})
+	return !interimStatus.IsZero() && firstMatchToIpAddress != ""
 }
