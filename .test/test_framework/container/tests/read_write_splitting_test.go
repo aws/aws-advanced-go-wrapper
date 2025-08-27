@@ -21,6 +21,7 @@ import (
 	"database/sql"
 	"log/slog"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,7 +30,9 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/internal_pool"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -86,12 +89,18 @@ func rwsplit_getDsnForTestsWithProxy(environment *test_utils.TestEnvironment, ho
 func rwsplit_getPropsForTestsWithProxy(environment *test_utils.TestEnvironment, host string, plugins string, timeout int) map[string]string {
 	monitoringConnectTimeoutSeconds := strconv.Itoa(timeout - 1)
 	monitoringConnectTimeoutParameterName := property_util.MONITORING_PROPERTY_PREFIX
+	var driverProtocol = ""
+	var timeoutParamName = ""
 	switch environment.Info().Request.Engine {
 	case test_utils.PG:
-		monitoringConnectTimeoutParameterName = monitoringConnectTimeoutParameterName + "connect_timeout"
+		timeoutParamName = "connect_timeout"
+		monitoringConnectTimeoutParameterName = monitoringConnectTimeoutParameterName + timeoutParamName
+		driverProtocol = utils.PGX_DRIVER_PROTOCOL
 	case test_utils.MYSQL:
+		timeoutParamName = "readTimeout"
 		monitoringConnectTimeoutParameterName = monitoringConnectTimeoutParameterName + "readTimeout"
 		monitoringConnectTimeoutSeconds = monitoringConnectTimeoutSeconds + "s"
+		driverProtocol = utils.MYSQL_DRIVER_PROTOCOL
 	}
 	return map[string]string{
 		"host":                       host,
@@ -104,16 +113,18 @@ func rwsplit_getPropsForTestsWithProxy(environment *test_utils.TestEnvironment, 
 		"failoverTimeoutMs":          strconv.Itoa(15 * 1000),
 		// each monitoring connection has monitoringConnectTimeoutSeconds seconds to connect
 		monitoringConnectTimeoutParameterName: monitoringConnectTimeoutSeconds,
+		timeoutParamName:                      monitoringConnectTimeoutSeconds,
+		property_util.DRIVER_PROTOCOL.Name:    driverProtocol,
 	}
 }
 
 func TestReadWriteSplitting_SetReadOnlyCtxTrue(t *testing.T) {
+	err := test_utils.BasicSetup(t.Name())
+	require.NoError(t, err)
+	defer test_utils.BasicCleanup(t.Name())
 	env, err := test_utils.GetCurrentTestEnvironment()
 	require.NoError(t, err)
 	skipIfInsufficientInstances(t, env, 2)
-
-	test_utils.BasicCleanup(t.Name())
-	defer test_utils.BasicCleanup(t.Name())
 	env, auroraTestUtility, db := setupReadWriteSplittingTest(t)
 	defer db.Close()
 
@@ -126,12 +137,12 @@ func TestReadWriteSplitting_SetReadOnlyCtxTrue(t *testing.T) {
 }
 
 func TestReadWriteSplitting_SetReadOnlyCtxFalse(t *testing.T) {
+	err := test_utils.BasicSetup(t.Name())
+	require.NoError(t, err)
+	defer test_utils.BasicCleanup(t.Name())
 	env, err := test_utils.GetCurrentTestEnvironment()
 	require.NoError(t, err)
 	skipIfInsufficientInstances(t, env, 2)
-
-	test_utils.BasicCleanup(t.Name())
-	defer test_utils.BasicCleanup(t.Name())
 	env, auroraTestUtility, db := setupReadWriteSplittingTest(t)
 	defer db.Close()
 
@@ -141,12 +152,12 @@ func TestReadWriteSplitting_SetReadOnlyCtxFalse(t *testing.T) {
 }
 
 func TestReadWriteSplitting_SetReadOnlyCtxNoCtx(t *testing.T) {
+	err := test_utils.BasicSetup(t.Name())
+	require.NoError(t, err)
+	defer test_utils.BasicCleanup(t.Name())
 	env, err := test_utils.GetCurrentTestEnvironment()
 	require.NoError(t, err)
 	skipIfInsufficientInstances(t, env, 2)
-
-	test_utils.BasicCleanup(t.Name())
-	defer test_utils.BasicCleanup(t.Name())
 	env, auroraTestUtility, db := setupReadWriteSplittingTest(t)
 	defer db.Close()
 
@@ -156,12 +167,12 @@ func TestReadWriteSplitting_SetReadOnlyCtxNoCtx(t *testing.T) {
 }
 
 func TestReadWriteSplitting_SetReadOnlyCtxSwitchFalseTrueNoCtx(t *testing.T) {
+	err := test_utils.BasicSetup(t.Name())
+	require.NoError(t, err)
+	defer test_utils.BasicCleanup(t.Name())
 	env, err := test_utils.GetCurrentTestEnvironment()
 	require.NoError(t, err)
 	skipIfInsufficientInstances(t, env, 2)
-
-	test_utils.BasicCleanup(t.Name())
-	defer test_utils.BasicCleanup(t.Name())
 	env, auroraTestUtility, db := setupReadWriteSplittingTest(t)
 	defer db.Close()
 
@@ -182,11 +193,12 @@ func TestReadWriteSplitting_SetReadOnlyCtxSwitchFalseTrueNoCtx(t *testing.T) {
 }
 
 func TestReadWriteSplitting_SetReadOnlyFalseInReadOnlyTransaction(t *testing.T) {
+	err := test_utils.BasicSetup(t.Name())
+	require.NoError(t, err)
+	defer test_utils.BasicCleanup(t.Name())
 	env, err := test_utils.GetCurrentTestEnvironment()
 	require.NoError(t, err)
 	skipIfInsufficientInstances(t, env, 2)
-
-	defer test_utils.BasicCleanup(t.Name())
 	env, auroraTestUtility, db := setupReadWriteSplittingTest(t)
 	defer db.Close()
 
@@ -204,11 +216,12 @@ func TestReadWriteSplitting_SetReadOnlyFalseInReadOnlyTransaction(t *testing.T) 
 }
 
 func TestReadWriteSplitting_SetReadOnlyTrueInTransaction(t *testing.T) {
+	err := test_utils.BasicSetup(t.Name())
+	require.NoError(t, err)
+	defer test_utils.BasicCleanup(t.Name())
 	env, err := test_utils.GetCurrentTestEnvironment()
 	require.NoError(t, err)
 	skipIfInsufficientInstances(t, env, 2)
-
-	defer test_utils.BasicCleanup(t.Name())
 	env, _, db := setupReadWriteSplittingTest(t)
 	defer db.Close()
 
@@ -226,11 +239,12 @@ func TestReadWriteSplitting_SetReadOnlyTrueInTransaction(t *testing.T) {
 }
 
 func TestReadWriteSplitting_ExecuteWithCachedConnection(t *testing.T) {
+	err := test_utils.BasicSetup(t.Name())
+	require.NoError(t, err)
+	defer test_utils.BasicCleanup(t.Name())
 	env, err := test_utils.GetCurrentTestEnvironment()
 	require.NoError(t, err)
 	skipIfInsufficientInstances(t, env, 2)
-
-	defer test_utils.BasicCleanup(t.Name())
 	env, auroraTestUtility, db := setupReadWriteSplittingTest(t)
 	defer db.Close()
 
@@ -269,14 +283,14 @@ func TestReadWriteSplitting_ExecuteWithCachedConnection(t *testing.T) {
 }
 
 func TestReadWriteSplitting_NoReaders(t *testing.T) {
+	err := test_utils.BasicSetup(t.Name())
+	require.NoError(t, err)
+	defer test_utils.BasicCleanup(t.Name())
 	// Setup + cleanup
-	test_utils.EnableAllConnectivity(true)
 	env, err := test_utils.GetCurrentTestEnvironment()
 	require.NoError(t, err)
 	skipIfInsufficientInstances(t, env, 3)
 	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info().Region)
-	defer test_utils.BasicCleanup(t.Name())
-	defer test_utils.EnableAllConnectivity(true)
 
 	require.NoError(t, err)
 	instances := env.Info().DatabaseInfo.Instances
@@ -310,14 +324,23 @@ func TestReadWriteSplitting_NoReaders(t *testing.T) {
 }
 
 func TestReadWriteSplitting_WriterFailover(t *testing.T) {
+	utils.SetPreparedHostFunc(func(host string) string {
+		preparedHost := host
+		const suffix = ".proxied"
+		if strings.HasSuffix(host, suffix) {
+			preparedHost = strings.TrimSuffix(host, suffix)
+		}
+		return preparedHost
+	})
+	defer utils.ResetPreparedHostFunc()
+	err := test_utils.BasicSetup(t.Name())
+	require.NoError(t, err)
+	defer test_utils.BasicCleanup(t.Name())
 	env, err := test_utils.GetCurrentTestEnvironment()
 	require.NoError(t, err)
 	skipIfInsufficientInstances(t, env, 3)
 
-	test_utils.EnableAllConnectivity(true)
 	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info().Region)
-	defer test_utils.BasicCleanup(t.Name())
-	defer test_utils.EnableAllConnectivity(true)
 
 	require.NoError(t, err)
 	instances := env.Info().DatabaseInfo.Instances
@@ -368,6 +391,7 @@ func TestReadWriteSplitting_WriterFailover(t *testing.T) {
 	awsWrapperError, ok := err.(*error_util.AwsWrapperError)
 	assert.True(t, ok)
 	assert.True(t, awsWrapperError.IsFailoverErrorType())
+	assert.True(t, awsWrapperError.IsType(error_util.FailoverSuccessErrorType))
 
 	instanceId, err = executeInstanceQueryWrite(env, conn, 60)
 	require.NoError(t, err)
@@ -379,14 +403,26 @@ func TestReadWriteSplitting_WriterFailover(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
+
 func TestReadWriteSplitting_FailoverToNewReader(t *testing.T) {
+	utils.SetPreparedHostFunc(func(host string) string {
+		preparedHost := host
+		const suffix = ".proxied"
+		if strings.HasSuffix(host, suffix) {
+			preparedHost = strings.TrimSuffix(host, suffix)
+		}
+		return preparedHost
+	})
+	defer utils.ResetPreparedHostFunc()
+	err := test_utils.BasicSetup(t.Name())
+	require.NoError(t, err)
+	defer test_utils.BasicCleanup(t.Name())
 	env, err := test_utils.GetCurrentTestEnvironment()
 	require.NoError(t, err)
-	skipIfInsufficientInstances(t, env, 3)
 
-	test_utils.EnableAllConnectivity(true)
-	defer test_utils.BasicCleanup(t.Name())
-	defer test_utils.EnableAllConnectivity(true)
+	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info().Region)
+
+	skipIfInsufficientInstances(t, env, 3)
 
 	props := rwsplit_getPropsForTestsWithProxy(env, env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 5)
 	property_util.FAILOVER_MODE.Set(props, "reader-or-writer")
@@ -403,7 +439,7 @@ func TestReadWriteSplitting_FailoverToNewReader(t *testing.T) {
 
 	originalWriterId, err := executeInstanceQueryWrite(env, conn, 60)
 	require.NoError(t, err)
-
+	assert.True(t, auroraTestUtility.IsDbInstanceWriter(originalWriterId, ""))
 	slog.Info("originalWriterId", "writerId", originalWriterId)
 	originalReaderId, err := executeInstanceQueryReadOnly(env, conn, 60)
 	require.NoError(t, err)
@@ -411,6 +447,7 @@ func TestReadWriteSplitting_FailoverToNewReader(t *testing.T) {
 	var otherReaderId string = ""
 
 	instances := env.Info().DatabaseInfo.Instances
+
 	for i := 1; i < len(instances); i++ {
 		if instances[i].InstanceId() != originalReaderId {
 			otherReaderId = instances[i].InstanceId()
@@ -426,40 +463,50 @@ func TestReadWriteSplitting_FailoverToNewReader(t *testing.T) {
 			test_utils.DisableProxyConnectivity(env.ProxyInfos()[instances[i].InstanceId()])
 		}
 	}
-	time.Sleep(time.Duration(10) * time.Second)
 
 	_, err = executeInstanceQueryReadOnly(env, conn, 60)
 	assert.Error(t, err)
 	awsWrapperError, ok := err.(*error_util.AwsWrapperError)
 	assert.True(t, ok)
 	assert.True(t, awsWrapperError.IsFailoverErrorType())
+	assert.True(t, awsWrapperError.IsType(error_util.FailoverSuccessErrorType))
 
-	currentReaderId, err := executeInstanceQueryReadOnly(env, conn, 60)
+	currentReaderId, err := executeInstanceQueryReadOnly(env, conn, 10)
 	require.NoError(t, err)
 
 	assert.Equal(t, otherReaderId, currentReaderId)
 	assert.NotEqual(t, originalReaderId, currentReaderId)
 
 	test_utils.EnableAllConnectivity(true)
-	time.Sleep(time.Duration(10) * time.Second)
-	currentId, err := executeInstanceQueryWrite(env, conn, 60)
+	time.Sleep(time.Duration(20) * time.Second)
+	currentId, err := executeInstanceQueryWrite(env, conn, 10)
 	require.NoError(t, err)
 	assert.Equal(t, originalWriterId, currentId)
 
-	currentId, err = executeInstanceQueryReadOnly(env, conn, 60)
+	currentId, err = executeInstanceQueryReadOnly(env, conn, 10)
 	require.NoError(t, err)
 	assert.Equal(t, otherReaderId, currentId)
 }
 
 func TestReadWriteSplitting_FailoverReaderToWriter(t *testing.T) {
+	utils.SetPreparedHostFunc(func(host string) string {
+		preparedHost := host
+		const suffix = ".proxied"
+		if strings.HasSuffix(host, suffix) {
+			preparedHost = strings.TrimSuffix(host, suffix)
+		}
+		return preparedHost
+	})
+	defer utils.ResetPreparedHostFunc()
+
+	err := test_utils.BasicSetup(t.Name())
+	require.NoError(t, err)
+	defer test_utils.BasicCleanup(t.Name())
 	env, err := test_utils.GetCurrentTestEnvironment()
 	require.NoError(t, err)
 	skipIfInsufficientInstances(t, env, 3)
 
-	test_utils.EnableAllConnectivity(true)
 	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info().Region)
-	defer test_utils.BasicCleanup(t.Name())
-	defer test_utils.EnableAllConnectivity(true)
 
 	require.NoError(t, err)
 	instances := env.Info().DatabaseInfo.Instances
@@ -495,12 +542,15 @@ func TestReadWriteSplitting_FailoverReaderToWriter(t *testing.T) {
 		test_utils.DisableProxyConnectivity(env.ProxyInfos()[instance.InstanceId()])
 	}
 
+	time.Sleep(time.Duration(5) * time.Second)
+
 	// connect to reader
 	_, err = executeInstanceQueryReadOnly(env, conn, 60)
 	assert.Error(t, err)
 	awsWrapperError, ok := err.(*error_util.AwsWrapperError)
 	assert.True(t, ok)
 	assert.True(t, awsWrapperError.IsFailoverErrorType())
+	assert.True(t, awsWrapperError.IsType(error_util.FailoverSuccessErrorType))
 
 	instanceId, err := executeInstanceQueryReadOnly(env, conn, 60)
 	assert.NoError(t, err)
@@ -508,41 +558,54 @@ func TestReadWriteSplitting_FailoverReaderToWriter(t *testing.T) {
 
 	test_utils.EnableAllConnectivity(true)
 	// Wait for hosts to be set to AVAILABLE
-	time.Sleep(time.Duration(10) * time.Second)
+	plugin_helpers.ClearCaches()
+	time.Sleep(time.Duration(40) * time.Second)
 
 	instanceId, err = executeInstanceQueryWrite(env, conn, 60)
 	assert.NoError(t, err)
 	assert.Equal(t, originalWriterId, instanceId)
 
-	instanceId, err = executeInstanceQueryReadOnly(env, conn, 2)
+	instanceId, err = executeInstanceQueryReadOnly(env, conn, 60)
 	assert.NoError(t, err)
 	assert.NotEqual(t, originalWriterId, instanceId)
 }
 
-func setInternalPoolProvider(poolOptions ...internal_pool.InternalPoolOption) {
+func setInternalPoolProvider(poolOptions ...internal_pool.InternalPoolOption) *internal_pool.InternalPooledConnectionProvider {
 	options := internal_pool.NewInternalPoolOptions(poolOptions...)
 	provider := internal_pool.NewInternalPooledConnectionProvider(
 		options,
 		0,
 	)
 	driver_infrastructure.SetCustomConnectionProvider(provider)
+	return provider
 }
+
 func TestPooledConnection_Failover(t *testing.T) {
+	err := test_utils.BasicSetup(t.Name())
+	require.NoError(t, err)
+	defer test_utils.BasicCleanup(t.Name())
+	utils.SetPreparedHostFunc(func(host string) string {
+		preparedHost := host
+		const suffix = ".proxied"
+		if strings.HasSuffix(host, suffix) {
+			preparedHost = strings.TrimSuffix(host, suffix)
+		}
+		return preparedHost
+	})
+	defer utils.ResetPreparedHostFunc()
 	env, err := test_utils.GetCurrentTestEnvironment()
 	require.NoError(t, err)
 	skipIfInsufficientInstances(t, env, 3)
 
-	setInternalPoolProvider()
+	provider := setInternalPoolProvider()
 	defer driver_infrastructure.ResetCustomConnectionProvider()
+	defer provider.ReleaseResources()
 
-	test_utils.EnableAllConnectivity(true)
 	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info().Region)
-	defer test_utils.BasicCleanup(t.Name())
-	defer test_utils.EnableAllConnectivity(true)
 
 	require.NoError(t, err)
 
-	dsn := rwsplit_getDsnForTestsWithProxy(env, env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 5)
+	dsn := rwsplit_getDsnForTestsWithProxy(env, env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 4)
 
 	db, err := test_utils.OpenDb(env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
@@ -558,33 +621,48 @@ func TestPooledConnection_Failover(t *testing.T) {
 	assert.True(t, auroraTestUtility.IsDbInstanceWriter(originalWriterId, ""))
 
 	test_utils.DisableAllConnectivity()
-
+	time.Sleep(time.Duration(5) * time.Second)
 	// Expect error
-	_, err = executeInstanceQueryReadOnly(env, conn, 60)
+	_, err = executeInstanceQueryReadOnly(env, conn, 5)
 	require.Error(t, err)
+	awsWrapperError, ok := err.(*error_util.AwsWrapperError)
+	assert.True(t, ok)
+	assert.True(t, awsWrapperError.IsFailoverErrorType())
+	assert.True(t, awsWrapperError.IsType(error_util.FailoverFailedErrorType))
 
 	test_utils.EnableAllConnectivity(true)
 	err = test_utils.VerifyClusterStatus()
 	require.NoError(t, err)
 	conn2, err := db.Conn(context.TODO())
 	require.NoError(t, err)
+	defer conn2.Close()
 
-	newWriterId, err := executeInstanceQueryWrite(env, conn2, 60)
+	newWriterId, err := executeInstanceQueryWrite(env, conn2, 2)
 	require.NoError(t, err)
 	assert.Equal(t, originalWriterId, newWriterId)
 }
 
 func TestPooledConnection_FailoverInTransaction(t *testing.T) {
+	err := test_utils.BasicSetup(t.Name())
+	require.NoError(t, err)
+	defer test_utils.BasicCleanup(t.Name())
+	utils.SetPreparedHostFunc(func(host string) string {
+		preparedHost := host
+		const suffix = ".proxied"
+		if strings.HasSuffix(host, suffix) {
+			preparedHost = strings.TrimSuffix(host, suffix)
+		}
+		return preparedHost
+	})
+	defer utils.ResetPreparedHostFunc()
+
 	env, err := test_utils.GetCurrentTestEnvironment()
 	require.NoError(t, err)
 	skipIfInsufficientInstances(t, env, 3)
 
 	setInternalPoolProvider()
 	defer driver_infrastructure.ResetCustomConnectionProvider()
-	test_utils.EnableAllConnectivity(true)
 	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info().Region)
-	defer test_utils.BasicCleanup(t.Name())
-	defer test_utils.EnableAllConnectivity(true)
 
 	require.NoError(t, err)
 
@@ -618,6 +696,7 @@ func TestPooledConnection_FailoverInTransaction(t *testing.T) {
 	awsWrapperError, ok := err.(*error_util.AwsWrapperError)
 	assert.True(t, ok)
 	assert.True(t, awsWrapperError.IsFailoverErrorType())
+	assert.True(t, awsWrapperError.IsType(error_util.TransactionResolutionUnknownErrorType))
 
 	newWriter, err := executeInstanceQueryReadOnly(env, conn, 5)
 	assert.NoError(t, err)
