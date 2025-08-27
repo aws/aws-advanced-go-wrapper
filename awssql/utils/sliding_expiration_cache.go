@@ -74,6 +74,8 @@ func (c *SlidingExpirationCache[T]) Put(key string, value T, itemExpiration time
 }
 
 func (c *SlidingExpirationCache[T]) Get(key string, itemExpiration time.Duration) (T, bool) {
+	c.cleanupIfExpired(key)
+
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -126,6 +128,19 @@ func (c *SlidingExpirationCache[T]) Remove(key string) {
 
 	if ok && cacheItem != nil && c.itemDisposalFunc != nil {
 		c.itemDisposalFunc(cacheItem.item)
+	}
+}
+
+func (c *SlidingExpirationCache[T]) cleanupIfExpired(key string) {
+	c.lock.Lock()
+
+	cacheItem, ok := c.cache[key]
+	if ok && cacheItem != nil && cacheItem.shouldCleanup(c.shouldDisposeFunc) {
+		delete(c.cache, key)
+		c.lock.Unlock()
+		c.itemDisposalFunc(cacheItem.item)
+	} else {
+		c.lock.Unlock()
 	}
 }
 
