@@ -19,7 +19,6 @@ package utils
 import (
 	"context"
 	"log/slog"
-	"reflect"
 	"sync"
 	"time"
 
@@ -64,6 +63,7 @@ func NewSlidingExpirationCache[T any](id string, funcs ...DisposalFunc[T]) *Slid
 }
 
 func (c *SlidingExpirationCache[T]) Put(key string, value T, itemExpiration time.Duration) {
+	c.Remove(key)
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -80,7 +80,7 @@ func (c *SlidingExpirationCache[T]) Get(key string, itemExpiration time.Duration
 	defer c.lock.RUnlock()
 
 	item, ok := c.cache[key]
-	if !ok || item.shouldCleanup(c.shouldDisposeFunc) {
+	if !ok {
 		var zeroValue T
 		return zeroValue, false
 	}
@@ -96,21 +96,17 @@ func (c *SlidingExpirationCache[T]) ComputeIfAbsent(key string, computeFunc func
 		return item
 	}
 
-	if reflect.ValueOf(item).IsValid() {
-		c.Remove(key)
-	}
-
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.cache[key] = &cacheItem[T]{cacheValue[T]{
 		item:           computeFunc(),
 		expirationTime: time.Now().Add(itemExpiration),
 	}}
-	c.cache[key].withExtendExpiration(itemExpiration)
 	return c.cache[key].item
 }
 
 func (c *SlidingExpirationCache[T]) PutIfAbsent(key string, value T, expiration time.Duration) {
+	c.cleanupIfExpired(key)
 	c.lock.Lock()
 	_, ok := c.cache[key]
 	c.lock.Unlock()
@@ -138,7 +134,9 @@ func (c *SlidingExpirationCache[T]) cleanupIfExpired(key string) {
 	if ok && cacheItem != nil && cacheItem.shouldCleanup(c.shouldDisposeFunc) {
 		delete(c.cache, key)
 		c.lock.Unlock()
-		c.itemDisposalFunc(cacheItem.item)
+		if c.itemDisposalFunc != nil {
+			c.itemDisposalFunc(cacheItem.item)
+		}
 	} else {
 		c.lock.Unlock()
 	}
