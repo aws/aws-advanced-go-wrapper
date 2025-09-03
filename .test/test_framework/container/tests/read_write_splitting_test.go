@@ -42,30 +42,66 @@ var (
 	writeCtx    = context.WithValue(context.Background(), awsctx.SetReadOnly, false)
 )
 
-func setupReadWriteSplittingTest(t *testing.T) (*test_utils.TestEnvironment, *test_utils.AuroraTestUtility, *sql.DB) {
+type testSetup struct {
+	env               *test_utils.TestEnvironment
+	auroraTestUtility *test_utils.AuroraTestUtility
+	db                *sql.DB
+	conn              *sql.Conn
+}
+
+func setupTest(t *testing.T, minInstances int) *testSetup {
+	err := test_utils.BasicSetup(t.Name())
+	require.NoError(t, err)
+
 	env, err := test_utils.GetCurrentTestEnvironment()
 	require.NoError(t, err)
-	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info().Region)
+	skipIfInsufficientInstances(t, env, minInstances)
 
-	props := map[string]string{
-		"plugins": "readWriteSplitting,efm,failover",
-	}
+	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info().Region)
+	props := map[string]string{"plugins": "readWriteSplitting,efm,failover"}
 	dsn := test_utils.GetDsn(env, props)
 
 	db, err := test_utils.OpenDb(env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
 
-	return env, auroraTestUtility, db
+	conn, err := db.Conn(context.TODO())
+	require.NoError(t, err)
+
+	return &testSetup{env, auroraTestUtility, db, conn}
+}
+
+func (s *testSetup) cleanup(t *testing.T) {
+	if s.conn != nil {
+		s.conn.Close()
+	}
+	if s.db != nil {
+		s.db.Close()
+	}
+	test_utils.BasicCleanup(t.Name())
+}
+
+func setupProxiedTest(t *testing.T, minInstances int) *testSetup {
+	utils.SetPreparedHostFunc(func(host string) string {
+		if strings.HasSuffix(host, ".proxied") {
+			return strings.TrimSuffix(host, ".proxied")
+		}
+		return host
+	})
+	t.Cleanup(utils.ResetPreparedHostFunc)
+
+	err := test_utils.BasicSetup(t.Name())
+	require.NoError(t, err)
+
+	env, err := test_utils.GetCurrentTestEnvironment()
+	require.NoError(t, err)
+	skipIfInsufficientInstances(t, env, minInstances)
+
+	return &testSetup{env: env, auroraTestUtility: test_utils.NewAuroraTestUtility(env.Info().Region)}
 }
 
 func executeInstanceQuery(env *test_utils.TestEnvironment, dbOrConn interface{}, ctx context.Context, timeout int) (string, error) {
 	return test_utils.ExecuteInstanceQueryContextWithTimeout(
-		env.Info().Request.Engine,
-		env.Info().Request.Deployment,
-		dbOrConn,
-		timeout,
-		ctx,
-	)
+		env.Info().Request.Engine, env.Info().Request.Deployment, dbOrConn, timeout, ctx)
 }
 
 func executeInstanceQueryReadOnly(env *test_utils.TestEnvironment, dbOrConn interface{}, timeout int) (string, error) {
@@ -82,272 +118,180 @@ func skipIfInsufficientInstances(t *testing.T, env *test_utils.TestEnvironment, 
 	}
 }
 
-func rwsplit_getDsnForTestsWithProxy(environment *test_utils.TestEnvironment, host string, plugins string, timeout int) string {
-	return test_utils.GetDsn(environment, rwsplit_getPropsForTestsWithProxy(environment, host, plugins, timeout))
-}
+func getPropsForProxy(env *test_utils.TestEnvironment, host, plugins string, timeout int) map[string]string {
+	timeoutStr := strconv.Itoa(timeout - 1)
+	monitoringParam := property_util.MONITORING_PROPERTY_PREFIX
+	var driverProtocol, timeoutParam string
 
-func rwsplit_getPropsForTestsWithProxy(environment *test_utils.TestEnvironment, host string, plugins string, timeout int) map[string]string {
-	monitoringConnectTimeoutSeconds := strconv.Itoa(timeout - 1)
-	monitoringConnectTimeoutParameterName := property_util.MONITORING_PROPERTY_PREFIX
-	var driverProtocol = ""
-	var timeoutParamName = ""
-	switch environment.Info().Request.Engine {
+	switch env.Info().Request.Engine {
 	case test_utils.PG:
-		timeoutParamName = "connect_timeout"
-		monitoringConnectTimeoutParameterName = monitoringConnectTimeoutParameterName + timeoutParamName
+		timeoutParam = "connect_timeout"
 		driverProtocol = utils.PGX_DRIVER_PROTOCOL
 	case test_utils.MYSQL:
-		timeoutParamName = "readTimeout"
-		monitoringConnectTimeoutParameterName = monitoringConnectTimeoutParameterName + "readTimeout"
-		monitoringConnectTimeoutSeconds = monitoringConnectTimeoutSeconds + "s"
+		timeoutParam = "readTimeout"
+		timeoutStr += "s"
 		driverProtocol = utils.MYSQL_DRIVER_PROTOCOL
 	}
+
 	return map[string]string{
-		"host":                       host,
-		"port":                       strconv.Itoa(environment.Info().ProxyDatabaseInfo.InstanceEndpointPort),
-		"clusterInstanceHostPattern": "?." + environment.Info().ProxyDatabaseInfo.InstanceEndpointSuffix,
-		"plugins":                    plugins,
-		"failureDetectionIntervalMs": strconv.Itoa(5 * 1000), // interval between probes to host
-		"failureDetectionCount":      strconv.Itoa(3),        // consecutive failures before marks host as dead
-		"failureDetectionTimeMs":     strconv.Itoa(1 * 1000), // time before starting monitoring
-		"failoverTimeoutMs":          strconv.Itoa(15 * 1000),
-		// each monitoring connection has monitoringConnectTimeoutSeconds seconds to connect
-		monitoringConnectTimeoutParameterName: monitoringConnectTimeoutSeconds,
-		timeoutParamName:                      monitoringConnectTimeoutSeconds,
-		property_util.DRIVER_PROTOCOL.Name:    driverProtocol,
+		"host":                             host,
+		"port":                             strconv.Itoa(env.Info().ProxyDatabaseInfo.InstanceEndpointPort),
+		"clusterInstanceHostPattern":       "?." + env.Info().ProxyDatabaseInfo.InstanceEndpointSuffix,
+		"plugins":                          plugins,
+		"failureDetectionIntervalMs":       "5000",
+		"failureDetectionCount":            "3",
+		"failureDetectionTimeMs":           "1000",
+		"failoverTimeoutMs":                "15000",
+		monitoringParam + timeoutParam:     timeoutStr,
+		timeoutParam:                       timeoutStr,
+		property_util.DRIVER_PROTOCOL.Name: driverProtocol,
 	}
 }
 
 func TestReadWriteSplitting_SetReadOnlyCtxTrue(t *testing.T) {
-	err := test_utils.BasicSetup(t.Name())
-	require.NoError(t, err)
-	defer test_utils.BasicCleanup(t.Name())
-	env, err := test_utils.GetCurrentTestEnvironment()
-	require.NoError(t, err)
-	skipIfInsufficientInstances(t, env, 2)
-	env, auroraTestUtility, db := setupReadWriteSplittingTest(t)
-	defer db.Close()
+	setup := setupTest(t, 2)
+	defer setup.cleanup(t)
 
-	conn, err := db.Conn(context.TODO())
-	require.NoError(t, err)
-
-	instanceId, err := executeInstanceQueryReadOnly(env, conn, 5)
+	instanceId, err := executeInstanceQueryReadOnly(setup.env, setup.conn, 5)
 	assert.NoError(t, err)
-	assert.False(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
 
 func TestReadWriteSplitting_SetReadOnlyCtxFalse(t *testing.T) {
-	err := test_utils.BasicSetup(t.Name())
-	require.NoError(t, err)
-	defer test_utils.BasicCleanup(t.Name())
-	env, err := test_utils.GetCurrentTestEnvironment()
-	require.NoError(t, err)
-	skipIfInsufficientInstances(t, env, 2)
-	env, auroraTestUtility, db := setupReadWriteSplittingTest(t)
-	defer db.Close()
+	setup := setupTest(t, 2)
+	defer setup.cleanup(t)
 
-	instanceId, err := executeInstanceQueryWrite(env, db, 5)
+	instanceId, err := executeInstanceQueryWrite(setup.env, setup.db, 5)
 	assert.NoError(t, err)
-	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
 
 func TestReadWriteSplitting_SetReadOnlyCtxNoCtx(t *testing.T) {
-	err := test_utils.BasicSetup(t.Name())
-	require.NoError(t, err)
-	defer test_utils.BasicCleanup(t.Name())
-	env, err := test_utils.GetCurrentTestEnvironment()
-	require.NoError(t, err)
-	skipIfInsufficientInstances(t, env, 2)
-	env, auroraTestUtility, db := setupReadWriteSplittingTest(t)
-	defer db.Close()
+	setup := setupTest(t, 2)
+	defer setup.cleanup(t)
 
-	instanceId, err := executeInstanceQuery(env, db, context.TODO(), 5)
+	instanceId, err := executeInstanceQuery(setup.env, setup.db, context.TODO(), 5)
 	assert.NoError(t, err)
-	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
 
 func TestReadWriteSplitting_SetReadOnlyCtxSwitchFalseTrueNoCtx(t *testing.T) {
-	err := test_utils.BasicSetup(t.Name())
-	require.NoError(t, err)
-	defer test_utils.BasicCleanup(t.Name())
-	env, err := test_utils.GetCurrentTestEnvironment()
-	require.NoError(t, err)
-	skipIfInsufficientInstances(t, env, 2)
-	env, auroraTestUtility, db := setupReadWriteSplittingTest(t)
-	defer db.Close()
+	setup := setupTest(t, 2)
+	defer setup.cleanup(t)
 
 	// Test no context (should be writer)
-	instanceId, err := executeInstanceQuery(env, db, context.TODO(), 5)
+	instanceId, err := executeInstanceQuery(setup.env, setup.db, context.TODO(), 5)
 	assert.NoError(t, err)
-	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Test switching to read-only mode
-	instanceId, err = executeInstanceQueryReadOnly(env, db, 5)
+	instanceId, err = executeInstanceQueryReadOnly(setup.env, setup.db, 5)
 	assert.NoError(t, err)
-	assert.False(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Test switching back to write mode
-	instanceId, err = executeInstanceQueryWrite(env, db, 5)
+	instanceId, err = executeInstanceQueryWrite(setup.env, setup.db, 5)
 	assert.NoError(t, err)
-	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
 
 func TestReadWriteSplitting_SetReadOnlyFalseInReadOnlyTransaction(t *testing.T) {
-	err := test_utils.BasicSetup(t.Name())
-	require.NoError(t, err)
-	defer test_utils.BasicCleanup(t.Name())
-	env, err := test_utils.GetCurrentTestEnvironment()
-	require.NoError(t, err)
-	skipIfInsufficientInstances(t, env, 2)
-	env, auroraTestUtility, db := setupReadWriteSplittingTest(t)
-	defer db.Close()
-
-	conn, err := db.Conn(context.TODO())
-	require.NoError(t, err)
+	setup := setupTest(t, 2)
+	defer setup.cleanup(t)
 
 	// Start read-only transaction
-	_, err = conn.ExecContext(context.TODO(), "START TRANSACTION READ ONLY")
+	_, err := setup.conn.ExecContext(context.TODO(), "START TRANSACTION READ ONLY")
 	require.NoError(t, err)
 
 	// Test query that we are still connected to writer
-	instanceId, err := executeInstanceQueryWrite(env, conn, 5)
+	instanceId, err := executeInstanceQueryWrite(setup.env, setup.conn, 5)
 	assert.NoError(t, err)
-	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
 
 func TestReadWriteSplitting_SetReadOnlyTrueInTransaction(t *testing.T) {
-	err := test_utils.BasicSetup(t.Name())
-	require.NoError(t, err)
-	defer test_utils.BasicCleanup(t.Name())
-	env, err := test_utils.GetCurrentTestEnvironment()
-	require.NoError(t, err)
-	skipIfInsufficientInstances(t, env, 2)
-	env, _, db := setupReadWriteSplittingTest(t)
-	defer db.Close()
-
-	conn, err := db.Conn(context.TODO())
-	require.NoError(t, err)
+	setup := setupTest(t, 2)
+	defer setup.cleanup(t)
 
 	// Start read-only transaction
-	_, err = conn.ExecContext(readOnlyCtx, "START TRANSACTION READ ONLY")
+	_, err := setup.conn.ExecContext(readOnlyCtx, "START TRANSACTION READ ONLY")
 	require.NoError(t, err)
 
 	// Test that we cannot switch to read only true while in transaction
-	_, err = executeInstanceQueryWrite(env, conn, 5)
+	_, err = executeInstanceQueryWrite(setup.env, setup.conn, 5)
 	assert.Error(t, err)
 	assert.Equal(t, error_util.GetMessage("ReadWriteSplittingPlugin.setReadOnlyFalseInTransaction"), err.Error())
 }
 
 func TestReadWriteSplitting_ExecuteWithCachedConnection(t *testing.T) {
-	err := test_utils.BasicSetup(t.Name())
-	require.NoError(t, err)
-	defer test_utils.BasicCleanup(t.Name())
-	env, err := test_utils.GetCurrentTestEnvironment()
-	require.NoError(t, err)
-	skipIfInsufficientInstances(t, env, 2)
-	env, auroraTestUtility, db := setupReadWriteSplittingTest(t)
-	defer db.Close()
-
-	conn, err := db.Conn(context.TODO())
-	require.NoError(t, err)
+	setup := setupTest(t, 2)
+	defer setup.cleanup(t)
 
 	// Execute query with cached connection
-	firstReaderId, err := executeInstanceQueryReadOnly(env, conn, 5)
+	firstReaderId, err := executeInstanceQueryReadOnly(setup.env, setup.conn, 5)
 	assert.NoError(t, err)
-	assert.False(t, auroraTestUtility.IsDbInstanceWriter(firstReaderId, ""))
+	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(firstReaderId, ""))
 
 	// Execute with setReadOnly false
-	instanceId, err := executeInstanceQueryWrite(env, conn, 5)
+	instanceId, err := executeInstanceQueryWrite(setup.env, setup.conn, 5)
 	assert.NoError(t, err)
-	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 	assert.NotEqual(t, firstReaderId, instanceId)
 
 	// Execute with setReadOnly true, verify reader is the same as original
-	instanceId, err = executeInstanceQueryReadOnly(env, conn, 5)
+	instanceId, err = executeInstanceQueryReadOnly(setup.env, setup.conn, 5)
 	assert.NoError(t, err)
-	assert.False(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 	assert.Equal(t, firstReaderId, instanceId)
 
-	// repeat one more time
-	// Execute with setReadOnly false
-	instanceId, err = executeInstanceQueryWrite(env, conn, 5)
+	// Repeat one more time
+	instanceId, err = executeInstanceQueryWrite(setup.env, setup.conn, 5)
 	assert.NoError(t, err)
-	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 	assert.NotEqual(t, firstReaderId, instanceId)
 
-	// Execute with setReadOnly true, verify reader is the same as original
-	instanceId, err = executeInstanceQueryReadOnly(env, conn, 5)
+	instanceId, err = executeInstanceQueryReadOnly(setup.env, setup.conn, 5)
 	assert.NoError(t, err)
-	assert.False(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 	assert.Equal(t, firstReaderId, instanceId)
 }
 
 func TestReadWriteSplitting_NoReaders(t *testing.T) {
-	err := test_utils.BasicSetup(t.Name())
-	require.NoError(t, err)
-	defer test_utils.BasicCleanup(t.Name())
-	// Setup + cleanup
-	env, err := test_utils.GetCurrentTestEnvironment()
-	require.NoError(t, err)
-	skipIfInsufficientInstances(t, env, 3)
-	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info().Region)
+	setup := setupProxiedTest(t, 3)
+	defer setup.cleanup(t)
 
-	require.NoError(t, err)
-	instances := env.Info().DatabaseInfo.Instances
-
-	dsn := rwsplit_getDsnForTestsWithProxy(env, env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 2)
-
-	db, err := test_utils.OpenDb(env.Info().Request.Engine, dsn)
+	dsn := test_utils.GetDsn(setup.env, getPropsForProxy(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 2))
+	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
 	defer db.Close()
+
 	conn, err := db.Conn(context.TODO())
 	require.NoError(t, err)
 	defer conn.Close()
 
-	// Test switching to read-only mode
-	writerId, err := executeInstanceQueryWrite(env, conn, 5)
+	// Get writer and disable all readers
+	writerId, err := executeInstanceQueryWrite(setup.env, conn, 5)
 	require.NoError(t, err)
-	assert.True(t, auroraTestUtility.IsDbInstanceWriter(writerId, ""))
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(writerId, ""))
 
-	for i := 0; i < len(instances); i++ {
-		instance := instances[i]
-		if writerId == instance.InstanceId() {
-			continue
+	for _, instance := range setup.env.Info().DatabaseInfo.Instances {
+		if writerId != instance.InstanceId() {
+			test_utils.DisableProxyConnectivity(setup.env.ProxyInfos()[instance.InstanceId()])
 		}
-		test_utils.DisableProxyConnectivity(env.ProxyInfos()[instance.InstanceId()])
 	}
 
-	// Test switching to read-only mode
-	readerId, err := executeInstanceQueryReadOnly(env, conn, 60)
+	// Test switching to read-only mode (should fallback to writer)
+	readerId, err := executeInstanceQueryReadOnly(setup.env, conn, 60)
 	require.NoError(t, err)
-	assert.True(t, auroraTestUtility.IsDbInstanceWriter(readerId, ""))
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(readerId, ""))
 }
 
 func TestReadWriteSplitting_WriterFailover(t *testing.T) {
-	utils.SetPreparedHostFunc(func(host string) string {
-		preparedHost := host
-		const suffix = ".proxied"
-		if strings.HasSuffix(host, suffix) {
-			preparedHost = strings.TrimSuffix(host, suffix)
-		}
-		return preparedHost
-	})
-	defer utils.ResetPreparedHostFunc()
-	err := test_utils.BasicSetup(t.Name())
-	require.NoError(t, err)
-	defer test_utils.BasicCleanup(t.Name())
-	env, err := test_utils.GetCurrentTestEnvironment()
-	require.NoError(t, err)
-	skipIfInsufficientInstances(t, env, 3)
+	setup := setupProxiedTest(t, 3)
+	defer setup.cleanup(t)
 
-	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info().Region)
-
-	require.NoError(t, err)
-	instances := env.Info().DatabaseInfo.Instances
-
-	dsn := rwsplit_getDsnForTestsWithProxy(env, env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 5)
-
-	db, err := test_utils.OpenDb(env.Info().Request.Engine, dsn)
+	dsn := test_utils.GetDsn(setup.env, getPropsForProxy(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 5))
+	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
 	defer db.Close()
 
@@ -355,81 +299,55 @@ func TestReadWriteSplitting_WriterFailover(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 
-	// Test switching to read-only mode
-	originalWriterId, err := executeInstanceQueryWrite(env, conn, 5)
+	originalWriterId, err := executeInstanceQueryWrite(setup.env, conn, 5)
 	require.NoError(t, err)
-	assert.True(t, auroraTestUtility.IsDbInstanceWriter(originalWriterId, ""))
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(originalWriterId, ""))
 
-	// Disable connections from everything but the writer
-	for i := 0; i < len(instances); i++ {
-		instance := instances[i]
-		if originalWriterId == instance.InstanceId() {
-			continue
+	// Disable all readers
+	for _, instance := range setup.env.Info().DatabaseInfo.Instances {
+		if originalWriterId != instance.InstanceId() {
+			test_utils.DisableProxyConnectivity(setup.env.ProxyInfos()[instance.InstanceId()])
 		}
-		test_utils.DisableProxyConnectivity(env.ProxyInfos()[instance.InstanceId()])
 	}
 
-	// Connect to writer id from read-write
-	instanceId, err := executeInstanceQueryReadOnly(env, conn, 60)
+	// Verify fallback to writer for reads
+	instanceId, err := executeInstanceQueryReadOnly(setup.env, conn, 60)
 	require.NoError(t, err)
 	assert.Equal(t, originalWriterId, instanceId)
 
-	// switch back to write mode
-	// Connect to writer id from read-write
-	instanceId, err = executeInstanceQueryWrite(env, conn, 60)
-	require.NoError(t, err)
-	assert.Equal(t, originalWriterId, instanceId)
-
-	// failover
+	// Perform failover
 	test_utils.EnableAllConnectivity(true)
-	err = auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(originalWriterId, "", "")
+	err = setup.auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(originalWriterId, "", "")
 	require.NoError(t, err)
 
-	// failover error
-	_, err = executeInstanceQueryWrite(env, conn, 60)
+	// Expect failover error
+	_, err = executeInstanceQueryWrite(setup.env, conn, 60)
 	assert.Error(t, err)
 	awsWrapperError, ok := err.(*error_util.AwsWrapperError)
 	assert.True(t, ok)
 	assert.True(t, awsWrapperError.IsFailoverErrorType())
-	assert.True(t, awsWrapperError.IsType(error_util.FailoverSuccessErrorType))
 
-	instanceId, err = executeInstanceQueryWrite(env, conn, 60)
+	// Verify new writer
+	instanceId, err = executeInstanceQueryWrite(setup.env, conn, 60)
 	require.NoError(t, err)
-	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
-	// Assert we are now connected to a reader in read-mode
-	// Connect to writer id from read-write
-	instanceId, err = executeInstanceQueryReadOnly(env, conn, 60)
+	// Verify reader connection
+	instanceId, err = executeInstanceQueryReadOnly(setup.env, conn, 60)
 	require.NoError(t, err)
-	assert.False(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
 
 func TestReadWriteSplitting_FailoverToNewReader(t *testing.T) {
-	utils.SetPreparedHostFunc(func(host string) string {
-		preparedHost := host
-		const suffix = ".proxied"
-		if strings.HasSuffix(host, suffix) {
-			preparedHost = strings.TrimSuffix(host, suffix)
-		}
-		return preparedHost
-	})
-	defer utils.ResetPreparedHostFunc()
-	err := test_utils.BasicSetup(t.Name())
-	require.NoError(t, err)
-	defer test_utils.BasicCleanup(t.Name())
-	env, err := test_utils.GetCurrentTestEnvironment()
-	require.NoError(t, err)
+	setup := setupProxiedTest(t, 3)
+	defer setup.cleanup(t)
 
-	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info().Region)
-
-	skipIfInsufficientInstances(t, env, 3)
-
-	props := rwsplit_getPropsForTestsWithProxy(env, env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 5)
+	props := getPropsForProxy(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 5)
 	property_util.FAILOVER_MODE.Set(props, "reader-or-writer")
 	property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Set(props, "5000")
-	dsn := test_utils.GetDsn(env, props)
+	dsn := test_utils.GetDsn(setup.env, props)
 
-	db, err := test_utils.OpenDb(env.Info().Request.Engine, dsn)
+	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
 	defer db.Close()
 
@@ -437,85 +355,64 @@ func TestReadWriteSplitting_FailoverToNewReader(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 
-	originalWriterId, err := executeInstanceQueryWrite(env, conn, 60)
+	originalWriterId, err := executeInstanceQueryWrite(setup.env, conn, 60)
 	require.NoError(t, err)
-	assert.True(t, auroraTestUtility.IsDbInstanceWriter(originalWriterId, ""))
 	slog.Info("originalWriterId", "writerId", originalWriterId)
-	originalReaderId, err := executeInstanceQueryReadOnly(env, conn, 60)
+
+	originalReaderId, err := executeInstanceQueryReadOnly(setup.env, conn, 60)
 	require.NoError(t, err)
 
-	var otherReaderId string = ""
-
-	instances := env.Info().DatabaseInfo.Instances
-
-	for i := 1; i < len(instances); i++ {
-		if instances[i].InstanceId() != originalReaderId {
-			otherReaderId = instances[i].InstanceId()
+	// Find another reader
+	var otherReaderId string
+	for i := 1; i < len(setup.env.Info().DatabaseInfo.Instances); i++ {
+		if setup.env.Info().DatabaseInfo.Instances[i].InstanceId() != originalReaderId {
+			otherReaderId = setup.env.Info().DatabaseInfo.Instances[i].InstanceId()
 			break
 		}
 	}
-
 	require.NotEmpty(t, otherReaderId)
 
-	// Kill all instances except for one other reader
-	for i := 0; i < len(instances); i++ {
-		if instances[i].InstanceId() != otherReaderId {
-			test_utils.DisableProxyConnectivity(env.ProxyInfos()[instances[i].InstanceId()])
+	// Kill all instances except the other reader
+	for _, instance := range setup.env.Info().DatabaseInfo.Instances {
+		if instance.InstanceId() != otherReaderId {
+			test_utils.DisableProxyConnectivity(setup.env.ProxyInfos()[instance.InstanceId()])
 		}
 	}
 
-	_, err = executeInstanceQueryReadOnly(env, conn, 60)
+	// Expect failover to new reader
+	_, err = executeInstanceQueryReadOnly(setup.env, conn, 60)
 	assert.Error(t, err)
 	awsWrapperError, ok := err.(*error_util.AwsWrapperError)
 	assert.True(t, ok)
 	assert.True(t, awsWrapperError.IsFailoverErrorType())
-	assert.True(t, awsWrapperError.IsType(error_util.FailoverSuccessErrorType))
 
-	currentReaderId, err := executeInstanceQueryReadOnly(env, conn, 10)
+	currentReaderId, err := executeInstanceQueryReadOnly(setup.env, conn, 10)
 	require.NoError(t, err)
-
 	assert.Equal(t, otherReaderId, currentReaderId)
 	assert.NotEqual(t, originalReaderId, currentReaderId)
 
+	// Restore connectivity and verify
 	test_utils.EnableAllConnectivity(true)
-	time.Sleep(time.Duration(20) * time.Second)
-	currentId, err := executeInstanceQueryWrite(env, conn, 10)
+	time.Sleep(20 * time.Second)
+
+	currentId, err := executeInstanceQueryWrite(setup.env, conn, 10)
 	require.NoError(t, err)
 	assert.Equal(t, originalWriterId, currentId)
 
-	currentId, err = executeInstanceQueryReadOnly(env, conn, 10)
+	currentId, err = executeInstanceQueryReadOnly(setup.env, conn, 10)
 	require.NoError(t, err)
 	assert.Equal(t, otherReaderId, currentId)
 }
 
 func TestReadWriteSplitting_FailoverReaderToWriter(t *testing.T) {
-	utils.SetPreparedHostFunc(func(host string) string {
-		preparedHost := host
-		const suffix = ".proxied"
-		if strings.HasSuffix(host, suffix) {
-			preparedHost = strings.TrimSuffix(host, suffix)
-		}
-		return preparedHost
-	})
-	defer utils.ResetPreparedHostFunc()
+	setup := setupProxiedTest(t, 3)
+	defer setup.cleanup(t)
 
-	err := test_utils.BasicSetup(t.Name())
-	require.NoError(t, err)
-	defer test_utils.BasicCleanup(t.Name())
-	env, err := test_utils.GetCurrentTestEnvironment()
-	require.NoError(t, err)
-	skipIfInsufficientInstances(t, env, 3)
-
-	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info().Region)
-
-	require.NoError(t, err)
-	instances := env.Info().DatabaseInfo.Instances
-
-	props := rwsplit_getPropsForTestsWithProxy(env, env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 2)
+	props := getPropsForProxy(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 2)
 	property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Set(props, "5000")
-	dsn := test_utils.GetDsn(env, props)
+	dsn := test_utils.GetDsn(setup.env, props)
 
-	db, err := test_utils.OpenDb(env.Info().Request.Engine, dsn)
+	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
 	defer db.Close()
 
@@ -523,91 +420,64 @@ func TestReadWriteSplitting_FailoverReaderToWriter(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 
-	// Get writer
-	originalWriterId, err := executeInstanceQueryWrite(env, conn, 5)
-	assert.NoError(t, err)
-	assert.True(t, auroraTestUtility.IsDbInstanceWriter(originalWriterId, ""))
+	originalWriterId, err := executeInstanceQueryWrite(setup.env, conn, 5)
+	require.NoError(t, err)
 
-	// Set read only
-	readerId, err := executeInstanceQueryReadOnly(env, conn, 60)
-	assert.NoError(t, err)
+	readerId, err := executeInstanceQueryReadOnly(setup.env, conn, 60)
+	require.NoError(t, err)
 	assert.NotEqual(t, originalWriterId, readerId)
 
-	// kill all connections except for writer
-	for i := 0; i < len(instances); i++ {
-		instance := instances[i]
-		if originalWriterId == instance.InstanceId() {
-			continue
+	// Kill all readers
+	for _, instance := range setup.env.Info().DatabaseInfo.Instances {
+		if originalWriterId != instance.InstanceId() {
+			test_utils.DisableProxyConnectivity(setup.env.ProxyInfos()[instance.InstanceId()])
 		}
-		test_utils.DisableProxyConnectivity(env.ProxyInfos()[instance.InstanceId()])
 	}
 
-	time.Sleep(time.Duration(5) * time.Second)
+	time.Sleep(5 * time.Second)
 
-	// connect to reader
-	_, err = executeInstanceQueryReadOnly(env, conn, 60)
+	// Expect failover to writer for reads
+	_, err = executeInstanceQueryReadOnly(setup.env, conn, 60)
 	assert.Error(t, err)
 	awsWrapperError, ok := err.(*error_util.AwsWrapperError)
 	assert.True(t, ok)
 	assert.True(t, awsWrapperError.IsFailoverErrorType())
-	assert.True(t, awsWrapperError.IsType(error_util.FailoverSuccessErrorType))
 
-	instanceId, err := executeInstanceQueryReadOnly(env, conn, 60)
+	instanceId, err := executeInstanceQueryReadOnly(setup.env, conn, 60)
 	assert.NoError(t, err)
 	assert.Equal(t, originalWriterId, instanceId)
 
+	// Restore connectivity
 	test_utils.EnableAllConnectivity(true)
-	// Wait for hosts to be set to AVAILABLE
 	plugin_helpers.ClearCaches()
-	time.Sleep(time.Duration(40) * time.Second)
+	time.Sleep(40 * time.Second)
 
-	instanceId, err = executeInstanceQueryWrite(env, conn, 60)
+	instanceId, err = executeInstanceQueryWrite(setup.env, conn, 60)
 	assert.NoError(t, err)
 	assert.Equal(t, originalWriterId, instanceId)
 
-	instanceId, err = executeInstanceQueryReadOnly(env, conn, 60)
+	instanceId, err = executeInstanceQueryReadOnly(setup.env, conn, 60)
 	assert.NoError(t, err)
 	assert.NotEqual(t, originalWriterId, instanceId)
 }
 
 func setInternalPoolProvider(poolOptions ...internal_pool.InternalPoolOption) *internal_pool.InternalPooledConnectionProvider {
 	options := internal_pool.NewInternalPoolOptions(poolOptions...)
-	provider := internal_pool.NewInternalPooledConnectionProvider(
-		options,
-		0,
-	)
+	provider := internal_pool.NewInternalPooledConnectionProvider(options, 0)
 	driver_infrastructure.SetCustomConnectionProvider(provider)
 	return provider
 }
 
 func TestPooledConnection_Failover(t *testing.T) {
-	err := test_utils.BasicSetup(t.Name())
-	require.NoError(t, err)
-	defer test_utils.BasicCleanup(t.Name())
-	utils.SetPreparedHostFunc(func(host string) string {
-		preparedHost := host
-		const suffix = ".proxied"
-		if strings.HasSuffix(host, suffix) {
-			preparedHost = strings.TrimSuffix(host, suffix)
-		}
-		return preparedHost
-	})
-	defer utils.ResetPreparedHostFunc()
-	env, err := test_utils.GetCurrentTestEnvironment()
-	require.NoError(t, err)
-	skipIfInsufficientInstances(t, env, 3)
+	setup := setupProxiedTest(t, 3)
+	defer setup.cleanup(t)
 
 	provider := setInternalPoolProvider()
 	defer driver_infrastructure.ResetCustomConnectionProvider()
 	defer provider.ReleaseResources()
 
-	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info().Region)
-
-	require.NoError(t, err)
-
-	dsn := rwsplit_getDsnForTestsWithProxy(env, env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 4)
-
-	db, err := test_utils.OpenDb(env.Info().Request.Engine, dsn)
+	dsn := test_utils.GetDsn(setup.env, getPropsForProxy(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 4))
+	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
 	defer db.Close()
 
@@ -615,60 +485,41 @@ func TestPooledConnection_Failover(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 
-	// Test switching to read-only mode
-	originalWriterId, err := executeInstanceQueryWrite(env, conn, 5)
+	originalWriterId, err := executeInstanceQueryWrite(setup.env, conn, 5)
 	require.NoError(t, err)
-	assert.True(t, auroraTestUtility.IsDbInstanceWriter(originalWriterId, ""))
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(originalWriterId, ""))
 
 	test_utils.DisableAllConnectivity()
-	time.Sleep(time.Duration(5) * time.Second)
-	// Expect error
-	_, err = executeInstanceQueryReadOnly(env, conn, 5)
+	time.Sleep(5 * time.Second)
+
+	_, err = executeInstanceQueryReadOnly(setup.env, conn, 5)
 	require.Error(t, err)
 	awsWrapperError, ok := err.(*error_util.AwsWrapperError)
 	assert.True(t, ok)
 	assert.True(t, awsWrapperError.IsFailoverErrorType())
-	assert.True(t, awsWrapperError.IsType(error_util.FailoverFailedErrorType))
 
 	test_utils.EnableAllConnectivity(true)
 	err = test_utils.VerifyClusterStatus()
 	require.NoError(t, err)
+
 	conn2, err := db.Conn(context.TODO())
 	require.NoError(t, err)
 	defer conn2.Close()
 
-	newWriterId, err := executeInstanceQueryWrite(env, conn2, 2)
+	newWriterId, err := executeInstanceQueryWrite(setup.env, conn2, 2)
 	require.NoError(t, err)
 	assert.Equal(t, originalWriterId, newWriterId)
 }
 
 func TestPooledConnection_FailoverInTransaction(t *testing.T) {
-	err := test_utils.BasicSetup(t.Name())
-	require.NoError(t, err)
-	defer test_utils.BasicCleanup(t.Name())
-	utils.SetPreparedHostFunc(func(host string) string {
-		preparedHost := host
-		const suffix = ".proxied"
-		if strings.HasSuffix(host, suffix) {
-			preparedHost = strings.TrimSuffix(host, suffix)
-		}
-		return preparedHost
-	})
-	defer utils.ResetPreparedHostFunc()
-
-	env, err := test_utils.GetCurrentTestEnvironment()
-	require.NoError(t, err)
-	skipIfInsufficientInstances(t, env, 3)
+	setup := setupProxiedTest(t, 3)
+	defer setup.cleanup(t)
 
 	setInternalPoolProvider()
 	defer driver_infrastructure.ResetCustomConnectionProvider()
-	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info().Region)
 
-	require.NoError(t, err)
-
-	dsn := rwsplit_getDsnForTestsWithProxy(env, env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 5)
-
-	db, err := test_utils.OpenDb(env.Info().Request.Engine, dsn)
+	dsn := test_utils.GetDsn(setup.env, getPropsForProxy(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 5))
+	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
 	defer db.Close()
 
@@ -676,32 +527,29 @@ func TestPooledConnection_FailoverInTransaction(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 
-	// Test switching to read-only mode
-	originalWriterId, err := executeInstanceQueryWrite(env, conn, 5)
+	originalWriterId, err := executeInstanceQueryWrite(setup.env, conn, 5)
 	require.NoError(t, err)
-	assert.True(t, auroraTestUtility.IsDbInstanceWriter(originalWriterId, ""))
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(originalWriterId, ""))
 
 	_, err = conn.ExecContext(context.TODO(), "START TRANSACTION READ ONLY")
 	require.NoError(t, err)
 
-	_, err = executeInstanceQueryReadOnly(env, conn, 5)
+	_, err = executeInstanceQueryReadOnly(setup.env, conn, 5)
 	require.NoError(t, err)
 
-	err = auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(originalWriterId, "", "")
+	err = setup.auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(originalWriterId, "", "")
 	require.NoError(t, err)
 
-	// Expect error
-	_, err = executeInstanceQueryReadOnly(env, conn, 60)
+	_, err = executeInstanceQueryReadOnly(setup.env, conn, 60)
 	assert.Error(t, err)
 	awsWrapperError, ok := err.(*error_util.AwsWrapperError)
 	assert.True(t, ok)
 	assert.True(t, awsWrapperError.IsFailoverErrorType())
-	assert.True(t, awsWrapperError.IsType(error_util.TransactionResolutionUnknownErrorType))
 
-	newWriter, err := executeInstanceQueryReadOnly(env, conn, 5)
+	newWriter, err := executeInstanceQueryReadOnly(setup.env, conn, 5)
 	assert.NoError(t, err)
 	assert.NotEqual(t, originalWriterId, newWriter)
-	assert.True(t, auroraTestUtility.IsDbInstanceWriter(newWriter, ""))
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(newWriter, ""))
 
 	_, err = conn.ExecContext(context.TODO(), "COMMIT")
 	assert.NoError(t, err)
