@@ -25,6 +25,24 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestSlidingExpirationCachePut(t *testing.T) {
+	itemDisposed := false
+	disposalFunc := func(item int) bool {
+		itemDisposed = true
+		return true
+	}
+	slidingExpirationCache := utils.NewSlidingExpirationCache[int]("test", disposalFunc)
+
+	slidingExpirationCache.Put("a", 1, time.Minute)
+	slidingExpirationCache.Put("a", 2, time.Minute)
+
+	item, ok := slidingExpirationCache.Get("a", time.Minute)
+
+	assert.Equal(t, 2, item)
+	assert.True(t, ok)
+	assert.True(t, itemDisposed)
+}
+
 func TestSlidingExpirationCachePutIfAbsent(t *testing.T) {
 	slidingExpirationCache := utils.NewSlidingExpirationCache[int]("test")
 	slidingExpirationCache.Put("test", 1, time.Second)
@@ -65,13 +83,19 @@ func TestSlidingExpirationCacheClear(t *testing.T) {
 }
 
 func TestSlidingExpirationGetExpiredItem(t *testing.T) {
-	slidingExpirationCache := utils.NewSlidingExpirationCache[int]("test")
+	itemDisposed := false
+	disposalFunc := func(item int) bool {
+		itemDisposed = true
+		return true
+	}
+	slidingExpirationCache := utils.NewSlidingExpirationCache[int]("test", disposalFunc)
 	slidingExpirationCache.Put("a", 1, time.Nanosecond)
 	slidingExpirationCache.Put("b", 2, time.Nanosecond)
 
 	item, ok := slidingExpirationCache.Get("a", time.Minute)
 	assert.Equal(t, 0, item)
 	assert.False(t, ok)
+	assert.True(t, itemDisposed)
 }
 
 func TestSlidingExpirationComputeIfAbsentExpiredItem(t *testing.T) {
