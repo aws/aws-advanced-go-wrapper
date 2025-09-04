@@ -20,6 +20,7 @@ public enum DatabaseEngineDeployment {
   DOCKER,
   RDS,
   RDS_MULTI_AZ_CLUSTER,
+  RDS_MULTI_AZ_INSTANCE,
   AURORA,
   AURORA_LIMITLESS
 }

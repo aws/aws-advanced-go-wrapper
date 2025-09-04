@@ -26,7 +26,7 @@ public class TestEnvironmentInfo {
 
   private String region;
   private String rdsEndpoint;
-  private String auroraClusterName;
+  private String rdsDbName;
   private String iamUsername;
 
   private TestDatabaseInfo databaseInfo;
@@ -36,6 +36,9 @@ public class TestEnvironmentInfo {
   private TestTelemetryInfo otelTracesTelemetryInfo;
   private TestTelemetryInfo xrayTracesTelemetryInfo;
   private TestTelemetryInfo metricsTelemetryInfo;
+
+  // Random alphanumeric combination that is used to form a test cluster name or an instance name.
+  private String randomBase = null;
 
   public TestDatabaseInfo getDatabaseInfo() {
     return this.databaseInfo;
@@ -59,7 +62,7 @@ public class TestEnvironmentInfo {
 
   public TestTelemetryInfo getXrayTracesTelemetryInfo() {
       return this.xrayTracesTelemetryInfo;
-    }
+  }
 
   public TestTelemetryInfo getMetricsTelemetryInfo() {
     return this.metricsTelemetryInfo;
@@ -85,12 +88,12 @@ public class TestEnvironmentInfo {
     return this.region;
   }
 
-  public String getRdsEndpoint() {
-    return this.rdsEndpoint;
+  public String getRdsDbName() {
+    return rdsDbName;
   }
 
-  public String getAuroraClusterName() {
-    return this.auroraClusterName;
+  public String getRdsEndpoint() {
+    return this.rdsEndpoint;
   }
 
   public String getIamUsername() {
@@ -105,12 +108,12 @@ public class TestEnvironmentInfo {
     this.region = region;
   }
 
-  public void setRdsEndpoint(String rdsEndpoint) {
-    this.rdsEndpoint = rdsEndpoint;
+  public void setRdsDbName(String dbName) {
+    this.rdsDbName = dbName;
   }
 
-  public void setAuroraClusterName(String auroraClusterName) {
-    this.auroraClusterName = auroraClusterName;
+  public void setRdsEndpoint(String rdsEndpoint) {
+    this.rdsEndpoint = rdsEndpoint;
   }
 
   public void setDatabaseInfo(TestDatabaseInfo databaseInfo) {
@@ -135,7 +138,7 @@ public class TestEnvironmentInfo {
 
   public void setXrayTracesTelemetryInfo(TestTelemetryInfo xrayTracesTelemetryInfo) {
       this.xrayTracesTelemetryInfo = xrayTracesTelemetryInfo;
-    }
+  }
 
   public void setMetricsTelemetryInfo(TestTelemetryInfo metricsTelemetryInfo) {
     this.metricsTelemetryInfo = metricsTelemetryInfo;
@@ -155,5 +158,13 @@ public class TestEnvironmentInfo {
 
   public void setIamUsername(String iamUsername) {
     this.iamUsername = iamUsername;
+  }
+
+  public String getRandomBase() {
+    return this.randomBase;
+  }
+
+  public void setRandomBase(String randomBase) {
+    this.randomBase = randomBase;
   }
 }

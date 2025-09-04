@@ -37,7 +37,7 @@ const (
 
 var (
 	pgxKeyValueDsnPattern = regexp.MustCompile("([a-zA-Z0-9]+=[-a-zA-Z0-9+&@#/%?=~_!:,.']+[ ]*)+")
-	mySqlDsnPattern       = regexp.MustCompile(`^(?:(?P<user>[^:@/]+)(?::(?P<passwd>[^@/]*))?@)?` + // [user[:password]@]
+	mySqlDsnPattern       = regexp.MustCompile(`^(?:(?P<user>[^:@/]+)(?::(?P<passwd>[^@]*))?@)?` + // [user[:password]@] - password can contain : / ?
 		`(?:(?P<net>[^()/:?]+)?(?:\((?P<addr>[^\)]*)\))?)?` + // [net[(addr)]]
 		`(?:/(?P<dbname>[^?]*))?` + // [/dbname] - made optional
 		`(?:\?(?P<params>.*))?` + // [?param1=value1&paramN=valueN]
@@ -366,71 +366,53 @@ func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 	properties = make(map[string]string)
 	dsn = strings.TrimSpace(dsn)
 
-	// To account for props that have "/" in their value like endpoints
-	paramsStartIndex := strings.Index(dsn, "?")
-	if paramsStartIndex == -1 {
-		paramsStartIndex = len(dsn)
-	}
-
-	// [user[:password]@][net[(addr)]]/dbname[?param1=value1&paramN=valueN]
-
-	lastSlashIndex := strings.LastIndex(dsn[:paramsStartIndex], "/")
-
-	if lastSlashIndex == -1 {
+	matches := mySqlDsnPattern.FindStringSubmatch(dsn)
+	if matches == nil {
 		return nil, error_util.NewDsnParsingError(
-			error_util.GetMessage("DsnParser.invalidDatabaseNoSlash", MaskSensitiveInfoFromDsn(dsn)))
+			error_util.GetMessage("DsnParser.invalidDsn", MaskSensitiveInfoFromDsn(dsn)))
 	}
 
-	// [username[:password]@][protocol[(address)]]
-	lastAtIndex := strings.LastIndex(dsn[:lastSlashIndex], "@")
-	netPropStart := 0
-	if lastAtIndex != -1 {
-		netPropStart = lastAtIndex + 1
-		colonIndex := strings.Index(dsn[:lastAtIndex], ":")
-		if colonIndex == -1 {
-			properties[property_util.USER.Name] = dsn[:lastAtIndex]
-		} else {
-			properties[property_util.USER.Name] = dsn[:colonIndex]
-			properties[property_util.PASSWORD.Name] = dsn[colonIndex+1 : lastAtIndex]
+	names := mySqlDsnPattern.SubexpNames()
+	for i, match := range matches {
+		if i == 0 || names[i] == "" {
+			continue
 		}
-	} else {
-		lastAtIndex = 0
-	}
-
-	// [protocol[(address)]]
-	openParenIndex := strings.Index(dsn[lastAtIndex:lastSlashIndex], "(") + lastAtIndex
-	if openParenIndex == -1 {
-		properties[NET_PROP_KEY] = dsn[netPropStart:lastSlashIndex]
-	} else {
-		properties[NET_PROP_KEY] = dsn[netPropStart:openParenIndex]
-
-		closeParenIndex := strings.LastIndex(dsn[lastAtIndex:lastSlashIndex], ")") + lastAtIndex
-		if closeParenIndex == -1 {
-			return nil, error_util.NewDsnParsingError(
-				error_util.GetMessage("DsnParser.invalidAddress", MaskSensitiveInfoFromDsn(dsn)))
-		} else if closeParenIndex < openParenIndex {
-			return nil, error_util.NewDsnParsingError(
-				error_util.GetMessage("DsnParser.invalidAddress", MaskSensitiveInfoFromDsn(dsn)))
+		switch names[i] {
+		case "user":
+			if match != "" {
+				properties[property_util.USER.Name] = match
+			}
+		case "passwd":
+			if match != "" {
+				properties[property_util.PASSWORD.Name] = match
+			}
+		case "net":
+			if match != "" {
+				properties[NET_PROP_KEY] = match
+			}
+		case "addr":
+			if match != "" {
+				hostPortPair := strings.Split(match, ":")
+				properties[property_util.HOST.Name] = hostPortPair[0]
+				if len(hostPortPair) > 1 {
+					properties[property_util.PORT.Name] = hostPortPair[1]
+				}
+			}
+		case "dbname":
+			if match != "" {
+				properties[property_util.DATABASE.Name], err = url.PathUnescape(match)
+				if err != nil {
+					return
+				}
+			}
+		case "params":
+			if match != "" {
+				err = parseDSNParams(properties, match)
+				if err != nil {
+					return
+				}
+			}
 		}
-		address := dsn[openParenIndex+1 : closeParenIndex]
-		hostPortPair := strings.Split(address, ":")
-		properties[property_util.HOST.Name] = hostPortPair[0]
-		if len(hostPortPair) > 1 {
-			properties[property_util.PORT.Name] = hostPortPair[1]
-		}
-	}
-
-	// dbname[?param1=value1&...&paramN=valueN]
-	queryIndex := strings.Index(dsn[lastSlashIndex:], "?") + lastSlashIndex
-	if queryIndex <= lastSlashIndex {
-		properties[property_util.DATABASE.Name], err = url.PathUnescape(dsn[lastSlashIndex+1:])
-	} else {
-		properties[property_util.DATABASE.Name], err = url.PathUnescape(dsn[lastSlashIndex+1 : queryIndex])
-		if err != nil {
-			return
-		}
-
-		err = parseDSNParams(properties, dsn[queryIndex+1:])
 	}
 
 	properties[property_util.DRIVER_PROTOCOL.Name] = MYSQL_DRIVER_PROTOCOL

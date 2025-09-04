@@ -425,6 +425,10 @@ func initIamProps(user string, password string, testEnvironment *test_utils.Test
 		property_util.IAM_REGION.Name: testEnvironment.Info().Region,
 	}
 
+	return addMySQLIamHandlingIfNecessary(testEnvironment, props)
+}
+
+func addMySQLIamHandlingIfNecessary(testEnvironment *test_utils.TestEnvironment, props map[string]string) map[string]string {
 	// Needed for MYSQL
 	if testEnvironment.Info().Request.Engine == test_utils.MYSQL {
 		props["tls"] = "skip-verify"

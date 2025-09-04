@@ -26,11 +26,12 @@ type TestDatabaseInfo struct {
 	Password                    string
 	DefaultDbName               string
 	ClusterEndpoint             string
-	clusterEndpointPort         int
+	ClusterEndpointPort         int
 	ClusterReadOnlyEndpoint     string
 	clusterReadOnlyEndpointPort int
 	InstanceEndpointSuffix      string
 	InstanceEndpointPort        int
+	BlueGreenDeploymentId       string
 	Instances                   []TestInstanceInfo
 }
 
@@ -87,24 +88,26 @@ func NewTestDatabaseInfo(databaseInfoMap map[string]any) (databaseInfo TestDatab
 	username, ok1 := databaseInfoMap["username"].(string)
 	password, ok2 := databaseInfoMap["password"].(string)
 	defaultDbName, ok3 := databaseInfoMap["defaultDbName"].(string)
-	clusterEndpoint, ok4 := databaseInfoMap["clusterEndpoint"].(string)
-	clusterReadOnlyEndpoint, ok5 := databaseInfoMap["clusterReadOnlyEndpoint"].(string)
-	instanceEndpointSuffix, ok6 := databaseInfoMap["instanceEndpointSuffix"].(string)
-	clusterEndpointPort, ok7 := databaseInfoMap["clusterEndpointPort"].(float64)
-	clusterReadOnlyEndpointPort, ok8 := databaseInfoMap["clusterReadOnlyEndpointPort"].(float64)
-	instanceEndpointPort, ok9 := databaseInfoMap["instanceEndpointPort"].(float64)
+	clusterEndpoint, _ := databaseInfoMap["clusterEndpoint"].(string)
+	clusterReadOnlyEndpoint, _ := databaseInfoMap["clusterReadOnlyEndpoint"].(string)
+	instanceEndpointSuffix, ok4 := databaseInfoMap["instanceEndpointSuffix"].(string)
+	clusterEndpointPort, _ := databaseInfoMap["clusterEndpointPort"].(float64)
+	clusterReadOnlyEndpointPort, ok5 := databaseInfoMap["clusterReadOnlyEndpointPort"].(float64)
+	instanceEndpointPort, ok6 := databaseInfoMap["instanceEndpointPort"].(float64)
+	blueGreenDeploymentId, _ := databaseInfoMap["blueGreenDeploymentId"].(string)
 
-	if ok && ok1 && ok2 && ok3 && ok4 && ok5 && ok6 && ok7 && ok8 && ok9 {
+	if ok && ok1 && ok2 && ok3 && ok4 && ok5 && ok6 {
 		return TestDatabaseInfo{
 			Username:                    username,
 			Password:                    password,
 			DefaultDbName:               defaultDbName,
 			ClusterEndpoint:             clusterEndpoint,
-			clusterEndpointPort:         int(clusterEndpointPort),
+			ClusterEndpointPort:         int(clusterEndpointPort),
 			ClusterReadOnlyEndpoint:     clusterReadOnlyEndpoint,
 			clusterReadOnlyEndpointPort: int(clusterReadOnlyEndpointPort),
 			InstanceEndpointSuffix:      instanceEndpointSuffix,
 			InstanceEndpointPort:        int(instanceEndpointPort),
+			BlueGreenDeploymentId:       blueGreenDeploymentId,
 			Instances:                   instances,
 		}, nil
 	}

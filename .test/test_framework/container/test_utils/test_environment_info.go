@@ -24,7 +24,8 @@ import (
 type TestEnvironmentInfo struct {
 	Request                 TestEnvironmentRequest
 	Region                  string
-	auroraClusterName       string
+	rdsDbName               string
+	rdsEndpoint             string
 	databaseEngineVersion   string
 	databaseEngine          string
 	DatabaseInfo            TestDatabaseInfo
@@ -37,7 +38,8 @@ type TestEnvironmentInfo struct {
 
 func NewTestEnvironmentInfo(testInfo map[string]any) (info TestEnvironmentInfo, err error) {
 	region, ok1 := testInfo["region"].(string)
-	auroraClusterName, ok2 := testInfo["auroraClusterName"].(string)
+	rdsDbName, ok2 := testInfo["rdsDbName"].(string)
+	rdsEndpoint, _ := testInfo["rdsEndpoint"].(string) // endpoint is not required, allow value to be ""
 	databaseEngine, ok3 := testInfo["databaseEngine"].(string)
 	databaseEngineVersion, ok4 := testInfo["databaseEngineVersion"].(string)
 	if !ok1 || !ok2 || !ok3 || !ok4 {
@@ -108,7 +110,8 @@ func NewTestEnvironmentInfo(testInfo map[string]any) (info TestEnvironmentInfo, 
 	return TestEnvironmentInfo{
 		Request:                 request,
 		Region:                  region,
-		auroraClusterName:       auroraClusterName,
+		rdsDbName:               rdsDbName,
+		rdsEndpoint:             rdsEndpoint,
 		DatabaseInfo:            databaseInfo,
 		ProxyDatabaseInfo:       proxyDatabaseInfo,
 		databaseEngine:          databaseEngine,
@@ -120,6 +123,10 @@ func NewTestEnvironmentInfo(testInfo map[string]any) (info TestEnvironmentInfo, 
 	}, nil
 }
 
-func (t TestEnvironmentInfo) AuroraClusterName() string {
-	return t.auroraClusterName
+func (t TestEnvironmentInfo) RdsDbName() string {
+	return t.rdsDbName
+}
+
+func (t TestEnvironmentInfo) Endpoint() string {
+	return t.rdsEndpoint
 }

@@ -37,14 +37,16 @@ public class TestEnvironmentProvider implements TestTemplateInvocationContextPro
               "The NUM_INSTANCES environment variable was set to an invalid value: %d. Valid values are: %s.",
               numInstances, validNumInstances));
     } else if (numInstances != null) {
-      System.out.println(String.format(
-          "The NUM_INSTANCES environment variable was set to %d. All test configurations for different cluster sizes will be skipped.",
-          numInstances));
+      System.out.printf(
+              "The NUM_INSTANCES environment variable was set to %d. All test configurations for different cluster sizes will be skipped.%n",
+          numInstances);
     }
 
     final boolean excludeDocker = Boolean.parseBoolean(System.getProperty("exclude-docker", "false"));
     final boolean excludeAurora = Boolean.parseBoolean(System.getProperty("exclude-aurora", "false"));
-    final boolean excludeMultiAZ = Boolean.parseBoolean(System.getProperty("exclude-multi-az", "false"));
+    final boolean excludeMultiAZCluster = Boolean.parseBoolean(System.getProperty("exclude-multi-az-cluster", "false"));
+    final boolean excludeMultiAZInstance = Boolean.parseBoolean(System.getProperty("exclude-multi-az-instance", "false"));
+    final boolean excludeBg = Boolean.parseBoolean(System.getProperty("exclude-bg", "false"));
     final boolean limitlessOnly = Boolean.parseBoolean(System.getProperty("limitless-only", "false"));
     final boolean excludeLimitless = Boolean.parseBoolean(System.getProperty("exclude-limitless", "true"));
     final boolean excludePerformance =
@@ -77,7 +79,10 @@ public class TestEnvironmentProvider implements TestTemplateInvocationContextPro
         // Not in use.
         continue;
       }
-      if (deployment == DatabaseEngineDeployment.RDS_MULTI_AZ_CLUSTER && excludeMultiAZ) {
+      if (deployment == DatabaseEngineDeployment.RDS_MULTI_AZ_CLUSTER && excludeMultiAZCluster) {
+        continue;
+      }
+      if (deployment == DatabaseEngineDeployment.RDS_MULTI_AZ_INSTANCE && excludeMultiAZInstance) {
         continue;
       }
       if (deployment != DatabaseEngineDeployment.AURORA_LIMITLESS && limitlessOnly) {
@@ -148,6 +153,7 @@ public class TestEnvironmentProvider implements TestTemplateInvocationContextPro
                       excludeMysqlDriver ? TestEnvironmentFeatures.SKIP_MYSQL_DRIVER_TESTS : null,
                       excludePgDriver ? TestEnvironmentFeatures.SKIP_PG_DRIVER_TESTS : null,
                       testAutoscalingOnly ? TestEnvironmentFeatures.RUN_AUTOSCALING_TESTS_ONLY : null,
+                      excludeBg ? null : TestEnvironmentFeatures.BLUE_GREEN_DEPLOYMENT,
                       excludeTracesTelemetry ? null : TestEnvironmentFeatures.TELEMETRY_TRACES_ENABLED,
                       excludeMetricsTelemetry ? null : TestEnvironmentFeatures.TELEMETRY_METRICS_ENABLED,
                       // AWS credentials are required for XRay telemetry

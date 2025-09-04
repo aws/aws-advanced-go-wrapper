@@ -18,6 +18,7 @@ package test_utils
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -53,16 +54,27 @@ type AuroraTestUtility struct {
 	client *rds.Client
 }
 
-func NewAuroraTestUtility(region string) *AuroraTestUtility {
+func NewAuroraTestUtility(info TestEnvironmentInfo) *AuroraTestUtility {
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
-		config.WithRegion(region),
+		config.WithRegion(info.Region),
 	)
+
 	if err != nil {
 		slog.Error("Failed to load AWS configuration", "error", err)
 	}
 
+	var rdsClient *rds.Client
+	if info.Endpoint() == "" {
+		rdsClient = rds.NewFromConfig(cfg)
+	} else {
+		// RDS-specific endpoint override
+		rdsClient = rds.NewFromConfig(cfg, func(o *rds.Options) {
+			o.BaseEndpoint = aws.String(info.Endpoint())
+		})
+	}
+
 	return &AuroraTestUtility{
-		client: rds.NewFromConfig(cfg),
+		client: rdsClient,
 	}
 }
 
@@ -104,7 +116,10 @@ func (a AuroraTestUtility) getDbInstance(instanceId string) (instance types.DBIn
 		},
 	}
 	resp, err := a.client.DescribeDBInstances(context.TODO(), command)
-	if err != nil || resp.DBInstances == nil {
+	if err != nil || len(resp.DBInstances) == 0 {
+		if err == nil {
+			err = fmt.Errorf("DescribeDBInstances returned no instances")
+		}
 		slog.Warn(err.Error())
 		return
 	}
@@ -169,7 +184,7 @@ func (a AuroraTestUtility) GetClusterWriterInstanceId(clusterId string) (string,
 		if err != nil {
 			return "", errors.New("unable to determine clusterId")
 		}
-		clusterId = env.info.auroraClusterName
+		clusterId = env.info.RdsDbName()
 	}
 
 	clusterInfo, err := a.getDbCluster(clusterId)
@@ -205,7 +220,7 @@ func (a AuroraTestUtility) FailoverClusterAndWaitTillWriterChanged(initialWriter
 	}
 
 	if clusterId == "" {
-		clusterId = env.Info().AuroraClusterName()
+		clusterId = env.Info().RdsDbName()
 	}
 
 	if initialWriter == "" {
@@ -249,7 +264,7 @@ func (a AuroraTestUtility) failoverClusterToTarget(clusterId string, targetWrite
 	}
 
 	remainingAttempts := 10
-	auroraUtility := NewAuroraTestUtility(env.info.Region)
+	auroraUtility := NewAuroraTestUtility(env.info)
 	for remainingAttempts > 0 {
 		remainingAttempts--
 		resp, err := a.client.FailoverDBCluster(context.TODO(), command)
@@ -319,7 +334,7 @@ func SetupTelemetry(env *TestEnvironment) (trace.SpanProcessor, error) {
 		metric.WithInterval(1*time.Second),
 	)
 
-	resource, err := resource.New(ctx,
+	newResource, err := resource.New(ctx,
 		resource.WithFromEnv(),
 		resource.WithTelemetrySDK(),
 		resource.WithHost(),
@@ -333,7 +348,7 @@ func SetupTelemetry(env *TestEnvironment) (trace.SpanProcessor, error) {
 
 	tracerProvider := trace.NewTracerProvider(
 		trace.WithSampler(trace.AlwaysSample()),
-		trace.WithResource(resource),
+		trace.WithResource(newResource),
 		trace.WithIDGenerator(xray2.NewIDGenerator()),
 	)
 	tracerProvider.RegisterSpanProcessor(bsp)
@@ -342,7 +357,7 @@ func SetupTelemetry(env *TestEnvironment) (trace.SpanProcessor, error) {
 
 	provider := metric.NewMeterProvider(
 		metric.WithReader(reader),
-		metric.WithResource(resource),
+		metric.WithResource(newResource),
 	)
 	otel.SetMeterProvider(provider)
 
@@ -406,4 +421,168 @@ func RequireTestEnvironmentFeatures(t *testing.T, testEnvironmentRequestFeatures
 			return
 		}
 	}
+}
+
+func (a AuroraTestUtility) GetBlueGreenDeployment(ctx context.Context, blueGreenId string) (*types.BlueGreenDeployment, error) {
+	input := &rds.DescribeBlueGreenDeploymentsInput{
+		BlueGreenDeploymentIdentifier: aws.String(blueGreenId),
+	}
+
+	resp, err := a.client.DescribeBlueGreenDeployments(ctx, input)
+	if err != nil {
+		slog.Debug("Failed to describe Blue/Green deployment", "blueGreenId", blueGreenId, "error", err)
+		return nil, err
+	}
+
+	if len(resp.BlueGreenDeployments) == 0 {
+		return nil, fmt.Errorf("Blue/Green deployment not found: %s", blueGreenId)
+	}
+
+	return &resp.BlueGreenDeployments[0], nil
+}
+
+func (a AuroraTestUtility) GetRdsInstanceInfoByArn(ctx context.Context, instanceArn string) (*types.DBInstance, error) {
+	input := &rds.DescribeDBInstancesInput{
+		DBInstanceIdentifier: aws.String(instanceArn),
+	}
+
+	resp, err := a.client.DescribeDBInstances(ctx, input)
+	if err != nil {
+		slog.Debug("Failed to describe RDS instance", "instanceArn", instanceArn, "error", err)
+		return nil, err
+	}
+
+	if len(resp.DBInstances) == 0 {
+		return nil, fmt.Errorf("RDS instance not found: %s", instanceArn)
+	}
+
+	return &resp.DBInstances[0], nil
+}
+
+func (a AuroraTestUtility) GetClusterByArn(ctx context.Context, clusterArn string) (*types.DBCluster, error) {
+	input := &rds.DescribeDBClustersInput{
+		DBClusterIdentifier: aws.String(clusterArn),
+	}
+
+	resp, err := a.client.DescribeDBClusters(ctx, input)
+	if err != nil {
+		slog.Debug("Failed to describe DB cluster", "clusterArn", clusterArn, "error", err)
+		return nil, err
+	}
+
+	if len(resp.DBClusters) == 0 {
+		return nil, fmt.Errorf("DB cluster not found: %s", clusterArn)
+	}
+
+	return &resp.DBClusters[0], nil
+}
+
+func (a AuroraTestUtility) GetRdsInstanceIds(engine DatabaseEngine, deployment DatabaseEngineDeployment,
+	clusterEndpoint string, port int, dbName, username, password string) ([]string, error) {
+	var retrieveTopologySQL string
+
+	switch deployment {
+	case AURORA:
+		switch engine {
+		case MYSQL:
+			retrieveTopologySQL = "SELECT SERVER_ID, SESSION_ID FROM information_schema.replica_host_status ORDER BY IF(SESSION_ID = 'MASTER_SESSION_ID', 0, 1)"
+		case PG:
+			retrieveTopologySQL = "SELECT SERVER_ID, SESSION_ID FROM aurora_replica_status() ORDER BY CASE WHEN SESSION_ID = 'MASTER_SESSION_ID' THEN 0 ELSE 1 END"
+		default:
+			return nil, fmt.Errorf("unsupported database engine: %v", engine)
+		}
+	case RDS_MULTI_AZ_CLUSTER:
+		switch engine {
+		case MYSQL:
+			// For Multi-AZ MySQL, we need to get the replica writer ID first
+			retrieveTopologySQL = `SELECT SUBSTRING_INDEX(endpoint, '.', 1) as SERVER_ID
+								   FROM mysql.rds_topology
+								   ORDER BY CASE WHEN id = @@server_id THEN 0 ELSE 1 END,
+								            SUBSTRING_INDEX(endpoint, '.', 1)`
+		case PG:
+			retrieveTopologySQL = `SELECT SUBSTRING(endpoint FROM 0 FOR POSITION('.' IN endpoint)) as SERVER_ID 
+								   FROM rds_tools.show_topology() 
+								   ORDER BY CASE WHEN id = (SELECT MAX(multi_az_db_cluster_source_dbi_resource_id) 
+								                            FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()) 
+								                 THEN 0 ELSE 1 END, endpoint`
+		default:
+			return nil, fmt.Errorf("unsupported database engine: %v", engine)
+		}
+	case RDS_MULTI_AZ_INSTANCE:
+		switch engine {
+		case MYSQL:
+			retrieveTopologySQL = "SELECT SUBSTRING_INDEX(endpoint, '.', 1) as SERVER_ID FROM mysql.rds_topology"
+		case PG:
+			retrieveTopologySQL = "SELECT SUBSTRING(endpoint FROM 0 FOR POSITION('.' IN endpoint)) as SERVER_ID FROM rds_tools.show_topology()"
+		default:
+			return nil, fmt.Errorf("unsupported database engine: %v", engine)
+		}
+	default:
+		return nil, fmt.Errorf("unsupported database engine deployment: %v", deployment)
+	}
+
+	// Create connection to execute the query
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", username, password, clusterEndpoint, port, dbName)
+	if engine == PG {
+		dsn = fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=require", username, password, clusterEndpoint, port, dbName)
+	}
+
+	db, err := OpenDb(engine, dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
+	}
+	defer func(db *sql.DB) {
+		_ = db.Close()
+	}(db)
+
+	rows, err := db.Query(retrieveTopologySQL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute topology query: %w", err)
+	}
+	defer func(rows *sql.Rows) {
+		_ = rows.Close()
+	}(rows)
+
+	var instanceIds []string
+	for rows.Next() {
+		var serverId string
+		var sessionId string // For Aurora queries that return both columns
+
+		// Handle different query result structures
+		if deployment == AURORA {
+			err = rows.Scan(&serverId, &sessionId)
+		} else {
+			err = rows.Scan(&serverId)
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan topology result: %w", err)
+		}
+
+		instanceIds = append(instanceIds, serverId)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating topology results: %w", err)
+	}
+
+	return instanceIds, nil
+}
+
+func (a AuroraTestUtility) SwitchoverBlueGreenDeployment(ctx context.Context, blueGreenId string) error {
+	input := &rds.SwitchoverBlueGreenDeploymentInput{
+		BlueGreenDeploymentIdentifier: aws.String(blueGreenId),
+	}
+
+	resp, err := a.client.SwitchoverBlueGreenDeployment(ctx, input)
+	if err != nil {
+		slog.Error("Failed to trigger Blue/Green switchover", "blueGreenId", blueGreenId, "error", err)
+		return fmt.Errorf("failed to trigger Blue/Green switchover: %w", err)
+	}
+
+	if resp.BlueGreenDeployment != nil {
+		slog.Debug("Blue/Green switchover request sent successfully", "blueGreenId", blueGreenId)
+	}
+
+	return nil
 }

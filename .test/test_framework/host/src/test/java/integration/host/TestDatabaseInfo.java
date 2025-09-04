@@ -34,6 +34,10 @@ public class TestDatabaseInfo {
   private String instanceEndpointSuffix; // "XYZ.us-west-2.rds.amazonaws.com"
   private int instanceEndpointPort;
 
+  private String blueGreenDeploymentId;
+
+  private String clusterParameterGroupName = null;
+
   private final ArrayList<TestInstanceInfo> instances = new ArrayList<>();
 
   public TestDatabaseInfo() {}
@@ -114,6 +118,22 @@ public class TestDatabaseInfo {
       }
     }
     throw new RuntimeException("Instance " + instanceName + " not found.");
+  }
+
+  public String getBlueGreenDeploymentId() {
+    return this.blueGreenDeploymentId;
+  }
+
+  public void setBlueGreenDeploymentId(final String blueGreenDeploymentId) {
+    this.blueGreenDeploymentId = blueGreenDeploymentId;
+  }
+
+  public String getClusterParameterGroupName() {
+    return this.clusterParameterGroupName;
+  }
+
+  public void setClusterParameterGroupName(String clusterParameterGroupName) {
+    this.clusterParameterGroupName = clusterParameterGroupName;
   }
 
   public void moveInstanceFirst(String instanceName) {

@@ -459,6 +459,27 @@ func TestParseMySqlEndpointWithTrailingSlashDot(t *testing.T) {
 	assert.Equal(t, "https://someendpoint.com:3456", props["customEndpoint"])
 }
 
+func TestParseMySqlDsnWithIamToken(t *testing.T) {
+	iamToken := "mydatabase.com:3306/?Action=connect&DBUser=someUser%"
+	dsn := fmt.Sprintf("someUser:%s@tcp(mydatabase.com:3306)/myDatabase?foo=bar&pop=snap&customEndpoint=https://someendpoint.com:3456",
+		iamToken)
+	props, err := utils.ParseDsn(dsn)
+
+	if err != nil {
+		t.Errorf(`Unexpected error when calling ParseDsn: %s, Error: %q`, dsn, err)
+	}
+
+	assert.Equal(t, "mysql", props[property_util.DRIVER_PROTOCOL.Name])
+	assert.Equal(t, "someUser", props[property_util.USER.Name])
+	assert.Equal(t, iamToken, props[property_util.PASSWORD.Name])
+	assert.Equal(t, "mydatabase.com", props[property_util.HOST.Name])
+	assert.Equal(t, "3306", props[property_util.PORT.Name])
+	assert.Equal(t, "myDatabase", props[property_util.DATABASE.Name])
+	assert.Equal(t, "bar", props["foo"])
+	assert.Equal(t, "snap", props["pop"])
+	assert.Equal(t, "https://someendpoint.com:3456", props["customEndpoint"])
+}
+
 func TestGetHostsFromDsnWithMultipleHosts(t *testing.T) {
 	testDsns := []string{
 		"user=someUser password=somePassword host=host1,host2%s database=pgx_test",
@@ -505,8 +526,9 @@ func GetHostsFromDsnWithMultipleHostsMultiplePorts(dsn string, strBeforePort str
 	_, err := utils.GetHostsFromDsn(dsn, true)
 	if err == nil {
 		t.Errorf("GetHostsFromDsn should throw an error with an invalid value for the port parameter")
+	} else {
+		assert.True(t, strings.Contains(err.Error(), "port"))
 	}
-	assert.True(t, strings.Contains(err.Error(), "port"))
 }
 
 func TestParseHostPortPair_ValidWriterWithPort(t *testing.T) {

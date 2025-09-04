@@ -47,7 +47,7 @@ func initProxies(environment *TestEnvironment) error {
 	if endpoint != "" {
 		client := toxiproxy.NewClient(createProxyUrl(endpoint, proxyControlPort))
 		baseEndpoint := environment.info.DatabaseInfo.ClusterEndpoint
-		name := fmt.Sprintf("%s:%d", baseEndpoint, environment.info.DatabaseInfo.clusterEndpointPort)
+		name := fmt.Sprintf("%s:%d", baseEndpoint, environment.info.DatabaseInfo.ClusterEndpointPort)
 		proxy, err := client.Proxy(name)
 		if err == nil {
 			environment.proxies[endpoint] = NewProxyInfo(proxy, baseEndpoint, proxyControlPort)
@@ -57,7 +57,7 @@ func initProxies(environment *TestEnvironment) error {
 	if endpoint != "" {
 		client := toxiproxy.NewClient(createProxyUrl(endpoint, proxyControlPort))
 		baseEndpoint := environment.info.DatabaseInfo.ClusterReadOnlyEndpoint
-		name := fmt.Sprintf("%s:%d", baseEndpoint, environment.info.DatabaseInfo.clusterEndpointPort)
+		name := fmt.Sprintf("%s:%d", baseEndpoint, environment.info.DatabaseInfo.ClusterEndpointPort)
 		proxy, err := client.Proxy(name)
 		if err == nil {
 			environment.proxies[endpoint] = NewProxyInfo(proxy, baseEndpoint, proxyControlPort)

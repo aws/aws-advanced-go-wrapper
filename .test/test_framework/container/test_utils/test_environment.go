@@ -110,8 +110,8 @@ func VerifyClusterStatus() error {
 		success := false
 		for !success && remainingTries > 0 {
 			remainingTries--
-			auroraUtility := NewAuroraTestUtility(info.Region)
-			err := auroraUtility.waitUntilClusterHasDesiredStatus(info.auroraClusterName, "available")
+			auroraUtility := NewAuroraTestUtility(info)
+			err := auroraUtility.waitUntilClusterHasDesiredStatus(info.RdsDbName(), "available")
 			if err != nil {
 				rebootAllClusterInstances()
 				break
@@ -119,7 +119,7 @@ func VerifyClusterStatus() error {
 
 			// Limitless doesn't have instances
 			if info.Request.Deployment != AURORA_LIMITLESS {
-				writerId, err := auroraUtility.GetClusterWriterInstanceId(info.auroraClusterName)
+				writerId, err := auroraUtility.GetClusterWriterInstanceId(info.RdsDbName())
 				if err != nil {
 					rebootAllClusterInstances()
 					break
@@ -144,16 +144,16 @@ func rebootAllClusterInstances() {
 		slog.Warn(fmt.Sprintf("unable to reboot with no test environment, error: %s", err.Error()))
 	}
 	info := env.info
-	auroraUtility := NewAuroraTestUtility(info.Region)
-	if info.auroraClusterName == "" {
+	auroraUtility := NewAuroraTestUtility(info)
+	if info.RdsDbName() == "" {
 		return
 	}
-	waitForClusterAndLogError(auroraUtility, info.auroraClusterName)
+	waitForClusterAndLogError(auroraUtility, info.RdsDbName())
 
 	for _, instance := range info.DatabaseInfo.Instances {
 		auroraUtility.rebootInstance(instance.instanceId)
 	}
-	waitForClusterAndLogError(auroraUtility, info.auroraClusterName)
+	waitForClusterAndLogError(auroraUtility, info.RdsDbName())
 
 	for _, instance := range info.DatabaseInfo.Instances {
 		waitForClusterAndLogError(auroraUtility, instance.instanceId)

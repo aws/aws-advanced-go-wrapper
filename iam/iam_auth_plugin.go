@@ -141,7 +141,7 @@ func (iamAuthPlugin *IamAuthPlugin) connectInternal(
 	if err == nil {
 		return conn, nil
 	} else {
-		slog.Debug(error_util.GetMessage("IamAuthPlugin.connectionError", err))
+		slog.Debug(error_util.GetMessage("IamAuthPlugin.connectionError", hostInfo.GetHost(), err))
 		if !iamAuthPlugin.pluginService.IsLoginError(err) || !isCachedToken {
 			return nil, err
 		}
