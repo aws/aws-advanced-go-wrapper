@@ -35,7 +35,8 @@ import (
 )
 
 func init() {
-	awssql.UsePluginFactory("federatedAuth", NewFederatedAuthPluginFactory())
+	awssql.UsePluginFactory(driver_infrastructure.ADFS_PLUGIN_CODE,
+		NewFederatedAuthPluginFactory())
 }
 
 var TokenCache = utils.NewCache[string]()
@@ -77,6 +78,10 @@ func NewFederatedAuthPlugin(
 		iamTokenUtility:            iamTokenUtility,
 		fetchTokenCounter:          fetchTokenCounter,
 	}, nil
+}
+
+func (f *FederatedAuthPlugin) GetPluginCode() string {
+	return driver_infrastructure.ADFS_PLUGIN_CODE
 }
 
 func (f *FederatedAuthPlugin) GetSubscribedMethods() []string {

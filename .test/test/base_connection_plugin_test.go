@@ -141,7 +141,7 @@ func TestBaseConnectionPlugin_InitHostProvider_CallsInitHostProviderFunc(t *test
 		return nil
 	}
 
-	err := plugin.InitHostProvider("url", map[string]string{}, nil, initFunc)
+	err := plugin.InitHostProvider(map[string]string{}, nil, initFunc)
 	assert.True(t, called)
 	assert.NoError(t, err)
 }
@@ -154,6 +154,6 @@ func TestBaseConnectionPlugin_InitHostProvider_PropagatesError(t *testing.T) {
 		return expectedErr
 	}
 
-	err := plugin.InitHostProvider("url", map[string]string{}, nil, initFunc)
+	err := plugin.InitHostProvider(map[string]string{}, nil, initFunc)
 	assert.ErrorIs(t, err, expectedErr)
 }

@@ -27,6 +27,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/bg"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/efm"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/read_write_splitting"
@@ -35,11 +36,12 @@ import (
 )
 
 var pluginFactoryByCode = map[string]driver_infrastructure.ConnectionPluginFactory{
-	"failover":           plugins.NewFailoverPluginFactory(),
-	"efm":                efm.NewHostMonitoringPluginFactory(),
-	"limitless":          limitless.NewLimitlessPluginFactory(),
-	"executionTime":      plugins.NewExecutionTimePluginFactory(),
-	"readWriteSplitting": read_write_splitting.NewReadWriteSplittingPluginFactory(),
+	driver_infrastructure.FAILOVER_PLUGIN_CODE:             plugins.NewFailoverPluginFactory(),
+	driver_infrastructure.EFM_PLUGIN_CODE:                  efm.NewHostMonitoringPluginFactory(),
+	driver_infrastructure.LIMITLESS_PLUGIN_CODE:            limitless.NewLimitlessPluginFactory(),
+	driver_infrastructure.EXECUTION_TIME_PLUGIN_CODE:       plugins.NewExecutionTimePluginFactory(),
+	driver_infrastructure.READ_WRITE_SPLITTING_PLUGIN_CODE: read_write_splitting.NewReadWriteSplittingPluginFactory(),
+	driver_infrastructure.BLUE_GREEN_PLUGIN_CODE:           bg.NewBlueGreenPluginFactory(),
 }
 
 var underlyingDriverList = map[string]driver.Driver{}
@@ -86,7 +88,7 @@ func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 	}
 
 	hostListProviderService := driver_infrastructure.HostListProviderService(pluginServiceImpl)
-	provider := hostListProviderService.CreateHostListProvider(props, dsn)
+	provider := hostListProviderService.CreateHostListProvider(props)
 	hostListProviderService.SetHostListProvider(provider)
 
 	telemetryCtx, ctx := pluginManager.GetTelemetryFactory().OpenTelemetryContext(telemetry.TELEMETRY_OPEN_CONNECTION, telemetry.TOP_LEVEL, nil)
@@ -96,7 +98,7 @@ func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 		pluginManager.SetTelemetryContext(context.TODO())
 	}()
 
-	err = pluginManager.InitHostProvider(dsn, props, hostListProviderService)
+	err = pluginManager.InitHostProvider(props, hostListProviderService)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +159,7 @@ func GetUnderlyingDriver(name string) driver.Driver {
 	return underlyingDriverList[name]
 }
 
-// This cleans up all long standing caches. To be called at the end of program, not each time a Conn is closed.
+// This cleans up all long-standing caches. To be called at the end of program, not each time a Conn is closed.
 func ClearCaches() {
 	driver_infrastructure.ClearCaches()
 	plugin_helpers.ClearCaches()
@@ -330,6 +332,10 @@ func (c *AwsWrapperConn) setReadWriteMode(ctx context.Context) error {
 	c.pluginService.UpdateState(query)
 	_, err := c.execContextInternal(context.TODO(), query, []driver.NamedValue{})
 	return err
+}
+
+func (c *AwsWrapperConn) UnwrapPlugin(pluginCode string) driver_infrastructure.ConnectionPlugin {
+	return c.pluginManager.UnwrapPlugin(pluginCode)
 }
 
 type AwsWrapperStmt struct {

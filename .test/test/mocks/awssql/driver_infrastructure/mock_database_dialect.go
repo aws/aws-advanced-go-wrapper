@@ -170,17 +170,17 @@ func (mr *MockDatabaseDialectMockRecorder) GetHostAliasQuery() *gomock.Call {
 }
 
 // GetHostListProvider mocks base method.
-func (m *MockDatabaseDialect) GetHostListProvider(props map[string]string, initialDsn string, hostListProviderService driver_infrastructure.HostListProviderService, pluginService driver_infrastructure.PluginService) driver_infrastructure.HostListProvider {
+func (m *MockDatabaseDialect) GetHostListProvider(props map[string]string, hostListProviderService driver_infrastructure.HostListProviderService, pluginService driver_infrastructure.PluginService) driver_infrastructure.HostListProvider {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetHostListProvider", props, initialDsn, hostListProviderService, pluginService)
+	ret := m.ctrl.Call(m, "GetHostListProvider", props, hostListProviderService, pluginService)
 	ret0, _ := ret[0].(driver_infrastructure.HostListProvider)
 	return ret0
 }
 
 // GetHostListProvider indicates an expected call of GetHostListProvider.
-func (mr *MockDatabaseDialectMockRecorder) GetHostListProvider(props, initialDsn, hostListProviderService, pluginService interface{}) *gomock.Call {
+func (mr *MockDatabaseDialectMockRecorder) GetHostListProvider(props, hostListProviderService, pluginService interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHostListProvider", reflect.TypeOf((*MockDatabaseDialect)(nil).GetHostListProvider), props, initialDsn, hostListProviderService, pluginService)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHostListProvider", reflect.TypeOf((*MockDatabaseDialect)(nil).GetHostListProvider), props, hostListProviderService, pluginService)
 }
 
 // GetServerVersionQuery mocks base method.
@@ -427,17 +427,17 @@ func (mr *MockTopologyAwareDialectMockRecorder) GetHostAliasQuery() *gomock.Call
 }
 
 // GetHostListProvider mocks base method.
-func (m *MockTopologyAwareDialect) GetHostListProvider(props map[string]string, initialDsn string, hostListProviderService driver_infrastructure.HostListProviderService, pluginService driver_infrastructure.PluginService) driver_infrastructure.HostListProvider {
+func (m *MockTopologyAwareDialect) GetHostListProvider(props map[string]string, hostListProviderService driver_infrastructure.HostListProviderService, pluginService driver_infrastructure.PluginService) driver_infrastructure.HostListProvider {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetHostListProvider", props, initialDsn, hostListProviderService, pluginService)
+	ret := m.ctrl.Call(m, "GetHostListProvider", props, hostListProviderService, pluginService)
 	ret0, _ := ret[0].(driver_infrastructure.HostListProvider)
 	return ret0
 }
 
 // GetHostListProvider indicates an expected call of GetHostListProvider.
-func (mr *MockTopologyAwareDialectMockRecorder) GetHostListProvider(props, initialDsn, hostListProviderService, pluginService interface{}) *gomock.Call {
+func (mr *MockTopologyAwareDialectMockRecorder) GetHostListProvider(props, hostListProviderService, pluginService interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHostListProvider", reflect.TypeOf((*MockTopologyAwareDialect)(nil).GetHostListProvider), props, initialDsn, hostListProviderService, pluginService)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHostListProvider", reflect.TypeOf((*MockTopologyAwareDialect)(nil).GetHostListProvider), props, hostListProviderService, pluginService)
 }
 
 // GetHostName mocks base method.
@@ -742,17 +742,17 @@ func (mr *MockAuroraLimitlessDialectMockRecorder) GetHostAliasQuery() *gomock.Ca
 }
 
 // GetHostListProvider mocks base method.
-func (m *MockAuroraLimitlessDialect) GetHostListProvider(props map[string]string, initialDsn string, hostListProviderService driver_infrastructure.HostListProviderService, pluginService driver_infrastructure.PluginService) driver_infrastructure.HostListProvider {
+func (m *MockAuroraLimitlessDialect) GetHostListProvider(props map[string]string, hostListProviderService driver_infrastructure.HostListProviderService, pluginService driver_infrastructure.PluginService) driver_infrastructure.HostListProvider {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetHostListProvider", props, initialDsn, hostListProviderService, pluginService)
+	ret := m.ctrl.Call(m, "GetHostListProvider", props, hostListProviderService, pluginService)
 	ret0, _ := ret[0].(driver_infrastructure.HostListProvider)
 	return ret0
 }
 
 // GetHostListProvider indicates an expected call of GetHostListProvider.
-func (mr *MockAuroraLimitlessDialectMockRecorder) GetHostListProvider(props, initialDsn, hostListProviderService, pluginService interface{}) *gomock.Call {
+func (mr *MockAuroraLimitlessDialectMockRecorder) GetHostListProvider(props, hostListProviderService, pluginService interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHostListProvider", reflect.TypeOf((*MockAuroraLimitlessDialect)(nil).GetHostListProvider), props, initialDsn, hostListProviderService, pluginService)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHostListProvider", reflect.TypeOf((*MockAuroraLimitlessDialect)(nil).GetHostListProvider), props, hostListProviderService, pluginService)
 }
 
 // GetLimitlessRouterEndpointQuery mocks base method.
@@ -870,4 +870,289 @@ func (m *MockAuroraLimitlessDialect) IsDialect(conn driver.Conn) bool {
 func (mr *MockAuroraLimitlessDialectMockRecorder) IsDialect(conn interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsDialect", reflect.TypeOf((*MockAuroraLimitlessDialect)(nil).IsDialect), conn)
+}
+
+// MockBlueGreenDialect is a mock of BlueGreenDialect interface.
+type MockBlueGreenDialect struct {
+	ctrl     *gomock.Controller
+	recorder *MockBlueGreenDialectMockRecorder
+}
+
+// MockBlueGreenDialectMockRecorder is the mock recorder for MockBlueGreenDialect.
+type MockBlueGreenDialectMockRecorder struct {
+	mock *MockBlueGreenDialect
+}
+
+// NewMockBlueGreenDialect creates a new mock instance.
+func NewMockBlueGreenDialect(ctrl *gomock.Controller) *MockBlueGreenDialect {
+	mock := &MockBlueGreenDialect{ctrl: ctrl}
+	mock.recorder = &MockBlueGreenDialectMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockBlueGreenDialect) EXPECT() *MockBlueGreenDialectMockRecorder {
+	return m.recorder
+}
+
+// DoesStatementSetAutoCommit mocks base method.
+func (m *MockBlueGreenDialect) DoesStatementSetAutoCommit(statement string) (bool, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DoesStatementSetAutoCommit", statement)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// DoesStatementSetAutoCommit indicates an expected call of DoesStatementSetAutoCommit.
+func (mr *MockBlueGreenDialectMockRecorder) DoesStatementSetAutoCommit(statement interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesStatementSetAutoCommit", reflect.TypeOf((*MockBlueGreenDialect)(nil).DoesStatementSetAutoCommit), statement)
+}
+
+// DoesStatementSetCatalog mocks base method.
+func (m *MockBlueGreenDialect) DoesStatementSetCatalog(statement string) (string, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DoesStatementSetCatalog", statement)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// DoesStatementSetCatalog indicates an expected call of DoesStatementSetCatalog.
+func (mr *MockBlueGreenDialectMockRecorder) DoesStatementSetCatalog(statement interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesStatementSetCatalog", reflect.TypeOf((*MockBlueGreenDialect)(nil).DoesStatementSetCatalog), statement)
+}
+
+// DoesStatementSetReadOnly mocks base method.
+func (m *MockBlueGreenDialect) DoesStatementSetReadOnly(statement string) (bool, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DoesStatementSetReadOnly", statement)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// DoesStatementSetReadOnly indicates an expected call of DoesStatementSetReadOnly.
+func (mr *MockBlueGreenDialectMockRecorder) DoesStatementSetReadOnly(statement interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesStatementSetReadOnly", reflect.TypeOf((*MockBlueGreenDialect)(nil).DoesStatementSetReadOnly), statement)
+}
+
+// DoesStatementSetSchema mocks base method.
+func (m *MockBlueGreenDialect) DoesStatementSetSchema(statement string) (string, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DoesStatementSetSchema", statement)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// DoesStatementSetSchema indicates an expected call of DoesStatementSetSchema.
+func (mr *MockBlueGreenDialectMockRecorder) DoesStatementSetSchema(statement interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesStatementSetSchema", reflect.TypeOf((*MockBlueGreenDialect)(nil).DoesStatementSetSchema), statement)
+}
+
+// DoesStatementSetTransactionIsolation mocks base method.
+func (m *MockBlueGreenDialect) DoesStatementSetTransactionIsolation(statement string) (driver_infrastructure.TransactionIsolationLevel, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DoesStatementSetTransactionIsolation", statement)
+	ret0, _ := ret[0].(driver_infrastructure.TransactionIsolationLevel)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// DoesStatementSetTransactionIsolation indicates an expected call of DoesStatementSetTransactionIsolation.
+func (mr *MockBlueGreenDialectMockRecorder) DoesStatementSetTransactionIsolation(statement interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesStatementSetTransactionIsolation", reflect.TypeOf((*MockBlueGreenDialect)(nil).DoesStatementSetTransactionIsolation), statement)
+}
+
+// GetBlueGreenStatus mocks base method.
+func (m *MockBlueGreenDialect) GetBlueGreenStatus(conn driver.Conn) []driver_infrastructure.BlueGreenResult {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetBlueGreenStatus", conn)
+	ret0, _ := ret[0].([]driver_infrastructure.BlueGreenResult)
+	return ret0
+}
+
+// GetBlueGreenStatus indicates an expected call of GetBlueGreenStatus.
+func (mr *MockBlueGreenDialectMockRecorder) GetBlueGreenStatus(conn interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlueGreenStatus", reflect.TypeOf((*MockBlueGreenDialect)(nil).GetBlueGreenStatus), conn)
+}
+
+// GetDefaultPort mocks base method.
+func (m *MockBlueGreenDialect) GetDefaultPort() int {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDefaultPort")
+	ret0, _ := ret[0].(int)
+	return ret0
+}
+
+// GetDefaultPort indicates an expected call of GetDefaultPort.
+func (mr *MockBlueGreenDialectMockRecorder) GetDefaultPort() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDefaultPort", reflect.TypeOf((*MockBlueGreenDialect)(nil).GetDefaultPort))
+}
+
+// GetDialectUpdateCandidates mocks base method.
+func (m *MockBlueGreenDialect) GetDialectUpdateCandidates() []string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDialectUpdateCandidates")
+	ret0, _ := ret[0].([]string)
+	return ret0
+}
+
+// GetDialectUpdateCandidates indicates an expected call of GetDialectUpdateCandidates.
+func (mr *MockBlueGreenDialectMockRecorder) GetDialectUpdateCandidates() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDialectUpdateCandidates", reflect.TypeOf((*MockBlueGreenDialect)(nil).GetDialectUpdateCandidates))
+}
+
+// GetHostAliasQuery mocks base method.
+func (m *MockBlueGreenDialect) GetHostAliasQuery() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetHostAliasQuery")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetHostAliasQuery indicates an expected call of GetHostAliasQuery.
+func (mr *MockBlueGreenDialectMockRecorder) GetHostAliasQuery() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHostAliasQuery", reflect.TypeOf((*MockBlueGreenDialect)(nil).GetHostAliasQuery))
+}
+
+// GetHostListProvider mocks base method.
+func (m *MockBlueGreenDialect) GetHostListProvider(props map[string]string, hostListProviderService driver_infrastructure.HostListProviderService, pluginService driver_infrastructure.PluginService) driver_infrastructure.HostListProvider {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetHostListProvider", props, hostListProviderService, pluginService)
+	ret0, _ := ret[0].(driver_infrastructure.HostListProvider)
+	return ret0
+}
+
+// GetHostListProvider indicates an expected call of GetHostListProvider.
+func (mr *MockBlueGreenDialectMockRecorder) GetHostListProvider(props, hostListProviderService, pluginService interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHostListProvider", reflect.TypeOf((*MockBlueGreenDialect)(nil).GetHostListProvider), props, hostListProviderService, pluginService)
+}
+
+// GetServerVersionQuery mocks base method.
+func (m *MockBlueGreenDialect) GetServerVersionQuery() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetServerVersionQuery")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetServerVersionQuery indicates an expected call of GetServerVersionQuery.
+func (mr *MockBlueGreenDialectMockRecorder) GetServerVersionQuery() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetServerVersionQuery", reflect.TypeOf((*MockBlueGreenDialect)(nil).GetServerVersionQuery))
+}
+
+// GetSetAutoCommitQuery mocks base method.
+func (m *MockBlueGreenDialect) GetSetAutoCommitQuery(autoCommit bool) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSetAutoCommitQuery", autoCommit)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSetAutoCommitQuery indicates an expected call of GetSetAutoCommitQuery.
+func (mr *MockBlueGreenDialectMockRecorder) GetSetAutoCommitQuery(autoCommit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSetAutoCommitQuery", reflect.TypeOf((*MockBlueGreenDialect)(nil).GetSetAutoCommitQuery), autoCommit)
+}
+
+// GetSetCatalogQuery mocks base method.
+func (m *MockBlueGreenDialect) GetSetCatalogQuery(catalog string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSetCatalogQuery", catalog)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSetCatalogQuery indicates an expected call of GetSetCatalogQuery.
+func (mr *MockBlueGreenDialectMockRecorder) GetSetCatalogQuery(catalog interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSetCatalogQuery", reflect.TypeOf((*MockBlueGreenDialect)(nil).GetSetCatalogQuery), catalog)
+}
+
+// GetSetReadOnlyQuery mocks base method.
+func (m *MockBlueGreenDialect) GetSetReadOnlyQuery(readOnly bool) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSetReadOnlyQuery", readOnly)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSetReadOnlyQuery indicates an expected call of GetSetReadOnlyQuery.
+func (mr *MockBlueGreenDialectMockRecorder) GetSetReadOnlyQuery(readOnly interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSetReadOnlyQuery", reflect.TypeOf((*MockBlueGreenDialect)(nil).GetSetReadOnlyQuery), readOnly)
+}
+
+// GetSetSchemaQuery mocks base method.
+func (m *MockBlueGreenDialect) GetSetSchemaQuery(schema string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSetSchemaQuery", schema)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSetSchemaQuery indicates an expected call of GetSetSchemaQuery.
+func (mr *MockBlueGreenDialectMockRecorder) GetSetSchemaQuery(schema interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSetSchemaQuery", reflect.TypeOf((*MockBlueGreenDialect)(nil).GetSetSchemaQuery), schema)
+}
+
+// GetSetTransactionIsolationQuery mocks base method.
+func (m *MockBlueGreenDialect) GetSetTransactionIsolationQuery(level driver_infrastructure.TransactionIsolationLevel) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSetTransactionIsolationQuery", level)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSetTransactionIsolationQuery indicates an expected call of GetSetTransactionIsolationQuery.
+func (mr *MockBlueGreenDialectMockRecorder) GetSetTransactionIsolationQuery(level interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSetTransactionIsolationQuery", reflect.TypeOf((*MockBlueGreenDialect)(nil).GetSetTransactionIsolationQuery), level)
+}
+
+// IsBlueGreenStatusAvailable mocks base method.
+func (m *MockBlueGreenDialect) IsBlueGreenStatusAvailable(conn driver.Conn) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsBlueGreenStatusAvailable", conn)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsBlueGreenStatusAvailable indicates an expected call of IsBlueGreenStatusAvailable.
+func (mr *MockBlueGreenDialectMockRecorder) IsBlueGreenStatusAvailable(conn interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsBlueGreenStatusAvailable", reflect.TypeOf((*MockBlueGreenDialect)(nil).IsBlueGreenStatusAvailable), conn)
+}
+
+// IsDialect mocks base method.
+func (m *MockBlueGreenDialect) IsDialect(conn driver.Conn) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsDialect", conn)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsDialect indicates an expected call of IsDialect.
+func (mr *MockBlueGreenDialectMockRecorder) IsDialect(conn interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsDialect", reflect.TypeOf((*MockBlueGreenDialect)(nil).IsDialect), conn)
 }

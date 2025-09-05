@@ -34,8 +34,11 @@ type DefaultPlugin struct {
 	ConnProviderManager driver_infrastructure.ConnectionProviderManager
 }
 
+func (d *DefaultPlugin) GetPluginCode() string {
+	return "default" // plugin code is not used
+}
+
 func (d *DefaultPlugin) InitHostProvider(
-	initialUrl string,
 	props map[string]string,
 	hostListProviderService driver_infrastructure.HostListProviderService,
 	initHostProviderFunc func() error) error {

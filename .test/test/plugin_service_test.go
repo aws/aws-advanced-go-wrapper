@@ -18,12 +18,14 @@ package test
 
 import (
 	"database/sql/driver"
+	"testing"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	"github.com/aws/aws-advanced-go-wrapper/pgx-driver"
-	"testing"
+	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -347,4 +349,83 @@ func TestFillAliasesNonEmptyAliases(t *testing.T) {
 	assert.Equal(t, 1, len(hostA.Aliases))
 	target.FillAliases(MockDriverConn{}, hostA)
 	assert.Equal(t, 1, len(hostA.Aliases))
+}
+
+func TestGetStatusEmptyCache(t *testing.T) {
+	target, _, _, err := beforePluginServiceTests()
+	assert.Nil(t, err)
+
+	plugin_helpers.ClearCaches()
+
+	status, found := target.GetBgStatus("test-id")
+	assert.False(t, found, "Should return false when status not found in cache")
+	assert.True(t, status.IsZero(), "Should return zero BlueGreenStatus when not found")
+}
+
+func TestGetSetStatus(t *testing.T) {
+	target, _, _, err := beforePluginServiceTests()
+	assert.Nil(t, err)
+
+	plugin_helpers.ClearCaches()
+
+	target.SetBgStatus(driver_infrastructure.NewBgStatus(
+		"test-id",
+		driver_infrastructure.IN_PROGRESS,
+		[]driver_infrastructure.ConnectRouting{},
+		[]driver_infrastructure.ExecuteRouting{},
+		utils.NewRWMap[driver_infrastructure.BlueGreenRole](),
+		utils.NewRWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]](),
+	), "test-bg")
+
+	// Try to retrieve with different formats
+	testCases := []string{
+		"test-bg",
+		"TEST-BG",
+		"Test-Bg",
+		"TeSt-Bg",
+		"  test-bg",
+		"test-bg  ",
+		"  test-bg  ",
+		"\ttest-bg\t",
+		"\ntest-bg\n",
+	}
+
+	for _, testId := range testCases {
+		retrievedStatus, found := target.GetBgStatus(testId)
+		assert.True(t, found, "Should find status regardless of case for ID: %s", testId)
+		assert.False(t, retrievedStatus.IsZero(), "Status should not be zero for ID: %s", testId)
+		assert.Equal(t, driver_infrastructure.IN_PROGRESS, retrievedStatus.GetCurrentPhase(), "Should retrieve correct phase for ID: %s", testId)
+	}
+}
+
+func TestSetStatusUpdateExistingStatus(t *testing.T) {
+	target, _, _, err := beforePluginServiceTests()
+	assert.Nil(t, err)
+
+	plugin_helpers.ClearCaches()
+
+	testId := "deployment-update-test"
+	connectRoutings := []driver_infrastructure.ConnectRouting{}
+	executeRoutings := []driver_infrastructure.ExecuteRouting{}
+	roleByHost := utils.NewRWMap[driver_infrastructure.BlueGreenRole]()
+	correspondingHosts := utils.NewRWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]()
+
+	initialStatus := driver_infrastructure.NewBgStatus(testId, driver_infrastructure.CREATED, connectRoutings, executeRoutings, roleByHost, correspondingHosts)
+	target.SetBgStatus(initialStatus, testId)
+
+	retrievedStatus, found := target.GetBgStatus(testId)
+	assert.True(t, found, "Should find initial status")
+	assert.Equal(t, driver_infrastructure.CREATED, retrievedStatus.GetCurrentPhase(), "Should have initial phase")
+
+	updatedStatus := driver_infrastructure.NewBgStatus(testId, driver_infrastructure.COMPLETED, connectRoutings, executeRoutings, roleByHost, correspondingHosts)
+	target.SetBgStatus(updatedStatus, testId)
+
+	retrievedStatus, found = target.GetBgStatus(testId)
+	assert.True(t, found, "Should find updated status")
+	assert.Equal(t, driver_infrastructure.COMPLETED, retrievedStatus.GetCurrentPhase(), "Should have updated phase")
+
+	target.SetBgStatus(driver_infrastructure.BlueGreenStatus{}, testId)
+
+	_, found = target.GetBgStatus(testId)
+	assert.False(t, found, "Should remove status")
 }

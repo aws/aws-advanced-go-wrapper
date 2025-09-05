@@ -19,21 +19,24 @@ package plugin_helpers
 import (
 	"context"
 	"database/sql/driver"
+	"fmt"
 	"log/slog"
 	"slices"
+	"strings"
 	"time"
-
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 )
 
-var hostAvailabilityExpiringCache *utils.CacheMap[host_info_util.HostAvailability] = utils.NewCache[host_info_util.HostAvailability]()
-var DEFAULT_HOST_AVAILABILITY_CACHE_EXPIRE_NANO time.Duration = 5 * time.Minute
+var hostAvailabilityExpiringCache = utils.NewCache[host_info_util.HostAvailability]()
+var statusesExpiringCache = utils.NewCache[driver_infrastructure.BlueGreenStatus]()
+var DEFAULT_HOST_AVAILABILITY_CACHE_EXPIRE_NANO = 5 * time.Minute
+var DEFAULT_STATUS_CACHE_EXPIRE_NANO = 60 * time.Minute
 
 type PluginServiceImpl struct {
 	pluginManager             driver_infrastructure.PluginManager
@@ -88,8 +91,8 @@ func (p *PluginServiceImpl) SetHostListProvider(hostListProvider driver_infrastr
 	p.hostListProvider = hostListProvider
 }
 
-func (p *PluginServiceImpl) CreateHostListProvider(props map[string]string, dsn string) driver_infrastructure.HostListProvider {
-	return p.GetDialect().GetHostListProvider(props, dsn, driver_infrastructure.HostListProviderService(p), p)
+func (p *PluginServiceImpl) CreateHostListProvider(props map[string]string) driver_infrastructure.HostListProvider {
+	return p.GetDialect().GetHostListProvider(props, driver_infrastructure.HostListProviderService(p), p)
 }
 
 func (p *PluginServiceImpl) GetDialect() driver_infrastructure.DatabaseDialect {
@@ -114,7 +117,7 @@ func (p *PluginServiceImpl) UpdateDialect(conn driver.Conn) {
 		return
 	}
 	p.dialect = newDialect
-	p.SetHostListProvider(p.CreateHostListProvider(p.props, p.originalDsn))
+	p.SetHostListProvider(p.CreateHostListProvider(p.props))
 }
 
 func (p *PluginServiceImpl) GetCurrentConnection() driver.Conn {
@@ -184,7 +187,7 @@ func (p *PluginServiceImpl) SetCurrentConnection(
 			shouldCloseConnection := connectionObjectHasChanged && !p.GetTargetDriverDialect().IsClosed(oldConnection) && !preserve
 			if shouldCloseConnection {
 				_ = p.sessionStateService.ApplyPristineSessionState(oldConnection)
-				oldConnection.Close()
+				_ = oldConnection.Close()
 			}
 		}
 	}
@@ -368,17 +371,17 @@ func (p *PluginServiceImpl) updateHostListIfNeeded(updatedHostList []*host_info_
 }
 
 func (p *PluginServiceImpl) setHostList(oldHosts []*host_info_util.HostInfo, newHosts []*host_info_util.HostInfo) {
-	var oldHostMap map[string]*host_info_util.HostInfo = map[string]*host_info_util.HostInfo{}
+	var oldHostMap = map[string]*host_info_util.HostInfo{}
 	for _, host := range oldHosts {
 		oldHostMap[host.GetHostAndPort()] = host
 	}
 
-	var newHostMap map[string]*host_info_util.HostInfo = map[string]*host_info_util.HostInfo{}
+	var newHostMap = map[string]*host_info_util.HostInfo{}
 	for _, host := range newHosts {
 		newHostMap[host.GetHostAndPort()] = host
 	}
 
-	var changes map[string]map[driver_infrastructure.HostChangeOptions]bool = map[string]map[driver_infrastructure.HostChangeOptions]bool{}
+	var changes = map[string]map[driver_infrastructure.HostChangeOptions]bool{}
 	for hostKey, hostInfo := range oldHostMap {
 		correspondingNewHost, ok := newHostMap[hostKey]
 		if !ok || correspondingNewHost.IsNil() {
@@ -565,7 +568,7 @@ func (p *PluginServiceImpl) UpdateState(sql string, methodArgs ...any) {
 func (p *PluginServiceImpl) ReleaseResources() {
 	slog.Debug(error_util.GetMessage("PluginServiceImpl.releaseResources"))
 	if p.currentConnection != nil {
-		(*p.currentConnection).Close() // Ignore any error.
+		_ = (*p.currentConnection).Close() // Ignore any error.
 		p.currentConnection = nil
 	}
 
@@ -586,9 +589,36 @@ func (p *PluginServiceImpl) IsReadOnly() bool {
 	return *readOnly
 }
 
-// This cleans up all long standing caches. To be called at the end of program, not each time a Conn is closed.
+func (p *PluginServiceImpl) GetBgStatus(id string) (driver_infrastructure.BlueGreenStatus, bool) {
+	return statusesExpiringCache.Get(p.getStatusCacheKey(id))
+}
+
+func (p *PluginServiceImpl) SetBgStatus(status driver_infrastructure.BlueGreenStatus, id string) {
+	cacheKey := p.getStatusCacheKey(id)
+	if status.IsZero() {
+		statusesExpiringCache.Remove(cacheKey)
+	} else {
+		statusesExpiringCache.Put(cacheKey, status, DEFAULT_STATUS_CACHE_EXPIRE_NANO)
+	}
+}
+
+func (p *PluginServiceImpl) getStatusCacheKey(id string) string {
+	if id != "" {
+		id = strings.ToLower(strings.TrimSpace(id))
+	}
+	return fmt.Sprintf("%s::%s", id, "BlueGreenStatus")
+}
+
+func (p *PluginServiceImpl) IsPluginInUse(pluginName string) bool {
+	return p.pluginManager.IsPluginInUse(pluginName)
+}
+
+// This cleans up all long-standing caches. To be called at the end of program, not each time a Conn is closed.
 func ClearCaches() {
 	if hostAvailabilityExpiringCache != nil {
 		hostAvailabilityExpiringCache.Clear()
+	}
+	if statusesExpiringCache != nil {
+		statusesExpiringCache.Clear()
 	}
 }

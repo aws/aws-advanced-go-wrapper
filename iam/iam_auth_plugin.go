@@ -36,7 +36,8 @@ import (
 )
 
 func init() {
-	awssql.UsePluginFactory("iam", NewIamAuthPluginFactory())
+	awssql.UsePluginFactory(driver_infrastructure.IAM_PLUGIN_CODE,
+		NewIamAuthPluginFactory())
 }
 
 type IamAuthPluginFactory struct{}
@@ -61,6 +62,10 @@ type IamAuthPlugin struct {
 	iamTokenUtility   auth_helpers.IamTokenUtility
 	props             map[string]string
 	fetchTokenCounter telemetry.TelemetryCounter
+}
+
+func (iamAuthPlugin *IamAuthPlugin) GetPluginCode() string {
+	return driver_infrastructure.IAM_PLUGIN_CODE
 }
 
 func NewIamAuthPlugin(pluginService driver_infrastructure.PluginService, iamTokenUtility auth_helpers.IamTokenUtility, props map[string]string) (*IamAuthPlugin, error) {

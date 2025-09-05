@@ -93,7 +93,7 @@ func (b *BenchmarkPlugin) NotifyHostListChanged(changes map[string]map[driver_in
 }
 
 func (b *BenchmarkPlugin) InitHostProvider(
-	initialUrl string, props map[string]string,
+	props map[string]string,
 	hostListProviderService driver_infrastructure.HostListProviderService,
 	initHostProviderFunc func() error) error {
 	b.resources = append(b.resources, "initHostProvider")

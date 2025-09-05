@@ -18,8 +18,9 @@ package driver_infrastructure
 
 import (
 	"database/sql/driver"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"time"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 )
 
 type HostListProvider interface {

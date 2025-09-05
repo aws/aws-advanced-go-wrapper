@@ -67,6 +67,10 @@ func NewReadWriteSplittingPlugin(pluginService driver_infrastructure.PluginServi
 	}
 }
 
+func (r *ReadWriteSplittingPlugin) GetPluginCode() string {
+	return driver_infrastructure.READ_WRITE_SPLITTING_PLUGIN_CODE
+}
+
 func (r *ReadWriteSplittingPlugin) GetSubscribedMethods() []string {
 	return []string{plugin_helpers.CONNECT_METHOD,
 		plugin_helpers.INIT_HOST_PROVIDER_METHOD,
@@ -117,7 +121,6 @@ func (r *ReadWriteSplittingPlugin) Connect(
 }
 
 func (r *ReadWriteSplittingPlugin) InitHostProvider(
-	initialUrl string,
 	props map[string]string,
 	hostListProviderService driver_infrastructure.HostListProviderService,
 	initHostProviderFunc func() error) error {

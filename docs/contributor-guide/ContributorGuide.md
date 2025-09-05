@@ -42,7 +42,7 @@ There are specific benchmarks measuring the AWS Advanced Go Wrapper's plugin pip
 
 ![](../images/go_wrapper_execute_pipelines_benchmarks.png)
 
-##### [Release Resources Pipeline](../contributor-guide/Pipelines.md#release-resources-pipeline)
+##### Release Resources Pipeline
 
 ![](../images/go_wrapper_releaseresources_pipelines_benchmarks.png)
 
@@ -65,7 +65,7 @@ The following diagrams show how the AWS Advanced Go Wrapper performs under a mor
 Common Failure Detection Setting
 
 | Parameter                  | Value    |
-| -------------------------- | -------- |
+|----------------------------|----------|
 | `failoverTimeoutMs`        | `120000` |
 | `failureDetectionTime`     | `30000`  |
 | `failureDetectionInterval` | `5000`   |
@@ -74,7 +74,7 @@ Common Failure Detection Setting
 Aggressive Failure Detection Setting
 
 | Parameter                  | Value    |
-| -------------------------- | -------- |
+|----------------------------|----------|
 | `failoverTimeoutMs`        | `120000` |
 | `failureDetectionTime`     | `6000`   |
 | `failureDetectionInterval` | `1000`   |

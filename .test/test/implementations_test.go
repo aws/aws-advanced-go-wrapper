@@ -35,6 +35,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/bg"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/efm"
 	federated_auth "github.com/aws/aws-advanced-go-wrapper/federated-auth"
 	"github.com/aws/aws-advanced-go-wrapper/iam"
@@ -51,6 +52,10 @@ func TestImplementations(t *testing.T) {
 	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.PgDatabaseDialect)(nil)
 	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.RdsPgDatabaseDialect)(nil)
 	var _ driver_infrastructure.DatabaseDialect = (*driver_infrastructure.AuroraPgDatabaseDialect)(nil)
+	var _ driver_infrastructure.BlueGreenDialect = (*driver_infrastructure.RdsMySQLDatabaseDialect)(nil)
+	var _ driver_infrastructure.BlueGreenDialect = (*driver_infrastructure.AuroraMySQLDatabaseDialect)(nil)
+	var _ driver_infrastructure.BlueGreenDialect = (*driver_infrastructure.RdsPgDatabaseDialect)(nil)
+	var _ driver_infrastructure.BlueGreenDialect = (*driver_infrastructure.AuroraPgDatabaseDialect)(nil)
 	var _ driver_infrastructure.TopologyAwareDialect = (*driver_infrastructure.MySQLTopologyAwareDatabaseDialect)(nil)
 	var _ driver_infrastructure.TopologyAwareDialect = (*driver_infrastructure.PgTopologyAwareDatabaseDialect)(nil)
 	var _ driver_infrastructure.TopologyAwareDialect = (*driver_infrastructure.AuroraMySQLDatabaseDialect)(nil)
@@ -80,8 +85,10 @@ func TestImplementations(t *testing.T) {
 	var _ driver_infrastructure.ConnectionPlugin = (*aws_secrets_manager.AwsSecretsManagerPlugin)(nil)
 	var _ driver_infrastructure.ConnectionPlugin = (*okta.OktaAuthPlugin)(nil)
 	var _ driver_infrastructure.ConnectionPlugin = (*federated_auth.FederatedAuthPlugin)(nil)
+	var _ driver_infrastructure.ConnectionPlugin = (*bg.BlueGreenPlugin)(nil)
 	var _ driver_infrastructure.ConnectionPluginFactory = (*efm.HostMonitoringPluginFactory)(nil)
 	var _ driver_infrastructure.ConnectionPluginFactory = (*plugins.FailoverPluginFactory)(nil)
+	var _ driver_infrastructure.ConnectionPluginFactory = (*bg.BlueGreenPluginFactory)(nil)
 	var _ driver_infrastructure.ConnectionPluginFactory = (*iam.IamAuthPluginFactory)(nil)
 	var _ driver_infrastructure.ConnectionPluginFactory = (*aws_secrets_manager.AwsSecretsManagerPluginFactory)(nil)
 	var _ driver_infrastructure.ConnectionPluginFactory = (*okta.OktaAuthPluginFactory)(nil)
@@ -129,4 +136,9 @@ func TestImplementations(t *testing.T) {
 	var _ driver.RowsColumnTypeScanType = (*awsDriver.AwsWrapperMySQLRows)(nil)
 	var _ driver.RowsColumnTypeNullable = (*awsDriver.AwsWrapperMySQLRows)(nil)
 	var _ error = (*error_util.AwsWrapperError)(nil)
+	var _ driver_infrastructure.ExecuteRouting = (*bg.SuspendExecuteRouting)(nil)
+	var _ driver_infrastructure.ConnectRouting = (*bg.SuspendConnectRouting)(nil)
+	var _ driver_infrastructure.ConnectRouting = (*bg.SubstituteConnectRouting)(nil)
+	var _ driver_infrastructure.ConnectRouting = (*bg.RejectConnectRouting)(nil)
+	var _ driver_infrastructure.ConnectRouting = (*bg.SuspendUntilCorrespondingHostFoundConnectRouting)(nil)
 }

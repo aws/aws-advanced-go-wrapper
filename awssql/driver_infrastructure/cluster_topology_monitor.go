@@ -238,28 +238,29 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 	if c.loadConn(c.monitoringConn) == nil {
 		// Open a new connection.
 		conn, err := c.pluginService.ForceConnect(c.initialHostInfo, utils.CreateMapCopy(c.monitoringProps))
-		if err != nil {
+		if err != nil || conn == nil {
 			// Can't connect.
 			return nil, err
 		}
 
 		if c.monitoringConn.CompareAndSwap(emptyContainer, ConnectionContainer{conn}) {
-			slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.openedMonitoringConnection", c.initialHostInfo.Host))
+			slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.openedMonitoringConnection", c.initialHostInfo.GetHost()))
 
 			writerId, getWriterNameErr := c.databaseDialect.GetWriterHostName(conn)
 			if getWriterNameErr == nil && writerId != "" {
 				c.isVerifiedWriterConn = true
 				writerVerifiedByThisRoutine = true
 
-				if utils.IsRdsDns(c.initialHostInfo.Host) {
+				if utils.IsRdsInstance(c.initialHostInfo.GetHost()) {
 					c.writerHostInfo.Store(c.initialHostInfo)
+					slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.writerMonitoringConnection", c.writerHostInfo.Load().GetHost()))
 				} else {
 					hostId := c.databaseDialect.GetHostName(c.loadConn(c.monitoringConn))
 					if hostId != "" {
 						c.writerHostInfo.Store(c.createHost(hostId, true, 0, time.Time{}))
+						slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.writerMonitoringConnection", c.writerHostInfo.Load().GetHost()))
 					}
 				}
-				slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.writerMonitoringConnection", c.writerHostInfo.Load().Host))
 			}
 		} else {
 			// Monitoring connection has already been set by other routine, close new connection as we don't need it.
@@ -352,7 +353,7 @@ func (c *ClusterTopologyMonitorImpl) createHost(hostName string, isWriter bool, 
 	endpoint := c.getHostEndpoint(hostName)
 	port := c.clusterInstanceTemplate.Port
 	if port == host_info_util.HOST_NO_PORT {
-		if c.initialHostInfo.Port != host_info_util.HOST_NO_PORT {
+		if c.initialHostInfo.IsPortSpecified() {
 			port = c.initialHostInfo.Port
 		} else {
 			port = c.hostListProvider.databaseDialect.GetDefaultPort()
@@ -397,7 +398,7 @@ func (c *ClusterTopologyMonitorImpl) notifyChannel(channel chan bool) {
 }
 
 func (c *ClusterTopologyMonitorImpl) Run(wg *sync.WaitGroup) {
-	slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.startMonitoringRoutine", c.initialHostInfo.Host))
+	slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.startMonitoringRoutine", c.initialHostInfo.GetHost()))
 
 	for !c.stop.Load() {
 		if c.isInPanicMode() {

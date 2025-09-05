@@ -55,17 +55,17 @@ func (m *MockHostListProviderService) EXPECT() *MockHostListProviderServiceMockR
 }
 
 // CreateHostListProvider mocks base method.
-func (m *MockHostListProviderService) CreateHostListProvider(props map[string]string, dsn string) driver_infrastructure.HostListProvider {
+func (m *MockHostListProviderService) CreateHostListProvider(props map[string]string) driver_infrastructure.HostListProvider {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateHostListProvider", props, dsn)
+	ret := m.ctrl.Call(m, "CreateHostListProvider", props)
 	ret0, _ := ret[0].(driver_infrastructure.HostListProvider)
 	return ret0
 }
 
 // CreateHostListProvider indicates an expected call of CreateHostListProvider.
-func (mr *MockHostListProviderServiceMockRecorder) CreateHostListProvider(props, dsn interface{}) *gomock.Call {
+func (mr *MockHostListProviderServiceMockRecorder) CreateHostListProvider(props interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateHostListProvider", reflect.TypeOf((*MockHostListProviderService)(nil).CreateHostListProvider), props, dsn)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateHostListProvider", reflect.TypeOf((*MockHostListProviderService)(nil).CreateHostListProvider), props)
 }
 
 // GetCurrentConnection mocks base method.
@@ -201,17 +201,17 @@ func (mr *MockPluginServiceMockRecorder) Connect(hostInfo, props, pluginToSkip i
 }
 
 // CreateHostListProvider mocks base method.
-func (m *MockPluginService) CreateHostListProvider(props map[string]string, dsn string) driver_infrastructure.HostListProvider {
+func (m *MockPluginService) CreateHostListProvider(props map[string]string) driver_infrastructure.HostListProvider {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateHostListProvider", props, dsn)
+	ret := m.ctrl.Call(m, "CreateHostListProvider", props)
 	ret0, _ := ret[0].(driver_infrastructure.HostListProvider)
 	return ret0
 }
 
 // CreateHostListProvider indicates an expected call of CreateHostListProvider.
-func (mr *MockPluginServiceMockRecorder) CreateHostListProvider(props, dsn interface{}) *gomock.Call {
+func (mr *MockPluginServiceMockRecorder) CreateHostListProvider(props interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateHostListProvider", reflect.TypeOf((*MockPluginService)(nil).CreateHostListProvider), props, dsn)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateHostListProvider", reflect.TypeOf((*MockPluginService)(nil).CreateHostListProvider), props)
 }
 
 // FillAliases mocks base method.
@@ -455,6 +455,21 @@ func (mr *MockPluginServiceMockRecorder) GetProperties() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProperties", reflect.TypeOf((*MockPluginService)(nil).GetProperties))
 }
 
+// GetStatus mocks base method.
+func (m *MockPluginService) GetBgStatus(id string) (driver_infrastructure.BlueGreenStatus, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetBgStatus", id)
+	ret0, _ := ret[0].(driver_infrastructure.BlueGreenStatus)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// GetStatus indicates an expected call of GetStatus.
+func (mr *MockPluginServiceMockRecorder) GetStatus(id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBgStatus", reflect.TypeOf((*MockPluginService)(nil).GetBgStatus), id)
+}
+
 // GetTargetDriverDialect mocks base method.
 func (m *MockPluginService) GetTargetDriverDialect() driver_infrastructure.DriverDialect {
 	m.ctrl.T.Helper()
@@ -567,6 +582,20 @@ func (m *MockPluginService) IsNetworkError(err error) bool {
 func (mr *MockPluginServiceMockRecorder) IsNetworkError(err interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsNetworkError", reflect.TypeOf((*MockPluginService)(nil).IsNetworkError), err)
+}
+
+// IsPluginInUse mocks base method.
+func (m *MockPluginService) IsPluginInUse(pluginName string) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsPluginInUse", pluginName)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsPluginInUse indicates an expected call of IsPluginInUse.
+func (mr *MockPluginServiceMockRecorder) IsPluginInUse(pluginName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsPluginInUse", reflect.TypeOf((*MockPluginService)(nil).IsPluginInUse), pluginName)
 }
 
 // IsReadOnly mocks base method.
@@ -695,6 +724,18 @@ func (m *MockPluginService) SetInitialConnectionHostInfo(info *host_info_util.Ho
 func (mr *MockPluginServiceMockRecorder) SetInitialConnectionHostInfo(info interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetInitialConnectionHostInfo", reflect.TypeOf((*MockPluginService)(nil).SetInitialConnectionHostInfo), info)
+}
+
+// SetStatus mocks base method.
+func (m *MockPluginService) SetBgStatus(status driver_infrastructure.BlueGreenStatus, id string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetBgStatus", status, id)
+}
+
+// SetStatus indicates an expected call of SetStatus.
+func (mr *MockPluginServiceMockRecorder) SetStatus(status, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetBgStatus", reflect.TypeOf((*MockPluginService)(nil).SetBgStatus), status, id)
 }
 
 // SetTelemetryContext mocks base method.
@@ -942,17 +983,31 @@ func (mr *MockPluginManagerMockRecorder) Init(pluginService, plugins interface{}
 }
 
 // InitHostProvider mocks base method.
-func (m *MockPluginManager) InitHostProvider(initialUrl string, props map[string]string, hostListProviderService driver_infrastructure.HostListProviderService) error {
+func (m *MockPluginManager) InitHostProvider(props map[string]string, hostListProviderService driver_infrastructure.HostListProviderService) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InitHostProvider", initialUrl, props, hostListProviderService)
+	ret := m.ctrl.Call(m, "InitHostProvider", props, hostListProviderService)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // InitHostProvider indicates an expected call of InitHostProvider.
-func (mr *MockPluginManagerMockRecorder) InitHostProvider(initialUrl, props, hostListProviderService interface{}) *gomock.Call {
+func (mr *MockPluginManagerMockRecorder) InitHostProvider(props, hostListProviderService interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitHostProvider", reflect.TypeOf((*MockPluginManager)(nil).InitHostProvider), initialUrl, props, hostListProviderService)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitHostProvider", reflect.TypeOf((*MockPluginManager)(nil).InitHostProvider), props, hostListProviderService)
+}
+
+// IsPluginInUse mocks base method.
+func (m *MockPluginManager) IsPluginInUse(pluginName string) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsPluginInUse", pluginName)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsPluginInUse indicates an expected call of IsPluginInUse.
+func (mr *MockPluginManagerMockRecorder) IsPluginInUse(pluginName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsPluginInUse", reflect.TypeOf((*MockPluginManager)(nil).IsPluginInUse), pluginName)
 }
 
 // NotifyConnectionChanged mocks base method.
@@ -1017,6 +1072,20 @@ func (m *MockPluginManager) SetTelemetryContext(ctx context.Context) {
 func (mr *MockPluginManagerMockRecorder) SetTelemetryContext(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTelemetryContext", reflect.TypeOf((*MockPluginManager)(nil).SetTelemetryContext), ctx)
+}
+
+// UnwrapPlugin mocks base method.
+func (m *MockPluginManager) UnwrapPlugin(pluginCode string) driver_infrastructure.ConnectionPlugin {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UnwrapPlugin", pluginCode)
+	ret0, _ := ret[0].(driver_infrastructure.ConnectionPlugin)
+	return ret0
+}
+
+// UnwrapPlugin indicates an expected call of UnwrapPlugin.
+func (mr *MockPluginManagerMockRecorder) UnwrapPlugin(pluginCode interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnwrapPlugin", reflect.TypeOf((*MockPluginManager)(nil).UnwrapPlugin), pluginCode)
 }
 
 // MockCanReleaseResources is a mock of CanReleaseResources interface.

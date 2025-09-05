@@ -51,7 +51,7 @@ func NewMonitorImpl(
 	failureDetectionCount int,
 	abortedConnectionsCounter telemetry.TelemetryCounter,
 ) *MonitorImpl {
-	monitoringConnectionProps := props
+	monitoringConnectionProps := utils.CreateMapCopy(props)
 	for propKey, propValue := range props {
 		if strings.HasPrefix(propKey, property_util.MONITORING_PROPERTY_PREFIX) {
 			monitoringConnectionProps[strings.TrimPrefix(propKey, property_util.MONITORING_PROPERTY_PREFIX)] = propValue

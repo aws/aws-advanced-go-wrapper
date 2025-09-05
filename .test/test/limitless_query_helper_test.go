@@ -23,6 +23,7 @@ import (
 
 	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
 	mock_database_sql_driver "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/database_sql_driver"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/golang/mock/gomock"
@@ -44,16 +45,15 @@ func TestQueryForLimitlessRouters_Success(t *testing.T) {
 		MockQueryerContext: mock_database_sql_driver.NewMockQueryerContext(ctrl),
 	}
 	mockPlugin := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	mockDialect := mock_driver_infrastructure.NewMockAuroraLimitlessDialect(ctrl)
 	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+	dialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
+	query := dialect.GetLimitlessRouterEndpointQuery()
 
 	props := map[string]string{
 		property_util.LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name: "100",
 	}
-	query := "SELECT * FROM limitless_router"
 
-	mockPlugin.EXPECT().GetDialect().Return(mockDialect)
-	mockDialect.EXPECT().GetLimitlessRouterEndpointQuery().Return(query)
+	mockPlugin.EXPECT().GetDialect().Return(dialect)
 
 	mockConn.MockQueryerContext.EXPECT().
 		QueryContext(gomock.Any(), query, gomock.Nil()).
@@ -84,10 +84,9 @@ func TestQueryForLimitlessRouters_ConnDoesNotImplementQueryerContext(t *testing.
 
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 	mockPlugin := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	mockDialect := mock_driver_infrastructure.NewMockAuroraLimitlessDialect(ctrl)
+	dialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
 
-	mockPlugin.EXPECT().GetDialect().Return(mockDialect)
-	mockDialect.EXPECT().GetLimitlessRouterEndpointQuery().Return("SELECT")
+	mockPlugin.EXPECT().GetDialect().Return(dialect)
 
 	props := map[string]string{
 		property_util.LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name: "100",
@@ -109,10 +108,9 @@ func TestQueryForLimitlessRouters_InvalidTimeoutProperty(t *testing.T) {
 		MockQueryerContext: mock_database_sql_driver.NewMockQueryerContext(ctrl),
 	}
 	mockPlugin := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	mockDialect := mock_driver_infrastructure.NewMockAuroraLimitlessDialect(ctrl)
+	dialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
 
-	mockPlugin.EXPECT().GetDialect().Return(mockDialect)
-	mockDialect.EXPECT().GetLimitlessRouterEndpointQuery().Return("SELECT")
+	mockPlugin.EXPECT().GetDialect().Return(dialect)
 	mockConn.MockQueryerContext.
 		EXPECT().
 		QueryContext(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -137,13 +135,12 @@ func TestQueryForLimitlessRouters_QueryFails(t *testing.T) {
 		MockQueryerContext: mock_database_sql_driver.NewMockQueryerContext(ctrl),
 	}
 	mockPlugin := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	mockDialect := mock_driver_infrastructure.NewMockAuroraLimitlessDialect(ctrl)
+	dialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
 
-	mockPlugin.EXPECT().GetDialect().Return(mockDialect)
-	mockDialect.EXPECT().GetLimitlessRouterEndpointQuery().Return("SELECT")
+	mockPlugin.EXPECT().GetDialect().Return(dialect)
 
 	mockConn.MockQueryerContext.EXPECT().
-		QueryContext(gomock.Any(), "SELECT", gomock.Nil()).
+		QueryContext(gomock.Any(), gomock.Any(), gomock.Nil()).
 		Return(nil, errors.New("query error"))
 
 	props := map[string]string{
@@ -166,13 +163,12 @@ func TestQueryForLimitlessRouters_EmptyHostNameOrBadType(t *testing.T) {
 		MockQueryerContext: mock_database_sql_driver.NewMockQueryerContext(ctrl),
 	}
 	mockPlugin := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	mockDialect := mock_driver_infrastructure.NewMockAuroraLimitlessDialect(ctrl)
+	dialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
 	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
 
-	mockPlugin.EXPECT().GetDialect().Return(mockDialect)
-	mockDialect.EXPECT().GetLimitlessRouterEndpointQuery().Return("SELECT")
+	mockPlugin.EXPECT().GetDialect().Return(dialect)
 	mockConn.MockQueryerContext.EXPECT().
-		QueryContext(gomock.Any(), "SELECT", gomock.Nil()).
+		QueryContext(gomock.Any(), gomock.Any(), gomock.Nil()).
 		Return(mockRows, nil)
 
 	mockRows.EXPECT().Columns().Return([]string{"host", "load"})

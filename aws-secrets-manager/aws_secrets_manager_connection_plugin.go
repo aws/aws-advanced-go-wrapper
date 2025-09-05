@@ -35,7 +35,8 @@ import (
 )
 
 func init() {
-	awssql.UsePluginFactory("awsSecretsManager", NewAwsSecretsManagerPluginFactory())
+	awssql.UsePluginFactory(driver_infrastructure.SECRETS_MANAGER_PLUGIN_CODE,
+		NewAwsSecretsManagerPluginFactory())
 }
 
 var fetchCredentialsCounterName = "secretsManager.fetchCredentials.count"
@@ -118,6 +119,10 @@ func NewAwsSecretsManagerPlugin(pluginService driver_infrastructure.PluginServic
 		secretExpirationTimeSec:         time.Second * time.Duration(secretExpirationTimeSec),
 		fetchCredentialsCounter:         fetchCredentialsCounter,
 	}, err
+}
+
+func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) GetPluginCode() string {
+	return driver_infrastructure.SECRETS_MANAGER_PLUGIN_CODE
 }
 
 func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) GetSubscribedMethods() []string {

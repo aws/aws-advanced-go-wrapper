@@ -51,12 +51,18 @@ var defaultPluginFactoryByCode = map[string]driver_infrastructure.ConnectionPlug
 	"executionTime": plugins.NewExecutionTimePluginFactory(),
 }
 
+var testPluginCode string = "test"
+
 type TestPlugin struct {
 	calls      *[]string
 	id         int
 	connection driver.Conn
 	error      error
 	isBefore   bool
+}
+
+func (t TestPlugin) GetPluginCode() string {
+	return testPluginCode
 }
 
 func (t TestPlugin) GetSubscribedMethods() []string {
@@ -147,7 +153,6 @@ func (t TestPlugin) NotifyHostListChanged(changes map[string]map[driver_infrastr
 }
 
 func (t TestPlugin) InitHostProvider(
-	initialUrl string,
 	props map[string]string,
 	hostListProviderService driver_infrastructure.HostListProviderService,
 	initHostProviderFunc func() error) error {
@@ -186,7 +191,7 @@ func CreateTestPlugin(calls *[]string, id int, connection driver.Conn, err error
 	if calls == nil {
 		calls = &[]string{}
 	}
-	testPlugin := driver_infrastructure.ConnectionPlugin(&TestPlugin{calls: calls, id: id, connection: connection, error: err, isBefore: isBefore})
+	testPlugin := &TestPlugin{calls: calls, id: id, connection: connection, error: err, isBefore: isBefore}
 	return testPlugin
 }
 
@@ -424,7 +429,7 @@ func (m *MockPluginService) GetCurrentTx() driver.Tx {
 
 func (m *MockPluginService) SetCurrentTx(tx driver.Tx) {}
 
-func (m *MockPluginService) CreateHostListProvider(props map[string]string, dsn string) driver_infrastructure.HostListProvider {
+func (m *MockPluginService) CreateHostListProvider(props map[string]string) driver_infrastructure.HostListProvider {
 	return nil
 }
 
@@ -515,6 +520,17 @@ func (m *MockPluginService) IsReadOnly() bool {
 	return false
 }
 
+func (p *MockPluginService) GetBgStatus(id string) (driver_infrastructure.BlueGreenStatus, bool) {
+	return driver_infrastructure.BlueGreenStatus{}, true
+}
+
+func (p *MockPluginService) SetBgStatus(status driver_infrastructure.BlueGreenStatus, id string) {
+}
+
+func (p *MockPluginService) IsPluginInUse(pluginCode string) bool {
+	return false
+}
+
 type MockDriverConn struct {
 	driver.Conn
 }
@@ -558,7 +574,7 @@ func (m *MockRdsHostListProviderService) IsStaticHostListProvider() bool {
 	return false
 }
 
-func (m *MockRdsHostListProviderService) CreateHostListProvider(props map[string]string, dsn string) driver_infrastructure.HostListProvider {
+func (m *MockRdsHostListProviderService) CreateHostListProvider(props map[string]string) driver_infrastructure.HostListProvider {
 	return nil
 }
 
@@ -654,7 +670,7 @@ func (m MockHttpClient) Do(req *http.Request) (*http.Response, error) {
 
 	resp := m.doReturnValues[idx]
 
-	(*m.doCallCount)++
+	*m.doCallCount++
 	return resp, m.errReturnValue
 }
 

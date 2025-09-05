@@ -30,6 +30,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
+	"github.com/aws/aws-advanced-go-wrapper/iam"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -607,4 +608,46 @@ func TestConnectPluginToSkip(t *testing.T) {
 	assert.Nil(t, conn)
 	require.NotNil(t, err)
 	assert.Equal(t, error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginManager.pipelineNone")), err)
+}
+
+func TestIsPluginInUse(t *testing.T) {
+	mockTargetDriver := &MockTargetDriver{}
+	props := make(map[string]string)
+	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	pluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager, telemetryFactory)
+	pluginService := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
+
+	assert.False(t, pluginManager.IsPluginInUse(testPluginCode), "Should return false when no plugins are loaded")
+	assert.False(t, pluginManager.IsPluginInUse("nonexistentPlugin"), "Should return false for nonexistent plugin")
+
+	var calls []string
+	plugins := []driver_infrastructure.ConnectionPlugin{
+		CreateTestPlugin(&calls, 1, nil, nil, false),
+		CreateTestPlugin(&calls, 2, nil, nil, false),
+		CreateTestPlugin(&calls, 3, nil, nil, false),
+		&iam.IamAuthPlugin{},
+	}
+
+	err := pluginManager.Init(pluginService, plugins)
+	require.Nil(t, err)
+
+	assert.True(t, pluginManager.IsPluginInUse(testPluginCode), "Should return true when TestPlugin is loaded")
+	assert.True(t, pluginManager.IsPluginInUse(driver_infrastructure.IAM_PLUGIN_CODE), "Should return true when iam plugin is loaded")
+
+	assert.False(t, pluginManager.IsPluginInUse("nonexistentPlugin"), "Should return false for non-existent plugin type")
+	assert.False(t, pluginManager.IsPluginInUse("default"), "Should return false for DefaultPlugin when not loaded")
+	assert.False(t, pluginManager.IsPluginInUse(driver_infrastructure.FAILOVER_PLUGIN_CODE), "Should return false for FailoverPlugin when not loaded")
+
+	assert.False(t, pluginManager.IsPluginInUse("Test"), "Should return false for case-sensitive mismatch")
+	assert.False(t, pluginManager.IsPluginInUse(" test"), "Should return false when there is additional spacing")
+	assert.False(t, pluginManager.IsPluginInUse("tes"), "Should return false for partial name match")
+	assert.False(t, pluginManager.IsPluginInUse(""), "Should return false for empty string")
+
+	// Re-initialize with empty plugin list
+	err = pluginManager.Init(pluginService, []driver_infrastructure.ConnectionPlugin{})
+	require.Nil(t, err)
+
+	// Should no longer find the plugin
+	assert.False(t, pluginManager.IsPluginInUse("*test.TestPlugin"), "Should return false after plugins are removed")
 }
