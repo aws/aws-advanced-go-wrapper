@@ -80,10 +80,10 @@ type PluginService interface {
 	GetTelemetryFactory() telemetry.TelemetryFactory
 	SetTelemetryContext(ctx context.Context)
 	UpdateState(sql string, methodArgs ...any)
-	IsReadOnly() bool
 	GetBgStatus(id string) (BlueGreenStatus, bool)
 	SetBgStatus(status BlueGreenStatus, id string)
 	IsPluginInUse(pluginName string) bool
+	ResetSession()
 }
 
 type PluginServiceProvider func(

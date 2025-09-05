@@ -135,6 +135,7 @@ func (p *PluginServiceImpl) SetCurrentConnection(
 	conn driver.Conn,
 	hostInfo *host_info_util.HostInfo,
 	skipNotificationForThisPlugin driver_infrastructure.ConnectionPlugin) error {
+
 	if conn == nil {
 		return error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginServiceImpl.nilConn"))
 	}
@@ -581,12 +582,8 @@ func (p *PluginServiceImpl) ReleaseResources() {
 	}
 }
 
-func (p *PluginServiceImpl) IsReadOnly() bool {
-	readOnly := p.sessionStateService.GetReadOnly()
-	if readOnly == nil {
-		return false
-	}
-	return *readOnly
+func (p *PluginServiceImpl) ResetSession() {
+	p.sessionStateService.Reset()
 }
 
 func (p *PluginServiceImpl) GetBgStatus(id string) (driver_infrastructure.BlueGreenStatus, bool) {

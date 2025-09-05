@@ -327,12 +327,9 @@ func GetQueryFromSqlOrMethodArgs(sql string, methodArgs ...any) string {
 	return query
 }
 
-func GetSetReadOnlyFromCtx(ctx context.Context) bool {
+func GetSetReadOnlyFromCtx(ctx context.Context) (bool, bool) {
 	setReadOnly, ok := ctx.Value(awsctx.SetReadOnly).(bool)
-	if !ok {
-		return false
-	}
-	return setReadOnly
+	return setReadOnly, ok
 }
 
 func MySqlConvertValToString(value driver.Value) (string, bool) {

@@ -598,20 +598,6 @@ func (mr *MockPluginServiceMockRecorder) IsPluginInUse(pluginName interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsPluginInUse", reflect.TypeOf((*MockPluginService)(nil).IsPluginInUse), pluginName)
 }
 
-// IsReadOnly mocks base method.
-func (m *MockPluginService) IsReadOnly() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsReadOnly")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// IsReadOnly indicates an expected call of IsReadOnly.
-func (mr *MockPluginServiceMockRecorder) IsReadOnly() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsReadOnly", reflect.TypeOf((*MockPluginService)(nil).IsReadOnly))
-}
-
 // IsStaticHostListProvider mocks base method.
 func (m *MockPluginService) IsStaticHostListProvider() bool {
 	m.ctrl.T.Helper()
@@ -638,6 +624,18 @@ func (m *MockPluginService) RefreshHostList(conn driver.Conn) error {
 func (mr *MockPluginServiceMockRecorder) RefreshHostList(conn interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefreshHostList", reflect.TypeOf((*MockPluginService)(nil).RefreshHostList), conn)
+}
+
+// ResetSession mocks base method.
+func (m *MockPluginService) ResetSession() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "ResetSession")
+}
+
+// ResetSession indicates an expected call of ResetSession.
+func (mr *MockPluginServiceMockRecorder) ResetSession() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetSession", reflect.TypeOf((*MockPluginService)(nil).ResetSession))
 }
 
 // SetAvailability mocks base method.

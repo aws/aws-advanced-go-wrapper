@@ -178,6 +178,7 @@ func (r *ReadWriteSplittingPlugin) Execute(
 			return nil, nil, false, err
 		}
 	}
+
 	wrappedReturnValue, wrappedReturnValue2, wrappedOk, wrappedErr = executeFunc()
 
 	awsWrapperError, ok := wrappedErr.(*error_util.AwsWrapperError)
@@ -189,6 +190,7 @@ func (r *ReadWriteSplittingPlugin) Execute(
 	} else if awsWrapperError != nil {
 		slog.Debug(error_util.GetMessage("ReadWriteSplittingPlugin.errorWhileExecutingCommand", wrappedErr))
 	}
+
 	return
 }
 
@@ -238,6 +240,7 @@ func (r *ReadWriteSplittingPlugin) switchConnectionIfRequired(readOnly bool) err
 			return nil
 		}
 	}
+
 	// Not readOnly
 	if !r.isWriter(currentHost) && r.pluginService.IsInTransaction() {
 		return error_util.NewGenericAwsWrapperError(
@@ -409,6 +412,7 @@ func (r *ReadWriteSplittingPlugin) closeConnectionIfIdle(conn driver.Conn) {
 			r.readerHostInfo = nil
 		case r.writerConnection:
 			r.writerConnection = nil
+			r.writerHostInfo = nil
 		}
 	}
 }
