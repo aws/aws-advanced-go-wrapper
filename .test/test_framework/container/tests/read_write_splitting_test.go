@@ -20,7 +20,6 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -55,7 +54,7 @@ func setupTest(t *testing.T, minInstances int) *testSetup {
 
 	env, err := test_utils.GetCurrentTestEnvironment()
 	require.NoError(t, err)
-	skipIfInsufficientInstances(t, env, minInstances)
+	test_utils.SkipIfInsufficientInstances(t, env, minInstances)
 
 	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info().Region)
 	props := map[string]string{"plugins": "readWriteSplitting,efm,failover"}
@@ -94,7 +93,7 @@ func setupProxiedTest(t *testing.T, minInstances int) *testSetup {
 
 	env, err := test_utils.GetCurrentTestEnvironment()
 	require.NoError(t, err)
-	skipIfInsufficientInstances(t, env, minInstances)
+	test_utils.SkipIfInsufficientInstances(t, env, minInstances)
 
 	return &testSetup{env: env, auroraTestUtility: test_utils.NewAuroraTestUtility(env.Info().Region)}
 }
@@ -110,42 +109,6 @@ func executeInstanceQueryReadOnly(env *test_utils.TestEnvironment, dbOrConn inte
 
 func executeInstanceQueryWrite(env *test_utils.TestEnvironment, dbOrConn interface{}, timeout int) (string, error) {
 	return executeInstanceQuery(env, dbOrConn, writeCtx, timeout)
-}
-
-func skipIfInsufficientInstances(t *testing.T, env *test_utils.TestEnvironment, minInstances int) {
-	if env.Info().Request.InstanceCount < minInstances {
-		t.Skipf("Skipping integration test %s, instanceCount = %v.", t.Name(), env.Info().Request.InstanceCount)
-	}
-}
-
-func getPropsForProxy(env *test_utils.TestEnvironment, host, plugins string, timeout int) map[string]string {
-	timeoutStr := strconv.Itoa(timeout - 1)
-	monitoringParam := property_util.MONITORING_PROPERTY_PREFIX
-	var driverProtocol, timeoutParam string
-
-	switch env.Info().Request.Engine {
-	case test_utils.PG:
-		timeoutParam = "connect_timeout"
-		driverProtocol = utils.PGX_DRIVER_PROTOCOL
-	case test_utils.MYSQL:
-		timeoutParam = "readTimeout"
-		timeoutStr += "s"
-		driverProtocol = utils.MYSQL_DRIVER_PROTOCOL
-	}
-
-	return map[string]string{
-		"host":                             host,
-		"port":                             strconv.Itoa(env.Info().ProxyDatabaseInfo.InstanceEndpointPort),
-		"clusterInstanceHostPattern":       "?." + env.Info().ProxyDatabaseInfo.InstanceEndpointSuffix,
-		"plugins":                          plugins,
-		"failureDetectionIntervalMs":       "5000",
-		"failureDetectionCount":            "3",
-		"failureDetectionTimeMs":           "1000",
-		"failoverTimeoutMs":                "15000",
-		monitoringParam + timeoutParam:     timeoutStr,
-		timeoutParam:                       timeoutStr,
-		property_util.DRIVER_PROTOCOL.Name: driverProtocol,
-	}
 }
 
 func TestReadWriteSplitting_SetReadOnlyCtxTrue(t *testing.T) {
@@ -256,11 +219,26 @@ func TestReadWriteSplitting_ExecuteWithCachedConnection(t *testing.T) {
 	assert.Equal(t, firstReaderId, instanceId)
 }
 
+func TestReadWriteSplitting_OneInstance(t *testing.T) {
+	setup := setupTest(t, 1)
+	defer setup.cleanup(t)
+
+	if setup.env.Info().Request.InstanceCount != 1 {
+		t.Skipf("Skipping integration test %s, instanceCount = %v.", t.Name(), setup.env.Info().Request.InstanceCount)
+	}
+
+	readerInstance, err := executeInstanceQueryReadOnly(setup.env, setup.conn, 5)
+	assert.NoError(t, err)
+	writerInstance, err := executeInstanceQueryWrite(setup.env, setup.conn, 5)
+	assert.NoError(t, err)
+	assert.Equal(t, readerInstance, writerInstance)
+}
+
 func TestReadWriteSplitting_NoReaders(t *testing.T) {
 	setup := setupProxiedTest(t, 3)
 	defer setup.cleanup(t)
 
-	dsn := test_utils.GetDsn(setup.env, getPropsForProxy(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 2))
+	dsn := test_utils.GetDsn(setup.env, test_utils.GetPropsForProxy(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 2))
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
 	defer db.Close()
@@ -290,7 +268,7 @@ func TestReadWriteSplitting_WriterFailover(t *testing.T) {
 	setup := setupProxiedTest(t, 3)
 	defer setup.cleanup(t)
 
-	dsn := test_utils.GetDsn(setup.env, getPropsForProxy(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 5))
+	dsn := test_utils.GetDsn(setup.env, test_utils.GetPropsForProxy(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 5))
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
 	defer db.Close()
@@ -342,7 +320,7 @@ func TestReadWriteSplitting_FailoverToNewReader(t *testing.T) {
 	setup := setupProxiedTest(t, 3)
 	defer setup.cleanup(t)
 
-	props := getPropsForProxy(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 5)
+	props := test_utils.GetPropsForProxy(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 5)
 	property_util.FAILOVER_MODE.Set(props, "reader-or-writer")
 	property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Set(props, "5000")
 	dsn := test_utils.GetDsn(setup.env, props)
@@ -408,7 +386,7 @@ func TestReadWriteSplitting_FailoverReaderToWriter(t *testing.T) {
 	setup := setupProxiedTest(t, 3)
 	defer setup.cleanup(t)
 
-	props := getPropsForProxy(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 2)
+	props := test_utils.GetPropsForProxy(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 2)
 	property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Set(props, "5000")
 	dsn := test_utils.GetDsn(setup.env, props)
 
@@ -476,7 +454,7 @@ func TestPooledConnection_Failover(t *testing.T) {
 	defer driver_infrastructure.ResetCustomConnectionProvider()
 	defer provider.ReleaseResources()
 
-	dsn := test_utils.GetDsn(setup.env, getPropsForProxy(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 4))
+	dsn := test_utils.GetDsn(setup.env, test_utils.GetPropsForProxy(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 4))
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
 	defer db.Close()
@@ -518,7 +496,7 @@ func TestPooledConnection_FailoverInTransaction(t *testing.T) {
 	setInternalPoolProvider()
 	defer driver_infrastructure.ResetCustomConnectionProvider()
 
-	dsn := test_utils.GetDsn(setup.env, getPropsForProxy(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 5))
+	dsn := test_utils.GetDsn(setup.env, test_utils.GetPropsForProxy(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 5))
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
 	defer db.Close()

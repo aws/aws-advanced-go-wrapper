@@ -41,9 +41,7 @@ func failoverSetup(t *testing.T) (*test_utils.AuroraTestUtility, *test_utils.Tes
 	assert.Nil(t, err)
 	test_utils.SkipForTestEnvironmentFeatures(t, environment.Info().Request.Features, test_utils.LIMITLESS_DEPLOYMENT)
 
-	if environment.Info().Request.InstanceCount < 2 {
-		t.Skipf("Skipping integration test %s, instanceCount = %v.", t.Name(), environment.Info().Request.InstanceCount)
-	}
+	test_utils.SkipIfInsufficientInstances(t, environment, 2)
 	auroraTestUtility := test_utils.NewAuroraTestUtility(environment.Info().Region)
 	return auroraTestUtility, environment, test_utils.BasicSetup(t.Name())
 }
