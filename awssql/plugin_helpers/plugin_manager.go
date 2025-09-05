@@ -208,7 +208,7 @@ func (pluginManager *PluginManagerImpl) Connect(
 	targetFunc := func(props map[string]string) (driver.Conn, error) {
 		return nil, error_util.ShouldNotBeCalledError
 	}
-	return pluginManager.connectWithSubscribedPlugins(CONNECT_METHOD, pluginFunc, targetFunc, pluginToSkip)
+	return pluginManager.connectWithSubscribedPlugins(CONNECT_METHOD, pluginFunc, targetFunc, props, pluginToSkip)
 }
 
 func (pluginManager *PluginManagerImpl) ForceConnect(
@@ -224,7 +224,7 @@ func (pluginManager *PluginManagerImpl) ForceConnect(
 	targetFunc := func(props map[string]string) (driver.Conn, error) {
 		return nil, error_util.ShouldNotBeCalledError
 	}
-	return pluginManager.connectWithSubscribedPlugins(FORCE_CONNECT_METHOD, pluginFunc, targetFunc, nil)
+	return pluginManager.connectWithSubscribedPlugins(FORCE_CONNECT_METHOD, pluginFunc, targetFunc, props, nil)
 }
 
 func (pluginManager *PluginManagerImpl) Execute(
@@ -271,11 +271,8 @@ func (pluginManager *PluginManagerImpl) executeWithSubscribedPlugins(
 	return chain.Execute(pluginFunc, targetFunc)
 }
 
-func (pluginManager *PluginManagerImpl) connectWithSubscribedPlugins(
-	methodName string,
-	pluginFunc driver_infrastructure.PluginConnectFunc,
-	targetFunc driver_infrastructure.ConnectFunc,
-	pluginToSkip driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
+func (pluginManager *PluginManagerImpl) connectWithSubscribedPlugins(methodName string, pluginFunc driver_infrastructure.PluginConnectFunc,
+	targetFunc driver_infrastructure.ConnectFunc, props map[string]string, pluginToSkip driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
 	var chain PluginChain
 	if pluginToSkip == nil {
 		chain = pluginManager.pluginFuncMap.ComputeIfAbsent(methodName, func() PluginChain {
@@ -284,7 +281,7 @@ func (pluginManager *PluginManagerImpl) connectWithSubscribedPlugins(
 	} else {
 		chain = pluginManager.makePluginChain(methodName, false, pluginToSkip)
 	}
-	return chain.Connect(pluginFunc, pluginManager.props, targetFunc)
+	return chain.Connect(pluginFunc, props, targetFunc)
 }
 
 func (pluginManager *PluginManagerImpl) makePluginChain(
