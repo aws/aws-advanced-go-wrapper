@@ -615,3 +615,8 @@ func (a AuroraTestUtility) SwitchoverBlueGreenDeployment(ctx context.Context, bl
 
 	return nil
 }
+func SkipForMultiAzMySql(t *testing.T, deployment DatabaseEngineDeployment, engine DatabaseEngine) {
+	if RDS_MULTI_AZ_CLUSTER == deployment && MYSQL == engine {
+		t.Skipf("Skipping test for RDS Multi-AZ MySQL")
+	}
+}

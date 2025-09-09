@@ -258,6 +258,7 @@ func TestIamWithFailover(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
+	test_utils.SkipForMultiAzMySql(t, environment.Info().Request.Deployment, environment.Info().Request.Engine)
 
 	props := initIamProps(
 		environment.Info().IamUsername,
@@ -367,6 +368,7 @@ func TestIamWithFailoverEfm(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
+	test_utils.SkipForMultiAzMySql(t, environment.Info().Request.Deployment, environment.Info().Request.Engine)
 
 	proxyTestProps := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.ClusterEndpoint, "failover,efm,iam", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
 	iamProps := initIamProps(
