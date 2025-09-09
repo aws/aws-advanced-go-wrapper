@@ -49,9 +49,27 @@ func GetPropsForProxy(env *TestEnvironment, host, plugins string, timeout int) m
 		"failureDetectionTimeMs":           "1000",
 		"failoverTimeoutMs":                "15000",
 		monitoringParam + timeoutParam:     timeoutStr,
-		timeoutParam:                       timeoutStr,
 		property_util.DRIVER_PROTOCOL.Name: driverProtocol,
 	}
+}
+
+func GetPropsForProxyWithConnectTimeout(env *TestEnvironment, host, plugins string, timeout int) map[string]string {
+	props := GetPropsForProxy(env, host, plugins, timeout)
+	return AddDriverConnectTimeoutToProps(env, props, timeout)
+}
+
+func AddDriverConnectTimeoutToProps(env *TestEnvironment, props map[string]string, timeout int) map[string]string {
+	timeoutStr := strconv.Itoa(timeout - 1)
+	var timeoutParam string
+	switch env.Info().Request.Engine {
+	case PG:
+		timeoutParam = "connect_timeout"
+	case MYSQL:
+		timeoutParam = "readTimeout"
+		timeoutStr += "s"
+	}
+	props[timeoutParam] = timeoutStr
+	return props
 }
 
 func SkipIfInsufficientInstances(t *testing.T, env *TestEnvironment, minInstances int) {
