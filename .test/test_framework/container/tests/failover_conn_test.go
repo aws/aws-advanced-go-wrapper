@@ -18,8 +18,6 @@ package test
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
 	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
@@ -123,7 +121,6 @@ func TestFailoverWriterWithTelemetryOtel(t *testing.T) {
 
 	// Assert that we are connected to the new writer after failover.
 	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
-	slog.Debug(fmt.Sprintf("newInstanceId: %s", newInstanceId))
 	assert.Nil(t, err, "After failover new connections should not throw errors.")
 	assert.NotZero(t, newInstanceId)
 	require.True(t, auroraTestUtility.IsDbInstanceWriter(newInstanceId, ""))
@@ -381,7 +378,6 @@ func TestFailoverEfmDisableInstance(t *testing.T) {
 
 	// Disable connectivity while the sleep query is running
 	proxyInfo := environment.GetProxy(instanceId)
-	slog.Debug("Disabling proxy connectivity.")
 	test_utils.DisableProxyConnectivity(proxyInfo)
 
 	// Wait for the query to complete and check the error
@@ -391,7 +387,6 @@ func TestFailoverEfmDisableInstance(t *testing.T) {
 	assert.Equal(t, error_util.GetMessage("Failover.unableToRefreshHostList"), queryErr.Error())
 
 	// Re-enable connectivity
-	slog.Debug("Re-enabling proxy connectivity.")
 	test_utils.EnableProxyConnectivity(proxyInfo, true)
 }
 
