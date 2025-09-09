@@ -18,7 +18,6 @@ package driver_infrastructure
 
 import (
 	"database/sql/driver"
-	"log/slog"
 	"sync"
 	"time"
 
@@ -42,14 +41,10 @@ type MonitoringRdsHostListProvider struct {
 }
 
 func MonitoringRdsHostListProviderClearCaches() {
-	slog.Debug("driver_infrastructure.MonitoringRdsHostListProviderClearCaches()")
 	if clusterTopologyMonitors != nil {
 		clusterTopologyMonitors.Clear()
-		slog.Debug("driver_infrastructure.MonitoringRdsHostListProviderClearCaches() - clusterTopologyMonitorWg.Wait()")
 		clusterTopologyMonitorWg.Wait()
-		slog.Debug("driver_infrastructure.MonitoringRdsHostListProviderClearCaches() - clusterTopologyMonitorWg.Wait() - finished")
 	}
-	slog.Debug("driver_infrastructure.MonitoringRdsHostListProviderClearCaches() - finished")
 }
 
 func NewMonitoringRdsHostListProvider(
@@ -60,7 +55,6 @@ func NewMonitoringRdsHostListProvider(
 	clusterTopologyMonitorsMutex.Lock()
 	if clusterTopologyMonitors == nil {
 		var disposalFunc utils.DisposalFunc[ClusterTopologyMonitor] = func(item ClusterTopologyMonitor) bool {
-			slog.Debug("clusterTopologyMonitors - item.Close()")
 			item.Close()
 			return true
 		}
@@ -109,7 +103,6 @@ func (m *MonitoringRdsHostListProvider) getMonitor() ClusterTopologyMonitor {
 	highRefreshRateNano := time.Millisecond * time.Duration(property_util.GetRefreshRateValue(m.properties, property_util.CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS))
 
 	computeFunc := func() ClusterTopologyMonitor {
-		slog.Debug("NewClusterTopologyMonitorImpl()")
 		monitor = NewClusterTopologyMonitorImpl(
 			m,
 			m.databaseDialect,

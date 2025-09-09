@@ -22,7 +22,6 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	"log/slog"
 	"maps"
 	"slices"
 	"strconv"
@@ -74,11 +73,6 @@ func GetSleepSql(engine DatabaseEngine, seconds int) string {
 	return ""
 }
 
-func ExecuteSleepQuery(engine DatabaseEngine, conn driver.Conn, seconds int) (string, error) {
-	sleepQuery := GetSleepSql(engine, seconds)
-	return GetFirstItemFromQueryAsString(engine, conn, sleepQuery)
-}
-
 func GetInstanceIdSql(engine DatabaseEngine, deployment DatabaseEngineDeployment) (string, error) {
 	switch deployment {
 	case AURORA, AURORA_LIMITLESS:
@@ -117,7 +111,6 @@ func ExecuteInstanceQueryDB(engine DatabaseEngine, deployment DatabaseEngineDepl
 }
 
 func ExecuteInstanceQuery(engine DatabaseEngine, deployment DatabaseEngineDeployment, conn driver.Conn) (string, error) {
-	slog.Debug("test_utils.ExecuteInstanceQuery")
 	sql, err := GetInstanceIdSql(engine, deployment)
 	if err != nil || sql == "" {
 		return "", err
@@ -126,8 +119,6 @@ func ExecuteInstanceQuery(engine DatabaseEngine, deployment DatabaseEngineDeploy
 }
 
 func GetFirstItemFromQueryAsString(engine DatabaseEngine, conn driver.Conn, query string) (string, error) {
-	slog.Debug("test_utils.GetFirstItemFromQueryAsString")
-	defer slog.Debug("test_utils.GetFirstItemFromQueryAsString - FINISHED")
 	queryerCtx, ok := conn.(driver.QueryerContext)
 	if !ok {
 		return "", errors.New("conn does not implement QueryerContext")

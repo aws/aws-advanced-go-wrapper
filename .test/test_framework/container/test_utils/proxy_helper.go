@@ -94,7 +94,7 @@ func EnableProxyConnectivity(proxyInfo ProxyInfo, logErrors bool) {
 }
 
 func DisableAllConnectivity() {
-	slog.Debug(fmt.Sprintf("DisableAllConnectivity"))
+	slog.Debug("DisableAllConnectivity")
 	env, err := GetCurrentTestEnvironment()
 	if err == nil {
 		for _, proxy := range env.proxies {
@@ -132,7 +132,7 @@ func DisableProxyConnectivity(proxyInfo ProxyInfo) {
 }
 
 func DisableAllProxies() {
-	slog.Debug(fmt.Sprintf("DisableAllProxies"))
+	slog.Debug("DisableAllProxies")
 	env, err := GetCurrentTestEnvironment()
 	if err == nil {
 		for _, proxy := range env.proxies {

@@ -286,7 +286,6 @@ func TestIamWithFailover(t *testing.T) {
 	assert.Nil(t, triggerFailoverError)
 	if test_utils.RDS_MULTI_AZ_CLUSTER == environment.Info().Request.Deployment &&
 		test_utils.MYSQL == environment.Info().Request.Engine {
-		time.Sleep(60 * time.Second)
 	}
 	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -393,10 +392,6 @@ func TestIamWithFailoverEfm(t *testing.T) {
 	// Start a long-running query in a goroutine
 	queryChan := make(chan error)
 	go func() {
-		//if test_utils.RDS_MULTI_AZ_CLUSTER == environment.Info().Request.Deployment &&
-		//	test_utils.MYSQL == environment.Info().Request.Engine {
-		//	time.Sleep(15 * time.Second)
-		//}
 		// Execute a sleep query that will run for 10 seconds
 		sleepQuery := test_utils.GetSleepSql(environment.Info().Request.Engine, TEST_SLEEP_QUERY_SECONDS)
 
