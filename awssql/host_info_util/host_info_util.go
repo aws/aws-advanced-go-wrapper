@@ -85,3 +85,12 @@ func HaveNoHostsInCommon(hosts1 []*HostInfo, hosts2 []*HostInfo) bool {
 	}
 	return true
 }
+
+func IsHostInList(host *HostInfo, hosts []*HostInfo) bool {
+	for _, h := range hosts {
+		if h.Equals(host) {
+			return true
+		}
+	}
+	return false
+}

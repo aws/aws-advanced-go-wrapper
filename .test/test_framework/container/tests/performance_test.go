@@ -23,17 +23,18 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
-	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"log/slog"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
+	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -132,6 +133,7 @@ func TestPerformanceFailureDetectionTimeEfmAndFailoverEnabled(t *testing.T) {
 		}
 		return preparedHost
 	})
+	defer utils.ResetPreparedHostFunc()
 
 	perfDataList = make([]test_utils.PerfStat, 0)
 	var err error

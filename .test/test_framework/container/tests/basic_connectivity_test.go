@@ -17,9 +17,10 @@
 package test
 
 import (
-	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
 	"strconv"
 	"testing"
+
+	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -61,13 +62,13 @@ func TestBasicConnectivityWrapperProxy(t *testing.T) {
 	assert.Nil(t, err)
 
 	test_utils.DisableAllConnectivity()
-	instanceId, err := test_utils.ExecuteInstanceQueryWithTimeout(environment.Info().Request.Engine, environment.Info().Request.Deployment, db, 10)
+	instanceId, err := test_utils.ExecuteInstanceQueryDbWithTimeout(environment.Info().Request.Engine, environment.Info().Request.Deployment, db, 10)
 	assert.NotNil(t, err)
 	assert.Zero(t, instanceId)
 	defer db.Close()
 
 	test_utils.EnableAllConnectivity(true)
-	instanceId, err2 := test_utils.ExecuteInstanceQueryWithTimeout(environment.Info().Request.Engine, environment.Info().Request.Deployment, db, 10)
+	instanceId, err2 := test_utils.ExecuteInstanceQueryDbWithTimeout(environment.Info().Request.Engine, environment.Info().Request.Deployment, db, 10)
 	assert.Nil(t, err2)
 	assert.NotZero(t, instanceId)
 }

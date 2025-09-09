@@ -19,7 +19,6 @@ package read_write_splitting
 import (
 	"database/sql/driver"
 	"log/slog"
-	"slices"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -266,7 +265,7 @@ func (r *ReadWriteSplittingPlugin) switchToReaderConnection(hosts []*host_info_u
 		return nil
 	}
 
-	if r.readerHostInfo != nil && !slices.Contains(hosts, r.readerHostInfo) {
+	if r.readerHostInfo != nil && !host_info_util.IsHostInList(r.readerHostInfo, hosts) {
 		// The old reader cannot be used anymore because it is no longer in the list of allowed hosts
 		r.closeConnectionIfIdle(r.readerConnection)
 	}
@@ -316,7 +315,7 @@ func (r *ReadWriteSplittingPlugin) switchToWriterConnection(hosts []*host_info_u
 		}
 	}
 
-	slog.Info(error_util.GetMessage("ReadWriteSplittingPlugin.switchedFromReaderToWriter", writerHost.Host))
+	slog.Info(error_util.GetMessage("ReadWriteSplittingPlugin.switchedFromReaderToWriter", writerHost.GetUrl()))
 	return nil
 }
 
@@ -326,7 +325,7 @@ func (r *ReadWriteSplittingPlugin) switchCurrentConnectionTo(newConn driver.Conn
 		return nil
 	}
 
-	slog.Debug(error_util.GetMessage("ReadWriteSplittingPlugin.settingCurrentConnection", newConnHost.Host))
+	slog.Debug(error_util.GetMessage("ReadWriteSplittingPlugin.settingCurrentConnection", newConnHost.GetUrl()))
 	return r.pluginService.SetCurrentConnection(newConn, newConnHost, nil)
 }
 
@@ -367,7 +366,11 @@ func (r *ReadWriteSplittingPlugin) getNewReaderConnection() error {
 	for range connAttempts {
 		hostInfo, err := r.pluginService.GetHostInfoByStrategy(host_info_util.READER, r.readerSelectorStrategy, hosts)
 		if err != nil {
-			slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.failedToConnectToReader", hostInfo.GetUrl()))
+			if hostInfo != nil {
+				slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.failedToConnectToReader", hostInfo.GetUrl()))
+			} else {
+				slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.failedToConnectToReader", "unknown host"))
+			}
 			continue
 		}
 
@@ -396,16 +399,16 @@ func (r *ReadWriteSplittingPlugin) closeConnectionIfIdle(conn driver.Conn) {
 	currentConn := r.pluginService.GetCurrentConnection()
 
 	if conn != nil &&
-		currentConn != conn &&
-		!r.pluginService.GetTargetDriverDialect().IsClosed(conn) {
-		conn.Close()
-
+		currentConn != conn {
+		if !r.pluginService.GetTargetDriverDialect().IsClosed(conn) {
+			conn.Close()
+		}
 		switch conn {
 		case r.readerConnection:
 			r.readerConnection = nil
+			r.readerHostInfo = nil
 		case r.writerConnection:
 			r.writerConnection = nil
-			r.readerHostInfo = nil
 		}
 	}
 }

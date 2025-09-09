@@ -302,7 +302,7 @@ func TestIamWithEfm(t *testing.T) {
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 
-	proxyTestProps := getPropsForTestsWithProxy(environment, environment.Info().ProxyDatabaseInfo.ClusterEndpoint, "efm,iam")
+	proxyTestProps := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.ClusterEndpoint, "efm,iam", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
 	iamProps := initIamProps(
 		environment.Info().IamUsername,
 		"anypassword",
@@ -360,7 +360,7 @@ func TestIamWithFailoverEfm(t *testing.T) {
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 
-	proxyTestProps := getPropsForTestsWithProxy(environment, environment.Info().ProxyDatabaseInfo.ClusterEndpoint, "failover,efm,iam")
+	proxyTestProps := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.ClusterEndpoint, "failover,efm,iam", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
 	iamProps := initIamProps(
 		environment.Info().IamUsername,
 		"anypassword",

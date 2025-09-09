@@ -21,12 +21,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strconv"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -219,29 +217,5 @@ func getDsnForEfmIntegrationTest(environment *test_utils.TestEnvironment, host s
 }
 
 func getDsnForTestsWithProxy(environment *test_utils.TestEnvironment, host string, plugins string) string {
-	return test_utils.GetDsn(environment, getPropsForTestsWithProxy(environment, host, plugins))
-}
-
-func getPropsForTestsWithProxy(environment *test_utils.TestEnvironment, host string, plugins string) map[string]string {
-	monitoringConnectTimeoutSeconds := strconv.Itoa(TEST_FAILURE_DETECTION_INTERVAL_SECONDS - 1)
-	monitoringConnectTimeoutParameterName := property_util.MONITORING_PROPERTY_PREFIX
-	switch environment.Info().Request.Engine {
-	case test_utils.PG:
-		monitoringConnectTimeoutParameterName = monitoringConnectTimeoutParameterName + "connect_timeout"
-	case test_utils.MYSQL:
-		monitoringConnectTimeoutParameterName = monitoringConnectTimeoutParameterName + "readTimeout"
-		monitoringConnectTimeoutSeconds = monitoringConnectTimeoutSeconds + "s"
-	}
-	return map[string]string{
-		"host":                       host,
-		"port":                       strconv.Itoa(environment.Info().ProxyDatabaseInfo.InstanceEndpointPort),
-		"clusterInstanceHostPattern": "?." + environment.Info().ProxyDatabaseInfo.InstanceEndpointSuffix,
-		"plugins":                    plugins,
-		"failureDetectionIntervalMs": strconv.Itoa(TEST_FAILURE_DETECTION_INTERVAL_SECONDS * 1000),   // interval between probes to host
-		"failureDetectionCount":      strconv.Itoa(TEST_FAILURE_DETECTION_COUNT),                     // consecutive failures before marks host as dead
-		"failureDetectionTimeMs":     strconv.Itoa(TEST_FAILURE_DETECTION_START_TIME_SECONDS * 1000), // time before starting monitoring
-		"failoverTimeoutMs":          strconv.Itoa(TEST_MONITORING_TIMEOUT_SECONDS * 1000),
-		// each monitoring connection has monitoringConnectTimeoutSeconds seconds to connect
-		monitoringConnectTimeoutParameterName: monitoringConnectTimeoutSeconds,
-	}
+	return test_utils.GetDsn(environment, test_utils.GetPropsForProxy(environment, host, plugins, TEST_FAILURE_DETECTION_INTERVAL_SECONDS))
 }

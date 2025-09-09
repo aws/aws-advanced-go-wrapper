@@ -395,7 +395,7 @@ func efmTest(t *testing.T, env *test_utils.TestEnvironment, secretName string) {
 	_, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
-	props := getPropsForTestsWithProxy(environment, environment.Info().ProxyDatabaseInfo.ClusterEndpoint, "awsSecretsManager,efm")
+	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.ClusterEndpoint, "awsSecretsManager,efm", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
 	props[property_util.USER.Name] = "incorrectUser"
 	props[property_util.PASSWORD.Name] = "incorrectPassword"
 	props[property_util.SECRETS_MANAGER_REGION.Name] = env.Info().Region
@@ -449,7 +449,12 @@ func failoverEfmTest(t *testing.T, env *test_utils.TestEnvironment, secretName s
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
-	props := getPropsForTestsWithProxy(environment, environment.Info().ProxyDatabaseInfo.ClusterEndpoint, "awsSecretsManager,failover,efm")
+	props := test_utils.GetPropsForProxy(
+		environment,
+		environment.Info().ProxyDatabaseInfo.ClusterEndpoint,
+		"awsSecretsManager,failover,efm",
+		TEST_FAILURE_DETECTION_INTERVAL_SECONDS,
+	)
 	props[property_util.USER.Name] = "incorrectUser"
 	props[property_util.PASSWORD.Name] = "incorrectPassword"
 	props[property_util.SECRETS_MANAGER_REGION.Name] = env.Info().Region

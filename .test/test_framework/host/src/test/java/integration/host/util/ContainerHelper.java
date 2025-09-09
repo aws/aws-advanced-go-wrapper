@@ -96,7 +96,9 @@ public class ContainerHelper {
 
     final String filter = System.getenv("FILTER");
 
+
     Long exitCode;
+    exitCode = execInContainer(container, "/app/.test/", consumer, "go", "env", "-w", "GOPROXY=direct");
     if (isPerformanceTest) {
       exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-timeout", PERFORMANCE_TEST_TIMEOUT, PERFORMANCE_TEST_TAG, "-run", PERFORMANCE_TEST_FILTER,  "-v", "./test_framework/container/tests...");
     } else if (filter != null) {
