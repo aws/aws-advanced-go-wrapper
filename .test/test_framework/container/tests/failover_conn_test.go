@@ -257,6 +257,8 @@ func TestFailoverStrictReader(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
+	test_utils.SkipForMultiAzMySql(t, environment.Info().Request.Deployment, environment.Info().Request.Engine)
+
 	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
 		"host":              environment.Info().ProxyDatabaseInfo.ReaderInstance().Host(),
 		"plugins":           "failover",
@@ -293,6 +295,8 @@ func TestFailoverWriterInTransactionWithSQL(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
+	test_utils.SkipForMultiAzMySql(t, environment.Info().Request.Deployment, environment.Info().Request.Engine)
+
 	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
 		"host":    environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(),
 		"plugins": "failover",

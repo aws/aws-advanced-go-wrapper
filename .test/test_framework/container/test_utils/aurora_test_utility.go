@@ -427,3 +427,9 @@ func RequireTestEnvironmentFeatures(t *testing.T, testEnvironmentRequestFeatures
 		}
 	}
 }
+
+func SkipForMultiAzMySql(t *testing.T, deployment DatabaseEngineDeployment, engine DatabaseEngine) {
+	if RDS_MULTI_AZ_CLUSTER == deployment && MYSQL == engine {
+		t.Skipf("Skipping test for RDS Multi-AZ MySQL")
+	}
+}
