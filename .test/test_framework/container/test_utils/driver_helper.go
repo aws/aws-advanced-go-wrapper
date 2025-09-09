@@ -22,7 +22,6 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -261,36 +260,10 @@ func GetDsn(environment *TestEnvironment, props map[string]string) string {
 }
 
 func GetDsnForTestsWithProxy(environment *TestEnvironment, origProps map[string]string) string {
-	return GetDsn(environment, GetPropsForTestsWithProxy2(environment, origProps))
+	return GetDsn(environment, GetPropsForTestsWithProxy(environment, origProps))
 }
 
-func GetPropsForTestsWithProxy(environment *TestEnvironment, origProps map[string]string) map[string]string {
-	monitoringConnectTimeoutSeconds := strconv.Itoa(TEST_FAILURE_DETECTION_INTERVAL_SECONDS - 1)
-	monitoringConnectTimeoutParameterName := property_util.MONITORING_PROPERTY_PREFIX
-	switch environment.Info().Request.Engine {
-	case PG:
-		monitoringConnectTimeoutParameterName = monitoringConnectTimeoutParameterName + "connect_timeout"
-	case MYSQL:
-		monitoringConnectTimeoutParameterName = monitoringConnectTimeoutParameterName + "readTimeout"
-		monitoringConnectTimeoutSeconds = monitoringConnectTimeoutSeconds + "s"
-	}
-	proxyProps := map[string]string{
-		"host":                       environment.Info().ProxyDatabaseInfo.ClusterEndpoint,
-		"port":                       strconv.Itoa(environment.Info().ProxyDatabaseInfo.InstanceEndpointPort),
-		"clusterInstanceHostPattern": "?." + environment.Info().ProxyDatabaseInfo.InstanceEndpointSuffix,
-		"failureDetectionIntervalMs": strconv.Itoa(TEST_FAILURE_DETECTION_INTERVAL_SECONDS * 1000),   // interval between probes to host
-		"failureDetectionCount":      strconv.Itoa(TEST_FAILURE_DETECTION_COUNT),                     // consecutive failures before marks host as dead
-		"failureDetectionTimeMs":     strconv.Itoa(TEST_FAILURE_DETECTION_START_TIME_SECONDS * 1000), // time before starting monitoring
-		"failoverTimeoutMs":          strconv.Itoa(TEST_MONITORING_TIMEOUT_SECONDS * 1000),
-		// each monitoring connection has monitoringConnectTimeoutSeconds seconds to connect
-		monitoringConnectTimeoutParameterName: monitoringConnectTimeoutSeconds,
-	}
-
-	maps.Copy(origProps, proxyProps)
-	return origProps
-}
-
-func GetPropsForTestsWithProxy2(environment *TestEnvironment, props map[string]string) map[string]string {
+func GetPropsForTestsWithProxy(environment *TestEnvironment, props map[string]string) map[string]string {
 	monitoringConnectTimeoutSeconds := strconv.Itoa(TEST_FAILURE_DETECTION_INTERVAL_SECONDS - 1)
 	monitoringConnectTimeoutParameterName := property_util.MONITORING_PROPERTY_PREFIX
 	switch environment.Info().Request.Engine {
