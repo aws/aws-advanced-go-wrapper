@@ -86,7 +86,7 @@ public class ContainerHelper {
 
     final String filter = System.getenv("FILTER");
     String timeout = System.getenv("TIMEOUT");
-    if (timeout == null ){
+    if (timeout == null ) {
         if (isPerformanceTest) {
             timeout = PERFORMANCE_TEST_TIMEOUT;
         } else {
