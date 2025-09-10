@@ -135,7 +135,6 @@ func (p *PluginServiceImpl) SetCurrentConnection(
 	conn driver.Conn,
 	hostInfo *host_info_util.HostInfo,
 	skipNotificationForThisPlugin driver_infrastructure.ConnectionPlugin) error {
-
 	if conn == nil {
 		return error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginServiceImpl.nilConn"))
 	}

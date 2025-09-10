@@ -181,10 +181,14 @@ func ExecuteInstanceQueryDbContextWithTimeout(
 	return ExecuteInstanceQueryContextWithTimeout(engine, deployment, db, seconds, ctx)
 }
 
+type RowQuerier interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 func ExecuteInstanceQueryContextWithTimeout(
 	engine DatabaseEngine,
 	deployment DatabaseEngineDeployment,
-	dbOrConnOrTx interface{},
+	rowQuerier RowQuerier,
 	seconds int,
 	ctx context.Context) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(seconds))
@@ -195,21 +199,8 @@ func ExecuteInstanceQueryContextWithTimeout(
 		return "", err
 	}
 
-	switch v := dbOrConnOrTx.(type) {
-	case *sql.DB:
-		if e := v.QueryRowContext(ctx, query).Scan(&instanceId); e != nil {
-			return "", e
-		}
-	case *sql.Conn:
-		if e := v.QueryRowContext(ctx, query).Scan(&instanceId); e != nil {
-			return "", e
-		}
-	case *sql.Tx:
-		if e := v.QueryRowContext(ctx, query).Scan(&instanceId); e != nil {
-			return "", e
-		}
-	default:
-		return "", fmt.Errorf("unsupported type: %T, expected *sql.DB, *sql.Conn, or *sql.Tx", dbOrConnOrTx)
+	if e := rowQuerier.QueryRowContext(ctx, query).Scan(&instanceId); e != nil {
+		return "", e
 	}
 
 	return instanceId, nil

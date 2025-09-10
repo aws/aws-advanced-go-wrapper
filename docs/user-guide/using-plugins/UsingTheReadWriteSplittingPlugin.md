@@ -1,6 +1,6 @@
 ## Read/Write Splitting Plugin
 
-The Read/Write Splitting Plugin adds functionality to switch between writer and reader instances by setting context values in `QueryContext`, `ExecContext` calls. By setting the context value `awsctx.SetReadOnly` to `true`, the plugin will establish a connection to a reader instance and direct the query to this instance. The plugin will switch between writer and reader connections based on the context value.
+The Read/Write Splitting Plugin adds functionality to switch between writer and reader instances by setting context values in `QueryContext`, `ExecContext`, or `QueryRowContext` calls. By setting the context value `awsctx.SetReadOnly` to `true`, the plugin will establish a connection to a reader instance and direct the query to this instance. The plugin will switch between writer and reader connections based on the context value.
 
 ### Loading the Read/Write Splitting Plugin
 
@@ -23,9 +23,9 @@ In the `database/sql` library, there are 4 main types that are used to run a que
 
 To switch between readers and writer, pass in `awsctx.SetReadOnly` to the first query of your batch, and any subsequent queries will run on that desired instance. 
 
-**Always pass in `awsctx.SetReadOnly` in your first query. Failing to do so may result in. While the default behavior of a newly-opened connection is to connect to the writer, if a recycled connection is returned by `sql.DB`, the `sql.Conn` object might in ReadOnly mode.**
+**Always pass in `awsctx.SetReadOnly` in your first query, and reset session settings before closing. Failing to do so may result in running a query in the wrong mode. While the default behavior of a newly-opened connection is to connect to the writer, if a recycled connection is returned by `sql.DB`, the `sql.Conn` object might be in ReadOnly mode.**
 
-**Furthermore, it is not recommended to always pass in the `awsctx.SetReadOnly` in every query as there is some overhead when this value is passed in.**
+**Furthermore, it is recommended to only pass in the `awsctx.SetReadOnly` setting when switching between reader and writer or vice versa. Passing in `awsctx.SetReadOnly` in every query when you are not switching does not change any results and there is some overhead when this value is passed in.**
 
 The following is an example on how to use the plugin with `sql.Conn`.
 ```go
@@ -41,6 +41,9 @@ result, err = conn.Query("SELECT 1") // Will query against reader instance
 
 result, err = conn.QueryContext(writeCtx, "INSERT INTO...") // Will switch to writer instance
 result, err = conn.Exec("...") // Will execute against writer instance
+
+// Reset session
+conn.ResetSession()
 conn.Close()
 ```
 
@@ -66,15 +69,16 @@ result, err := conn.ExecContext(readOnlyCtx, "SELECT 1")
 tx.Commit()
 ```
 
-If both are supplied, priority is given to the `awsctx.SetReadOnly` method. If none is given, it will use the writer connection.
+If both are supplied, priority is given to the `awsctx.SetReadOnly` value. If none is given, it will use the writer connection.
 
 After the `sql.Tx` is created, the transaction will run based on the mode specified in `BeginTx()`
 
-**Do not  pass in `awsctx.SetReadOnly` when running queries through the tx object. This will result in an error as switching connections during a transaction is not allowed.**.
+> [!WARNING]
+> **Do not  pass in `awsctx.SetReadOnly` when running queries through the tx object. This will result in an error as switching connections during a transaction is not allowed.**.
 
 #### sql.Stmt
 
-`sql.Stmt` objects are created through `PrepareContext()`. Similar to `sql.Tx`, the plugin does not support read/write splitting for objects created with  `Prepare()` as it is deprecated and does not allow users to pass in contexts. The plugin does not switching after creating the `sql.Stmt` object as session states alterations are not allowed to be switched during prepared statements. `PrepareContext()` can be called through `sql.DB`, `sql.Conn`, and `sql.Tx`.
+`sql.Stmt` objects are created through `PrepareContext()`. Similar to `sql.Tx`, the plugin does not support read/write splitting for objects created with  `Prepare()` as it is deprecated and does not allow users to pass in contexts. The plugin does not support switching after creating the `sql.Stmt` object as session states alterations are not allowed to be changed during prepared statements. `PrepareContext()` can be called through `sql.DB`, `sql.Conn`, and `sql.Tx`.
 
 When creating the object through `sql.DB.PrepareContext()`, the `awsctx.SetReadOnly` value can be given as a context and it will target the connection from the value of `awsctx.SetReadOnly`. If none is supplied, it will connect to the writer.
 
@@ -102,7 +106,7 @@ stmt.Close()
 db.Close()
 ```
 
-When creating the object through `sql.Conn.PrepareContext()`, the `awsctx.SetReadOnly` value can be given as context and will target the corresponding instance. If no value was passed, then the query will run against the current instance that `sql.Conn` is pointing to. That is, if `sql.Conn` is currently executing against the reader instance, then the prepared statement will target the reader instance.
+When creating the object through `sql.Conn.PrepareContext()`, the `awsctx.SetReadOnly` value can be given as context and will target the corresponding instance. This will also change the mode of the `sql.Conn` object itself even after the `sql.Stmt` object is closed. If no value was passed, then the query will run against the current instance that `sql.Conn` is pointing to. That is, if `sql.Conn` is currently executing against the reader instance, then the prepared statement will target the reader instance.
 
 ```go
 readOnlyCtx := context.WithValue(context.Background(), awsctx.SetReadOnly, true)
@@ -211,7 +215,7 @@ The Read/Write Splitting Plugin is not currently supported for non-Aurora cluste
 > [!WARNING]
 > If internal connection pools are enabled, database passwords may not be verified with every connection request. The initial connection request for each database instance in the cluster will verify the password, but subsequent requests may return a cached pool connection without re-verifying the password. This behavior is inherent to the nature of connection pools in general and not a bug with the wrapper. `<name-of-ConnectionProvider>.ReleaseResources()` can be called to close all pools and remove all cached pool connections. See [Internal Connection Pool Password Warning Example for Postgres](../../../examples/aws_internal_connection_pool_password_warning_postgresql_example.go) and [Internal Connection Pool Password Warning Example for MySQL](../../../examples/aws_internal_connection_pool_password_warning_mysql_example.go)
 
-When `awsctx.setReadOnly=true` is first passed in, the read/write plugin will internally open a new physical connection to a reader. After this first call, the physical reader connection will be cached. Future calls passing `awsctx.setReadOnly=true` object will not require opening a new physical connection. However, calling `awsctx.setReadOnly=true` for the first time, will require the plugin to establish another new physical connection to a reader.
+When `awsctx.setReadOnly=true` is first passed in, the read/write plugin will internally open a new physical connection to a reader. After this first call, the physical reader connection will be cached. Future calls passing `awsctx.setReadOnly=true` object will not require opening a new physical connection, as this was done the first time `awsctx.setReadOnly=true` was passed in.
 
 Due to the abstraction of go's `database/sql` library, many users may often find themselves executing queries with the `sql.DB` object. `sql.DB` is a high-level connection pool, users do not have control of which `sql.Conn` is being used when running queries using methods on this object (such as`db.ExecContext`). That is, if a user were to run `db.ExecContext` multiple times, each of those times could result in creating a new connection object and making a new physical connection to the reader.
 
