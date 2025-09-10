@@ -32,16 +32,6 @@ import (
 	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 )
 
-const TEST_FAILURE_DETECTION_START_TIME_SECONDS = 1
-const TEST_FAILURE_DETECTION_INTERVAL_SECONDS = 5
-const TEST_FAILURE_DETECTION_COUNT = 3
-const TEST_SLEEP_QUERY_SECONDS = (TEST_FAILURE_DETECTION_COUNT + 1) * TEST_FAILURE_DETECTION_INTERVAL_SECONDS
-const TEST_SLEEP_QUERY_TIMEOUT_SECONDS = 2 * TEST_SLEEP_QUERY_SECONDS
-
-// Minimal time EFM takes to consider a host dead is FAILURE_DETECTION_TIME_MS + (TEST_FAILURE_DETECTION_COUNT - 1)*TEST_FAILURE_DETECTION_INTERVAL_SECONDS.
-// As long as TEST_FAILURE_DETECTION_START_TIME_SECONDS < TEST_FAILURE_DETECTION_INTERVAL_SECONDS this leaves time for the host to be marked unhealthy.
-const TEST_MONITORING_TIMEOUT_SECONDS = TEST_FAILURE_DETECTION_COUNT * TEST_FAILURE_DETECTION_INTERVAL_SECONDS
-
 func OpenDb(engine DatabaseEngine, dsn string) (*sql.DB, error) {
 	switch engine {
 	case PG:
@@ -264,15 +254,6 @@ func GetDsnForTestsWithProxy(environment *TestEnvironment, origProps map[string]
 }
 
 func GetPropsForTestsWithProxy(environment *TestEnvironment, props map[string]string) map[string]string {
-	monitoringConnectTimeoutSeconds := strconv.Itoa(TEST_FAILURE_DETECTION_INTERVAL_SECONDS - 1)
-	monitoringConnectTimeoutParameterName := property_util.MONITORING_PROPERTY_PREFIX
-	switch environment.Info().Request.Engine {
-	case PG:
-		monitoringConnectTimeoutParameterName = monitoringConnectTimeoutParameterName + "connect_timeout"
-	case MYSQL:
-		monitoringConnectTimeoutParameterName = monitoringConnectTimeoutParameterName + "readTimeout"
-		monitoringConnectTimeoutSeconds = monitoringConnectTimeoutSeconds + "s"
-	}
 	if _, ok := props["host"]; ok == false {
 		props["host"] = environment.Info().ProxyDatabaseInfo.ClusterEndpoint
 	}
@@ -281,21 +262,6 @@ func GetPropsForTestsWithProxy(environment *TestEnvironment, props map[string]st
 	}
 	if _, ok := props["clusterInstanceHostPattern"]; ok == false {
 		props["clusterInstanceHostPattern"] = "?." + environment.Info().ProxyDatabaseInfo.InstanceEndpointSuffix
-	}
-	if _, ok := props["failureDetectionIntervalMs"]; ok == false {
-		props["failureDetectionIntervalMs"] = strconv.Itoa(TEST_FAILURE_DETECTION_INTERVAL_SECONDS * 1000) // interval between probes to host
-	}
-	if _, ok := props["failureDetectionCount"]; ok == false {
-		props["failureDetectionCount"] = strconv.Itoa(TEST_FAILURE_DETECTION_COUNT) // consecutive failures before marks host as dead
-	}
-	if _, ok := props["failureDetectionTimeMs"]; ok == false {
-		props["failureDetectionTimeMs"] = strconv.Itoa(TEST_FAILURE_DETECTION_START_TIME_SECONDS * 1000) // time before starting monitoring
-	}
-	if _, ok := props["failoverTimeoutMs"]; ok == false {
-		props["failoverTimeoutMs"] = strconv.Itoa(TEST_MONITORING_TIMEOUT_SECONDS * 1000)
-	}
-	if _, ok := props[monitoringConnectTimeoutParameterName]; ok == false {
-		props[monitoringConnectTimeoutParameterName] = monitoringConnectTimeoutSeconds
 	}
 	return props
 }
