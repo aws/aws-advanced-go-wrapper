@@ -522,9 +522,11 @@ func (a AuroraTestUtility) GetRdsInstanceIds(engine DatabaseEngine, deployment D
 	}
 
 	// Create connection to execute the query
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", username, password, clusterEndpoint, port, dbName)
+	var dsn string
 	if engine == PG {
 		dsn = fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=require", username, password, clusterEndpoint, port, dbName)
+	} else { // MySQL
+		dsn = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", username, password, clusterEndpoint, port, dbName)
 	}
 
 	db, err := OpenDb(engine, dsn)
