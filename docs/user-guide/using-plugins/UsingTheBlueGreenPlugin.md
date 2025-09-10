@@ -81,6 +81,10 @@ pgxDsn := "... connect_timeout=30 blue-green-monitoring-connect_timeout=10"
 > **Always ensure you provide a non-zero connect timeout value to the Blue/Green Deployment Plugin**
 >
 
+### Connections with the IAM Authentication Plugin
+
+When connecting with the IAM Authentication Plugin, additional permissions for the IAM user may be required. See [Connecting with Multi-AZ or Blue/Green Deployments](UsingTheIamAuthenticationPlugin.md#connecting-with-multi-az-or-bluegreen-deployments) for specifics.
+
 ## Plan your Blue/Green switchover in advance
 
 To optimize Blue/Green switchover support with the AWS Advanced Go Wrapper, advance planning is essential. Please follow these recommended steps:
