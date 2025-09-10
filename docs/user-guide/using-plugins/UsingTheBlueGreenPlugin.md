@@ -36,13 +36,13 @@ Support for Blue/Green deployments using the AWS Advanced Go Wrapper requires sp
 > Supported Aurora PostgreSQL Versions: Engine Release `17.5, 16.9, 15.13, 14.18, 13.21` and above.<br>
 > Supported Aurora MySQL Versions: Engine Release `3.07` and above.
 
-## What is Blue/Green Deployment Plugin?
+## What is the Blue/Green Deployment Plugin?
 
 During a [Blue/Green switchover](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/blue-green-deployments-switching.html), several significant changes occur to your database configuration:
-- Connections to blue hosts terminate at a specific point during the transition
+- Connections to blue hosts terminate during the transition
 - Host connectivity may be temporarily impacted due to reconfigurations and potential host restarts
 - Cluster and instance endpoints are redirected to different database hosts
-- Internal database host names undergo changes
+- Internal database host names change
 - Internal security certificates are regenerated to accommodate the new host names
 
 All factors mentioned above may cause application disruption. The AWS Advanced Go Wrapper aims to minimize the application disruption during Blue/Green switchover by performing the following actions:
@@ -55,7 +55,7 @@ All factors mentioned above may cause application disruption. The AWS Advanced G
 - Intelligently detects switchover failures and rollbacks to the original state, implementing appropriate connection handling measures to maintain application stability
 
 
-## How do I use Blue/Green Deployment Plugin with the AWS Advanced Go Wrapper?
+## How do I use the Blue/Green Deployment Plugin with the AWS Advanced Go Wrapper?
 
 To enable the Blue/Green Deployment functionality, add the plugin code `bg` to the [`plugins`](../UsingTheGoWrapper.md#connection-plugin-manager-parameters) parameter value.
 The Blue/Green Deployment Plugin supports the following configuration parameters:
