@@ -83,11 +83,11 @@ If the environment variable `REUSE_RDS_DB` is set to true, the integration tests
 
 ###### (Optional) Additional Environment Variables
 
-| Environment Variable Name | Description                                                                                                                | Example Value                         | Default Value (If available)                                                      |
-|---------------------------|----------------------------------------------------------------------------------------------------------------------------|---------------------------------------|-----------------------------------------------------------------------------------|
-| `NUM_INSTANCES`           | The number of database instances in the cluster to test with. This value must be one of the following: `1`, `2`, `3`, `5`. | `5`                                   | Integration tests will be run several times, against `1`, `2`, and `5` instances. |
-| `TIMEOUT`                 | The maximum amount of time for all tests to complete execution.                                                            | `30m`, `2h`                           | `60m`                                                                             |
-| `FILTER`                  | Filter of which tests to run. If a test name contains this value, it will run.                                             | `Iam`, `TestBasicConnectivityWrapper` | By default, each task runs all its tests.                                         |
+| Environment Variable Name | Description                                                                                                                                        | Example Value                   | Default Value (If available)                                                      |
+|---------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------|-----------------------------------------------------------------------------------|
+| `NUM_INSTANCES`           | The number of database instances in the cluster to test with. This value must be one of the following: `1`, `2`, `3`, `5`.                         | `5`                             | Integration tests will be run several times, against `1`, `2`, and `5` instances. |
+| `TIMEOUT`                 | The maximum amount of time for all tests to complete execution.                                                                                    | `30m`, `2h`                     | `60m`                                                                             |
+| `FILTER`                  | Regex pattern to selectively run specific tests. When set, only tests matching the pattern will execute. Supports standard Go test regex patterns. | `Iam`, `^TestBasicConnectivity` | By default, this value is unset and all integration tests run.                    |
 
 ### Standard Integration Tests
 
