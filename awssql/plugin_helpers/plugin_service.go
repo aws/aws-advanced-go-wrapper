@@ -581,12 +581,8 @@ func (p *PluginServiceImpl) ReleaseResources() {
 	}
 }
 
-func (p *PluginServiceImpl) IsReadOnly() bool {
-	readOnly := p.sessionStateService.GetReadOnly()
-	if readOnly == nil {
-		return false
-	}
-	return *readOnly
+func (p *PluginServiceImpl) ResetSession() {
+	p.sessionStateService.Reset()
 }
 
 func (p *PluginServiceImpl) GetBgStatus(id string) (driver_infrastructure.BlueGreenStatus, bool) {

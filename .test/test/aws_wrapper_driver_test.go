@@ -512,7 +512,7 @@ func TestAwsWrapperDriver_Open_ConnectionError(t *testing.T) {
 	assert.Nil(t, wrapperConn)
 }
 
-func setupmocks_awsWrapperConn_executeWithPlugins(ctrl *gomock.Controller, results any) (
+func setupmocks_awsWrapperConn_executeWithPlugins(ctrl *gomock.Controller, results ...any) (
 	*mock_driver_infrastructure.MockPluginManager, *mock_driver_infrastructure.MockPluginService) {
 	mockPluginManager := mock_driver_infrastructure.NewMockPluginManager(ctrl)
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
@@ -521,18 +521,20 @@ func setupmocks_awsWrapperConn_executeWithPlugins(ctrl *gomock.Controller, resul
 	mockTelemetryContext := mock_telemetry.NewMockTelemetryContext(ctrl)
 
 	mockPluginService.EXPECT().GetCurrentConnection().Return(mockConn).AnyTimes()
-	mockPluginManager.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory)
+	mockPluginManager.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory).AnyTimes()
 	mockTelemetryFactory.EXPECT().OpenTelemetryContext(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(mockTelemetryContext, context.TODO())
-	mockTelemetryContext.EXPECT().SetAttribute(gomock.Any(), gomock.Any())
+		Return(mockTelemetryContext, context.TODO()).AnyTimes()
+	mockTelemetryContext.EXPECT().SetAttribute(gomock.Any(), gomock.Any()).AnyTimes()
 	mockPluginManager.EXPECT().SetTelemetryContext(gomock.Any()).AnyTimes()
-	mockTelemetryContext.EXPECT().CloseContext()
+	mockTelemetryContext.EXPECT().CloseContext().AnyTimes()
 	mockTelemetryContext.EXPECT().SetSuccess(gomock.Any()).AnyTimes()
 
-	mockPluginManager.
-		EXPECT().
-		Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(results, nil, true, nil)
+	for _, result := range results {
+		mockPluginManager.
+			EXPECT().
+			Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(result, nil, true, nil)
+	}
 
 	return mockPluginManager, mockPluginService
 }
@@ -605,10 +607,13 @@ func TestAwsWrapperConn_BeginTx(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockDriverTx := mock_database_sql_driver.NewMockTx(ctrl)
-	mockPluginManager, mockPluginService := setupmocks_awsWrapperConn_executeWithPlugins(ctrl, mockDriverTx)
+	mockDriverResults := mock_database_sql_driver.NewMockResult(ctrl)
+	mockPluginManager, mockPluginService := setupmocks_awsWrapperConn_executeWithPlugins(ctrl, mockDriverResults, mockDriverTx)
+	mockDatabaseDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 	dbEngine := driver_infrastructure.PG
+	mockDatabaseDialect.EXPECT().GetSetReadOnlyQuery(gomock.Any()).Return("SELECT 1", nil)
 	mockPluginService.EXPECT().SetCurrentTx(gomock.Any())
-	mockPluginService.EXPECT().IsReadOnly()
+	mockPluginService.EXPECT().GetDialect().Return(mockDatabaseDialect)
 
 	awsWrapperconn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, dbEngine)
 
@@ -624,7 +629,6 @@ func TestAwsWrapperConn_QueryContext(t *testing.T) {
 	mockDriverRows := mock_database_sql_driver.NewMockRows(ctrl)
 	mockPluginManager, mockPluginService := setupmocks_awsWrapperConn_executeWithPlugins(ctrl, mockDriverRows)
 	dbEngine := driver_infrastructure.PG
-	mockPluginService.EXPECT().IsReadOnly()
 
 	awsWrapperconn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, dbEngine)
 
@@ -640,7 +644,6 @@ func TestAwsWrapperConn_ExecContext(t *testing.T) {
 	mockDriverResults := mock_database_sql_driver.NewMockResult(ctrl)
 	mockPluginManager, mockPluginService := setupmocks_awsWrapperConn_executeWithPlugins(ctrl, mockDriverResults)
 	dbEngine := driver_infrastructure.PG
-	mockPluginService.EXPECT().IsReadOnly()
 
 	awsWrapperconn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, dbEngine)
 
@@ -683,6 +686,7 @@ func TestAwsWrapperConn_ResetSession(t *testing.T) {
 
 	mockSessionResetter := mock_database_sql_driver.NewMockSessionResetter(ctrl)
 	mockPluginManager, mockPluginService := setupmocks_awsWrapperConn_executeWithPlugins(ctrl, mockSessionResetter)
+	mockPluginService.EXPECT().ResetSession()
 	dbEngine := driver_infrastructure.PG
 
 	awsWrapperconn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, dbEngine)

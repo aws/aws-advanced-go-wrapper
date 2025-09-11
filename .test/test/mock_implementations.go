@@ -516,8 +516,7 @@ func (m *MockPluginService) SetTelemetryContext(ctx context.Context) {
 	m.PluginManager.SetTelemetryContext(ctx)
 }
 
-func (m *MockPluginService) IsReadOnly() bool {
-	return false
+func (m *MockPluginService) ResetSession() {
 }
 
 func (p *MockPluginService) GetBgStatus(id string) (driver_infrastructure.BlueGreenStatus, bool) {

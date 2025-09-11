@@ -199,6 +199,9 @@ func (c *AwsWrapperConn) PrepareContext(ctx context.Context, query string) (driv
 		result, err := prepareCtx.PrepareContext(ctx, query)
 		return result, nil, false, err
 	}
+	if _, err := c.setReadWriteModeFromCtx(ctx); err != nil {
+		return nil, err
+	}
 	return prepareWithPlugins(c.pluginService.GetCurrentConnection(), c.pluginManager, utils.CONN_PREPARE_CONTEXT, prepareFunc, *c, query)
 }
 
@@ -229,8 +232,17 @@ func (c *AwsWrapperConn) BeginTx(ctx context.Context, opts driver.TxOptions) (dr
 		result, err := beginTx.BeginTx(ctx, opts)
 		return result, nil, false, err
 	}
-	if err := c.setReadWriteMode(ctx); err != nil {
+
+	// We will check context, if not, do what was passed in opts
+	changed, err := c.setReadWriteModeFromCtx(ctx)
+	if err != nil {
 		return nil, err
+	}
+	if !changed {
+		err = c.setReadWriteMode(opts.ReadOnly)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return beginWithPlugins(c.pluginService.GetCurrentConnection(), c.pluginManager, c.pluginService, utils.CONN_BEGIN_TX, beginFunc)
 }
@@ -246,14 +258,15 @@ func (c *AwsWrapperConn) QueryContext(ctx context.Context, query string, args []
 		return result, nil, false, err
 	}
 
-	if err := c.setReadWriteMode(ctx); err != nil {
+	if _, err := c.setReadWriteModeFromCtx(ctx); err != nil {
 		return nil, err
 	}
+
 	return queryWithPlugins(c.pluginService.GetCurrentConnection(), c.pluginManager, utils.CONN_QUERY_CONTEXT, queryFunc, c.engine, query)
 }
 
 func (c *AwsWrapperConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
-	if err := c.setReadWriteMode(ctx); err != nil {
+	if _, err := c.setReadWriteModeFromCtx(ctx); err != nil {
 		return nil, err
 	}
 	return c.execContextInternal(ctx, query, args)
@@ -304,6 +317,8 @@ func (c *AwsWrapperConn) ResetSession(ctx context.Context) error {
 		}
 		return nil, nil, false, resetter.ResetSession(ctx)
 	}
+
+	c.pluginService.ResetSession()
 	_, _, _, err := ExecuteWithPlugins(c.pluginService.GetCurrentConnection(), c.pluginManager, utils.CONN_RESET_SESSION, resetSessionFunc)
 	return err
 }
@@ -320,16 +335,17 @@ func (c *AwsWrapperConn) CheckNamedValue(val *driver.NamedValue) error {
 	return err
 }
 
-func (c *AwsWrapperConn) setReadWriteMode(ctx context.Context) error {
-	isReadOnly := utils.GetSetReadOnlyFromCtx(ctx)
-	isReadOnlySession := c.pluginService.IsReadOnly()
-
-	if isReadOnly == isReadOnlySession {
-		return nil
+func (c *AwsWrapperConn) setReadWriteModeFromCtx(ctx context.Context) (bool, error) {
+	isReadOnly, found := utils.GetSetReadOnlyFromCtx(ctx)
+	if !found {
+		return false, nil
 	}
 
-	query, _ := c.pluginService.GetDialect().GetSetReadOnlyQuery(isReadOnly)
-	c.pluginService.UpdateState(query)
+	return true, c.setReadWriteMode(isReadOnly)
+}
+
+func (c *AwsWrapperConn) setReadWriteMode(readOnly bool) error {
+	query, _ := c.pluginService.GetDialect().GetSetReadOnlyQuery(readOnly)
 	_, err := c.execContextInternal(context.TODO(), query, []driver.NamedValue{})
 	return err
 }

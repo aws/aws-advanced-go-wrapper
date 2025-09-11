@@ -98,17 +98,17 @@ func setupProxiedTest(t *testing.T, minInstances int) *testSetup {
 	return &testSetup{env: env, auroraTestUtility: test_utils.NewAuroraTestUtility(env.Info().Region)}
 }
 
-func executeInstanceQuery(env *test_utils.TestEnvironment, dbOrConn interface{}, ctx context.Context, timeout int) (string, error) {
+func executeInstanceQuery(env *test_utils.TestEnvironment, rowQuerier test_utils.RowQuerier, ctx context.Context, timeout int) (string, error) {
 	return test_utils.ExecuteInstanceQueryContextWithTimeout(
-		env.Info().Request.Engine, env.Info().Request.Deployment, dbOrConn, timeout, ctx)
+		env.Info().Request.Engine, env.Info().Request.Deployment, rowQuerier, timeout, ctx)
 }
 
-func executeInstanceQueryReadOnly(env *test_utils.TestEnvironment, dbOrConn interface{}, timeout int) (string, error) {
-	return executeInstanceQuery(env, dbOrConn, readOnlyCtx, timeout)
+func executeInstanceQueryReadOnly(env *test_utils.TestEnvironment, rowQuerier test_utils.RowQuerier, timeout int) (string, error) {
+	return executeInstanceQuery(env, rowQuerier, readOnlyCtx, timeout)
 }
 
-func executeInstanceQueryWrite(env *test_utils.TestEnvironment, dbOrConn interface{}, timeout int) (string, error) {
-	return executeInstanceQuery(env, dbOrConn, writeCtx, timeout)
+func executeInstanceQueryWrite(env *test_utils.TestEnvironment, rowQuerier test_utils.RowQuerier, timeout int) (string, error) {
+	return executeInstanceQuery(env, rowQuerier, writeCtx, timeout)
 }
 
 func TestReadWriteSplitting_SetReadOnlyCtxTrue(t *testing.T) {
@@ -116,6 +116,11 @@ func TestReadWriteSplitting_SetReadOnlyCtxTrue(t *testing.T) {
 	defer setup.cleanup(t)
 
 	instanceId, err := executeInstanceQueryReadOnly(setup.env, setup.conn, 5)
+	assert.NoError(t, err)
+	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+
+	// Verify that subsequent queries without context has expected results
+	instanceId, err = executeInstanceQuery(setup.env, setup.conn, context.TODO(), 5)
 	assert.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
@@ -127,6 +132,11 @@ func TestReadWriteSplitting_SetReadOnlyCtxFalse(t *testing.T) {
 	instanceId, err := executeInstanceQueryWrite(setup.env, setup.db, 5)
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+
+	// Verify that subsequent queries without context has expected results
+	instanceId, err = executeInstanceQuery(setup.env, setup.conn, context.TODO(), 5)
+	assert.NoError(t, err)
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
 
 func TestReadWriteSplitting_SetReadOnlyCtxNoCtx(t *testing.T) {
@@ -136,6 +146,311 @@ func TestReadWriteSplitting_SetReadOnlyCtxNoCtx(t *testing.T) {
 	instanceId, err := executeInstanceQuery(setup.env, setup.db, context.TODO(), 5)
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+
+	// Verify that subsequent queries without context has expected results
+	instanceId, err = executeInstanceQuery(setup.env, setup.conn, context.TODO(), 5)
+	assert.NoError(t, err)
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+}
+
+func TestReadWriteSplitting_TxSetReadOnlyTrueCtx(t *testing.T) {
+	setup := setupTest(t, 2)
+	defer setup.cleanup(t)
+
+	tx, err := setup.db.BeginTx(readOnlyCtx, nil)
+	require.NoError(t, err)
+
+	instanceId, err := executeInstanceQuery(setup.env, tx, context.TODO(), 5)
+	assert.NoError(t, err)
+	err = tx.Commit()
+	assert.NoError(t, err)
+	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+}
+
+func TestReadWriteSplitting_TxSetReadOnlyFalseCtx(t *testing.T) {
+	setup := setupTest(t, 2)
+	defer setup.cleanup(t)
+
+	tx, err := setup.db.BeginTx(writeCtx, nil)
+	require.NoError(t, err)
+
+	instanceId, err := executeInstanceQuery(setup.env, tx, context.TODO(), 5)
+	assert.NoError(t, err)
+	err = tx.Commit()
+	assert.NoError(t, err)
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+}
+
+func TestReadWriteSplitting_TxSetReadOnlyNoCtx(t *testing.T) {
+	setup := setupTest(t, 2)
+	defer setup.cleanup(t)
+
+	tx, err := setup.db.BeginTx(context.TODO(), nil)
+	require.NoError(t, err)
+
+	instanceId, err := executeInstanceQuery(setup.env, tx, context.TODO(), 5)
+	assert.NoError(t, err)
+	err = tx.Commit()
+	assert.NoError(t, err)
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+}
+
+func TestReadWriteSplitting_TxSetReadOnlyTrueOpt(t *testing.T) {
+	setup := setupTest(t, 2)
+	defer setup.cleanup(t)
+
+	tx, err := setup.db.BeginTx(context.TODO(), &sql.TxOptions{ReadOnly: true})
+	require.NoError(t, err)
+
+	instanceId, err := executeInstanceQuery(setup.env, tx, context.TODO(), 5)
+	assert.NoError(t, err)
+	err = tx.Commit()
+	assert.NoError(t, err)
+	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+}
+
+func TestReadWriteSplitting_TxSetReadOnlyFalseOpt(t *testing.T) {
+	setup := setupTest(t, 2)
+	defer setup.cleanup(t)
+
+	tx, err := setup.db.BeginTx(context.TODO(), &sql.TxOptions{ReadOnly: false})
+	require.NoError(t, err)
+
+	instanceId, err := executeInstanceQuery(setup.env, tx, context.TODO(), 5)
+	assert.NoError(t, err)
+	err = tx.Commit()
+	assert.NoError(t, err)
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+}
+
+func TestReadWriteSplitting_TxNoOpt(t *testing.T) {
+	setup := setupTest(t, 2)
+	defer setup.cleanup(t)
+
+	tx, err := setup.db.BeginTx(context.TODO(), &sql.TxOptions{ReadOnly: false})
+	require.NoError(t, err)
+
+	instanceId, err := executeInstanceQuery(setup.env, tx, context.TODO(), 5)
+	assert.NoError(t, err)
+	err = tx.Commit()
+	assert.NoError(t, err)
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+}
+
+func TestReadWriteSplitting_StmtDb(t *testing.T) {
+	setup := setupTest(t, 2)
+	defer setup.cleanup(t)
+
+	instanceQuery, err := test_utils.GetInstanceIdSql(
+		setup.env.Info().Request.Engine,
+		setup.env.Info().Request.Deployment)
+
+	require.NoError(t, err)
+
+	var instanceId string
+
+	stmt, err := setup.db.PrepareContext(readOnlyCtx, instanceQuery)
+	require.NoError(t, err)
+	err = stmt.QueryRowContext(context.TODO()).Scan(&instanceId)
+	assert.NoError(t, err)
+	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	stmt.Close()
+
+	stmt, err = setup.db.PrepareContext(writeCtx, instanceQuery)
+	require.NoError(t, err)
+	err = stmt.QueryRowContext(context.TODO()).Scan(&instanceId)
+	assert.NoError(t, err)
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+
+	stmt.Close()
+}
+
+func TestReadWriteSplitting_StmtConn(t *testing.T) {
+	setup := setupTest(t, 2)
+	defer setup.cleanup(t)
+
+	instanceQuery, err := test_utils.GetInstanceIdSql(
+		setup.env.Info().Request.Engine,
+		setup.env.Info().Request.Deployment)
+
+	require.NoError(t, err)
+
+	var instanceId string
+
+	// Test Read/Write from stmt level
+	conn, err := setup.db.Conn(context.TODO())
+	require.NoError(t, err)
+
+	stmt, err := conn.PrepareContext(readOnlyCtx, instanceQuery)
+	require.NoError(t, err)
+	err = stmt.QueryRowContext(context.TODO()).Scan(&instanceId)
+
+	assert.NoError(t, err)
+	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	stmt.Close()
+
+	// Assert that Conn has switched to reader after statement
+	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
+	require.NoError(t, err)
+	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+
+	stmt, err = conn.PrepareContext(writeCtx, instanceQuery)
+	require.NoError(t, err)
+	err = stmt.QueryRowContext(context.TODO()).Scan(&instanceId)
+	assert.NoError(t, err)
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+
+	stmt.Close()
+
+	// Assert that Conn has switched to writer after statement
+	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
+	require.NoError(t, err)
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	conn.Close()
+
+	// Test Read/Write from Conn level
+	conn, err = setup.db.Conn(context.TODO())
+	require.NoError(t, err)
+
+	// switch conn to reader
+	readerId, err := executeInstanceQueryReadOnly(setup.env, conn, 5)
+	assert.NoError(t, err)
+	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(readerId, ""))
+
+	stmt, err = conn.PrepareContext(context.TODO(), instanceQuery)
+	require.NoError(t, err)
+	err = stmt.QueryRowContext(context.TODO()).Scan(&instanceId)
+	assert.NoError(t, err)
+	assert.Equal(t, readerId, instanceId)
+	stmt.Close()
+
+	// Assert that Conn is still connected to the reader
+	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
+	require.NoError(t, err)
+	assert.Equal(t, readerId, instanceId)
+
+	// switch conn to writer
+	writerId, err := executeInstanceQueryWrite(setup.env, conn, 5)
+	assert.NoError(t, err)
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(writerId, ""))
+
+	stmt, err = conn.PrepareContext(context.TODO(), instanceQuery)
+	require.NoError(t, err)
+	err = stmt.QueryRowContext(context.TODO()).Scan(&instanceId)
+	assert.NoError(t, err)
+	assert.Equal(t, writerId, instanceId)
+
+	stmt.Close()
+	// Assert that Conn is still connected to the writer
+	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
+	require.NoError(t, err)
+	assert.Equal(t, writerId, instanceId)
+	conn.Close()
+
+	// Test Read/Write from conn level, but switch when creating statement
+	conn, err = setup.db.Conn(context.TODO())
+	require.NoError(t, err)
+
+	// switch conn to reader
+	readerId, err = executeInstanceQueryReadOnly(setup.env, conn, 5)
+	assert.NoError(t, err)
+	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(readerId, ""))
+
+	// switch to writer
+	stmt, err = conn.PrepareContext(writeCtx, instanceQuery)
+	require.NoError(t, err)
+	err = stmt.QueryRowContext(context.TODO()).Scan(&instanceId)
+	assert.NoError(t, err)
+	assert.NotEqual(t, readerId, instanceId)
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	stmt.Close()
+
+	// Assert that Conn is still connected to the writer
+	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
+	require.NoError(t, err)
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+
+	// switch conn to writer
+	writerId, err = executeInstanceQueryWrite(setup.env, conn, 5)
+	assert.NoError(t, err)
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(writerId, ""))
+
+	// Switch to reader
+	stmt, err = conn.PrepareContext(readOnlyCtx, instanceQuery)
+	require.NoError(t, err)
+	err = stmt.QueryRowContext(context.TODO()).Scan(&instanceId)
+	assert.NoError(t, err)
+	assert.NotEqual(t, writerId, instanceId)
+	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+
+	stmt.Close()
+
+	// Assert that Conn is still connected to the reader
+	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
+	require.NoError(t, err)
+	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	conn.Close()
+}
+
+func TestReadWriteSplitting_StmtTx(t *testing.T) {
+	setup := setupTest(t, 2)
+	defer setup.cleanup(t)
+
+	instanceQuery, err := test_utils.GetInstanceIdSql(
+		setup.env.Info().Request.Engine,
+		setup.env.Info().Request.Deployment)
+
+	require.NoError(t, err)
+
+	var instanceId string
+
+	// Test Read Only True through TxOptions
+	tx, err := setup.db.BeginTx(context.TODO(), &sql.TxOptions{ReadOnly: true})
+	require.NoError(t, err)
+	stmt, err := tx.PrepareContext(context.TODO(), instanceQuery)
+	require.NoError(t, err)
+	err = stmt.QueryRowContext(context.TODO()).Scan(&instanceId)
+	assert.NoError(t, err)
+	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	stmt.Close()
+	err = tx.Commit()
+	assert.NoError(t, err)
+
+	// Test Read Only False through TxOptions
+	tx, err = setup.db.BeginTx(context.TODO(), &sql.TxOptions{ReadOnly: false})
+	require.NoError(t, err)
+	stmt, err = tx.PrepareContext(context.TODO(), instanceQuery)
+	require.NoError(t, err)
+	err = stmt.QueryRowContext(context.TODO()).Scan(&instanceId)
+	assert.NoError(t, err)
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	stmt.Close()
+	err = tx.Commit()
+	assert.NoError(t, err)
+
+	// Test Read Only True through context
+	tx, err = setup.db.BeginTx(readOnlyCtx, nil)
+	require.NoError(t, err)
+	stmt, err = tx.PrepareContext(context.TODO(), instanceQuery)
+	require.NoError(t, err)
+	err = stmt.QueryRowContext(context.TODO()).Scan(&instanceId)
+	assert.NoError(t, err)
+	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	stmt.Close()
+	err = tx.Commit()
+	assert.NoError(t, err)
+
+	// Test Read Only False through context
+	tx, err = setup.db.BeginTx(writeCtx, nil)
+	require.NoError(t, err)
+	stmt, err = tx.PrepareContext(context.TODO(), instanceQuery)
+	require.NoError(t, err)
+	err = stmt.QueryRowContext(context.TODO()).Scan(&instanceId)
+	assert.NoError(t, err)
+	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	stmt.Close()
+	err = tx.Commit()
+	assert.NoError(t, err)
 }
 
 func TestReadWriteSplitting_SetReadOnlyCtxSwitchFalseTrueNoCtx(t *testing.T) {
@@ -363,13 +678,14 @@ func TestReadWriteSplitting_FailoverToNewReader(t *testing.T) {
 	}
 
 	// Expect failover to new reader
-	_, err = executeInstanceQueryReadOnly(setup.env, conn, 60)
+	_, err = executeInstanceQuery(setup.env, conn, context.TODO(), 60)
 	assert.Error(t, err)
 	awsWrapperError, ok := err.(*error_util.AwsWrapperError)
 	assert.True(t, ok)
 	assert.True(t, awsWrapperError.IsFailoverErrorType())
+	assert.Equal(t, awsWrapperError, error_util.FailoverSuccessError)
 
-	currentReaderId, err := executeInstanceQueryReadOnly(setup.env, conn, 10)
+	currentReaderId, err := executeInstanceQuery(setup.env, conn, context.TODO(), 20)
 	require.NoError(t, err)
 	assert.Equal(t, otherReaderId, currentReaderId)
 	assert.NotEqual(t, originalReaderId, currentReaderId)
@@ -424,13 +740,13 @@ func TestReadWriteSplitting_FailoverReaderToWriter(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// Expect failover to writer for reads
-	_, err = executeInstanceQueryReadOnly(setup.env, conn, 60)
+	_, err = executeInstanceQuery(setup.env, conn, context.TODO(), 60)
 	assert.Error(t, err)
 	awsWrapperError, ok := err.(*error_util.AwsWrapperError)
 	assert.True(t, ok)
 	assert.True(t, awsWrapperError.IsFailoverErrorType())
 
-	instanceId, err := executeInstanceQueryReadOnly(setup.env, conn, 60)
+	instanceId, err := executeInstanceQuery(setup.env, conn, context.TODO(), 60)
 	assert.NoError(t, err)
 	assert.Equal(t, originalWriterId, instanceId)
 
@@ -530,13 +846,13 @@ func TestPooledConnection_FailoverInTransaction(t *testing.T) {
 	err = setup.auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(originalWriterId, "", "")
 	require.NoError(t, err)
 
-	_, err = executeInstanceQueryReadOnly(setup.env, conn, 60)
+	_, err = executeInstanceQuery(setup.env, conn, context.TODO(), 60)
 	assert.Error(t, err)
 	awsWrapperError, ok := err.(*error_util.AwsWrapperError)
 	assert.True(t, ok)
 	assert.True(t, awsWrapperError.IsFailoverErrorType())
 
-	newWriter, err := executeInstanceQueryReadOnly(setup.env, conn, 5)
+	newWriter, err := executeInstanceQuery(setup.env, conn, context.TODO(), 5)
 	assert.NoError(t, err)
 	assert.NotEqual(t, originalWriterId, newWriter)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(newWriter, ""))
