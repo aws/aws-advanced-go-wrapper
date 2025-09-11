@@ -22,6 +22,10 @@ CREATE EXTENSION rds_tools;
 
 To prepare a connection with PostgreSQL in a Multi-AZ Cluster, please refer to [this example](../../examples/aws_simple_connection_postgresql_example.go).
 
+### Connections with the IAM Authentication Plugin
+
+Additional permissions for the IAM user are required when connecting to a Multi-AZ Cluster. See [Connecting with Multi-AZ or Blue/Green Deployments](./using-plugins/UsingTheIamAuthenticationPlugin.md#connecting-with-multi-az-or-bluegreen-deployments) for specifics.
+
 ## Optimizing Switchover Time
 
 Amazon RDS Multi-AZ with two readable standbys supports minor version upgrades with 1 second of downtime.

@@ -23,6 +23,7 @@ This plugin requires:
             2. For a PostgreSQL database, use the following command to create a new user:<br>
                `CREATE USER db_userx;
                GRANT rds_iam TO db_userx;`
+    4. If connecting to a Multi-AZ deployment or using the Blue/Green plugin with a Blue/Green deployment, ensure the IAM user has access to required tables. See [Connecting with Multi-AZ or Blue/Green Deployments](UsingTheIamAuthenticationPlugin.md#connecting-with-multi-az-or-bluegreen-deployments) for specifics. 
 2. [github.com/aws/aws-advanced-go-wrapper/iam](../../../iam) to be a dependency in the project
     - This can be accomplished by running `go get github.com/aws/aws-advanced-go-wrapper/iam` in the same directory as
        the intended `go.mod` file.
@@ -42,6 +43,14 @@ To enable the IAM Authentication Plugin, add the plugin code `iam` to the [
 When connecting through IAM with the Go-MySQL-Driver, the additional parameter `allowCleartextPasswords=true` is required. By default, MySQL encrypts the password and when AWS receives it for IAM authentication it doesn't decrypt it and is unable to connect. When `allowCleartextPasswords` is set to `true` AWS receives the password as-is and is able to connect.
 
 Additional case-specific configuration can be handled by registering a tls.Config with the underlying driver. See [MySQL IAM Sample Code](../../../examples/iam_mysql_example.go) for an example.
+
+### Connecting with Multi-AZ or Blue/Green Deployments
+The following additional permissions are required when connecting to a Multi-AZ deployment or using the Blue/Green plugin with a Blue/Green deployment.
+
+| Engine | Deployment             | Additional Required Permissions                                                                                                                       |
+|--------|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| mysql  | Multi-AZ or Blue/Green | `GRANT SELECT ON mysql.* TO '" + dbUser + "'@'%'`                                                                                                     |
+| pg     | Multi-AZ               | `CREATE EXTENSION rds_tools`<br>`GRANT USAGE ON SCHEMA rds_tools TO " + dbUser`<br>`GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA rds_tools TO " + dbUser` |
 
 ## IAM Authentication Plugin Parameters
 

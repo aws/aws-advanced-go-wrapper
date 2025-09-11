@@ -48,16 +48,25 @@ To find all the documentation and concrete examples on how to use the AWS Advanc
 
 #### Amazon RDS Blue/Green Deployments
 
-The AWS Advanced Go Wrapper is not compatible with [AWS Blue/Green Deployments](https://docs.aws.amazon.com/whitepapers/latest/overview-deployment-options/bluegreen-deployments.html) and does not officially support them. While general basic connectivity to both Blue and Green clusters is always in place, some failover cases are not fully supported.
+**Important: Service Dependency**
 
-The current limitations are:
+Support for Blue/Green deployments using the AWS Advanced Go Wrapper requires specific metadata tables that are **not available in the current RDS and Aurora service**. Please contact your AWS account team for metadata release timelines.
 
-- After a Blue/Green switchover, the wrapper may not be able to properly detect the new topology and handle failover, as there are discrepancies between the metadata and the available endpoints.
-- The specific version requirements for Aurora MySQL versus Aurora PostgreSQL may vary, as the internal systems used by the wrapper can differ[^1].
+**Limitations:**
 
-The development team is aware of these limitations and is working to improve the wrapper's awareness and handling of Blue/Green switchovers.
+- **Post-switchover failures:** After a Blue/Green switchover, the wrapper may not properly detect the new cluster topology, leading to failed failover attempts.
+- **Metadata inconsistencies:** Discrepancies between topology metadata and actual available endpoints prevent reliable operation.
+- **Version-specific issues:** Requirements vary between Aurora MySQL and Aurora PostgreSQL due to different internal systems.
 
-[^1]: Aurora MySQL requires v3.07 or later.
+**Recommendation:**
+
+We advise waiting for the RDS service update before enabling the Blue/Green Deployments plugin. If the metadata table does not exist, your application will continue to work; however, errors will be logged stating that relevant Blue/Green metadata cannot be found.
+
+When the RDS service update is released, the following service versions will provide support for Blue/Green Deployments:
+
+- Supported RDS PostgreSQL Versions: `rds_tools v1.7 (17.1, 16.5, 15.9, 14.14, 13.17, 12.21)` and above.
+- Supported Aurora PostgreSQL Versions: Engine Release `17.5, 16.9, 15.13, 14.18, 13.21` and above.
+- Supported Aurora MySQL Versions: Engine Release `3.07` and above.
 
 #### Amazon Aurora Global Databases
 
