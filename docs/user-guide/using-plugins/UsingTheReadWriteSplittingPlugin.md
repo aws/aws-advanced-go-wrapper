@@ -106,7 +106,9 @@ stmt.Close()
 db.Close()
 ```
 
-When creating the object through `sql.Conn.PrepareContext()`, the `awsctx.SetReadOnly` value can be given as context and will target the corresponding instance. This will also change the mode of the `sql.Conn` object itself even after the `sql.Stmt` object is closed. If no value was passed, then the query will run against the current instance that `sql.Conn` is pointing to. That is, if `sql.Conn` is currently executing against the reader instance, then the prepared statement will target the reader instance.
+When creating the object through `sql.Conn.PrepareContext()`, the `awsctx.SetReadOnly` value can be given as context and will target the corresponding instance. This will also change the mode of the `sql.Conn` object itself even after the `sql.Stmt` object is closed.
+
+If no value was passed, then the query will run against the current instance that `sql.Conn` is pointing to. That is, if `sql.Conn` is currently executing against the reader instance, then the prepared statement will target the reader instance.
 
 ```go
 readOnlyCtx := context.WithValue(context.Background(), awsctx.SetReadOnly, true)
