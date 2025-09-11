@@ -285,9 +285,6 @@ func TestIamWithFailover(t *testing.T) {
 	// Failover and check that it has failed over.
 	triggerFailoverError := auroraTestUtility.CrashInstance(instanceId, "", "")
 	assert.Nil(t, triggerFailoverError)
-	if test_utils.RDS_MULTI_AZ_CLUSTER == environment.Info().Request.Deployment &&
-		test_utils.MYSQL == environment.Info().Request.Engine {
-	}
 	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
 	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryError.Error())
@@ -301,7 +298,6 @@ func TestIamWithFailover(t *testing.T) {
 	if environment.Info().Request.Deployment != test_utils.RDS_MULTI_AZ_CLUSTER {
 		assert.NotEqual(t, instanceId, newInstanceId)
 	}
-
 }
 
 func TestIamWithEfm(t *testing.T) {

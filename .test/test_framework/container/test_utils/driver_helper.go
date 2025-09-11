@@ -254,13 +254,13 @@ func GetDsnForTestsWithProxy(environment *TestEnvironment, origProps map[string]
 }
 
 func GetPropsForTestsWithProxy(environment *TestEnvironment, props map[string]string) map[string]string {
-	if _, ok := props["host"]; ok == false {
+	if _, ok := props["host"]; !ok {
 		props["host"] = environment.Info().ProxyDatabaseInfo.ClusterEndpoint
 	}
-	if _, ok := props["port"]; ok == false {
+	if _, ok := props["port"]; !ok {
 		props["port"] = strconv.Itoa(environment.Info().ProxyDatabaseInfo.InstanceEndpointPort)
 	}
-	if _, ok := props["clusterInstanceHostPattern"]; ok == false {
+	if _, ok := props["clusterInstanceHostPattern"]; !ok {
 		props["clusterInstanceHostPattern"] = "?." + environment.Info().ProxyDatabaseInfo.InstanceEndpointSuffix
 	}
 	return props

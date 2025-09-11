@@ -215,6 +215,9 @@ func (a AuroraTestUtility) getDbCluster(clusterId string) (cluster types.DBClust
 
 func (a AuroraTestUtility) CrashInstance(initialWriter string, clusterId string, targetWriterId string) (err error) {
 	env, err := GetCurrentTestEnvironment()
+	if err != nil {
+		return err
+	}
 	deployment := env.Info().Request.Deployment
 
 	if RDS_MULTI_AZ_CLUSTER == deployment {
@@ -222,7 +225,7 @@ func (a AuroraTestUtility) CrashInstance(initialWriter string, clusterId string,
 		a.SimulateTemporaryFailure()
 		return nil
 	} else {
-		slog.Debug("CrashInstance() - dbengine deployment %v detected. FailoverClusterAndWaitTillWriterChanged", deployment)
+		slog.Debug(fmt.Sprintf("CrashInstance() - dbengine deployment %v detected. FailoverClusterAndWaitTillWriterChanged", deployment))
 		return a.FailoverClusterAndWaitTillWriterChanged(initialWriter, clusterId, targetWriterId)
 	}
 }
