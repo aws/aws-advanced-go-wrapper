@@ -56,7 +56,7 @@ func setupTest(t *testing.T, minInstances int) *testSetup {
 	require.NoError(t, err)
 	test_utils.SkipIfInsufficientInstances(t, env, minInstances)
 
-	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info().Region)
+	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info())
 	props := map[string]string{"plugins": "readWriteSplitting,efm,failover"}
 	dsn := test_utils.GetDsn(env, props)
 
@@ -95,7 +95,7 @@ func setupProxiedTest(t *testing.T, minInstances int) *testSetup {
 	require.NoError(t, err)
 	test_utils.SkipIfInsufficientInstances(t, env, minInstances)
 
-	return &testSetup{env: env, auroraTestUtility: test_utils.NewAuroraTestUtility(env.Info().Region)}
+	return &testSetup{env: env, auroraTestUtility: test_utils.NewAuroraTestUtility(env.Info())}
 }
 
 func executeInstanceQuery(env *test_utils.TestEnvironment, rowQuerier test_utils.RowQuerier, ctx context.Context, timeout int) (string, error) {

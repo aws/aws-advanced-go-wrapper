@@ -68,7 +68,7 @@ func CreateSecret(t *testing.T, client *secretsmanager.Client, env *test_utils.T
 	return *createSecretOutput.ARN
 }
 
-func DeleteSecret(t *testing.T, client *secretsmanager.Client, env *test_utils.TestEnvironment, secretName string) {
+func DeleteSecret(t *testing.T, client *secretsmanager.Client, secretName string) {
 	deleteSecretInput := &secretsmanager.DeleteSecretInput{
 		SecretId:                   aws.String(secretName),
 		ForceDeleteWithoutRecovery: aws.Bool(true),
@@ -91,7 +91,7 @@ func TestSecretsManager(t *testing.T) {
 	})
 	secretName := fmt.Sprintf("TestSecret-%s", uuid.New().String())
 	secretARN := CreateSecret(t, client, env, secretName)
-	defer DeleteSecret(t, client, env, secretName)
+	defer DeleteSecret(t, client, secretName)
 
 	t.Run("Connection", func(t *testing.T) {
 		connectionTest(t, env, secretName)

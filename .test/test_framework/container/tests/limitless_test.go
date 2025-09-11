@@ -19,6 +19,8 @@ package test
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
 	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
@@ -26,7 +28,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestLimitlessValidConnectionProperties(t *testing.T) {
@@ -97,7 +98,7 @@ func TestLimitlessAndAwsSecretsManagerPlugin(t *testing.T) {
 	})
 	secretName := fmt.Sprintf("TestSecret-%s", uuid.New().String())
 	CreateSecret(t, client, environment, secretName)
-	defer DeleteSecret(t, client, environment, secretName)
+	defer DeleteSecret(t, client, secretName)
 
 	props := map[string]string{
 		property_util.PLUGINS.Name:                   "awsSecretsManager,limitless",

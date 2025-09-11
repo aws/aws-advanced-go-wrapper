@@ -42,7 +42,7 @@ func failoverSetup(t *testing.T) (*test_utils.AuroraTestUtility, *test_utils.Tes
 	test_utils.SkipForTestEnvironmentFeatures(t, environment.Info().Request.Features, test_utils.LIMITLESS_DEPLOYMENT)
 
 	test_utils.SkipIfInsufficientInstances(t, environment, 2)
-	auroraTestUtility := test_utils.NewAuroraTestUtility(environment.Info().Region)
+	auroraTestUtility := test_utils.NewAuroraTestUtility(environment.Info())
 	return auroraTestUtility, environment, test_utils.BasicSetup(t.Name())
 }
 

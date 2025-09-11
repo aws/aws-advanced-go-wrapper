@@ -23,6 +23,7 @@ require (
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
+	github.com/olekukonko/tablewriter v1.0.9
 	github.com/stretchr/testify v1.10.0
 	github.com/xuri/excelize/v2 v2.9.1
 	go.opentelemetry.io/contrib/propagators/aws v1.37.0
@@ -88,6 +89,13 @@ require (
 )
 
 require (
+	github.com/fatih/color v1.15.0 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/mattn/go-runewidth v0.0.16 // indirect
+	github.com/olekukonko/errors v1.1.0 // indirect
+	github.com/olekukonko/ll v0.0.9 // indirect
+	github.com/rivo/uniseg v0.2.0 // indirect
 	go.opentelemetry.io/otel/metric v1.37.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

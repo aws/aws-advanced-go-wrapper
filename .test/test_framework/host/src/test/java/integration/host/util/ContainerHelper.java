@@ -21,7 +21,6 @@ import com.github.dockerjava.api.command.ExecCreateCmd;
 import com.github.dockerjava.api.command.ExecCreateCmdResponse;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.exception.DockerException;
-import integration.host.TestEnvironmentConfig;
 import integration.host.TestInstanceInfo;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.BindMode;
@@ -42,7 +41,6 @@ import org.testcontainers.utility.TestEnvironment;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -63,14 +61,6 @@ public class ContainerHelper {
   private static final String PERFORMANCE_TEST_TAG = "-tags=performance";
   private static final String PERFORMANCE_TEST_FILTER = "^TestPerformance";
 
-  private static final String RETRIEVE_TOPOLOGY_SQL_POSTGRES =
-      "SELECT SERVER_ID, SESSION_ID FROM aurora_replica_status() "
-          + "ORDER BY CASE WHEN SESSION_ID = 'MASTER_SESSION_ID' THEN 0 ELSE 1 END";
-  private static final String RETRIEVE_TOPOLOGY_SQL_MYSQL =
-      "SELECT SERVER_ID, SESSION_ID FROM information_schema.replica_host_status "
-          + "ORDER BY IF(SESSION_ID = 'MASTER_SESSION_ID', 0, 1)";
-  private static final String SERVER_ID = "SERVER_ID";
-
   public Long runCmd(GenericContainer<?> container, String... cmd)
       throws IOException, InterruptedException {
     System.out.println("==== Container console feed ==== >>>>");
@@ -89,29 +79,37 @@ public class ContainerHelper {
     return exitCode;
   }
 
-  public void runTest(GenericContainer<?> container, String testFolder, TestEnvironmentConfig config, boolean isPerformanceTest)
+  public void runTest(GenericContainer<?> container, boolean isPerformanceTest)
       throws IOException, InterruptedException {
     System.out.println("==== Container console feed ==== >>>>");
     Consumer<OutputFrame> consumer = new ConsoleConsumer(true);
 
     final String filter = System.getenv("FILTER");
+    String timeout = System.getenv("TIMEOUT");
+    if (timeout == null ) {
+        if (isPerformanceTest) {
+            timeout = PERFORMANCE_TEST_TIMEOUT;
+        } else {
+            timeout = INTEGRATION_TEST_TIMEOUT;
+        }
+    }
 
 
     Long exitCode;
     if (isPerformanceTest) {
-      exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-timeout", PERFORMANCE_TEST_TIMEOUT, PERFORMANCE_TEST_TAG, "-run", PERFORMANCE_TEST_FILTER,  "-v", "./test_framework/container/tests...");
+      exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-timeout", timeout, PERFORMANCE_TEST_TAG, "-run", PERFORMANCE_TEST_FILTER,  "-v", "./test_framework/container/tests...");
     } else if (filter != null) {
-      exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-timeout", INTEGRATION_TEST_TIMEOUT, "-v", "./test_framework/container/tests...", "-run", filter);
+      exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-timeout", timeout, "-v", "./test_framework/container/tests...", "-run", filter);
     } else {
       // Run all tests located in aws-advanced-go-wrapper/.test/test_framework/container.
-      exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-timeout", INTEGRATION_TEST_TIMEOUT, "-v", "./test_framework/container/tests...");
+      exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-timeout", timeout, "-v", "./test_framework/container/tests...");
     }
 
     System.out.println("==== Container console feed ==== <<<<");
     assertEquals(0, exitCode, "Some tests failed.");
   }
 
-  public void debugTest(GenericContainer<?> container, String testFolder, TestEnvironmentConfig config)
+  public void debugTest(GenericContainer<?> container)
       throws IOException, InterruptedException {
     System.out.println("==== Container console feed ==== >>>>");
     Consumer<OutputFrame> consumer = new ConsoleConsumer(true);

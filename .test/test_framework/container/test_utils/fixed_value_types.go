@@ -31,11 +31,12 @@ const (
 type DatabaseEngineDeployment string
 
 const (
-	DOCKER               DatabaseEngineDeployment = "DOCKER"
-	RDS                  DatabaseEngineDeployment = "RDS"
-	AURORA               DatabaseEngineDeployment = "AURORA"
-	RDS_MULTI_AZ_CLUSTER DatabaseEngineDeployment = "RDS_MULTI_AZ_CLUSTER"
-	AURORA_LIMITLESS     DatabaseEngineDeployment = "AURORA_LIMITLESS"
+	DOCKER                DatabaseEngineDeployment = "DOCKER"
+	RDS                   DatabaseEngineDeployment = "RDS"
+	AURORA                DatabaseEngineDeployment = "AURORA"
+	RDS_MULTI_AZ_CLUSTER  DatabaseEngineDeployment = "RDS_MULTI_AZ_CLUSTER"
+	RDS_MULTI_AZ_INSTANCE DatabaseEngineDeployment = "RDS_MULTI_AZ_INSTANCE"
+	AURORA_LIMITLESS      DatabaseEngineDeployment = "AURORA_LIMITLESS"
 )
 
 type DatabaseEngine string
@@ -60,6 +61,9 @@ const (
 	SKIP_PG_DRIVER_TESTS           TestEnvironmentFeatures = "SKIP_PG_DRIVER_TESTS"
 	RDS_MULTI_AZ_CLUSTER_SUPPORTED TestEnvironmentFeatures = "RDS_MULTI_AZ_CLUSTER_SUPPORTED"
 	LIMITLESS_DEPLOYMENT           TestEnvironmentFeatures = "LIMITLESS_DEPLOYMENT"
+	BLUE_GREEN_DEPLOYMENT          TestEnvironmentFeatures = "BLUE_GREEN_DEPLOYMENT"
+	TELEMETRY_METRICS_ENABLED      TestEnvironmentFeatures = "TELEMETRY_METRICS_ENABLED"
+	TELEMETRY_TRACES_ENABLED       TestEnvironmentFeatures = "TELEMETRY_TRACES_ENABLED"
 )
 
 var stringToTestEnvironmentFeature = map[string]TestEnvironmentFeatures{
@@ -75,6 +79,9 @@ var stringToTestEnvironmentFeature = map[string]TestEnvironmentFeatures{
 	"SKIP_PG_DRIVER_TESTS":           SKIP_PG_DRIVER_TESTS,
 	"RDS_MULTI_AZ_CLUSTER_SUPPORTED": RDS_MULTI_AZ_CLUSTER_SUPPORTED,
 	"LIMITLESS_DEPLOYMENT":           LIMITLESS_DEPLOYMENT,
+	"BLUE_GREEN_DEPLOYMENT":          BLUE_GREEN_DEPLOYMENT,
+	"TELEMETRY_METRICS_ENABLED":      TELEMETRY_METRICS_ENABLED,
+	"TELEMETRY_TRACES_ENABLED":       TELEMETRY_TRACES_ENABLED,
 }
 
 func matchFeatures(featureStrings []any) []TestEnvironmentFeatures {

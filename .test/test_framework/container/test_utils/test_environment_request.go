@@ -42,9 +42,9 @@ func NewTestEnvironmentRequest(requestVal any) (request TestEnvironmentRequest, 
 	var instances DatabaseInstances
 	instancesVal := requestMap["instances"]
 	switch instancesVal {
-	case "SINGLE_INSTANCE":
+	case string(SINGLE_INSTANCE):
 		instances = SINGLE_INSTANCE
-	case "MULTI_INSTANCE":
+	case string(MULTI_INSTANCE):
 		instances = MULTI_INSTANCE
 	default:
 		err = fmt.Errorf("invalid instances: %s", instancesVal)
@@ -53,9 +53,9 @@ func NewTestEnvironmentRequest(requestVal any) (request TestEnvironmentRequest, 
 	var engine DatabaseEngine
 	engineVal := requestMap["engine"]
 	switch engineVal {
-	case "MYSQL":
+	case string(MYSQL):
 		engine = MYSQL
-	case "PG":
+	case string(PG):
 		engine = PG
 	default:
 		err = fmt.Errorf("invalid engine: %s", engineVal)
@@ -64,14 +64,18 @@ func NewTestEnvironmentRequest(requestVal any) (request TestEnvironmentRequest, 
 	var deployment DatabaseEngineDeployment
 	deploymentVal := requestMap["deployment"]
 	switch deploymentVal {
-	case "DOCKER":
+	case string(DOCKER):
 		deployment = DOCKER
-	case "RDS":
+	case string(RDS):
 		deployment = RDS
-	case "AURORA":
+	case string(AURORA):
 		deployment = AURORA
-	case "AURORA_LIMITLESS":
+	case string(AURORA_LIMITLESS):
 		deployment = AURORA_LIMITLESS
+	case string(RDS_MULTI_AZ_CLUSTER):
+		deployment = RDS_MULTI_AZ_CLUSTER
+	case string(RDS_MULTI_AZ_INSTANCE):
+		deployment = RDS_MULTI_AZ_INSTANCE
 	default:
 		err = fmt.Errorf("invalid deployment: %s", deploymentVal)
 		return

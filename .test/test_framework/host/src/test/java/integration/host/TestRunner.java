@@ -35,14 +35,14 @@ public class TestRunner {
   @TestTemplate
   public void runTests(TestEnvironmentRequest testEnvironmentRequest) throws Exception {
     try (final TestEnvironmentConfig config = TestEnvironmentConfig.build(testEnvironmentRequest)) {
-      config.runTests("./tests/integration/container");
+      config.runTests();
     }
   }
 
   @TestTemplate
   public void debugTests(TestEnvironmentRequest testEnvironmentRequest) throws Exception {
     try (final TestEnvironmentConfig config = TestEnvironmentConfig.build(testEnvironmentRequest)) {
-      config.debugTests("./tests/integration/container");
+      config.debugTests();
     }
   }
 
