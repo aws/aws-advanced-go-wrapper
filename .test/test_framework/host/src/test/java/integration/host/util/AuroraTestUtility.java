@@ -58,6 +58,8 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
+import static integration.host.DatabaseEngineDeployment.RDS_MULTI_AZ_CLUSTER;
+
 /**
  * Creates and destroys AWS RDS Clusters and Instances. To use this functionality the following environment variables
  * must be defined: - AWS_ACCESS_KEY_ID - AWS_SECRET_ACCESS_KEY
@@ -75,9 +77,9 @@ public class AuroraTestUtility {
   private String dbEngine = "aurora-postgresql";
   private String dbEngineVersion = "13.9";
   private String dbInstanceClass = "db.r5.large";
-  private String storageType = "io1";
-  private int allocatedStorage = 100;
-  private int iops = 1000;
+  private String storageType = "gp3";
+  private int allocatedStorage = 400;
+  private int iops = 64000;
   private final Region dbRegion;
   private final String dbSecGroup = "default";
   private int numOfInstances = 5;
@@ -360,6 +362,7 @@ public class AuroraTestUtility {
             .sourceRegion(dbRegion.id())
             .engine(dbEngine)
             .engineVersion(dbEngineVersion)
+            .enableIAMDatabaseAuthentication(true)
             .enablePerformanceInsights(false)
             .backupRetentionPeriod(1)
             .storageEncrypted(true)
@@ -753,6 +756,7 @@ public class AuroraTestUtility {
 
   public void addAuroraAwsIamUser(
       DatabaseEngine databaseEngine,
+      DatabaseEngineDeployment deployment,
       String connectionUrl,
       String userName,
       String password,
@@ -769,13 +773,25 @@ public class AuroraTestUtility {
           stmt.execute("DROP USER IF EXISTS " + dbUser + ";");
           stmt.execute(
               "CREATE USER " + dbUser + " IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS';");
-          stmt.execute("GRANT ALL PRIVILEGES ON " + databaseName + ".* TO '" + dbUser + "'@'%';");
+          if (!StringUtils.isNullOrEmpty(databaseName)) {
+            stmt.execute("GRANT ALL PRIVILEGES ON " + databaseName + ".* TO '" + dbUser + "'@'%';");
+          } else {
+            stmt.execute("GRANT ALL PRIVILEGES ON `%`.* TO '" + dbUser + "'@'%';");
+          }
+          if (RDS_MULTI_AZ_CLUSTER == deployment) {
+            stmt.execute("GRANT SELECT ON mysql.* to '" + dbUser + "'@'%';");
+          }
           break;
         case PG:
           stmt.execute("DROP USER IF EXISTS " + dbUser + ";");
           stmt.execute("CREATE USER " + dbUser + ";");
           stmt.execute("GRANT rds_iam TO " + dbUser + ";");
-          stmt.execute("GRANT ALL PRIVILEGES ON DATABASE " + databaseName + " TO " + dbUser + ";");
+          if (!StringUtils.isNullOrEmpty(databaseName)) {
+            stmt.execute("GRANT ALL PRIVILEGES ON DATABASE " + databaseName + " TO " + dbUser + ";");
+          }
+          if (RDS_MULTI_AZ_CLUSTER == deployment) {
+            stmt.execute("GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA rds_tools TO " + dbUser+ ";");
+          }
           break;
         default:
           throw new UnsupportedOperationException(databaseEngine.toString());

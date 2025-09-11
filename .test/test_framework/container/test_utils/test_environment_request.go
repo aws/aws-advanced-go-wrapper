@@ -70,6 +70,8 @@ func NewTestEnvironmentRequest(requestVal any) (request TestEnvironmentRequest, 
 		deployment = RDS
 	case "AURORA":
 		deployment = AURORA
+	case "RDS_MULTI_AZ_CLUSTER":
+		deployment = RDS_MULTI_AZ_CLUSTER
 	case "AURORA_LIMITLESS":
 		deployment = AURORA_LIMITLESS
 	default:

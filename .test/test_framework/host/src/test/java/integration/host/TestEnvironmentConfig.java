@@ -99,11 +99,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
         initDatabaseParams(env);
         createDbCluster(env);
         request.getFeatures().add(TestEnvironmentFeatures.RDS_MULTI_AZ_CLUSTER_SUPPORTED);
-
         if (request.getFeatures().contains(TestEnvironmentFeatures.IAM)) {
-          if (request.getDatabaseEngineDeployment() == DatabaseEngineDeployment.RDS_MULTI_AZ_CLUSTER) {
-            throw new RuntimeException("IAM isn't supported by " + DatabaseEngineDeployment.RDS_MULTI_AZ_CLUSTER);
-          }
           configureIamAccess(env);
         }
 
@@ -764,7 +760,8 @@ public class TestEnvironmentConfig implements AutoCloseable {
   private static void configureIamAccess(TestEnvironmentConfig env) {
 
     if (env.info.getRequest().getDatabaseEngineDeployment() != DatabaseEngineDeployment.AURORA
-      && env.info.getRequest().getDatabaseEngineDeployment() != DatabaseEngineDeployment.AURORA_LIMITLESS) {
+        && env.info.getRequest().getDatabaseEngineDeployment() != DatabaseEngineDeployment.AURORA_LIMITLESS
+        && env.info.getRequest().getDatabaseEngineDeployment() != DatabaseEngineDeployment.RDS_MULTI_AZ_CLUSTER) {
       throw new UnsupportedOperationException(
           env.info.getRequest().getDatabaseEngineDeployment().toString());
     }
@@ -785,6 +782,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
       try {
         env.auroraUtil.addAuroraAwsIamUser(
             env.info.getRequest().getDatabaseEngine(),
+            env.info.getRequest().getDatabaseEngineDeployment(),
             url,
             env.info.getDatabaseInfo().getUsername(),
             env.info.getDatabaseInfo().getPassword(),

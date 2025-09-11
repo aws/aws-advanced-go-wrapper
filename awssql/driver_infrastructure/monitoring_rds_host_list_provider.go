@@ -58,7 +58,10 @@ func NewMonitoringRdsHostListProvider(
 			item.Close()
 			return true
 		}
-		clusterTopologyMonitors = utils.NewSlidingExpirationCache("cluster-topology-monitors", disposalFunc)
+		var shouldDisposeFunc utils.DisposalFunc[ClusterTopologyMonitor] = func(item ClusterTopologyMonitor) bool {
+			return item.CanDispose()
+		}
+		clusterTopologyMonitors = utils.NewSlidingExpirationCache("cluster-topology-monitors", disposalFunc, shouldDisposeFunc)
 		clusterTopologyMonitors.SetCleanupIntervalNanos(MONITOR_EXPIRATION_NANOS)
 	}
 	clusterTopologyMonitorsMutex.Unlock()
@@ -112,7 +115,6 @@ func (m *MonitoringRdsHostListProvider) getMonitor() ClusterTopologyMonitor {
 			m.clusterInstanceTemplate,
 			m.pluginService)
 		monitor.Start(clusterTopologyMonitorWg)
-		clusterTopologyMonitorWg.Add(1)
 		return monitor
 	}
 	return clusterTopologyMonitors.ComputeIfAbsent(m.clusterId, computeFunc, MONITOR_EXPIRATION_NANOS)

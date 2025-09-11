@@ -51,6 +51,7 @@ type ClusterTopologyMonitor interface {
 	SetClusterId(clusterId string)
 	ForceRefreshVerifyWriter(writerImportant bool, timeoutMs int) ([]*host_info_util.HostInfo, error)
 	ForceRefreshUsingConn(conn driver.Conn, timeoutMs int) ([]*host_info_util.HostInfo, error)
+	CanDispose() bool
 	Close()
 	Start(wg *sync.WaitGroup)
 }
@@ -115,9 +116,11 @@ func NewClusterTopologyMonitorImpl(
 }
 
 func (c *ClusterTopologyMonitorImpl) Start(wg *sync.WaitGroup) {
+	slog.Debug("ClusterTopologyMonitorImpl.Start()")
 	c.monitoringConn.Store(emptyContainer)
 	c.hostRoutinesWriterConn.Store(emptyContainer)
 	c.hostRoutinesReaderConn.Store(emptyContainer)
+	wg.Add(1)
 	go c.Run(wg)
 }
 
@@ -289,6 +292,10 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 	return hosts, nil
 }
 
+func (c *ClusterTopologyMonitorImpl) CanDispose() bool {
+	return true
+}
+
 func (c *ClusterTopologyMonitorImpl) Close() {
 	// Break waiting/sleeping cycles in monitoring routines.
 	c.requestToUpdateTopology.Store(true)
@@ -398,8 +405,8 @@ func (c *ClusterTopologyMonitorImpl) notifyChannel(channel chan bool) {
 }
 
 func (c *ClusterTopologyMonitorImpl) Run(wg *sync.WaitGroup) {
+	defer wg.Done()
 	slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.startMonitoringRoutine", c.initialHostInfo.GetHost()))
-
 	for !c.stop.Load() {
 		if c.isInPanicMode() {
 			if utils.LengthOfSyncMap(c.hostRoutines) == 0 {
@@ -515,8 +522,6 @@ func (c *ClusterTopologyMonitorImpl) Run(wg *sync.WaitGroup) {
 			c.delay(false)
 		}
 	}
-
-	wg.Done()
 }
 
 type HostMonitoringRoutine struct {

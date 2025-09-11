@@ -153,6 +153,7 @@ func doesStatusMatch(currentStatus *string, desiredStatus string) bool {
 }
 
 func (a AuroraTestUtility) IsDbInstanceWriter(instanceId string, clusterId string) bool {
+	slog.Debug("IsDbInstanceWriter() - instanceId:" + instanceId)
 	writerId, err := a.GetClusterWriterInstanceId(clusterId)
 	if err == nil && writerId == instanceId {
 		return true
@@ -171,7 +172,6 @@ func (a AuroraTestUtility) GetClusterWriterInstanceId(clusterId string) (string,
 		}
 		clusterId = env.info.auroraClusterName
 	}
-
 	clusterInfo, err := a.getDbCluster(clusterId)
 	if err != nil || clusterInfo.DBClusterMembers == nil {
 		return "", fmt.Errorf("invalid cluster %s", clusterId)
@@ -196,6 +196,29 @@ func (a AuroraTestUtility) getDbCluster(clusterId string) (cluster types.DBClust
 		return
 	}
 	return resp.DBClusters[0], nil
+}
+
+func (a AuroraTestUtility) CrashInstance(initialWriter string, clusterId string, targetWriterId string) (err error) {
+	env, err := GetCurrentTestEnvironment()
+	if err != nil {
+		return err
+	}
+	deployment := env.Info().Request.Deployment
+
+	if RDS_MULTI_AZ_CLUSTER == deployment {
+		slog.Debug("CrashInstance() - RDS_MULTI_AZ_CLUSTER deployment detected. Simulating temporary failure")
+		a.SimulateTemporaryFailure()
+		return nil
+	} else {
+		slog.Debug(fmt.Sprintf("CrashInstance() - dbengine deployment %v detected. FailoverClusterAndWaitTillWriterChanged", deployment))
+		return a.FailoverClusterAndWaitTillWriterChanged(initialWriter, clusterId, targetWriterId)
+	}
+}
+
+func (a AuroraTestUtility) SimulateTemporaryFailure() {
+	DisableAllProxies()
+	time.Sleep(5 * time.Second)
+	EnableAllProxies()
 }
 
 func (a AuroraTestUtility) FailoverClusterAndWaitTillWriterChanged(initialWriter string, clusterId string, targetWriterId string) (err error) {
@@ -405,5 +428,11 @@ func RequireTestEnvironmentFeatures(t *testing.T, testEnvironmentRequestFeatures
 			t.Skipf("Skipping test because required test environment feature was not found: %s", requiredFeature)
 			return
 		}
+	}
+}
+
+func SkipForMultiAzMySql(t *testing.T, deployment DatabaseEngineDeployment, engine DatabaseEngine) {
+	if RDS_MULTI_AZ_CLUSTER == deployment && MYSQL == engine {
+		t.Skipf("Skipping test for RDS Multi-AZ MySQL")
 	}
 }
