@@ -262,6 +262,7 @@ tasks.register<Test>("test-bgd-mysql-aurora") {
         systemProperty("exclude-performance", "true")
         systemProperty("exclude-multi-az-cluster", "true")
         systemProperty("exclude-multi-az-instance", "true")
+        systemProperty("exclude-limitless", "true")
     }
 }
 
@@ -276,6 +277,7 @@ tasks.register<Test>("test-bgd-mysql-multiaz") {
         systemProperty("exclude-aurora", "true")
         systemProperty("exclude-multi-az-cluster", "true")
         systemProperty("exclude-multi-az-instance", "false")
+        systemProperty("exclude-limitless", "true")
     }
 }
 
@@ -289,6 +291,7 @@ tasks.register<Test>("test-bgd-pg-aurora") {
         systemProperty("exclude-performance", "true")
         systemProperty("exclude-multi-az-cluster", "true")
         systemProperty("exclude-multi-az-instance", "true")
+        systemProperty("exclude-limitless", "true")
     }
 }
 
@@ -303,6 +306,7 @@ tasks.register<Test>("test-bgd-pg-multiaz") {
         systemProperty("exclude-aurora", "true")
         systemProperty("exclude-multi-az-cluster", "true")
         systemProperty("exclude-multi-az-instance", "false")
+        systemProperty("exclude-limitless", "true")
     }
 }
 
@@ -482,5 +486,6 @@ tasks.register<Test>("debug-bgd-mysql-aurora") {
         systemProperty("exclude-performance", "true")
         systemProperty("exclude-multi-az-cluster", "true")
         systemProperty("exclude-multi-az-instance", "true")
+        systemProperty("exclude-limitless", "true")
     }
 }
