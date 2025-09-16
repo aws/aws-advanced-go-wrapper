@@ -30,11 +30,12 @@ const (
 	SELECTOR_HIGHEST_WEIGHT  = "highestWeight"
 	SELECTOR_RANDOM          = "random"
 	SELECTOR_WEIGHTED_RANDOM = "weightedRandom"
+	SELECTOR_ROUND_ROBIN     = "roundRobin"
 )
 
 var (
 	// Example host weight pair patterns: "host0:3,host1:02,host2:1", "host.com:50000".
-	HOST_WEIGHT_PAIR_PATTERN  = regexp.MustCompile("(?i)^((?P<host>[^:/?#]*):(?P<weight>0*[1-9][0-9]*))")
+	HOST_WEIGHT_PAIR_PATTERN  = regexp.MustCompile("^(?P<host>[^:]+):(?P<weight>[0-9]+)$")
 	HOST_PATTERN_GROUP        = "host"
 	HOST_WEIGHT_PATTERN_GROUP = "weight"
 )
@@ -56,14 +57,16 @@ func GetHostWeightMapFromString(hostWeightMapString string) (map[string]int, err
 	}
 	hostWeightPairSlice := strings.Split(hostWeightMapString, ",")
 	for _, hostWeightPair := range hostWeightPairSlice {
+		hostWeightPair = strings.TrimSpace(hostWeightPair)
 		if HOST_WEIGHT_PAIR_PATTERN.MatchString(hostWeightPair) {
-			hostName := strings.TrimSpace(HOST_WEIGHT_PAIR_PATTERN.FindStringSubmatch(hostWeightPair)[HOST_WEIGHT_PAIR_PATTERN.SubexpIndex(HOST_PATTERN_GROUP)])
-			hostWeightString := strings.TrimSpace(HOST_WEIGHT_PAIR_PATTERN.FindStringSubmatch(hostWeightPair)[HOST_WEIGHT_PAIR_PATTERN.SubexpIndex(HOST_WEIGHT_PATTERN_GROUP)])
+			matches := HOST_WEIGHT_PAIR_PATTERN.FindStringSubmatch(hostWeightPair)
+			hostName := matches[1]
+			hostWeightString := matches[2]
 			if hostName == "" || hostWeightString == "" {
 				return nil, errors.New(error_util.GetMessage("HostSelector.invalidHostWeightPairs"))
 			}
 			hostWeight, err := strconv.Atoi(hostWeightString)
-			if err != nil {
+			if err != nil || hostWeight <= 0 {
 				return nil, errors.New(error_util.GetMessage("HostSelector.invalidHostWeightPairs"))
 			}
 			hostWeightMap[hostName] = hostWeight
