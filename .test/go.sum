@@ -42,8 +42,8 @@ github.com/aws/aws-sdk-go-v2/service/sso v1.26.0 h1:cuFWHH87GP1NBGXXfMicUbE7Oty5
 github.com/aws/aws-sdk-go-v2/service/sso v1.26.0/go.mod h1:aJBemdlbCKyOXEXdXBqS7E+8S9XTDcOTaoOjtng54hA=
 github.com/aws/aws-sdk-go-v2/service/ssooidc v1.31.0 h1:t2va+wewPOYIqC6XyJ4MGjiGKkczMAPsgq5W4FtL9ME=
 github.com/aws/aws-sdk-go-v2/service/ssooidc v1.31.0/go.mod h1:ExCTcqYqN0hYYRsDlBVU8+68grqlWdgX9/nZJwQW4aY=
-github.com/aws/aws-sdk-go-v2/service/sts v1.35.0 h1:FD9agdG4CeOGS3ORLByJk56YIXDS7mxFpmZyCtpqExc=
-github.com/aws/aws-sdk-go-v2/service/sts v1.35.0/go.mod h1:NDzDPbBF1xtSTZUMuZx0w3hIfWzcL7X2AQ0Tr9becIQ=
+github.com/aws/aws-sdk-go-v2/service/sts v1.38.4 h1:PR00NXRYgY4FWHqOGx3fC3lhVKjsp1GdloDv2ynMSd8=
+github.com/aws/aws-sdk-go-v2/service/sts v1.38.4/go.mod h1:Z+Gd23v97pX9zK97+tX4ppAgqCt3Z2dIXB02CtBncK8=
 github.com/aws/aws-xray-sdk-go v1.8.5 h1:A/Gc733PHvARkjcAk+fw+0k2RT3O4VSZ+x/3YvAREfc=
 github.com/aws/aws-xray-sdk-go v1.8.5/go.mod h1:tDkyLXjXQ+9j49uUrFXhO9cPnpH7qp7PWkEON+KbbKs=
 github.com/aws/smithy-go v1.23.0 h1:8n6I3gXzWJB2DxBDnfxgBaSX6oe0d/t10qGz7OKqMCE=
