@@ -75,7 +75,7 @@ public class AuroraTestUtility {
   private static final int DEFAULT_ALLOCATED_STORAGE = 400;
   private final String limitlessDbEngineVersion = "16.4-limitless";
   private String limitlessDbShardGroupIdentifier = "test-db-shard-group-identifier";
-  private String monitoringRoleArn = System.getenv("AWS_RDS_MONITORING_ROLE_ARN");
+  private final String monitoringRoleArn = System.getenv("AWS_RDS_MONITORING_ROLE_ARN");
   private final double minAcu = 28.0;
   private final double maxAcu = 601.0;
 
@@ -990,6 +990,7 @@ public class AuroraTestUtility {
   public static String getDbInstanceClass(TestEnvironmentRequest request) {
     switch (request.getDatabaseEngineDeployment()) {
       case AURORA:
+      case AURORA_LIMITLESS:
         return request.getFeatures().contains(TestEnvironmentFeatures.BLUE_GREEN_DEPLOYMENT)
             ? "db.r7g.2xlarge"
             : "db.r5.large";
@@ -1265,9 +1266,8 @@ public class AuroraTestUtility {
    * @return
    * @throws InterruptedException
    */
-  public String createAuroraLimitlessCluster() throws InterruptedException {
+  public void createAuroraLimitlessCluster() throws InterruptedException {
     final Tag testRunnerTag = Tag.builder().key("env").value("test-runner").build();
-
     final CreateDbClusterRequest dbClusterRequest =
         CreateDbClusterRequest.builder()
             .clusterScalabilityType(ClusterScalabilityType.LIMITLESS)
@@ -1314,18 +1314,18 @@ public class AuroraTestUtility {
       throw new InterruptedException(
           "Unable to start AWS RDS Cluster & Instances after waiting for 90 minutes");
     }
-
-    final DescribeDbShardGroupsResponse dbShardGroupsResponse = rdsClient.describeDBShardGroups(
-        (builder) ->
-            builder.filters(
-                Filter.builder().name("db-cluster-id").values(dbIdentifier).build()));
-
-    final String endpoint = dbShardGroupsResponse.dbShardGroups().get(0).endpoint();
-    final String clusterDomainSuffix = endpoint.substring(endpoint.indexOf("shardgrp-") + 9);
-
-    return clusterDomainSuffix;
   }
 
+  public String getAuroraLimitlessClusterDomainSuffix() {
+      final DescribeDbShardGroupsResponse dbShardGroupsResponse = rdsClient.describeDBShardGroups(
+              (builder) ->
+                      builder.filters(
+                              Filter.builder().name("db-cluster-id").values(dbIdentifier).build()));
+
+      final String endpoint = dbShardGroupsResponse.dbShardGroups().get(0).endpoint();
+
+      return endpoint.substring(endpoint.indexOf("shardgrp-") + 9);
+  }
 
   public String createBlueGreenDeployment(String name, String sourceArn) {
 

@@ -117,6 +117,9 @@ public class TestEnvironmentConfig implements AutoCloseable {
         break;
       case AURORA_LIMITLESS:
         initLimitlessDatabaseParams(env);
+        initAwsCredentials(env);
+        initEnv(env);
+        authorizeRunnerIpAddress(env);
         createDbCluster(env);
         if (request.getFeatures().contains(TestEnvironmentFeatures.IAM)) {
           configureIamAccess(env);
@@ -149,7 +152,8 @@ public class TestEnvironmentConfig implements AutoCloseable {
     if (deployment == DatabaseEngineDeployment.AURORA
         || deployment == DatabaseEngineDeployment.RDS
         || deployment == DatabaseEngineDeployment.RDS_MULTI_AZ_INSTANCE
-        || deployment == DatabaseEngineDeployment.RDS_MULTI_AZ_CLUSTER) {
+        || deployment == DatabaseEngineDeployment.RDS_MULTI_AZ_CLUSTER
+        || deployment == DatabaseEngineDeployment.AURORA_LIMITLESS) {
       // These environment require creating external database cluster that should be publicly available.
       // Corresponding AWS Security Groups should be configured and the test task runner IP address
       // should be whitelisted.
@@ -416,7 +420,8 @@ public class TestEnvironmentConfig implements AutoCloseable {
         initAwsCredentials(env);
 
         env.numOfInstances = env.info.getRequest().getNumOfInstances();
-        if (env.info.getRequest().getDatabaseEngineDeployment() == DatabaseEngineDeployment.AURORA) {
+        if (env.info.getRequest().getDatabaseEngineDeployment() == DatabaseEngineDeployment.AURORA ||
+                env.info.getRequest().getDatabaseEngineDeployment() == DatabaseEngineDeployment.AURORA_LIMITLESS) {
           if (env.numOfInstances < 1 || env.numOfInstances > 15) {
             LOGGER.warning(
                 env.numOfInstances + " instances were requested but the requested number must be "
@@ -516,13 +521,17 @@ public class TestEnvironmentConfig implements AutoCloseable {
             env.info.getDatabaseInfo().getClusterParameterGroupName(),
             numOfInstances);
 
-        List<DBInstance> dbInstances = env.auroraUtil.getDBInstances(env.rdsDbName);
-        if (dbInstances.isEmpty()) {
-          throw new RuntimeException("Failed to get instance information for cluster " + env.rdsDbName);
-        }
+        if (env.info.getRequest().getDatabaseEngineDeployment() == DatabaseEngineDeployment.AURORA_LIMITLESS) {
+                env.rdsDbDomain = env.auroraUtil.getAuroraLimitlessClusterDomainSuffix();
+        } else {
+            List<DBInstance> dbInstances = env.auroraUtil.getDBInstances(env.rdsDbName);
+            if (dbInstances.isEmpty()) {
+                throw new RuntimeException("Failed to get instance information for cluster " + env.rdsDbName);
+            }
 
-        final String instanceEndpoint = dbInstances.get(0).endpoint().address();
-        env.rdsDbDomain = instanceEndpoint.substring(instanceEndpoint.indexOf(".") + 1);
+            final String instanceEndpoint = dbInstances.get(0).endpoint().address();
+            env.rdsDbDomain = instanceEndpoint.substring(instanceEndpoint.indexOf(".") + 1);
+        }
         env.info.setDatabaseEngine(engine);
         env.info.setDatabaseEngineVersion(engineVersion);
         LOGGER.finer(
@@ -544,13 +553,15 @@ public class TestEnvironmentConfig implements AutoCloseable {
 
     int port = getPort(env.info.getRequest());
 
+    String clusterEndpoint = env.rdsDbName + ".cluster-" + env.rdsDbDomain;
     env.info
         .getDatabaseInfo()
-        .setClusterEndpoint(env.rdsDbName + ".cluster-" + env.rdsDbDomain, port);
+        .setClusterEndpoint(clusterEndpoint, port);
+    
+    String clusterReadOnlyEndpoint = env.rdsDbName + ".cluster-ro-" + env.rdsDbDomain;
     env.info
         .getDatabaseInfo()
-        .setClusterReadOnlyEndpoint(
-            env.rdsDbName + ".cluster-ro-" + env.rdsDbDomain, port);
+        .setClusterReadOnlyEndpoint(clusterReadOnlyEndpoint, port);
     env.info.getDatabaseInfo().setInstanceEndpointSuffix(env.rdsDbDomain, port);
 
     List<TestInstanceInfo> instances = env.auroraUtil.getTestInstancesInfo(env.rdsDbName);
@@ -1186,6 +1197,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
       String url;
       switch (deployment) {
         case AURORA:
+        case AURORA_LIMITLESS:
         case RDS_MULTI_AZ_CLUSTER:
           url = String.format(
                   "%s%s:%d/%s",
