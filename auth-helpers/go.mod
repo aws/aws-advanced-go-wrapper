@@ -4,7 +4,7 @@ go 1.24
 
 require (
 	github.com/aws/aws-advanced-go-wrapper/awssql v1.0.0
-	github.com/aws/aws-sdk-go-v2 v1.37.0
+	github.com/aws/aws-sdk-go-v2 v1.39.0
 	github.com/aws/aws-sdk-go-v2/config v1.30.1
 	github.com/aws/aws-sdk-go-v2/credentials v1.18.1
 	github.com/aws/aws-sdk-go-v2/feature/rds/auth v1.6.0
@@ -20,7 +20,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.26.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.31.0 // indirect
-	github.com/aws/smithy-go v1.22.5 // indirect
+	github.com/aws/smithy-go v1.23.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.6.0 // indirect
 	golang.org/x/text v0.27.0 // indirect
