@@ -33,7 +33,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
+	mysql_driver "github.com/aws/aws-advanced-go-wrapper/go-mysql-driver"
 	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 	"github.com/golang/mock/gomock"
 
@@ -197,7 +197,7 @@ func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	mockPluginManager := driver_infrastructure.PluginManager(
 		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
-	mockPluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.MySQLDriverDialect{}, props, mysqlTestDsn)
+	mockPluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.MySQL2DriverDialect{}, props, mysqlTestDsn)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
 	}

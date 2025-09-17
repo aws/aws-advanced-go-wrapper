@@ -39,6 +39,10 @@ const TEST_SLEEP_QUERY_TIMEOUT_SECONDS = 2 * TEST_SLEEP_QUERY_SECONDS
 const TEST_MONITORING_TIMEOUT_SECONDS = TEST_FAILURE_DETECTION_COUNT * TEST_FAILURE_DETECTION_INTERVAL_SECONDS
 
 func TestEfmDisableInstance(t *testing.T) {
+	// Add test timeout context
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
 	err := test_utils.BasicSetup(t.Name())
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
@@ -60,7 +64,7 @@ func TestEfmDisableInstance(t *testing.T) {
 	assert.NotZero(t, instanceId)
 
 	// Start a long-running query in a goroutine
-	queryChan := make(chan error)
+	queryChan := make(chan error, 1)
 	go func() {
 		// Execute a sleep query that will run for 10 seconds
 		sleepQuery := test_utils.GetSleepSql(environment.Info().Request.Engine, TEST_SLEEP_QUERY_SECONDS)
@@ -76,12 +80,15 @@ func TestEfmDisableInstance(t *testing.T) {
 	slog.Debug(fmt.Sprintf("Disabling connectivity of instance %s.", instanceId))
 	test_utils.DisableProxyConnectivity(proxyInfo)
 
-	// Wait for the query to complete and check the error
-	queryErr := <-queryChan
-	close(queryChan)
-	require.NotNil(t, queryErr)
-	slog.Debug(fmt.Sprintf("Sleep query fails with error: %s.", queryErr.Error()))
-	assert.False(t, errors.Is(queryErr, context.DeadlineExceeded), "Sleep query should have failed due to connectivity loss")
+	// Wait for the query to complete with timeout
+	select {
+	case queryErr := <-queryChan:
+		require.NotNil(t, queryErr)
+		slog.Debug(fmt.Sprintf("Sleep query fails with error: %s.", queryErr.Error()))
+		assert.False(t, errors.Is(queryErr, context.DeadlineExceeded), "Sleep query should have failed due to connectivity loss")
+	case <-ctx.Done():
+		t.Fatal("Test timed out waiting for query to complete")
+	}
 
 	// Re-enable connectivity
 	slog.Debug(fmt.Sprintf("Re-enabling connectivity of instance %s.", instanceId))
@@ -99,6 +106,10 @@ func TestEfmDisableInstance(t *testing.T) {
 }
 
 func TestEfmDisableAllInstances(t *testing.T) {
+	// Add test timeout context
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
 	err := test_utils.BasicSetup(t.Name())
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
@@ -120,7 +131,7 @@ func TestEfmDisableAllInstances(t *testing.T) {
 	assert.NotZero(t, instanceId)
 
 	// Start a long-running query in a goroutine
-	queryChan := make(chan error)
+	queryChan := make(chan error, 1)
 	go func() {
 		// Execute a sleep query that will run for 10 seconds
 		sleepQuery := test_utils.GetSleepSql(environment.Info().Request.Engine, TEST_SLEEP_QUERY_SECONDS)
@@ -136,12 +147,16 @@ func TestEfmDisableAllInstances(t *testing.T) {
 	slog.Debug("Disabling all connectivity.")
 	test_utils.DisableAllConnectivity()
 
-	// Wait for the query to complete and check the error
-	queryErr := <-queryChan
+	// Wait for the query to complete with timeout
+	select {
+	case queryErr := <-queryChan:
+		require.NotNil(t, queryErr)
+		slog.Debug(fmt.Sprintf("Sleep query fails with error: %s.", queryErr.Error()))
+		assert.False(t, errors.Is(queryErr, context.DeadlineExceeded), "Sleep query should have failed due to connectivity loss")
+	case <-ctx.Done():
+		t.Fatal("Test timed out waiting for query to complete")
+	}
 	close(queryChan)
-	require.NotNil(t, queryErr)
-	slog.Debug(fmt.Sprintf("Sleep query fails with error: %s.", queryErr.Error()))
-	assert.False(t, errors.Is(queryErr, context.DeadlineExceeded), "Sleep query should have failed due to connectivity loss")
 
 	// Re-enable connectivity
 	slog.Debug("Re-enabling all connectivity.")
@@ -159,6 +174,10 @@ func TestEfmDisableAllInstances(t *testing.T) {
 }
 
 func TestEfmDisableAllInstancesDB(t *testing.T) {
+	// Add test timeout context
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
 	err := test_utils.BasicSetup(t.Name())
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
@@ -179,7 +198,7 @@ func TestEfmDisableAllInstancesDB(t *testing.T) {
 	assert.NotZero(t, instanceId)
 
 	// Start a long-running query in a goroutine
-	queryChan := make(chan error)
+	queryChan := make(chan error, 1)
 	go func() {
 		// Execute a sleep query that will run for 10 seconds
 		sleepQuery := test_utils.GetSleepSql(environment.Info().Request.Engine, TEST_SLEEP_QUERY_SECONDS)
@@ -195,12 +214,16 @@ func TestEfmDisableAllInstancesDB(t *testing.T) {
 	slog.Debug("Disabling all connectivity.")
 	test_utils.DisableAllConnectivity()
 
-	// Wait for the query to complete and check the error
-	queryErr := <-queryChan
+	// Wait for the query to complete with timeout
+	select {
+	case queryErr := <-queryChan:
+		require.NotNil(t, queryErr)
+		slog.Debug(fmt.Sprintf("Sleep query fails with error: %s.", queryErr.Error()))
+		assert.False(t, errors.Is(queryErr, context.DeadlineExceeded), "Sleep query should have failed due to connectivity loss")
+	case <-ctx.Done():
+		t.Fatal("Test timed out waiting for query to complete")
+	}
 	close(queryChan)
-	require.NotNil(t, queryErr)
-	slog.Debug(fmt.Sprintf("Sleep query fails with error: %s.", queryErr.Error()))
-	assert.False(t, errors.Is(queryErr, context.DeadlineExceeded), "Sleep query should have failed due to connectivity loss")
 
 	// Re-enable connectivity
 	slog.Debug("Re-enabling all connectivity.")

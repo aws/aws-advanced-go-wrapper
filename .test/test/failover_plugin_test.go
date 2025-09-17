@@ -30,7 +30,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
+	mysql_driver "github.com/aws/aws-advanced-go-wrapper/go-mysql-driver"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -238,7 +238,7 @@ func initializeTest(
 		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
 	pluginServiceImpl := newMockPluginServiceImpl(
 		mockPluginManager,
-		mysql_driver.MySQLDriverDialect{},
+		mysql_driver.MySQL2DriverDialect{},
 		props,
 		mysqlTestDsn,
 		isInTransaction,

@@ -22,7 +22,7 @@ import (
 	aws_secrets_manager "github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
+	mysql_driver "github.com/aws/aws-advanced-go-wrapper/go-mysql-driver"
 	"github.com/aws/aws-advanced-go-wrapper/okta"
 	"github.com/aws/aws-advanced-go-wrapper/otlp"
 	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
@@ -105,13 +105,13 @@ func TestImplementations(t *testing.T) {
 	var _ telemetry.TelemetryFactory = (*telemetry.DefaultTelemetryFactory)(nil)
 	var _ efm.MonitorService = (*efm.MonitorServiceImpl)(nil)
 	var _ efm.Monitor = (*efm.MonitorImpl)(nil)
-	var _ error_util.ErrorHandler = (*mysql_driver.MySQLErrorHandler)(nil)
-	var _ error_util.ErrorHandler = (*mysql_driver.MySQLDriverDialect)(nil)
+	var _ error_util.ErrorHandler = (*mysql_driver.MySQL2ErrorHandler)(nil)
+	var _ error_util.ErrorHandler = (*mysql_driver.MySQL2DriverDialect)(nil)
 	var _ error_util.ErrorHandler = (*pgx_driver.PgxErrorHandler)(nil)
 	var _ error_util.ErrorHandler = (*pgx_driver.PgxDriverDialect)(nil)
 	var _ error_util.ErrorHandler = (*plugin_helpers.PluginServiceImpl)(nil)
 	var _ driver.Driver = (*awsDriver.AwsWrapperDriver)(nil)
-	var _ driver.Driver = (*mysql_driver.MySQLDriver)(nil)
+	var _ driver.Driver = (*mysql_driver.MySQLDriver2)(nil)
 	var _ driver.Driver = (*pgx_driver.PgxDriver)(nil)
 	var _ driver.Conn = (*awsDriver.AwsWrapperConn)(nil)
 	var _ driver.Pinger = (*awsDriver.AwsWrapperConn)(nil)

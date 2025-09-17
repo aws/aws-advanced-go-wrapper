@@ -8,8 +8,8 @@ require (
 	github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager v1.0.0
 	github.com/aws/aws-advanced-go-wrapper/awssql v1.0.0
 	github.com/aws/aws-advanced-go-wrapper/federated-auth v1.0.0
+	github.com/aws/aws-advanced-go-wrapper/go-mysql-driver v1.0.0
 	github.com/aws/aws-advanced-go-wrapper/iam v1.0.0
-	github.com/aws/aws-advanced-go-wrapper/mysql-driver v1.0.0
 	github.com/aws/aws-advanced-go-wrapper/okta v1.0.0
 	github.com/aws/aws-advanced-go-wrapper/otlp v1.0.0
 	github.com/aws/aws-advanced-go-wrapper/pgx-driver v1.0.0
@@ -20,7 +20,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.39.4
 	github.com/aws/aws-sdk-go-v2/service/sts v1.38.4
 	github.com/aws/aws-xray-sdk-go v1.8.5
-	github.com/go-sql-driver/mysql v1.9.3
+	github.com/go-mysql-org/go-mysql v1.13.0
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/olekukonko/tablewriter v1.0.9
@@ -95,16 +95,21 @@ require (
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/olekukonko/errors v1.1.0 // indirect
 	github.com/olekukonko/ll v0.0.9 // indirect
+	github.com/pingcap/errors v0.11.5-0.20250318082626-8f80e5cb09ec // indirect
+	github.com/pingcap/log v1.1.1-0.20241212030209-7e3ff8601a2a // indirect
+	github.com/pingcap/tidb/pkg/parser v0.0.0-20250421232622-526b2c79173d // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	go.opentelemetry.io/otel/metric v1.38.0 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
+	go.uber.org/zap v1.27.0 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 replace github.com/aws/aws-advanced-go-wrapper/awssql => ../awssql
 
 replace github.com/aws/aws-advanced-go-wrapper/pgx-driver => ./../pgx-driver
-
-replace github.com/aws/aws-advanced-go-wrapper/mysql-driver => ./../mysql-driver
 
 replace github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager => ./../aws-secrets-manager
 
@@ -119,3 +124,5 @@ replace github.com/aws/aws-advanced-go-wrapper/auth-helpers => ./../auth-helpers
 replace github.com/aws/aws-advanced-go-wrapper/otlp => ./../otlp
 
 replace github.com/aws/aws-advanced-go-wrapper/xray => ./../xray
+
+replace github.com/aws/aws-advanced-go-wrapper/go-mysql-driver => ../go-mysql-driver

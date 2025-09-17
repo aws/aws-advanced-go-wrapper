@@ -29,7 +29,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
+	mysql_driver "github.com/aws/aws-advanced-go-wrapper/go-mysql-driver"
 	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 	"github.com/stretchr/testify/assert"
 )
@@ -350,7 +350,7 @@ func TestLimitlessMonitorServiceEstablishConnection(t *testing.T) {
 			mockTargetDriver,
 			props, driver_infrastructure.ConnectionProviderManager{},
 			telemetryFactory))
-	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.NewMySQLDriverDialect(), props, pgLimitlessTestDsn)
+	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.NewMySQL2DriverDialect(), props, pgLimitlessTestDsn)
 	pluginServiceImpl.SetHostListProvider(mockHostListProviderService)
 
 	limitlessRouterService := limitless.NewLimitlessRouterServiceImplInternal(pluginServiceImpl, nil, props)
@@ -394,7 +394,7 @@ func TestLimitlessMonitorServiceEstablishConnect_GivenEmptyCacheAndNoWaitForRout
 			mockTargetDriver,
 			props, driver_infrastructure.ConnectionProviderManager{},
 			telemetryFactory))
-	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.NewMySQLDriverDialect(), props, pgLimitlessTestDsn)
+	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.NewMySQL2DriverDialect(), props, pgLimitlessTestDsn)
 	pluginServiceImpl.SetHostListProvider(mockHostListProviderService)
 
 	limitlessRouterService := limitless.NewLimitlessRouterServiceImplInternal(pluginServiceImpl, nil, props)
@@ -434,7 +434,7 @@ func TestLimitlessMonitorServiceEstablishConnect_MaxRetries(t *testing.T) {
 			props,
 			driver_infrastructure.ConnectionProviderManager{},
 			telemetryFactory))
-	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.NewMySQLDriverDialect(), props, pgLimitlessTestDsn)
+	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.NewMySQL2DriverDialect(), props, pgLimitlessTestDsn)
 	pluginServiceImpl.SetHostListProvider(mockHostListProviderService)
 
 	mockLimitlessQueryHelper := &MockLimitlessQueryHelper{}

@@ -25,7 +25,7 @@ import (
 	mock_database_sql_driver "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/database_sql_driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
+	mysql_driver "github.com/aws/aws-advanced-go-wrapper/go-mysql-driver"
 	"github.com/golang/mock/gomock"
 
 	"github.com/stretchr/testify/assert"
@@ -215,7 +215,7 @@ func TestDriverConnectionProvider(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	driverDialect := &mysql_driver.MySQLDriverDialect{}
+	driverDialect := &mysql_driver.MySQL2DriverDialect{}
 	testError := errors.New("test")
 	host0, _ := host_info_util.NewHostInfoBuilder().SetHost("host0").SetWeight(10).SetRole(host_info_util.WRITER).Build()
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)

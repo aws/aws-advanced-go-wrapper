@@ -349,10 +349,14 @@ func TestFailoverWriterInTransactionWithSQL(t *testing.T) {
 }
 
 func TestFailoverEfmDisableInstance(t *testing.T) {
+	// Add test timeout context
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
 	_, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
-	dsn := getDsnForTestsWithProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "efm,failover")
+	dsn := "" //getDsnForTestsWithProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "efm,failover")
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
@@ -367,7 +371,7 @@ func TestFailoverEfmDisableInstance(t *testing.T) {
 	assert.NotZero(t, instanceId)
 
 	// Start a long-running query in a goroutine
-	queryChan := make(chan error)
+	queryChan := make(chan error, 1)
 	go func() {
 		// Execute a sleep query that will run for 10 seconds
 		sleepQuery := test_utils.GetSleepSql(environment.Info().Request.Engine, TEST_SLEEP_QUERY_SECONDS)
@@ -384,11 +388,14 @@ func TestFailoverEfmDisableInstance(t *testing.T) {
 	slog.Debug("Disabling proxy connectivity.")
 	test_utils.DisableProxyConnectivity(proxyInfo)
 
-	// Wait for the query to complete and check the error
-	queryErr := <-queryChan
-	close(queryChan)
-	require.NotNil(t, queryErr)
-	assert.Equal(t, error_util.GetMessage("Failover.unableToRefreshHostList"), queryErr.Error())
+	// Wait for the query to complete with timeout
+	select {
+	case queryErr := <-queryChan:
+		require.NotNil(t, queryErr)
+		assert.Equal(t, error_util.GetMessage("Failover.unableToRefreshHostList"), queryErr.Error())
+	case <-ctx.Done():
+		t.Fatal("Test timed out waiting for query to complete")
+	}
 
 	// Re-enable connectivity
 	slog.Debug("Re-enabling proxy connectivity.")

@@ -32,12 +32,12 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	_ "github.com/aws/aws-advanced-go-wrapper/otlp"
 	_ "github.com/aws/aws-advanced-go-wrapper/xray"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -392,6 +392,10 @@ func failoverTest(t *testing.T, env *test_utils.TestEnvironment, secretName stri
 }
 
 func efmTest(t *testing.T, env *test_utils.TestEnvironment, secretName string) {
+	// Add test timeout context
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
 	_, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
@@ -413,7 +417,7 @@ func efmTest(t *testing.T, env *test_utils.TestEnvironment, secretName string) {
 	require.NoError(t, err, "Failed to open database connection.")
 
 	// Start a long-running query in a goroutine
-	queryChan := make(chan error)
+	queryChan := make(chan error, 1)
 	go func() {
 		// Execute a sleep query that will run for 10 seconds
 		sleepQuery := test_utils.GetSleepSql(environment.Info().Request.Engine, TEST_SLEEP_QUERY_SECONDS)
@@ -429,12 +433,15 @@ func efmTest(t *testing.T, env *test_utils.TestEnvironment, secretName string) {
 	slog.Debug("Disabling all connectivity.")
 	test_utils.DisableAllConnectivity()
 
-	// Wait for the query to complete and check the error
-	queryErr := <-queryChan
-	close(queryChan)
-	require.NotNil(t, queryErr)
-	slog.Debug(fmt.Sprintf("Sleep query fails with error: %s.", queryErr.Error()))
-	assert.False(t, errors.Is(queryErr, context.DeadlineExceeded), "Sleep query should have failed due to connectivity loss")
+	// Wait for the query to complete with timeout
+	select {
+	case queryErr := <-queryChan:
+		require.NotNil(t, queryErr)
+		slog.Debug(fmt.Sprintf("Sleep query fails with error: %s.", queryErr.Error()))
+		assert.False(t, errors.Is(queryErr, context.DeadlineExceeded), "Sleep query should have failed due to connectivity loss")
+	case <-ctx.Done():
+		t.Fatal("Test timed out waiting for query to complete")
+	}
 
 	// Re-enable connectivity
 	slog.Debug("Re-enabling all connectivity.")
@@ -446,6 +453,10 @@ func efmTest(t *testing.T, env *test_utils.TestEnvironment, secretName string) {
 }
 
 func failoverEfmTest(t *testing.T, env *test_utils.TestEnvironment, secretName string) {
+	// Add test timeout context
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
@@ -472,7 +483,7 @@ func failoverEfmTest(t *testing.T, env *test_utils.TestEnvironment, secretName s
 	require.NoError(t, err, "Failed to open database connection.")
 
 	// Start a long-running query in a goroutine
-	queryChan := make(chan error)
+	queryChan := make(chan error, 1)
 	go func() {
 		// Execute a sleep query that will run for 10 seconds
 		sleepQuery := test_utils.GetSleepSql(environment.Info().Request.Engine, TEST_SLEEP_QUERY_SECONDS)
@@ -495,11 +506,14 @@ func failoverEfmTest(t *testing.T, env *test_utils.TestEnvironment, secretName s
 	slog.Debug("Re-enabling all connectivity.")
 	test_utils.EnableAllConnectivity(true)
 
-	// Wait for the query to complete and check the error
-	queryErr := <-queryChan
-	close(queryChan)
-	require.NotNil(t, queryErr)
-	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryErr.Error())
+	// Wait for the query to complete with timeout
+	select {
+	case queryErr := <-queryChan:
+		require.NotNil(t, queryErr)
+		assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryErr.Error())
+	case <-ctx.Done():
+		t.Fatal("Test timed out waiting for query to complete")
+	}
 
 	newInstanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
 	require.True(t, auroraTestUtility.IsDbInstanceWriter(newInstanceId, ""))

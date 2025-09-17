@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
+	mysql_driver "github.com/aws/aws-advanced-go-wrapper/go-mysql-driver"
 	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 )
 
@@ -47,7 +47,7 @@ func NewWrapperDriver(engine DatabaseEngine) driver.Driver {
 	case PG:
 		return &pgx_driver.PgxDriver{}
 	case MYSQL:
-		return &mysql_driver.MySQLDriver{}
+		return &mysql_driver.MySQLDriver2{}
 	}
 	return nil
 }
@@ -286,7 +286,7 @@ func ConstructDsn(engine DatabaseEngine, props map[string]string) (dsn string) {
 			dsn = dsn + fmt.Sprintf("%s=%s ", propKey, propValue)
 		}
 	case MYSQL:
-		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?",
+		dsn = fmt.Sprintf("%s:%s@%s:%s/%s?",
 			props[property_util.USER.Name],
 			props[property_util.PASSWORD.Name],
 			props[property_util.HOST.Name],

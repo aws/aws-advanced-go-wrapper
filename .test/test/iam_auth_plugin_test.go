@@ -18,6 +18,8 @@ package test
 
 import (
 	"database/sql/driver"
+	"errors"
+
 	"github.com/aws/aws-advanced-go-wrapper/auth-helpers"
 	awssql "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
@@ -25,12 +27,11 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
+	mysql_driver "github.com/aws/aws-advanced-go-wrapper/go-mysql-driver"
 	"github.com/aws/aws-advanced-go-wrapper/iam"
-	"github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 	"testing"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -223,7 +224,7 @@ func TestIamAuthPluginConnectCacheExpiredToken(t *testing.T) {
 func TestIamAuthPluginConnectTtlExpiredCachedToken(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockLoginError := &mysql.MySQLError{SQLState: [5]byte(([]byte(mysql_driver.SqlStateAccessError))[:5])}
+	mockLoginError := errors.New(mysql_driver.SqlStateAccessError) //&mysql.MySQLError{SQLState: [5]byte(([]byte(mysql_driver.SqlStateAccessError))[:5])}
 	mockConnFuncCallCounter := 0
 	var resultProps map[string]string
 	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
@@ -276,7 +277,7 @@ func TestIamAuthPluginConnectTtlExpiredCachedToken(t *testing.T) {
 func TestIamAuthPluginConnectLoginError(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockLoginError := &mysql.MySQLError{SQLState: [5]byte(([]byte(mysql_driver.SqlStateAccessError))[:5])}
+	mockLoginError := errors.New(mysql_driver.SqlStateAccessError)
 	var resultProps map[string]string
 	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
 		resultProps = props

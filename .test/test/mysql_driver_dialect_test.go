@@ -17,15 +17,16 @@
 package test
 
 import (
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 	"testing"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	mysql_driver "github.com/aws/aws-advanced-go-wrapper/go-mysql-driver"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPrepareDsnWithoutUser(t *testing.T) {
-	driverDialect := &mysql_driver.MySQLDriverDialect{}
+	driverDialect := &mysql_driver.MySQL2DriverDialect{}
 
 	properties := map[string]string{
 		property_util.PASSWORD.Name: "password",
@@ -42,7 +43,7 @@ func TestPrepareDsnWithoutUser(t *testing.T) {
 }
 
 func TestPrepareDsnWithoutNet(t *testing.T) {
-	driverDialect := &mysql_driver.MySQLDriverDialect{}
+	driverDialect := &mysql_driver.MySQL2DriverDialect{}
 
 	properties := map[string]string{
 		property_util.USER.Name:     "user",
@@ -58,7 +59,7 @@ func TestPrepareDsnWithoutNet(t *testing.T) {
 }
 
 func TestPrepareDsnWithEscapedDatabase(t *testing.T) {
-	driverDialect := &mysql_driver.MySQLDriverDialect{}
+	driverDialect := &mysql_driver.MySQL2DriverDialect{}
 
 	properties := map[string]string{
 		property_util.USER.Name:     "user",
@@ -75,7 +76,7 @@ func TestPrepareDsnWithEscapedDatabase(t *testing.T) {
 }
 
 func TestPrepareDsnWithoutPasswordOrPort(t *testing.T) {
-	driverDialect := &mysql_driver.MySQLDriverDialect{}
+	driverDialect := &mysql_driver.MySQL2DriverDialect{}
 
 	properties := map[string]string{
 		property_util.USER.Name:     "user",
@@ -90,7 +91,7 @@ func TestPrepareDsnWithoutPasswordOrPort(t *testing.T) {
 }
 
 func TestPrepareDsnWithoutHost(t *testing.T) {
-	driverDialect := &mysql_driver.MySQLDriverDialect{}
+	driverDialect := &mysql_driver.MySQL2DriverDialect{}
 
 	properties := map[string]string{
 		property_util.USER.Name:     "user",

@@ -181,6 +181,7 @@ public class ContainerHelper {
         .withFileSystemBind("../../../okta", "/app/okta", BindMode.READ_ONLY)
         .withFileSystemBind("../../../pgx-driver", "/app/pgx-driver", BindMode.READ_ONLY)
         .withFileSystemBind("../../../mysql-driver", "/app/mysql-driver", BindMode.READ_ONLY)
+        .withFileSystemBind("../../../go-mysql-driver", "/app/go-mysql-driver", BindMode.READ_ONLY)
         .withFileSystemBind("../../../iam", "/app/iam", BindMode.READ_ONLY)
         .withFileSystemBind("../../../federated-auth", "/app/federated-auth", BindMode.READ_ONLY)
         .withFileSystemBind("../../../aws-secrets-manager", "/app/aws-secrets-manager", BindMode.READ_ONLY)

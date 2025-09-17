@@ -298,6 +298,10 @@ func TestIamWithFailover(t *testing.T) {
 }
 
 func TestIamWithEfm(t *testing.T) {
+	// Add test timeout context
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
 	_, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
@@ -323,7 +327,7 @@ func TestIamWithEfm(t *testing.T) {
 	require.NoError(t, err, "Failed to open database connection.")
 
 	// Start a long-running query in a goroutine
-	queryChan := make(chan error)
+	queryChan := make(chan error, 1)
 	go func() {
 		// Execute a sleep query that will run for 10 seconds
 		sleepQuery := test_utils.GetSleepSql(environment.Info().Request.Engine, TEST_SLEEP_QUERY_SECONDS)
@@ -339,12 +343,15 @@ func TestIamWithEfm(t *testing.T) {
 	slog.Debug("Disabling all connectivity.")
 	test_utils.DisableAllConnectivity()
 
-	// Wait for the query to complete and check the error
-	queryErr := <-queryChan
-	close(queryChan)
-	require.NotNil(t, queryErr)
-	slog.Debug(fmt.Sprintf("Sleep query fails with error: %s.", queryErr.Error()))
-	assert.False(t, errors.Is(queryErr, context.DeadlineExceeded), "Sleep query should have failed due to connectivity loss")
+	// Wait for the query to complete with timeout
+	select {
+	case queryErr := <-queryChan:
+		require.NotNil(t, queryErr)
+		slog.Debug(fmt.Sprintf("Sleep query fails with error: %s.", queryErr.Error()))
+		assert.False(t, errors.Is(queryErr, context.DeadlineExceeded), "Sleep query should have failed due to connectivity loss")
+	case <-ctx.Done():
+		t.Fatal("Test timed out waiting for query to complete")
+	}
 
 	// Re-enable connectivity
 	slog.Debug("Re-enabling all connectivity.")
@@ -356,6 +363,10 @@ func TestIamWithEfm(t *testing.T) {
 }
 
 func TestIamWithFailoverEfm(t *testing.T) {
+	// Add test timeout context
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
@@ -382,7 +393,7 @@ func TestIamWithFailoverEfm(t *testing.T) {
 	require.NoError(t, err, "Failed to open database connection.")
 
 	// Start a long-running query in a goroutine
-	queryChan := make(chan error)
+	queryChan := make(chan error, 1)
 	go func() {
 		// Execute a sleep query that will run for 10 seconds
 		sleepQuery := test_utils.GetSleepSql(environment.Info().Request.Engine, TEST_SLEEP_QUERY_SECONDS)
@@ -405,11 +416,14 @@ func TestIamWithFailoverEfm(t *testing.T) {
 	slog.Debug("Re-enabling all connectivity.")
 	test_utils.EnableAllConnectivity(true)
 
-	// Wait for the query to complete and check the error
-	queryErr := <-queryChan
-	close(queryChan)
-	require.NotNil(t, queryErr)
-	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryErr.Error())
+	// Wait for the query to complete with timeout
+	select {
+	case queryErr := <-queryChan:
+		require.NotNil(t, queryErr)
+		assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryErr.Error())
+	case <-ctx.Done():
+		t.Fatal("Test timed out waiting for query to complete")
+	}
 
 	newInstanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
 	require.True(t, auroraTestUtility.IsDbInstanceWriter(newInstanceId, ""))
@@ -431,8 +445,9 @@ func initIamProps(user string, password string, testEnvironment *test_utils.Test
 func addMySQLIamHandlingIfNecessary(testEnvironment *test_utils.TestEnvironment, props map[string]string) map[string]string {
 	// Needed for MYSQL
 	if testEnvironment.Info().Request.Engine == test_utils.MYSQL {
-		props["tls"] = "skip-verify"
-		props["allowCleartextPasswords"] = "true"
+		props["ssl"] = "true"
+		//props["tls"] = "skip-verify"
+		//props["allowCleartextPasswords"] = "true"
 	}
 	return props
 }
