@@ -42,6 +42,11 @@ var (
 		`(?:/(?P<dbname>[^?]*))?` + // [/dbname] - made optional
 		`(?:\?(?P<params>.*))?` + // [?param1=value1&paramN=valueN]
 		`$`)
+	mySql2DsnPattern = regexp.MustCompile(`^(?:(?P<user>[^:@/]+)(?::(?P<passwd>[^@/]*))?@)?` + // [user[:password]@]
+		`(?P<addr>[^/]+)` + // addr
+		`(?:/(?P<dbname>[^?]*))?` + // [/db]
+		`(?:\?(?P<params>.*))?` + // [?param=X]
+		`$`)
 	spaceBetweenWordsPattern = regexp.MustCompile(`^\s*\S+\s+\S.*$`)
 )
 
@@ -185,6 +190,14 @@ func ParseDsn(dsn string) (map[string]string, error) {
 		return connStringSettings, nil
 	}
 
+	if isDsnMySql2(dsn) {
+		connStringSettings, err = parseMySql2Dsn(dsn)
+		if err != nil {
+			return nil, err
+		}
+		return connStringSettings, nil
+	}
+
 	if isDsnPgxKeyValueString(dsn) {
 		connStringSettings, err = parsePgxKeywordValueSettings(dsn)
 		if err != nil {
@@ -193,7 +206,7 @@ func ParseDsn(dsn string) (map[string]string, error) {
 		return connStringSettings, nil
 	}
 
-	return connStringSettings, err
+	return nil, error_util.NewDsnParsingError(error_util.GetMessage("DsnParser.unableToDetermineProtocol", MaskSensitiveInfoFromDsn(dsn)))
 }
 
 func isDsnPgxUrl(dsn string) bool {
@@ -206,6 +219,10 @@ func isDsnPgxKeyValueString(dsn string) bool {
 
 func isDsnMySql(dsn string) bool {
 	return !spaceBetweenWordsPattern.MatchString(dsn) && mySqlDsnPattern.MatchString(dsn)
+}
+
+func isDsnMySql2(dsn string) bool {
+	return !spaceBetweenWordsPattern.MatchString(dsn) && mySql2DsnPattern.MatchString(dsn)
 }
 
 func parsePgxURLSettings(connString string) (map[string]string, error) {
@@ -417,6 +434,98 @@ func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 
 	properties[property_util.DRIVER_PROTOCOL.Name] = MYSQL_DRIVER_PROTOCOL
 	return
+}
+
+func parseMySql2Dsn(dsn string) (properties map[string]string, err error) {
+	properties = make(map[string]string)
+	dsn = strings.TrimSpace(dsn)
+
+	// [user[:password]@]addr[/db[?param=X]]
+
+	// Find @ that separates credentials from host (look for first @ followed by hostname pattern)
+	atIndex := -1
+	addrStart := 0
+	for i := 0; i < len(dsn); i++ {
+		if dsn[i] == '@' {
+			remaining := dsn[i+1:]
+			// Stop at first / or ? to get just the host part
+			if slashIdx := strings.Index(remaining, "/"); slashIdx != -1 {
+				remaining = remaining[:slashIdx]
+			}
+			if queryIdx := strings.Index(remaining, "?"); queryIdx != -1 {
+				remaining = remaining[:queryIdx]
+			}
+			// If it contains . or : it's likely a hostname
+			if strings.Contains(remaining, ".") || strings.Contains(remaining, ":") {
+				atIndex = i
+				break
+			}
+		}
+	}
+
+	if atIndex != -1 {
+		userInfo := dsn[:atIndex]
+		if colonIndex := strings.Index(userInfo, ":"); colonIndex != -1 {
+			properties[property_util.USER.Name] = userInfo[:colonIndex]
+			properties[property_util.PASSWORD.Name] = userInfo[colonIndex+1:]
+		} else {
+			properties[property_util.USER.Name] = userInfo
+		}
+		addrStart = atIndex + 1
+	}
+
+	// Find / to separate address from database
+	slashIndex := strings.Index(dsn[addrStart:], "/")
+	if slashIndex == -1 {
+		// No database part, just address
+		queryIndex := strings.Index(dsn[addrStart:], "?")
+		if queryIndex == -1 {
+			address := dsn[addrStart:]
+			hostPortPair := strings.Split(address, ":")
+			properties[property_util.HOST.Name] = hostPortPair[0]
+			if len(hostPortPair) > 1 {
+				properties[property_util.PORT.Name] = hostPortPair[1]
+			}
+		} else {
+			address := dsn[addrStart : addrStart+queryIndex]
+			hostPortPair := strings.Split(address, ":")
+			properties[property_util.HOST.Name] = hostPortPair[0]
+			if len(hostPortPair) > 1 {
+				properties[property_util.PORT.Name] = hostPortPair[1]
+			}
+			err = parseDSNParams(properties, dsn[addrStart+queryIndex+1:])
+		}
+	} else {
+		// Has database part
+		address := dsn[addrStart : addrStart+slashIndex]
+		hostPortPair := strings.Split(address, ":")
+		properties[property_util.HOST.Name] = hostPortPair[0]
+		if len(hostPortPair) > 1 {
+			properties[property_util.PORT.Name] = hostPortPair[1]
+		}
+
+		dbPart := dsn[addrStart+slashIndex+1:]
+
+		// Find ? to separate database from query parameters
+		queryIndex := strings.Index(dbPart, "?")
+		if queryIndex == -1 {
+			// No query parameters, entire dbPart is database name
+			properties[property_util.DATABASE.Name], err = url.PathUnescape(dbPart)
+		} else {
+			// Split database name from query parameters
+			dbName := dbPart[:queryIndex]
+			queryParams := dbPart[queryIndex+1:]
+
+			properties[property_util.DATABASE.Name], err = url.PathUnescape(dbName)
+			if err != nil {
+				return
+			}
+			err = parseDSNParams(properties, queryParams)
+		}
+	}
+
+	properties[property_util.DRIVER_PROTOCOL.Name] = MYSQL_DRIVER_PROTOCOL
+	return properties, err
 }
 
 func parseDSNParams(properties map[string]string, params string) (err error) {
