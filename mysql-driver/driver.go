@@ -35,10 +35,6 @@ func (d *MySQLDriver) Open(dsn string) (driver.Conn, error) {
 	return d.awsWrapperDriver.Open(dsn)
 }
 
-func ClearCaches() {
-	awsDriver.ClearCaches()
-}
-
 func init() {
 	sql.Register(
 		driver_infrastructure.AWS_MYSQL_DRIVER_CODE,

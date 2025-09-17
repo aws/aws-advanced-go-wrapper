@@ -21,7 +21,6 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"net/url"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -38,16 +37,11 @@ type MySQLDriverDialect struct {
 }
 
 const (
-	MYSQL_DRIVER_CLASS_NAME        = "mysql.MySQLDriver"
 	MYSQL_DRIVER_REGISTRATION_NAME = "mysql"
 )
 
 func NewMySQLDriverDialect() *MySQLDriverDialect {
 	return &MySQLDriverDialect{errorHandler: MySQLErrorHandler{}}
-}
-
-func (m MySQLDriverDialect) IsDialect(driver driver.Driver) bool {
-	return MYSQL_DRIVER_CLASS_NAME == reflect.TypeOf(driver).String() || "*"+MYSQL_DRIVER_CLASS_NAME == reflect.TypeOf(driver).String()
 }
 
 func (m MySQLDriverDialect) GetAllowedOnConnectionMethodNames() []string {

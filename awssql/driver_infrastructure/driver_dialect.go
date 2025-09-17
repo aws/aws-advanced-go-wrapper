@@ -23,7 +23,6 @@ import (
 )
 
 type DriverDialect interface {
-	IsDialect(driver driver.Driver) bool
 	GetAllowedOnConnectionMethodNames() []string
 	PrepareDsn(properties map[string]string, info *host_info_util.HostInfo) string
 	IsNetworkError(err error) bool

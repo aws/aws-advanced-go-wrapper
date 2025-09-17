@@ -20,7 +20,6 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -53,10 +52,6 @@ const (
 
 func NewPgxDriverDialect() *PgxDriverDialect {
 	return &PgxDriverDialect{errorHandler: &PgxErrorHandler{}}
-}
-
-func (p PgxDriverDialect) IsDialect(driver driver.Driver) bool {
-	return PGX_DRIVER_CLASS_NAME == reflect.TypeOf(driver).String() || "*"+PGX_DRIVER_CLASS_NAME == reflect.TypeOf(driver).String()
 }
 
 func (p PgxDriverDialect) GetAllowedOnConnectionMethodNames() []string {
