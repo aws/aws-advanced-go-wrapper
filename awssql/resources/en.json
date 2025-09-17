@@ -79,6 +79,8 @@
   "ClusterTopologyMonitorImpl.topologyNotUpdated": "Topology hasn't been updated after %v ms.",
   "ClusterTopologyMonitorImpl.writerMonitoringConnection": "The monitoring connection is connected to a writer: '%s'.",
   "ClusterTopologyMonitorImpl.writerPickedUpFromHostMonitors": "The writer host detected by the host monitors was picked up by the topology monitor: '%s'.",
+  "ConnectTimePlugin.connectTime": "Connected in '%v' milliseconds.",
+  "ConnectTimePlugin.forceConnectTime": "Force-connected in '%v' milliseconds.",
   "Conn.doesNotImplementRequiredInterface": "The given connection does not implement the required interface '%v'.",
   "Conn.invalidTransactionIsolationLevel": "An invalid transaction isolation level was provided: '%v'.",
   "ConnectionPluginManager.unknownPluginCode": "Unknown plugin code: '%s'. Please ensure all plugin codes are valid and any required plugin modules have been imported.",
