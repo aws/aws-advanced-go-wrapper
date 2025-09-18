@@ -102,6 +102,7 @@ func TestConnectTimePlugin_GetSubscribedMethods(t *testing.T) {
 	methods := plugin.GetSubscribedMethods()
 	assert.Contains(t, methods, plugin_helpers.CONNECT_METHOD)
 	assert.Contains(t, methods, plugin_helpers.FORCE_CONNECT_METHOD)
+	assert.Len(t, methods, 2)
 }
 
 func TestConnectTimePlugin_AccumulatesTime(t *testing.T) {

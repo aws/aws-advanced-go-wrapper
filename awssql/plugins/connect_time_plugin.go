@@ -43,7 +43,7 @@ func (factory ConnectTimePluginFactory) ClearCaches() {}
 
 type ConnectTimePlugin struct {
 	BaseConnectionPlugin
-	connectTime int64
+	connectTimeNano int64
 }
 
 func NewConnectTimePlugin(pluginService driver_infrastructure.PluginService,
@@ -68,7 +68,7 @@ func (d *ConnectTimePlugin) Connect(
 	conn, err := connectFunc(props)
 	elapsed := time.Since(start)
 
-	d.connectTime += elapsed.Nanoseconds()
+	d.connectTimeNano += elapsed.Nanoseconds()
 	slog.Debug(error_util.GetMessage("ConnectTimePlugin.connectTime", elapsed.Milliseconds()))
 	return conn, err
 }
@@ -82,15 +82,15 @@ func (d *ConnectTimePlugin) ForceConnect(
 	conn, err := forceConnectFunc(props)
 	elapsed := time.Since(start)
 
-	d.connectTime += elapsed.Nanoseconds()
+	d.connectTimeNano += elapsed.Nanoseconds()
 	slog.Debug(error_util.GetMessage("ConnectTimePlugin.forceConnectTime", elapsed.Milliseconds()))
 	return conn, err
 }
 
 func (d *ConnectTimePlugin) ResetConnectTime() {
-	d.connectTime = 0
+	d.connectTimeNano = 0
 }
 
 func (d *ConnectTimePlugin) GetTotalConnectTime() int64 {
-	return d.connectTime
+	return d.connectTimeNano
 }
