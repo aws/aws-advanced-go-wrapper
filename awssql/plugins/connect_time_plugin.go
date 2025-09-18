@@ -52,7 +52,7 @@ func NewConnectTimePlugin(pluginService driver_infrastructure.PluginService,
 }
 
 func (d *ConnectTimePlugin) GetPluginCode() string {
-	return driver_infrastructure.EXECUTION_TIME_PLUGIN_CODE
+	return driver_infrastructure.CONNECT_TIME_PLUGIN_CODE
 }
 
 func (d *ConnectTimePlugin) GetSubscribedMethods() []string {
