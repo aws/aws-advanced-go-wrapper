@@ -42,6 +42,7 @@ var pluginFactoryByCode = map[string]driver_infrastructure.ConnectionPluginFacto
 	driver_infrastructure.EXECUTION_TIME_PLUGIN_CODE:       plugins.NewExecutionTimePluginFactory(),
 	driver_infrastructure.READ_WRITE_SPLITTING_PLUGIN_CODE: read_write_splitting.NewReadWriteSplittingPluginFactory(),
 	driver_infrastructure.BLUE_GREEN_PLUGIN_CODE:           bg.NewBlueGreenPluginFactory(),
+	driver_infrastructure.CONNECT_TIME_PLUGIN_CODE:         plugins.NewConnectTimePluginFactory(),
 }
 
 var underlyingDriverList = map[string]driver.Driver{}

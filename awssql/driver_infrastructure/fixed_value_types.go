@@ -27,6 +27,7 @@ const (
 	ADFS_PLUGIN_CODE                 string = "federatedAuth"
 	OKTA_PLUGIN_CODE                 string = "okta"
 	EXECUTION_TIME_PLUGIN_CODE       string = "executionTime"
+	CONNECT_TIME_PLUGIN_CODE         string = "connectTime"
 )
 
 type HostChangeOptions int
