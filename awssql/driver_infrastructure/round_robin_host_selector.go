@@ -62,14 +62,6 @@ func GetRoundRobinHostSelector() *roundRobinHostSelector {
 	return roundRobinHostSelectorInstance
 }
 
-// // Testing purposes only.
-// func NewRoundRobinHostSelector() *roundRobinHostSelector {
-// 	roundRobinCacheOnce.Do(func() {
-// 		roundRobinCache = utils.NewCache[*RoundRobinClusterInfo]()
-// 	})
-// 	return &roundRobinHostSelector{}
-// }
-
 func (r *roundRobinHostSelector) GetHost(hosts []*host_info_util.HostInfo, role host_info_util.HostRole, props map[string]string) (*host_info_util.HostInfo, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -240,10 +232,9 @@ func (r *roundRobinHostSelector) updateCachedHostWeightPairsPropsForRoundRobinCl
 	}
 
 	hostWeights := property_util.ROUND_ROBIN_HOST_WEIGHT_PAIRS.Get(props)
-
+	roundRobinClusterInfo.lastClusterHostWeightPairPropertyValue = property_util.ROUND_ROBIN_HOST_WEIGHT_PAIRS.Get(props)
 	if hostWeights == "" {
 		clear(roundRobinClusterInfo.clusterWeightsMap)
-		roundRobinClusterInfo.lastClusterHostWeightPairPropertyValue = property_util.ROUND_ROBIN_HOST_WEIGHT_PAIRS.Get(props)
 		return nil
 	}
 

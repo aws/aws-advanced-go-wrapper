@@ -35,11 +35,14 @@ func TestRoundRobinHostSelector(t *testing.T) {
 	host2 := "host-2"
 	host3 := "host-3"
 	host4 := "host-4"
+	unavailableHost := "unavailable-host"
+
 	instance0 := "instance-0"
 	instance1 := "instance-1"
 	instance2 := "instance-2"
 	instance3 := "instance-3"
 	instance4 := "instance-4"
+	unavailableInstance := "unavailable-instance"
 
 	writerHost := &host_info_util.HostInfo{
 		Host:         host0,
@@ -62,6 +65,13 @@ func TestRoundRobinHostSelector(t *testing.T) {
 		Role:         host_info_util.READER,
 		Availability: host_info_util.AVAILABLE,
 	}
+	readerHost2Unavailable := &host_info_util.HostInfo{
+		Host:         host2,
+		HostId:       instance2,
+		Port:         TEST_PORT,
+		Role:         host_info_util.READER,
+		Availability: host_info_util.UNAVAILABLE,
+	}
 	readerHost3 := &host_info_util.HostInfo{
 		Host:         host3,
 		HostId:       instance3,
@@ -76,12 +86,24 @@ func TestRoundRobinHostSelector(t *testing.T) {
 		Role:         host_info_util.READER,
 		Availability: host_info_util.AVAILABLE,
 	}
+	unavailableReaderHost := &host_info_util.HostInfo{
+		Host:         unavailableHost,
+		HostId:       unavailableInstance,
+		Port:         TEST_PORT,
+		Role:         host_info_util.READER,
+		Availability: host_info_util.UNAVAILABLE,
+	}
 
 	hostsList123 := []*host_info_util.HostInfo{writerHost, readerHost2, readerHost3, readerHost1}
+	hostsList12Unavailable3 := []*host_info_util.HostInfo{writerHost, readerHost2Unavailable, readerHost3, readerHost1}
+
 	hostsList1234 := []*host_info_util.HostInfo{writerHost, readerHost4, readerHost2, readerHost3, readerHost1}
 	hostsList13 := []*host_info_util.HostInfo{writerHost, readerHost3, readerHost1}
 	hostsList14 := []*host_info_util.HostInfo{writerHost, readerHost4, readerHost1}
 	hostsList23 := []*host_info_util.HostInfo{writerHost, readerHost3, readerHost2}
+	hostListUnavailable := []*host_info_util.HostInfo{writerHost, unavailableReaderHost}
+	hostList1Unavailable := []*host_info_util.HostInfo{writerHost, readerHost1, unavailableReaderHost}
+
 	writerHostsList := []*host_info_util.HostInfo{writerHost}
 
 	t.Run("test setup with incorrect host weight pairs", func(t *testing.T) {
@@ -154,6 +176,33 @@ func TestRoundRobinHostSelector(t *testing.T) {
 		selector.ClearCache()
 	})
 
+	t.Run("test getHost AvailabilityChanged", func(t *testing.T) {
+		selector := driver_infrastructure.GetRoundRobinHostSelector()
+		props := map[string]string{}
+
+		host, err := selector.GetHost(hostsList123, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost1.Host, host.Host)
+
+		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost2.Host, host.Host)
+
+		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost3.Host, host.Host)
+
+		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost1.Host, host.Host)
+
+		// availability changed in host list, should continue to host 3
+		host, err = selector.GetHost(hostsList12Unavailable3, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost3.Host, host.Host)
+		selector.ClearCache()
+	})
+
 	t.Run("test getHost undefined properties", func(t *testing.T) {
 		selector := driver_infrastructure.GetRoundRobinHostSelector()
 
@@ -172,6 +221,43 @@ func TestRoundRobinHostSelector(t *testing.T) {
 		host, err = selector.GetHost(hostsList123, host_info_util.READER, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, readerHost1.Host, host.Host)
+
+		selector.ClearCache()
+	})
+
+	t.Run("test getHost defaultWeightChanged properties", func(t *testing.T) {
+		selector := driver_infrastructure.GetRoundRobinHostSelector()
+
+		props := map[string]string{
+			property_util.ROUND_ROBIN_DEFAULT_WEIGHT.Name: "1",
+		}
+
+		host, err := selector.GetHost(hostsList13, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost1.Host, host.Host)
+
+		host, err = selector.GetHost(hostsList13, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost3.Host, host.Host)
+
+		// Change property to 2
+		property_util.ROUND_ROBIN_DEFAULT_WEIGHT.Set(props, "2")
+
+		host, err = selector.GetHost(hostsList13, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost1.Host, host.Host)
+
+		host, err = selector.GetHost(hostsList13, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost1.Host, host.Host)
+
+		host, err = selector.GetHost(hostsList13, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost3.Host, host.Host)
+
+		host, err = selector.GetHost(hostsList13, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost3.Host, host.Host)
 
 		selector.ClearCache()
 	})
@@ -198,6 +284,89 @@ func TestRoundRobinHostSelector(t *testing.T) {
 		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
 		assert.NoError(t, err)
 		assert.Equal(t, readerHost2.Host, host.Host)
+
+		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost2.Host, host.Host)
+
+		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost3.Host, host.Host)
+
+		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost1.Host, host.Host)
+
+		selector.ClearCache()
+	})
+
+	t.Run("test getHost weighted change properties", func(t *testing.T) {
+		selector := driver_infrastructure.GetRoundRobinHostSelector()
+		hostWeights := instance0 + ":1," + instance1 + ":2," + instance2 + ":2," + instance3 + ":1"
+		hostWeights2 := instance0 + ":1," + instance1 + ":2," + instance2 + ":1," + instance3 + ":1"
+		hostWeights3 := instance0 + ":1," + instance1 + ":1," + instance2 + ":1," + instance3 + ":1"
+
+		props := map[string]string{
+			property_util.ROUND_ROBIN_HOST_WEIGHT_PAIRS.Name: hostWeights,
+		}
+
+		host, err := selector.GetHost(hostsList123, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost1.Host, host.Host)
+
+		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost1.Host, host.Host)
+
+		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost2.Host, host.Host)
+
+		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost2.Host, host.Host)
+
+		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost3.Host, host.Host)
+
+		property_util.ROUND_ROBIN_HOST_WEIGHT_PAIRS.Set(props, hostWeights2)
+
+		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost1.Host, host.Host)
+
+		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost1.Host, host.Host)
+
+		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost2.Host, host.Host)
+
+		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost3.Host, host.Host)
+
+		// Start the round robin again but change after it gets readerHost2 and make sure it goes back to host 1 and resets.
+
+		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost1.Host, host.Host)
+
+		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost1.Host, host.Host)
+
+		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost2.Host, host.Host)
+
+		property_util.ROUND_ROBIN_HOST_WEIGHT_PAIRS.Set(props, hostWeights3)
+
+		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost1.Host, host.Host)
 
 		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
 		assert.NoError(t, err)
@@ -321,5 +490,44 @@ func TestRoundRobinHostSelector(t *testing.T) {
 		assert.Equal(t, readerHost4.Host, host.Host)
 
 		selector.ClearCache()
+	})
+
+	t.Run("test getHost unavailableHost", func(t *testing.T) {
+		selector := driver_infrastructure.GetRoundRobinHostSelector()
+		props := map[string]string{}
+
+		_, err := selector.GetHost(hostListUnavailable, host_info_util.READER, props)
+		assert.Error(t, err)
+		assert.Equal(t, error_util.GetMessage("HostSelector.noHostsMatchingRole", host_info_util.READER), err.Error())
+
+		host, err := selector.GetHost(hostList1Unavailable, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost1.Host, host.Host)
+
+		selector.ClearCache()
+	})
+
+	t.Run("test getHost noAvailableHosts", func(t *testing.T) {
+		selector := driver_infrastructure.GetRoundRobinHostSelector()
+		props := map[string]string{}
+
+		_, err := selector.GetHost(hostListUnavailable, host_info_util.READER, props)
+		assert.Error(t, err)
+		assert.Equal(t, error_util.GetMessage("HostSelector.noHostsMatchingRole", host_info_util.READER), err.Error())
+
+		host, err := selector.GetHost(hostList1Unavailable, host_info_util.READER, props)
+		assert.NoError(t, err)
+		assert.Equal(t, readerHost1.Host, host.Host)
+
+		selector.ClearCache()
+	})
+
+	t.Run("test getHost emptyHostList", func(t *testing.T) {
+		selector := driver_infrastructure.GetRoundRobinHostSelector()
+		props := map[string]string{}
+
+		_, err := selector.GetHost([]*host_info_util.HostInfo{}, host_info_util.READER, props)
+		assert.Error(t, err)
+		assert.Equal(t, error_util.GetMessage("HostSelector.noHostsMatchingRole", host_info_util.READER), err.Error())
 	})
 }
