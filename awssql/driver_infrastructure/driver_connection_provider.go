@@ -33,7 +33,7 @@ func NewDriverConnectionProvider(targetDriver driver.Driver) *DriverConnectionPr
 	acceptedStrategies[SELECTOR_HIGHEST_WEIGHT] = &HighestWeightHostSelector{}
 	acceptedStrategies[SELECTOR_RANDOM] = &RandomHostSelector{}
 	acceptedStrategies[SELECTOR_WEIGHTED_RANDOM] = &WeightedRandomHostSelector{}
-	acceptedStrategies[SELECTOR_ROUND_ROBIN] = &RoundRobinHostSelector{}
+	acceptedStrategies[SELECTOR_ROUND_ROBIN] = GetRoundRobinHostSelector()
 	return &DriverConnectionProvider{acceptedStrategies, targetDriver}
 }
 
