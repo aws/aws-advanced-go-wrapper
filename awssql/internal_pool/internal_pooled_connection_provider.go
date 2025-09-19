@@ -56,7 +56,7 @@ func NewInternalPooledConnectionProviderWithPoolKeyFunc(internalPoolOptions *Int
 	acceptedStrategies[driver_infrastructure.SELECTOR_WEIGHTED_RANDOM] =
 		&driver_infrastructure.WeightedRandomHostSelector{}
 	acceptedStrategies[driver_infrastructure.SELECTOR_ROUND_ROBIN] =
-		&driver_infrastructure.RoundRobinHostSelector{}
+		driver_infrastructure.GetRoundRobinHostSelector()
 
 	var disposalFunc utils.DisposalFunc[*InternalConnPool] = func(pool *InternalConnPool) bool {
 		pool.Close()

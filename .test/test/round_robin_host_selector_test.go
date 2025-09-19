@@ -17,7 +17,6 @@
 package test
 
 import (
-	"regexp"
 	"testing"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
@@ -28,12 +27,6 @@ import (
 )
 
 const TEST_PORT = 1234
-
-var (
-	HOST_WEIGHT_PAIR_PATTERN  *regexp.Regexp
-	HOST_PATTERN_GROUP        = "host"
-	HOST_WEIGHT_PATTERN_GROUP = "weight"
-)
 
 func TestRoundRobinHostSelector(t *testing.T) {
 	// Test hosts
@@ -103,7 +96,7 @@ func TestRoundRobinHostSelector(t *testing.T) {
 		}
 
 		for _, hostWeights := range testCases {
-			selector := driver_infrastructure.NewRoundRobinHostSelector()
+			selector := driver_infrastructure.GetRoundRobinHostSelector()
 			props := map[string]string{
 				property_util.ROUND_ROBIN_HOST_WEIGHT_PAIRS.Name: hostWeights,
 			}
@@ -118,7 +111,7 @@ func TestRoundRobinHostSelector(t *testing.T) {
 		testCases := []string{"0", "1.123", "-1"}
 
 		for _, defaultWeight := range testCases {
-			selector := driver_infrastructure.NewRoundRobinHostSelector()
+			selector := driver_infrastructure.GetRoundRobinHostSelector()
 			props := map[string]string{
 				property_util.ROUND_ROBIN_DEFAULT_WEIGHT.Name: defaultWeight,
 			}
@@ -130,7 +123,7 @@ func TestRoundRobinHostSelector(t *testing.T) {
 	})
 
 	t.Run("test getHost no readers", func(t *testing.T) {
-		selector := driver_infrastructure.NewRoundRobinHostSelector()
+		selector := driver_infrastructure.GetRoundRobinHostSelector()
 		props := map[string]string{}
 		_, err := selector.GetHost(writerHostsList, host_info_util.READER, props)
 		assert.Error(t, err)
@@ -139,7 +132,7 @@ func TestRoundRobinHostSelector(t *testing.T) {
 	})
 
 	t.Run("test getHost", func(t *testing.T) {
-		selector := driver_infrastructure.NewRoundRobinHostSelector()
+		selector := driver_infrastructure.GetRoundRobinHostSelector()
 		props := map[string]string{}
 
 		host, err := selector.GetHost(hostsList123, host_info_util.READER, props)
@@ -162,7 +155,7 @@ func TestRoundRobinHostSelector(t *testing.T) {
 	})
 
 	t.Run("test getHost undefined properties", func(t *testing.T) {
-		selector := driver_infrastructure.NewRoundRobinHostSelector()
+		selector := driver_infrastructure.GetRoundRobinHostSelector()
 
 		host, err := selector.GetHost(hostsList123, host_info_util.READER, nil)
 		assert.NoError(t, err)
@@ -184,7 +177,7 @@ func TestRoundRobinHostSelector(t *testing.T) {
 	})
 
 	t.Run("test getHost weighted", func(t *testing.T) {
-		selector := driver_infrastructure.NewRoundRobinHostSelector()
+		selector := driver_infrastructure.GetRoundRobinHostSelector()
 		hostWeights := instance0 + ":1," + instance1 + ":3," + instance2 + ":2," + instance3 + ":1"
 		props := map[string]string{
 			property_util.ROUND_ROBIN_HOST_WEIGHT_PAIRS.Name: hostWeights,
@@ -222,7 +215,7 @@ func TestRoundRobinHostSelector(t *testing.T) {
 	})
 
 	t.Run("test getHost cache entry expired", func(t *testing.T) {
-		selector := driver_infrastructure.NewRoundRobinHostSelector()
+		selector := driver_infrastructure.GetRoundRobinHostSelector()
 		props := map[string]string{}
 
 		host, err := selector.GetHost(hostsList123, host_info_util.READER, props)
@@ -247,7 +240,7 @@ func TestRoundRobinHostSelector(t *testing.T) {
 	})
 
 	t.Run("test getHost scale up", func(t *testing.T) {
-		selector := driver_infrastructure.NewRoundRobinHostSelector()
+		selector := driver_infrastructure.GetRoundRobinHostSelector()
 		props := map[string]string{}
 
 		host, err := selector.GetHost(hostsList123, host_info_util.READER, props)
@@ -270,7 +263,7 @@ func TestRoundRobinHostSelector(t *testing.T) {
 	})
 
 	t.Run("test getHost scale down", func(t *testing.T) {
-		selector := driver_infrastructure.NewRoundRobinHostSelector()
+		selector := driver_infrastructure.GetRoundRobinHostSelector()
 		props := map[string]string{}
 
 		host, err := selector.GetHost(hostsList123, host_info_util.READER, props)
@@ -289,7 +282,7 @@ func TestRoundRobinHostSelector(t *testing.T) {
 	})
 
 	t.Run("test getHost last host not in hosts list", func(t *testing.T) {
-		selector := driver_infrastructure.NewRoundRobinHostSelector()
+		selector := driver_infrastructure.GetRoundRobinHostSelector()
 		props := map[string]string{}
 
 		host, err := selector.GetHost(hostsList123, host_info_util.READER, props)
@@ -312,7 +305,7 @@ func TestRoundRobinHostSelector(t *testing.T) {
 	})
 
 	t.Run("test getHost all hosts changed", func(t *testing.T) {
-		selector := driver_infrastructure.NewRoundRobinHostSelector()
+		selector := driver_infrastructure.GetRoundRobinHostSelector()
 		props := map[string]string{}
 
 		host, err := selector.GetHost(hostsList14, host_info_util.READER, props)
