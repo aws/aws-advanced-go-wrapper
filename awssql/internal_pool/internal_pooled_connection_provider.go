@@ -38,7 +38,7 @@ type InternalPooledConnectionProvider struct {
 	poolExpirationDuration time.Duration
 }
 
-var defaultPoolTimeout time.Duration = time.Duration(30) * time.Minute
+var defaultPoolTimeout = time.Duration(30) * time.Minute
 
 func NewInternalPooledConnectionProvider(internalPoolOptions *InternalPoolConfig,
 	poolExpirationDuration time.Duration) *InternalPooledConnectionProvider {
@@ -57,7 +57,7 @@ func NewInternalPooledConnectionProviderWithPoolKeyFunc(internalPoolOptions *Int
 		&driver_infrastructure.WeightedRandomHostSelector{}
 
 	var disposalFunc utils.DisposalFunc[*InternalConnPool] = func(pool *InternalConnPool) bool {
-		pool.Close()
+		_ = pool.Close()
 		return true
 	}
 	if poolExpirationDuration == 0 {
@@ -71,7 +71,7 @@ func NewInternalPooledConnectionProviderWithPoolKeyFunc(internalPoolOptions *Int
 		poolExpirationDuration}
 }
 
-func (p *InternalPooledConnectionProvider) AcceptsUrl(hostInfo host_info_util.HostInfo, props map[string]string) bool {
+func (p *InternalPooledConnectionProvider) AcceptsUrl(hostInfo host_info_util.HostInfo, _ map[string]string) bool {
 	urlType := utils.IdentifyRdsUrlType(hostInfo.Host)
 	return urlType.IsRds
 }
@@ -127,12 +127,12 @@ func (p *InternalPooledConnectionProvider) getPoolKey(hostInfo *host_info_util.H
 		return p.poolKeyFunc(hostInfo, props)
 	}
 
-	user := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.USER)
+	user := props[property_util.USER.Name]
 
 	if user != "" {
 		return user
 	}
-	return property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.DB_USER)
+	return props[property_util.DB_USER.Name]
 }
 
 func (p *InternalPooledConnectionProvider) ReleaseResources() {

@@ -43,7 +43,7 @@ type OktaAuthPluginFactory struct{}
 
 func (o OktaAuthPluginFactory) GetInstance(
 	pluginService driver_infrastructure.PluginService,
-	props map[string]string,
+	_ *utils.RWMap[string],
 ) (driver_infrastructure.ConnectionPlugin, error) {
 	providerFactory := NewOktaCredentialsProviderFactory(auth_helpers.GetBasicHttpClient, auth_helpers.NewAwsStsClient, pluginService)
 
@@ -94,25 +94,25 @@ func (o *OktaAuthPlugin) GetSubscribedMethods() []string {
 
 func (o *OktaAuthPlugin) Connect(
 	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
-	isInitialConnection bool,
+	props *utils.RWMap[string],
+	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	return o.connectInternal(hostInfo, props, connectFunc)
 }
 
 func (o *OktaAuthPlugin) ForceConnect(
 	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
-	isInitialConnection bool,
+	props *utils.RWMap[string],
+	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	return o.connectInternal(hostInfo, props, connectFunc)
 }
 
 func (o *OktaAuthPlugin) connectInternal(
 	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
+	props *utils.RWMap[string],
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-	utils.CheckIdpCredentialsWithFallback(property_util.IDP_USERNAME, property_util.IDP_PASSWORD, props)
+	property_util.CheckIdpCredentialsWithFallback(property_util.IDP_USERNAME, property_util.IDP_PASSWORD, props)
 
 	err := auth_helpers.ValidateAuthParams("okta",
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.DB_USER),
@@ -145,7 +145,7 @@ func (o *OktaAuthPlugin) connectInternal(
 		region)
 
 	token, isCachedToken := OktaTokenCache.Get(cacheKey)
-	propsCopy := utils.CreateMapCopy(props)
+	propsCopy := utils.NewRWMapFromCopy(props)
 
 	if isCachedToken {
 		slog.Debug(error_util.GetMessage("AuthenticationToken.useCachedToken"))
@@ -174,7 +174,7 @@ func (o *OktaAuthPlugin) connectInternal(
 }
 
 func (o *OktaAuthPlugin) updateAuthenticationToken(
-	props map[string]string,
+	props *utils.RWMap[string],
 	region region_util.Region,
 	cacheKey string,
 	host string,

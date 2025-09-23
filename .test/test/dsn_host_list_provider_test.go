@@ -23,7 +23,7 @@ import (
 	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
@@ -35,7 +35,7 @@ func TestDsnHostListProvider_Refresh_Success(t *testing.T) {
 	mockHostListService := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
 	// Construct DSN string with host
 	dsn := "postgresql://127.0.0.1:5432/db"
-	props, _ := utils.ParseDsn(dsn)
+	props, _ := property_util.ParseDsn(dsn)
 
 	provider := driver_infrastructure.NewDsnHostListProvider(props, mockHostListService)
 
@@ -56,7 +56,7 @@ func TestDsnHostListProvider_ForceRefresh_UsesInit(t *testing.T) {
 	mockHostListService := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
 
 	dsn := "postgresql://127.0.0.1:5432/db"
-	props, _ := utils.ParseDsn(dsn)
+	props, _ := property_util.ParseDsn(dsn)
 
 	provider := driver_infrastructure.NewDsnHostListProvider(props, mockHostListService)
 
@@ -76,7 +76,7 @@ func TestDsnHostListProvider_CreateHost_BuildsCorrectly(t *testing.T) {
 
 	mockHostListService.EXPECT().GetDialect().Return(driver_infrastructure.DatabaseDialect(&driver_infrastructure.PgDatabaseDialect{})).Times(2)
 
-	props, _ := utils.ParseDsn("postgresql://127.0.0.1:5432/db")
+	props, _ := property_util.ParseDsn("postgresql://127.0.0.1:5432/db")
 
 	provider := driver_infrastructure.NewDsnHostListProvider(props, mockHostListService)
 

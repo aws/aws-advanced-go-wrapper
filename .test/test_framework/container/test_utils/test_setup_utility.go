@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 func GetPropsForProxy(env *TestEnvironment, host, plugins string, timeout int) map[string]string {
@@ -32,11 +31,11 @@ func GetPropsForProxy(env *TestEnvironment, host, plugins string, timeout int) m
 	switch env.Info().Request.Engine {
 	case PG:
 		timeoutParam = "connect_timeout"
-		driverProtocol = utils.PGX_DRIVER_PROTOCOL
+		driverProtocol = property_util.PGX_DRIVER_PROTOCOL
 	case MYSQL:
 		timeoutParam = "readTimeout"
 		timeoutStr += "s"
-		driverProtocol = utils.MYSQL_DRIVER_PROTOCOL
+		driverProtocol = property_util.MYSQL_DRIVER_PROTOCOL
 	}
 
 	return map[string]string{

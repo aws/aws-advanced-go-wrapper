@@ -28,6 +28,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	federated_auth "github.com/aws/aws-advanced-go-wrapper/federated-auth"
 	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
@@ -46,7 +47,7 @@ var federatedAuthHostInfo2, _ = host_info_util.NewHostInfoBuilder().SetHost("loc
 var mockIamTokenUtility = &MockIamTokenUtility{}
 var credentialsProviderFactory = &MockCredentialsProviderFactory{}
 
-func setup(props map[string]string) *federated_auth.FederatedAuthPlugin {
+func setup(props *utils.RWMap[string]) *federated_auth.FederatedAuthPlugin {
 	mockIamTokenUtility.Reset()
 	credentialsProviderFactory.getAwsCredentialsProviderError = nil
 	federated_auth.TokenCache.Clear()
@@ -60,18 +61,18 @@ func setup(props map[string]string) *federated_auth.FederatedAuthPlugin {
 }
 
 func TestFederatedAuthCachedToken(t *testing.T) {
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-		property_util.IDP_USERNAME.Name:    "username",
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+	)
 
-	var resultProps map[string]string
-	connectFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -81,27 +82,27 @@ func TestFederatedAuthCachedToken(t *testing.T) {
 	federated_auth.TokenCache.Put(key, federatedAuthTestToken, time.Millisecond*300000)
 	_, _ = plugin.Connect(federatedAuthHostInfo1, props, true, connectFunc)
 
-	assert.Equal(t, federatedAuthDbUser, resultProps[property_util.USER.Name])
-	assert.Equal(t, federatedAuthTestToken, resultProps[property_util.PASSWORD.Name])
+	assert.Equal(t, federatedAuthDbUser, property_util.USER.Get(resultProps))
+	assert.Equal(t, federatedAuthTestToken, property_util.PASSWORD.Get(resultProps))
 }
 
 func TestFederatedAuthConnectWithRetry(t *testing.T) {
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-		property_util.IDP_USERNAME.Name:    "username",
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+	)
 
 	key := "us-east-2:pg.testdb.us-east-2.rds.amazonaws.com:1234:iamUser"
 	plugin := setup(props)
 	federated_auth.TokenCache.Put(key, "cachedToken", time.Minute)
 	connAttempts := 0
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		connAttempts++
 		cachedToken, ok := federated_auth.TokenCache.Get(key)
@@ -116,29 +117,29 @@ func TestFederatedAuthConnectWithRetry(t *testing.T) {
 	_, err := plugin.Connect(federatedAuthHostInfo1, props, true, mockConnFunc)
 
 	assert.NoError(t, err)
-	assert.Equal(t, federatedAuthDbUser, resultProps[property_util.USER.Name])
-	assert.Equal(t, federatedAuthTestToken, resultProps[property_util.PASSWORD.Name])
+	assert.Equal(t, federatedAuthDbUser, property_util.USER.Get(resultProps))
+	assert.Equal(t, federatedAuthTestToken, property_util.PASSWORD.Get(resultProps))
 	assert.Equal(t, 1, federated_auth.TokenCache.Size())
 	assert.Equal(t, 2, connAttempts)
 }
 
 func TestFederatedAuthDoesNotRetryConnect(t *testing.T) {
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-		property_util.IDP_USERNAME.Name:    "username",
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+	)
 
 	key := "us-east-2:pg.testdb.us-east-2.rds.amazonaws.com:1234:iamUser"
 	plugin := setup(props)
 	testErr := errors.New("test")
 	connAttempts := 0
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		connAttempts++
 		cachedPassword, ok := federated_auth.TokenCache.Get(key)
@@ -154,8 +155,8 @@ func TestFederatedAuthDoesNotRetryConnect(t *testing.T) {
 	// Should only generate a new token once, if it fails does not retry.
 	require.Error(t, err)
 	assert.Equal(t, pgx_driver.AccessErrors[0], err.Error())
-	assert.Equal(t, federatedAuthDbUser, resultProps[property_util.USER.Name])
-	assert.Equal(t, federatedAuthTestToken, resultProps[property_util.PASSWORD.Name])
+	assert.Equal(t, federatedAuthDbUser, property_util.USER.Get(resultProps))
+	assert.Equal(t, federatedAuthTestToken, property_util.PASSWORD.Get(resultProps))
 	assert.Equal(t, 1, federated_auth.TokenCache.Size())
 	assert.Equal(t, 1, connAttempts)
 
@@ -165,25 +166,25 @@ func TestFederatedAuthDoesNotRetryConnect(t *testing.T) {
 
 	// Should not retry if the error is not a login error.
 	assert.NotEqual(t, testErr, err)
-	assert.Equal(t, "oldPassword", resultProps[property_util.PASSWORD.Name])
-	assert.Equal(t, federatedAuthDbUser, resultProps[property_util.USER.Name])
+	assert.Equal(t, "oldPassword", property_util.PASSWORD.Get(resultProps))
+	assert.Equal(t, federatedAuthDbUser, property_util.USER.Get(resultProps))
 	assert.Equal(t, 1, federated_auth.TokenCache.Size())
 	assert.Equal(t, 1, connAttempts)
 }
 
 func TestFederatedAuthExpiredCachedToken(t *testing.T) {
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-		property_util.IDP_USERNAME.Name:    "username",
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+	)
 
-	var resultProps map[string]string
-	connectFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -193,24 +194,24 @@ func TestFederatedAuthExpiredCachedToken(t *testing.T) {
 	federated_auth.TokenCache.Put(key, federatedAuthTestToken, time.Nanosecond)
 	_, _ = plugin.Connect(federatedAuthHostInfo1, props, true, connectFunc)
 
-	assert.Equal(t, federatedAuthDbUser, resultProps[property_util.USER.Name])
-	assert.Equal(t, federatedAuthTestToken, resultProps[property_util.PASSWORD.Name])
+	assert.Equal(t, federatedAuthDbUser, property_util.USER.Get(resultProps))
+	assert.Equal(t, federatedAuthTestToken, property_util.PASSWORD.Get(resultProps))
 	assert.Equal(t, 1, mockIamTokenUtility.GenerateAuthenticationTokenCallCounter)
 }
 
 func TestFederatedAuthNoCachedToken(t *testing.T) {
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-		property_util.IDP_USERNAME.Name:    "username",
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+	)
 
-	var resultProps map[string]string
-	connectFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -218,8 +219,8 @@ func TestFederatedAuthNoCachedToken(t *testing.T) {
 	plugin := setup(props)
 	_, _ = plugin.Connect(federatedAuthHostInfo1, props, true, connectFunc)
 
-	assert.Equal(t, federatedAuthDbUser, resultProps[property_util.USER.Name])
-	assert.Equal(t, federatedAuthTestToken, resultProps[property_util.PASSWORD.Name])
+	assert.Equal(t, federatedAuthDbUser, property_util.USER.Get(resultProps))
+	assert.Equal(t, federatedAuthTestToken, property_util.PASSWORD.Get(resultProps))
 	assert.Equal(t, 1, mockIamTokenUtility.GenerateAuthenticationTokenCallCounter)
 }
 
@@ -227,21 +228,21 @@ func TestFederatedAuthSpecifiedIamHostPortRegion(t *testing.T) {
 	expectedHost := "pg.testdb.us-west-2.rds.amazonaws.com"
 	expectedPort := "9876"
 	expectedRegion := "us-west-2"
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name:  "postgresql",
-		property_util.DB_USER.Name:          federatedAuthDbUser,
-		property_util.IDP_USERNAME.Name:     "username",
-		property_util.IDP_PASSWORD.Name:     "password",
-		property_util.IDP_ENDPOINT.Name:     "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:     "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:      "iamIdpArn",
-		property_util.IAM_HOST.Name:         expectedHost,
-		property_util.IAM_DEFAULT_PORT.Name: expectedPort,
-		property_util.IAM_REGION.Name:       expectedRegion,
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+		property_util.IAM_HOST.Name, expectedHost,
+		property_util.IAM_DEFAULT_PORT.Name, expectedPort,
+		property_util.IAM_REGION.Name, expectedRegion,
+	)
 
-	var resultProps map[string]string
-	connectFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -251,26 +252,26 @@ func TestFederatedAuthSpecifiedIamHostPortRegion(t *testing.T) {
 	federated_auth.TokenCache.Put(key, federatedAuthTestToken, time.Millisecond*300000)
 	_, _ = plugin.Connect(federatedAuthHostInfo1, props, true, connectFunc)
 
-	assert.Equal(t, federatedAuthDbUser, resultProps[property_util.USER.Name])
-	assert.Equal(t, federatedAuthTestToken, resultProps[property_util.PASSWORD.Name])
+	assert.Equal(t, federatedAuthDbUser, property_util.USER.Get(resultProps))
+	assert.Equal(t, federatedAuthTestToken, property_util.PASSWORD.Get(resultProps))
 	assert.Equal(t, 0, mockIamTokenUtility.GenerateAuthenticationTokenCallCounter)
 }
 
 func TestFederatedAuthIdpCredentialsFallback(t *testing.T) {
 	expectedUser := "expectedUser"
 	expectedPassword := "expectedPassword"
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-		property_util.USER.Name:            expectedUser,
-		property_util.PASSWORD.Name:        expectedPassword,
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+		property_util.USER.Name, expectedUser,
+		property_util.PASSWORD.Name, expectedPassword,
+	)
 
-	var resultProps map[string]string
-	connectFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -280,27 +281,27 @@ func TestFederatedAuthIdpCredentialsFallback(t *testing.T) {
 	federated_auth.TokenCache.Put(key, federatedAuthTestToken, time.Millisecond*300000)
 	_, _ = plugin.Connect(federatedAuthHostInfo1, props, true, connectFunc)
 
-	assert.Equal(t, federatedAuthDbUser, resultProps[property_util.USER.Name])
-	assert.Equal(t, federatedAuthTestToken, resultProps[property_util.PASSWORD.Name])
+	assert.Equal(t, federatedAuthDbUser, property_util.USER.Get(resultProps))
+	assert.Equal(t, federatedAuthTestToken, property_util.PASSWORD.Get(resultProps))
 	assert.Equal(t, 0, mockIamTokenUtility.GenerateAuthenticationTokenCallCounter)
-	assert.Equal(t, expectedUser, resultProps[property_util.IDP_USERNAME.Name])
-	assert.Equal(t, expectedPassword, resultProps[property_util.IDP_PASSWORD.Name])
+	assert.Equal(t, expectedUser, property_util.IDP_USERNAME.Get(resultProps))
+	assert.Equal(t, expectedPassword, property_util.IDP_PASSWORD.Get(resultProps))
 }
 
 func TestFederatedAuthUsingIamHost(t *testing.T) {
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.IDP_USERNAME.Name:    "username",
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-		property_util.IAM_HOST.Name:        federatedAuthIamHost,
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+		property_util.IAM_HOST.Name, federatedAuthIamHost,
+	)
 
-	var resultProps map[string]string
-	connectFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -308,25 +309,25 @@ func TestFederatedAuthUsingIamHost(t *testing.T) {
 	plugin := setup(props)
 	_, _ = plugin.Connect(federatedAuthHostInfo1, props, true, connectFunc)
 
-	assert.Equal(t, federatedAuthDbUser, resultProps[property_util.USER.Name])
-	assert.Equal(t, federatedAuthTestToken, resultProps[property_util.PASSWORD.Name])
+	assert.Equal(t, federatedAuthDbUser, property_util.USER.Get(resultProps))
+	assert.Equal(t, federatedAuthTestToken, property_util.PASSWORD.Get(resultProps))
 	assert.Equal(t, 1, mockIamTokenUtility.GenerateAuthenticationTokenCallCounter)
 	assert.Equal(t, federatedAuthIamHost, mockIamTokenUtility.CapturedHost)
 }
 
 func TestFederatedAuthInvalidRegionWithoutHost(t *testing.T) {
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.IAM_REGION.Name:      "invalid-region",
-		property_util.IDP_USERNAME.Name:    "username",
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.IAM_REGION.Name, "invalid-region",
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+	)
 
-	connectFunc := func(props map[string]string) (driver.Conn, error) {
+	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		return &MockConn{throwError: true}, nil
 	}
 
@@ -335,16 +336,16 @@ func TestFederatedAuthInvalidRegionWithoutHost(t *testing.T) {
 	assert.Nil(t, conn)
 	assert.Equal(t, error_util.NewGenericAwsWrapperError(error_util.GetMessage("FederatedAuthPlugin.unableToDetermineRegion", property_util.IAM_REGION.Name)), err)
 
-	props = map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.IAM_REGION.Name:      "",
-		property_util.IDP_USERNAME.Name:    "username",
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-	}
+	props = MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.IAM_REGION.Name, "",
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+	)
 
 	plugin = setup(props)
 	conn, err = plugin.Connect(federatedAuthHostInfo2, props, true, connectFunc)
@@ -353,17 +354,17 @@ func TestFederatedAuthInvalidRegionWithoutHost(t *testing.T) {
 }
 
 func TestFederatedAuthGenerateTokenFailure(t *testing.T) {
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.IDP_USERNAME.Name:    "username",
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+	)
 
-	connectFunc := func(props map[string]string) (driver.Conn, error) {
+	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		return &MockConn{throwError: true}, nil
 	}
 
@@ -376,17 +377,17 @@ func TestFederatedAuthGenerateTokenFailure(t *testing.T) {
 }
 
 func TestFederatedAuthGetAwsCredentialsProviderError(t *testing.T) {
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.IDP_USERNAME.Name:    "username",
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+	)
 
-	connectFunc := func(props map[string]string) (driver.Conn, error) {
+	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		return &MockConn{throwError: true}, nil
 	}
 
@@ -400,15 +401,15 @@ func TestFederatedAuthGetAwsCredentialsProviderError(t *testing.T) {
 
 func TestFederatedMissingParams(t *testing.T) {
 	missingParams := []string{property_util.IDP_USERNAME.Name, property_util.IDP_ENDPOINT.Name}
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+	)
 
-	connectFunc := func(props map[string]string) (driver.Conn, error) {
+	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		return &MockConn{throwError: true}, nil
 	}
 

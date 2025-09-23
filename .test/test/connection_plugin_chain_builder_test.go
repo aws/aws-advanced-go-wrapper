@@ -47,7 +47,7 @@ func TestSortPlugins(t *testing.T) {
 	mockPluginManager.EXPECT().GetConnectionProviderManager().Return(driver_infrastructure.ConnectionProviderManager{}).AnyTimes()
 
 	builder := &awsDriver.ConnectionPluginChainBuilder{}
-	props := map[string]string{property_util.PLUGINS.Name: "iam,efm,failover"}
+	props := MakeMapFromKeysAndVals(property_util.PLUGINS.Name, "iam,efm,failover")
 	availablePlugins := map[string]driver_infrastructure.ConnectionPluginFactory{
 		"failover":      plugins.NewFailoverPluginFactory(),
 		"efm":           efm.NewHostMonitoringPluginFactory(),
@@ -55,14 +55,14 @@ func TestSortPlugins(t *testing.T) {
 		"executionTime": plugins.NewExecutionTimePluginFactory(),
 		"iam":           iam.NewIamAuthPluginFactory(),
 	}
-	plugins, err := builder.GetPlugins(mockPluginService, mockPluginManager, props, availablePlugins)
+	pluginList, err := builder.GetPlugins(mockPluginService, mockPluginManager, props, availablePlugins)
 	require.Nil(t, err)
 
-	assert.Equal(t, 4, len(plugins), "Expected 4 plugins.")
-	assert.Equal(t, "*plugins.FailoverPlugin", reflect.TypeOf(plugins[0]).String())
-	assert.Equal(t, "*efm.HostMonitorConnectionPlugin", reflect.TypeOf(plugins[1]).String())
-	assert.Equal(t, "*iam.IamAuthPlugin", reflect.TypeOf(plugins[2]).String())
-	assert.Equal(t, "*plugins.DefaultPlugin", reflect.TypeOf(plugins[3]).String())
+	assert.Equal(t, 4, len(pluginList), "Expected 4 plugins.")
+	assert.Equal(t, "*plugins.FailoverPlugin", reflect.TypeOf(pluginList[0]).String())
+	assert.Equal(t, "*efm.HostMonitorConnectionPlugin", reflect.TypeOf(pluginList[1]).String())
+	assert.Equal(t, "*iam.IamAuthPlugin", reflect.TypeOf(pluginList[2]).String())
+	assert.Equal(t, "*plugins.DefaultPlugin", reflect.TypeOf(pluginList[3]).String())
 }
 
 func TestPreservePluginOrder(t *testing.T) {
@@ -78,7 +78,7 @@ func TestPreservePluginOrder(t *testing.T) {
 	mockPluginManager.EXPECT().GetConnectionProviderManager().Return(driver_infrastructure.ConnectionProviderManager{}).AnyTimes()
 
 	builder := &awsDriver.ConnectionPluginChainBuilder{}
-	props := map[string]string{property_util.PLUGINS.Name: "iam,efm,failover", property_util.AUTO_SORT_PLUGIN_ORDER.Name: "false"}
+	props := MakeMapFromKeysAndVals(property_util.PLUGINS.Name, "iam,efm,failover", property_util.AUTO_SORT_PLUGIN_ORDER.Name, "false")
 	availablePlugins := map[string]driver_infrastructure.ConnectionPluginFactory{
 		"failover":      plugins.NewFailoverPluginFactory(),
 		"efm":           efm.NewHostMonitoringPluginFactory(),
@@ -86,14 +86,14 @@ func TestPreservePluginOrder(t *testing.T) {
 		"executionTime": plugins.NewExecutionTimePluginFactory(),
 		"iam":           iam.NewIamAuthPluginFactory(),
 	}
-	plugins, err := builder.GetPlugins(mockPluginService, mockPluginManager, props, availablePlugins)
+	pluginList, err := builder.GetPlugins(mockPluginService, mockPluginManager, props, availablePlugins)
 	require.Nil(t, err)
 
-	assert.Equal(t, 4, len(plugins), "Expected 4 plugins.")
-	assert.Equal(t, "*iam.IamAuthPlugin", reflect.TypeOf(plugins[0]).String())
-	assert.Equal(t, "*efm.HostMonitorConnectionPlugin", reflect.TypeOf(plugins[1]).String())
-	assert.Equal(t, "*plugins.FailoverPlugin", reflect.TypeOf(plugins[2]).String())
-	assert.Equal(t, "*plugins.DefaultPlugin", reflect.TypeOf(plugins[3]).String())
+	assert.Equal(t, 4, len(pluginList), "Expected 4 plugins.")
+	assert.Equal(t, "*iam.IamAuthPlugin", reflect.TypeOf(pluginList[0]).String())
+	assert.Equal(t, "*efm.HostMonitorConnectionPlugin", reflect.TypeOf(pluginList[1]).String())
+	assert.Equal(t, "*plugins.FailoverPlugin", reflect.TypeOf(pluginList[2]).String())
+	assert.Equal(t, "*plugins.DefaultPlugin", reflect.TypeOf(pluginList[3]).String())
 }
 
 func TestSortAllPlugins(t *testing.T) {
@@ -109,7 +109,7 @@ func TestSortAllPlugins(t *testing.T) {
 	mockPluginManager.EXPECT().GetConnectionProviderManager().Return(driver_infrastructure.ConnectionProviderManager{}).AnyTimes()
 
 	builder := &awsDriver.ConnectionPluginChainBuilder{}
-	props := map[string]string{property_util.PLUGINS.Name: "iam,executionTime,limitless,efm,failover", property_util.LIMITLESS_USE_SHARD_GROUP_URL.Name: "false"}
+	props := MakeMapFromKeysAndVals(property_util.PLUGINS.Name, "iam,executionTime,limitless,efm,failover", property_util.LIMITLESS_USE_SHARD_GROUP_URL.Name, "false")
 	availablePlugins := map[string]driver_infrastructure.ConnectionPluginFactory{
 		"failover":      plugins.NewFailoverPluginFactory(),
 		"efm":           efm.NewHostMonitoringPluginFactory(),
@@ -117,16 +117,16 @@ func TestSortAllPlugins(t *testing.T) {
 		"executionTime": plugins.NewExecutionTimePluginFactory(),
 		"iam":           iam.NewIamAuthPluginFactory(),
 	}
-	plugins, err := builder.GetPlugins(mockPluginService, mockPluginManager, props, availablePlugins)
+	pluginList, err := builder.GetPlugins(mockPluginService, mockPluginManager, props, availablePlugins)
 	require.Nil(t, err)
 
-	assert.Equal(t, 6, len(plugins), "Expected 6 plugins.")
-	assert.Equal(t, "*plugins.ExecutionTimePlugin", reflect.TypeOf(plugins[0]).String())
-	assert.Equal(t, "*limitless.LimitlessPlugin", reflect.TypeOf(plugins[1]).String())
-	assert.Equal(t, "*plugins.FailoverPlugin", reflect.TypeOf(plugins[2]).String())
-	assert.Equal(t, "*efm.HostMonitorConnectionPlugin", reflect.TypeOf(plugins[3]).String())
-	assert.Equal(t, "*iam.IamAuthPlugin", reflect.TypeOf(plugins[4]).String())
-	assert.Equal(t, "*plugins.DefaultPlugin", reflect.TypeOf(plugins[5]).String())
+	assert.Equal(t, 6, len(pluginList), "Expected 6 plugins.")
+	assert.Equal(t, "*plugins.ExecutionTimePlugin", reflect.TypeOf(pluginList[0]).String())
+	assert.Equal(t, "*limitless.LimitlessPlugin", reflect.TypeOf(pluginList[1]).String())
+	assert.Equal(t, "*plugins.FailoverPlugin", reflect.TypeOf(pluginList[2]).String())
+	assert.Equal(t, "*efm.HostMonitorConnectionPlugin", reflect.TypeOf(pluginList[3]).String())
+	assert.Equal(t, "*iam.IamAuthPlugin", reflect.TypeOf(pluginList[4]).String())
+	assert.Equal(t, "*plugins.DefaultPlugin", reflect.TypeOf(pluginList[5]).String())
 }
 
 func TestNoPlugins(t *testing.T) {
@@ -142,7 +142,7 @@ func TestNoPlugins(t *testing.T) {
 	mockPluginManager.EXPECT().GetConnectionProviderManager().Return(driver_infrastructure.ConnectionProviderManager{}).AnyTimes()
 
 	builder := &awsDriver.ConnectionPluginChainBuilder{}
-	props := map[string]string{property_util.PLUGINS.Name: "none"}
+	props := MakeMapFromKeysAndVals(property_util.PLUGINS.Name, "none")
 	availablePlugins := map[string]driver_infrastructure.ConnectionPluginFactory{
 		"failover":      plugins.NewFailoverPluginFactory(),
 		"efm":           efm.NewHostMonitoringPluginFactory(),
@@ -150,9 +150,9 @@ func TestNoPlugins(t *testing.T) {
 		"executionTime": plugins.NewExecutionTimePluginFactory(),
 		"iam":           iam.NewIamAuthPluginFactory(),
 	}
-	plugins, err := builder.GetPlugins(mockPluginService, mockPluginManager, props, availablePlugins)
+	pluginList, err := builder.GetPlugins(mockPluginService, mockPluginManager, props, availablePlugins)
 	require.Nil(t, err)
 
-	assert.Equal(t, 1, len(plugins), "Expected 1 plugin.")
-	assert.Equal(t, "*plugins.DefaultPlugin", reflect.TypeOf(plugins[0]).String())
+	assert.Equal(t, 1, len(pluginList), "Expected 1 plugin.")
+	assert.Equal(t, "*plugins.DefaultPlugin", reflect.TypeOf(pluginList[0]).String())
 }

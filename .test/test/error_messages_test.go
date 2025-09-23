@@ -23,18 +23,17 @@ import (
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-
 	"github.com/stretchr/testify/assert"
 )
 
 func TestValidateNumericalProps(t *testing.T) {
-	props := map[string]string{
-		property_util.PORT.Name:                             "1234",
-		property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name: "-30",
-		property_util.IAM_EXPIRATION_SEC.Name:               "-1",
-		property_util.FAILURE_DETECTION_INTERVAL_MS.Name:    "-10",
-		property_util.HTTP_TIMEOUT_MS.Name:                  "0",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.PORT.Name, "1234",
+		property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name, "-30",
+		property_util.IAM_EXPIRATION_SEC.Name, "-1",
+		property_util.FAILURE_DETECTION_INTERVAL_MS.Name, "-10",
+		property_util.HTTP_TIMEOUT_MS.Name, "0",
+	)
 
 	// When a positive int value is required, throws error if value is negative.
 	val, err := property_util.GetPositiveIntProperty(props, property_util.FAILURE_DETECTION_INTERVAL_MS)
@@ -54,7 +53,7 @@ func TestValidateNumericalProps(t *testing.T) {
 	assert.Equal(t, 1234, val)
 	assert.Equal(t, 0, len(handler.records))
 
-	val = property_util.GetHttpTimeoutValue(map[string]string{property_util.HTTP_TIMEOUT_MS.Name: "10"})
+	val = property_util.GetHttpTimeoutValue(MakeMapFromKeysAndVals(property_util.HTTP_TIMEOUT_MS.Name, "10"))
 	assert.Equal(t, 10, val)
 	assert.Equal(t, 0, len(handler.records))
 
@@ -86,15 +85,15 @@ func (h *TestHandler) Enabled(context.Context, slog.Level) bool {
 	return true
 }
 
-func (h *TestHandler) Handle(ctx context.Context, r slog.Record) error {
+func (h *TestHandler) Handle(_ context.Context, r slog.Record) error {
 	h.records = append(h.records, r)
 	return nil
 }
 
-func (h *TestHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+func (h *TestHandler) WithAttrs(_ []slog.Attr) slog.Handler {
 	return h
 }
 
-func (h *TestHandler) WithGroup(name string) slog.Handler {
+func (h *TestHandler) WithGroup(_ string) slog.Handler {
 	return h
 }

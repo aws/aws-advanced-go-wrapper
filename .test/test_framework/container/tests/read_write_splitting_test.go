@@ -641,8 +641,8 @@ func TestReadWriteSplitting_FailoverToNewReader(t *testing.T) {
 		setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint,
 		"readWriteSplitting,efm,failover",
 		5)
-	property_util.FAILOVER_MODE.Set(props, "reader-or-writer")
-	property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Set(props, "5000")
+	props[property_util.FAILOVER_MODE.Name] = "reader-or-writer"
+	props[property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name] = "5000"
 	dsn := test_utils.GetDsn(setup.env, props)
 
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
@@ -712,7 +712,7 @@ func TestReadWriteSplitting_FailoverReaderToWriter(t *testing.T) {
 		setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint,
 		"readWriteSplitting,efm,failover",
 		2)
-	property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Set(props, "5000")
+	props[property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name] = "5000"
 	dsn := test_utils.GetDsn(setup.env, props)
 
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)

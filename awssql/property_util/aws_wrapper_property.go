@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 const DEFAULT_PLUGINS = "failover,efm"
@@ -54,19 +55,22 @@ type AwsWrapperProperty struct {
 	wrapperPropertyType WrapperPropertyType
 }
 
-func (prop *AwsWrapperProperty) Get(props map[string]string) string {
-	var result, ok = props[prop.Name]
+func (prop *AwsWrapperProperty) Get(props *utils.RWMap[string]) string {
+	if props == nil {
+		return prop.defaultValue
+	}
+	var result, ok = props.Get(prop.Name)
 	if !ok {
 		return prop.defaultValue
 	}
 	return result
 }
 
-func (prop *AwsWrapperProperty) Set(props map[string]string, val string) {
-	props[prop.Name] = val
+func (prop *AwsWrapperProperty) Set(props *utils.RWMap[string], val string) {
+	props.Put(prop.Name, val)
 }
 
-func GetVerifiedWrapperPropertyValue[T any](props map[string]string, property AwsWrapperProperty) T {
+func GetVerifiedWrapperPropertyValue[T any](props *utils.RWMap[string], property AwsWrapperProperty) T {
 	propValue := property.Get(props)
 	var parsedValue any
 	var err error
@@ -96,7 +100,7 @@ func GetVerifiedWrapperPropertyValue[T any](props map[string]string, property Aw
 	return result
 }
 
-func GetPositiveIntProperty(props map[string]string, property AwsWrapperProperty) (int, error) {
+func GetPositiveIntProperty(props *utils.RWMap[string], property AwsWrapperProperty) (int, error) {
 	val := GetVerifiedWrapperPropertyValue[int](props, property)
 	if val < 0 {
 		return 0, error_util.NewGenericAwsWrapperError(error_util.GetMessage("AwsWrapperProperty.requiresNonNegativeIntValue", property.Name))
@@ -104,7 +108,7 @@ func GetPositiveIntProperty(props map[string]string, property AwsWrapperProperty
 	return val, nil
 }
 
-func GetHttpTimeoutValue(props map[string]string) int {
+func GetHttpTimeoutValue(props *utils.RWMap[string]) int {
 	val := GetVerifiedWrapperPropertyValue[int](props, HTTP_TIMEOUT_MS)
 	if val <= 0 {
 		slog.Error(error_util.GetMessage("AwsWrapperProperty.noTimeoutValue", HTTP_TIMEOUT_MS.Name, val))
@@ -112,7 +116,7 @@ func GetHttpTimeoutValue(props map[string]string) int {
 	return val
 }
 
-func GetExpirationValue(props map[string]string, property AwsWrapperProperty) int {
+func GetExpirationValue(props *utils.RWMap[string], property AwsWrapperProperty) int {
 	val := GetVerifiedWrapperPropertyValue[int](props, property)
 	if val <= 0 {
 		slog.Error(error_util.GetMessage("AwsWrapperProperty.noExpirationValue", property.Name, val))
@@ -120,7 +124,7 @@ func GetExpirationValue(props map[string]string, property AwsWrapperProperty) in
 	return val
 }
 
-func GetRefreshRateValue(props map[string]string, property AwsWrapperProperty) int {
+func GetRefreshRateValue(props *utils.RWMap[string], property AwsWrapperProperty) int {
 	val := GetVerifiedWrapperPropertyValue[int](props, property)
 	if val <= 0 {
 		slog.Error(error_util.GetMessage("AwsWrapperProperty.noRefreshRateValue", property.Name, val))
@@ -421,7 +425,7 @@ var SECRETS_MANAGER_SECRET_ID = AwsWrapperProperty{
 var SECRETS_MANAGER_REGION = AwsWrapperProperty{
 	Name:                "secretsManagerRegion",
 	description:         "The region of the secret to retrieve.",
-	defaultValue:        "us-east-1",
+	defaultValue:        "",
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 

@@ -45,7 +45,7 @@ func (b *BlueGreenPluginFactory) ClearCaches() {
 	providers.Clear()
 }
 
-func (b *BlueGreenPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService, props map[string]string) (driver_infrastructure.ConnectionPlugin, error) {
+func (b *BlueGreenPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string]) (driver_infrastructure.ConnectionPlugin, error) {
 	return NewBlueGreenPlugin(pluginService, props)
 }
 
@@ -59,14 +59,14 @@ type BlueGreenPlugin struct {
 	bgProviderSupplier BlueGreenProviderSupplier
 	isIamInUse         bool
 	pluginService      driver_infrastructure.PluginService
-	props              map[string]string
+	props              *utils.RWMap[string]
 	startTime          atomic.Int64
 	endTime            atomic.Int64
 	plugins.BaseConnectionPlugin
 }
 
 func NewBlueGreenPlugin(pluginService driver_infrastructure.PluginService,
-	props map[string]string) (driver_infrastructure.ConnectionPlugin, error) {
+	props *utils.RWMap[string]) (driver_infrastructure.ConnectionPlugin, error) {
 	bgId := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.BGD_ID)
 	if bgId == "" {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("BlueGreenDeployment.bgIdRequired"))
@@ -89,7 +89,7 @@ func (b *BlueGreenPlugin) GetSubscribedMethods() []string {
 
 func (b *BlueGreenPlugin) Connect(
 	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
+	props *utils.RWMap[string],
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (conn driver.Conn, err error) {
 	b.resetRoutingTimeNano()

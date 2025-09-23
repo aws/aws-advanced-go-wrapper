@@ -40,9 +40,9 @@ func TestNewReadWriteSplittingPlugin(t *testing.T) {
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 
-	props := map[string]string{
-		"someKey": "someVal",
-	}
+	props := MakeMapFromKeysAndVals(
+		"someKey", "someVal",
+	)
 
 	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, props)
 
@@ -61,7 +61,7 @@ func TestReadWriteSplittingPluginFactory_GetInstance(t *testing.T) {
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 	factory := read_write_splitting.NewReadWriteSplittingPluginFactory()
 
-	props := map[string]string{"test": "value"}
+	props := MakeMapFromKeysAndVals("test", "value")
 	instance, err := factory.GetInstance(mockPluginService, props)
 
 	assert.NoError(t, err)
@@ -110,7 +110,7 @@ func TestReadWriteSplittingPlugin_Connect_UnsupportedStrategy(t *testing.T) {
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 	mockPluginService.EXPECT().AcceptsStrategy(gomock.Any()).Return(false)
 
-	props := make(map[string]string)
+	props := emptyProps
 	property_util.READER_HOST_SELECTOR_STRATEGY.Set(props, strategy)
 
 	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, props)
@@ -141,7 +141,7 @@ func TestReadWriteSplittingPlugin_Connect_StaticProvider(t *testing.T) {
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 	resultConn := mockConn
 
-	conn, err := plugin.Connect(nil, nil, true, func(_ map[string]string) (driver.Conn, error) {
+	conn, err := plugin.Connect(nil, nil, true, func(_ *utils.RWMap[string]) (driver.Conn, error) {
 		return resultConn, nil
 	})
 
@@ -165,7 +165,7 @@ func TestReadWriteSplittingPlugin_Connect_UnknownHostRole(t *testing.T) {
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 	resultConn := mockConn
 
-	conn, err := plugin.Connect(nil, nil, true, func(_ map[string]string) (driver.Conn, error) {
+	conn, err := plugin.Connect(nil, nil, true, func(_ *utils.RWMap[string]) (driver.Conn, error) {
 		return resultConn, nil
 	})
 
@@ -193,7 +193,7 @@ func TestReadWriteSplittingPlugin_Connect_NilHostRole(t *testing.T) {
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 	resultConn := mockConn
 
-	conn, err := plugin.Connect(nil, nil, true, func(_ map[string]string) (driver.Conn, error) {
+	conn, err := plugin.Connect(nil, nil, true, func(_ *utils.RWMap[string]) (driver.Conn, error) {
 		return resultConn, nil
 	})
 
@@ -219,7 +219,7 @@ func TestReadWriteSplittingPlugin_Connect_SameHostRole(t *testing.T) {
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 	resultConn := mockConn
 
-	conn, err := plugin.Connect(nil, nil, true, func(_ map[string]string) (driver.Conn, error) {
+	conn, err := plugin.Connect(nil, nil, true, func(_ *utils.RWMap[string]) (driver.Conn, error) {
 		return resultConn, nil
 	})
 
@@ -246,7 +246,7 @@ func TestReadWriteSplittingPlugin_Connect_DifferentHostRole(t *testing.T) {
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 	resultConn := mockConn
 
-	conn, err := plugin.Connect(nil, nil, true, func(_ map[string]string) (driver.Conn, error) {
+	conn, err := plugin.Connect(nil, nil, true, func(_ *utils.RWMap[string]) (driver.Conn, error) {
 		return resultConn, nil
 	})
 

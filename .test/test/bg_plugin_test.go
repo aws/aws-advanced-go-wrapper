@@ -47,16 +47,16 @@ func TestBlueGreenPluginFactory_GetInstance(t *testing.T) {
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 
-	plugin, err := factory.GetInstance(mockPluginService, map[string]string{
-		property_util.BGD_ID.Name: "",
-	})
+	plugin, err := factory.GetInstance(mockPluginService, MakeMapFromKeysAndVals(
+		property_util.BGD_ID.Name, "",
+	))
 	assert.Nil(t, plugin)
 	require.NotNil(t, err)
 	assert.Equal(t, error_util.GetMessage("BlueGreenDeployment.bgIdRequired"), err.Error())
 
-	plugin, err = factory.GetInstance(mockPluginService, map[string]string{
-		property_util.BGD_ID.Name: "test-bg-id",
-	})
+	plugin, err = factory.GetInstance(mockPluginService, MakeMapFromKeysAndVals(
+		property_util.BGD_ID.Name, "test-bg-id",
+	))
 	assert.NoError(t, err)
 	assert.NotNil(t, plugin)
 	assert.IsType(t, &bg.BlueGreenPlugin{}, plugin)
@@ -67,9 +67,9 @@ func TestBlueGreenPlugin_GetSubscribedMethods(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	props := map[string]string{
-		property_util.BGD_ID.Name: "test-bg-id",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.BGD_ID.Name, "test-bg-id",
+	)
 
 	plugin, err := bg.NewBlueGreenPlugin(mockPluginService, props)
 	assert.NoError(t, err)
@@ -86,7 +86,7 @@ func TestBlueGreenPlugin_Connect(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
-	connectFunc := func(props map[string]string) (driver.Conn, error) {
+	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		return mockConn, nil
 	}
 	emptyStatus := driver_infrastructure.BlueGreenStatus{}
@@ -96,14 +96,14 @@ func TestBlueGreenPlugin_Connect(t *testing.T) {
 	connectRouting := bg.NewSubstituteConnectRouting(hostInfo.GetHostAndPort(), driver_infrastructure.SOURCE, hostInfo, nil, nil)
 	bgStatus := driver_infrastructure.NewBgStatus("test-bg-id", driver_infrastructure.CREATED, []driver_infrastructure.ConnectRouting{connectRouting},
 		nil, roleByHost, correspondingHosts)
-	props := map[string]string{
-		property_util.BGD_ID.Name: "test-bg-id",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.BGD_ID.Name, "test-bg-id",
+	)
 	defer (&bg.BlueGreenPluginFactory{}).ClearCaches()
 
 	t.Run("NoBlueGreenStatus", func(t *testing.T) {
 		mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-		mockPluginService.EXPECT().GetStatus("test-bg-id").Return(emptyStatus, false)
+		mockPluginService.EXPECT().GetBgStatus("test-bg-id").Return(emptyStatus, false)
 		mockPluginService.EXPECT().GetDialect().Return(&driver_infrastructure.MySQLDatabaseDialect{}).AnyTimes()
 
 		plugin, err := bg.NewBlueGreenPlugin(mockPluginService, props)
@@ -121,7 +121,7 @@ func TestBlueGreenPlugin_Connect(t *testing.T) {
 		plugin, err := bg.NewBlueGreenPlugin(mockPluginService, props)
 		assert.NoError(t, err)
 
-		mockPluginService.EXPECT().GetStatus("test-bg-id").Return(bgStatus, true)
+		mockPluginService.EXPECT().GetBgStatus("test-bg-id").Return(bgStatus, true)
 		mockPluginService.EXPECT().IsPluginInUse(driver_infrastructure.IAM_PLUGIN_CODE).Return(true)
 		mockPluginService.EXPECT().GetDialect().Return(&driver_infrastructure.MySQLDatabaseDialect{}).AnyTimes()
 
@@ -137,7 +137,7 @@ func TestBlueGreenPlugin_Connect(t *testing.T) {
 		plugin, err := bg.NewBlueGreenPlugin(mockPluginService, props)
 		assert.NoError(t, err)
 
-		mockPluginService.EXPECT().GetStatus("test-bg-id").Return(bgStatus, true)
+		mockPluginService.EXPECT().GetBgStatus("test-bg-id").Return(bgStatus, true)
 		mockPluginService.EXPECT().IsPluginInUse(driver_infrastructure.IAM_PLUGIN_CODE).Return(false)
 		mockPluginService.EXPECT().GetDialect().Return(&driver_infrastructure.MySQLDatabaseDialect{}).AnyTimes()
 
@@ -154,7 +154,7 @@ func TestBlueGreenPlugin_Connect(t *testing.T) {
 		plugin, err := bg.NewBlueGreenPlugin(mockPluginService, props)
 		assert.NoError(t, err)
 
-		mockPluginService.EXPECT().GetStatus("test-bg-id").Return(bgStatus, true)
+		mockPluginService.EXPECT().GetBgStatus("test-bg-id").Return(bgStatus, true)
 		mockPluginService.EXPECT().IsPluginInUse(driver_infrastructure.IAM_PLUGIN_CODE).Return(false)
 		mockPluginService.EXPECT().GetDialect().Return(&driver_infrastructure.MySQLDatabaseDialect{}).AnyTimes()
 
@@ -171,7 +171,7 @@ func TestBlueGreenPlugin_Connect(t *testing.T) {
 		plugin, err := bg.NewBlueGreenPlugin(mockPluginService, props)
 		assert.NoError(t, err)
 
-		mockPluginService.EXPECT().GetStatus("test-bg-id").Return(bgStatus, true)
+		mockPluginService.EXPECT().GetBgStatus("test-bg-id").Return(bgStatus, true)
 		mockPluginService.EXPECT().GetDialect().Return(&driver_infrastructure.MySQLDatabaseDialect{}).AnyTimes()
 		mockPluginService.EXPECT().IsPluginInUse(driver_infrastructure.IAM_PLUGIN_CODE).Return(false).AnyTimes()
 		mockPluginService.EXPECT().Connect(hostInfo, props, gomock.Any()).Return(mockConn, nil)
@@ -189,9 +189,9 @@ func TestBlueGreenPlugin_Execute(t *testing.T) {
 
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 	emptyStatus := driver_infrastructure.BlueGreenStatus{}
-	props := map[string]string{
-		property_util.BGD_ID.Name: "test-bg-id",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.BGD_ID.Name, "test-bg-id",
+	)
 	executeFunc := func() (any, any, bool, error) {
 		return "result", nil, true, nil
 	}
@@ -205,7 +205,7 @@ func TestBlueGreenPlugin_Execute(t *testing.T) {
 
 	t.Run("ClosingMethod", func(t *testing.T) {
 		mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-		mockPluginService.EXPECT().GetStatus("test-bg-id").Return(emptyStatus, false)
+		mockPluginService.EXPECT().GetBgStatus("test-bg-id").Return(emptyStatus, false)
 		mockPluginService.EXPECT().GetDialect().Return(&driver_infrastructure.MySQLDatabaseDialect{}).AnyTimes()
 		mockPluginService.EXPECT().GetCurrentHostInfo().Return(&host_info_util.HostInfo{Host: "test-host"}, nil).AnyTimes()
 
@@ -226,7 +226,7 @@ func TestBlueGreenPlugin_Execute(t *testing.T) {
 		plugin, err := bg.NewBlueGreenPlugin(mockPluginService, props)
 		assert.NoError(t, err)
 
-		mockPluginService.EXPECT().GetStatus("test-bg-id").Return(emptyStatus, false)
+		mockPluginService.EXPECT().GetBgStatus("test-bg-id").Return(emptyStatus, false)
 
 		result, result2, ok, err := plugin.Execute(mockConn, "Query", executeFunc)
 
@@ -242,7 +242,7 @@ func TestBlueGreenPlugin_Execute(t *testing.T) {
 		plugin, err := bg.NewBlueGreenPlugin(mockPluginService, props)
 		assert.NoError(t, err)
 
-		mockPluginService.EXPECT().GetStatus("test-bg-id").Return(bgStatus, true)
+		mockPluginService.EXPECT().GetBgStatus("test-bg-id").Return(bgStatus, true)
 		mockPluginService.EXPECT().GetCurrentHostInfo().Return((*host_info_util.HostInfo)(nil), errors.New("host error"))
 
 		result, result2, ok, err := plugin.Execute(mockConn, "Query", executeFunc)
@@ -259,7 +259,7 @@ func TestBlueGreenPlugin_Execute(t *testing.T) {
 		plugin, err := bg.NewBlueGreenPlugin(mockPluginService, props)
 		assert.NoError(t, err)
 
-		mockPluginService.EXPECT().GetStatus("test-bg-id").Return(bgStatus, true)
+		mockPluginService.EXPECT().GetBgStatus("test-bg-id").Return(bgStatus, true)
 		mockPluginService.EXPECT().GetCurrentHostInfo().Return(hostInfo, nil)
 		mockPluginService.EXPECT().GetDialect().Return(&driver_infrastructure.MySQLDatabaseDialect{}).AnyTimes()
 
@@ -278,7 +278,7 @@ func TestBlueGreenPlugin_Execute(t *testing.T) {
 		plugin, err := bg.NewBlueGreenPlugin(mockPluginService, props)
 		assert.NoError(t, err)
 
-		mockPluginService.EXPECT().GetStatus("test-bg-id").Return(bgStatus, true)
+		mockPluginService.EXPECT().GetBgStatus("test-bg-id").Return(bgStatus, true)
 		mockPluginService.EXPECT().GetCurrentHostInfo().Return(hostInfo, nil)
 		mockPluginService.EXPECT().GetDialect().Return(&driver_infrastructure.MySQLDatabaseDialect{}).AnyTimes()
 
@@ -310,8 +310,8 @@ func TestBlueGreenPlugin_Execute(t *testing.T) {
 		plugin, err := bg.NewBlueGreenPlugin(mockPluginService, props)
 		assert.NoError(t, err)
 
-		mockPluginService.EXPECT().GetStatus("test-bg-id").Return(bgStatusWithRouting, true).Times(2)
-		mockPluginService.EXPECT().GetStatus("test-bg-id").Return(bgStatus, true).AnyTimes()
+		mockPluginService.EXPECT().GetBgStatus("test-bg-id").Return(bgStatusWithRouting, true).Times(2)
+		mockPluginService.EXPECT().GetBgStatus("test-bg-id").Return(bgStatus, true).AnyTimes()
 		mockPluginService.EXPECT().GetCurrentHostInfo().Return(hostInfo, nil)
 		mockPluginService.EXPECT().GetDialect().Return(&driver_infrastructure.MySQLDatabaseDialect{}).AnyTimes()
 

@@ -36,23 +36,23 @@ var limitlessRouterServiceInitializationMutex sync.Mutex
 
 type LimitlessRouterService interface {
 	EstablishConnection(context *LimitlessConnectionContext) error
-	StartMonitoring(hostInfo *host_info_util.HostInfo, props map[string]string, intervalMs int) error
+	StartMonitoring(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string], intervalMs int) error
 }
 
 type LimitlessRouterServiceImpl struct {
 	pluginService driver_infrastructure.PluginService
 	queryHelper   LimitlessQueryHelper
-	props         map[string]string
+	props         *utils.RWMap[string]
 }
 
-func NewLimitlessRouterServiceImpl(pluginService driver_infrastructure.PluginService, props map[string]string) *LimitlessRouterServiceImpl {
+func NewLimitlessRouterServiceImpl(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string]) *LimitlessRouterServiceImpl {
 	return NewLimitlessRouterServiceImplInternal(pluginService, NewLimitlessQueryHelperImpl(pluginService), props)
 }
 
 func NewLimitlessRouterServiceImplInternal(
 	pluginService driver_infrastructure.PluginService,
 	queryHelper LimitlessQueryHelper,
-	props map[string]string) *LimitlessRouterServiceImpl {
+	props *utils.RWMap[string]) *LimitlessRouterServiceImpl {
 	limitlessRouterServiceInitializationMutex.Lock()
 	defer limitlessRouterServiceInitializationMutex.Unlock()
 
@@ -159,7 +159,7 @@ func (routerService *LimitlessRouterServiceImpl) EstablishConnection(context *Li
 	}
 	slog.Debug(error_util.GetMessage("LimitlessRouterServiceImpl.selectedHost", selectedRouter.Host))
 
-	conn, err := routerService.pluginService.Connect(selectedRouter, utils.CreateMapCopy(context.Props), context.plugin)
+	conn, err := routerService.pluginService.Connect(selectedRouter, context.Props, context.plugin)
 	if err != nil || conn == nil {
 		selectedRouter.Availability = host_info_util.UNAVAILABLE
 		slog.Debug(error_util.GetMessage("LimitlessRouterServiceImpl.failedToConnectToHost", selectedRouter.Host))
@@ -172,7 +172,7 @@ func (routerService *LimitlessRouterServiceImpl) EstablishConnection(context *Li
 	return nil
 }
 
-func (routerService *LimitlessRouterServiceImpl) getLimitlessRouters(routerCacheKey string, props map[string]string) []*host_info_util.HostInfo {
+func (routerService *LimitlessRouterServiceImpl) getLimitlessRouters(routerCacheKey string, props *utils.RWMap[string]) []*host_info_util.HostInfo {
 	cacheExpirationNano := time.Millisecond * time.Duration(property_util.GetExpirationValue(props, property_util.LIMITLESS_ROUTER_CACHE_EXPIRATION_TIME_MS))
 	routers, ok := LIMITLESS_ROUTER_CACHE.Get(routerCacheKey, cacheExpirationNano)
 	if ok {
@@ -317,7 +317,7 @@ func (routerService *LimitlessRouterServiceImpl) retryConnectWithLeastLoadedRout
 		}
 
 		// Connect to selected router
-		conn, err := routerService.pluginService.Connect(selectedRouter, utils.CreateMapCopy(context.Props), context.plugin)
+		conn, err := routerService.pluginService.Connect(selectedRouter, context.Props, context.plugin)
 		if err != nil || conn == nil {
 			slog.Debug(error_util.GetMessage("LimitlessRouterServiceImpl.failedToConnectToRouter", selectedRouter.Host))
 			selectedRouter.Availability = host_info_util.UNAVAILABLE
@@ -332,7 +332,7 @@ func (routerService *LimitlessRouterServiceImpl) retryConnectWithLeastLoadedRout
 	return errors.New(error_util.GetMessage("LimitlessRouterServiceImpl.maxConnectRetriesExceeded"))
 }
 
-func (routerService *LimitlessRouterServiceImpl) StartMonitoring(hostInfo *host_info_util.HostInfo, props map[string]string, intervalMs int) error {
+func (routerService *LimitlessRouterServiceImpl) StartMonitoring(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string], intervalMs int) error {
 	cacheKey, err := routerService.pluginService.GetHostListProvider().GetClusterId()
 
 	if err == nil {

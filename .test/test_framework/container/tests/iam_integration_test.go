@@ -104,9 +104,9 @@ func TestIamUsingIpAddress(t *testing.T) {
 	hostIp, err := hostToIp(clusterEndpoint)
 	assert.NoError(t, err)
 
-	property_util.IAM_HOST.Set(props, clusterEndpoint)
-	property_util.IAM_DEFAULT_PORT.Set(props, strconv.Itoa(port))
-	property_util.HOST.Set(props, hostIp)
+	props[property_util.IAM_HOST.Name] = clusterEndpoint
+	props[property_util.IAM_DEFAULT_PORT.Name] = strconv.Itoa(port)
+	props[property_util.HOST.Name] = hostIp
 
 	dsn := test_utils.GetDsn(testEnvironment, props)
 	db, err := test_utils.OpenDb(testEnvironment.Info().Request.Engine, dsn)

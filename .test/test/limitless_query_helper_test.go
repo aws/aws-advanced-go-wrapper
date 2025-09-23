@@ -49,9 +49,9 @@ func TestQueryForLimitlessRouters_Success(t *testing.T) {
 	dialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
 	query := dialect.GetLimitlessRouterEndpointQuery()
 
-	props := map[string]string{
-		property_util.LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name: "100",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name, "100",
+	)
 
 	mockPlugin.EXPECT().GetDialect().Return(dialect)
 
@@ -91,9 +91,9 @@ func TestQueryForLimitlessRouters_HighLoad_Success(t *testing.T) {
 	dialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
 	query := dialect.GetLimitlessRouterEndpointQuery()
 
-	props := map[string]string{
-		property_util.LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name: "100",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name, "100",
+	)
 
 	mockPlugin.EXPECT().GetDialect().Return(dialect)
 
@@ -133,9 +133,9 @@ func TestQueryForLimitlessRouters_InvalidLoad_Defaults(t *testing.T) {
 	dialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
 	query := dialect.GetLimitlessRouterEndpointQuery()
 
-	props := map[string]string{
-		property_util.LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name: "100",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name, "100",
+	)
 
 	mockPlugin.EXPECT().GetDialect().Return(dialect)
 
@@ -172,9 +172,9 @@ func TestQueryForLimitlessRouters_ConnDoesNotImplementQueryerContext(t *testing.
 
 	mockPlugin.EXPECT().GetDialect().Return(dialect)
 
-	props := map[string]string{
-		property_util.LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name: "100",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name, "100",
+	)
 
 	helper := limitless.NewLimitlessQueryHelperImpl(mockPlugin)
 
@@ -199,9 +199,9 @@ func TestQueryForLimitlessRouters_InvalidTimeoutProperty(t *testing.T) {
 		EXPECT().
 		QueryContext(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(nil, errors.New(""))
-	props := map[string]string{
-		property_util.LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name: "not-a-number",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name, "not-a-number",
+	)
 
 	helper := limitless.NewLimitlessQueryHelperImpl(mockPlugin)
 	result, err := helper.QueryForLimitlessRouters(mockConn, 1234, props)
@@ -227,9 +227,9 @@ func TestQueryForLimitlessRouters_QueryFails(t *testing.T) {
 		QueryContext(gomock.Any(), gomock.Any(), gomock.Nil()).
 		Return(nil, errors.New("query error"))
 
-	props := map[string]string{
-		property_util.LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name: "100",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name, "100",
+	)
 
 	helper := limitless.NewLimitlessQueryHelperImpl(mockPlugin)
 	result, err := helper.QueryForLimitlessRouters(mockConn, 1234, props)
@@ -264,9 +264,9 @@ func TestQueryForLimitlessRouters_EmptyHostNameOrBadType(t *testing.T) {
 	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrBadConn)
 	mockRows.EXPECT().Close().Return(nil)
 
-	props := map[string]string{
-		property_util.LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name: "100",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name, "100",
+	)
 
 	helper := limitless.NewLimitlessQueryHelperImpl(mockPlugin)
 	result, err := helper.QueryForLimitlessRouters(mockConn, 9999, props)

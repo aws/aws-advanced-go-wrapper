@@ -18,6 +18,7 @@ package read_write_splitting
 
 import (
 	"database/sql/driver"
+	"errors"
 	"log/slog"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
@@ -32,7 +33,7 @@ import (
 type ReadWriteSplittingPluginFactory struct{}
 
 func (factory ReadWriteSplittingPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
-	props map[string]string) (driver_infrastructure.ConnectionPlugin, error) {
+	props *utils.RWMap[string]) (driver_infrastructure.ConnectionPlugin, error) {
 	return NewReadWriteSplittingPlugin(pluginService, props), nil
 }
 
@@ -46,7 +47,7 @@ func NewReadWriteSplittingPluginFactory() driver_infrastructure.ConnectionPlugin
 type ReadWriteSplittingPlugin struct {
 	plugins.BaseConnectionPlugin
 	pluginService           driver_infrastructure.PluginService
-	props                   map[string]string
+	props                   *utils.RWMap[string]
 	readerSelectorStrategy  string
 	hostListProviderService driver_infrastructure.HostListProviderService
 	inReadWriteSplit        bool
@@ -57,7 +58,7 @@ type ReadWriteSplittingPlugin struct {
 }
 
 func NewReadWriteSplittingPlugin(pluginService driver_infrastructure.PluginService,
-	props map[string]string) *ReadWriteSplittingPlugin {
+	props *utils.RWMap[string]) *ReadWriteSplittingPlugin {
 	return &ReadWriteSplittingPlugin{
 		pluginService: pluginService,
 		props:         props,
@@ -80,8 +81,8 @@ func (r *ReadWriteSplittingPlugin) GetSubscribedMethods() []string {
 }
 
 func (r *ReadWriteSplittingPlugin) Connect(
-	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
+	_ *host_info_util.HostInfo,
+	props *utils.RWMap[string],
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	if !r.pluginService.AcceptsStrategy(r.readerSelectorStrategy) {
@@ -120,7 +121,7 @@ func (r *ReadWriteSplittingPlugin) Connect(
 }
 
 func (r *ReadWriteSplittingPlugin) InitHostProvider(
-	props map[string]string,
+	_ *utils.RWMap[string],
 	hostListProviderService driver_infrastructure.HostListProviderService,
 	initHostProviderFunc func() error) error {
 	r.hostListProviderService = hostListProviderService
@@ -128,7 +129,7 @@ func (r *ReadWriteSplittingPlugin) InitHostProvider(
 }
 
 func (r *ReadWriteSplittingPlugin) NotifyConnectionChanged(
-	changes map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {
+	_ map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {
 	err := r.updateInternalConnectionInfo()
 	if err != nil {
 		slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.updateInternalConnectionInfoFailed",
@@ -163,8 +164,8 @@ func (r *ReadWriteSplittingPlugin) updateInternalConnectionInfo() error {
 }
 
 func (r *ReadWriteSplittingPlugin) Execute(
-	connInvokedOn driver.Conn,
-	methodName string,
+	_ driver.Conn,
+	_ string,
 	executeFunc driver_infrastructure.ExecuteFunc,
 	methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
 	query := utils.GetQueryFromSqlOrMethodArgs("", methodArgs)
@@ -181,7 +182,8 @@ func (r *ReadWriteSplittingPlugin) Execute(
 
 	wrappedReturnValue, wrappedReturnValue2, wrappedOk, wrappedErr = executeFunc()
 
-	awsWrapperError, ok := wrappedErr.(*error_util.AwsWrapperError)
+	var awsWrapperError *error_util.AwsWrapperError
+	ok := errors.As(wrappedErr, &awsWrapperError)
 
 	if ok && awsWrapperError.IsFailoverErrorType() {
 		slog.Debug(error_util.GetMessage("ReadWriteSplittingPlugin.failoverErrorWhileExecutingCommand",
@@ -280,7 +282,7 @@ func (r *ReadWriteSplittingPlugin) switchToReaderConnection(hosts []*host_info_u
 
 	if err := r.switchCurrentConnectionTo(r.readerConnection, r.readerHostInfo); err != nil {
 		slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.errorSwitchingToCachedReader", r.readerHostInfo.GetUrl()))
-		r.readerConnection.Close()
+		_ = r.readerConnection.Close()
 		r.readerConnection = nil
 		r.readerHostInfo = nil
 		return r.initializeReaderConnection(hosts)
@@ -404,7 +406,7 @@ func (r *ReadWriteSplittingPlugin) closeConnectionIfIdle(conn driver.Conn) {
 	if conn != nil &&
 		currentConn != conn {
 		if !r.pluginService.GetTargetDriverDialect().IsClosed(conn) {
-			conn.Close()
+			_ = conn.Close()
 		}
 		switch conn {
 		case r.readerConnection:
@@ -417,15 +419,15 @@ func (r *ReadWriteSplittingPlugin) closeConnectionIfIdle(conn driver.Conn) {
 	}
 }
 
-func (r ReadWriteSplittingPlugin) isConnectionUsable(conn driver.Conn) bool {
+func (r *ReadWriteSplittingPlugin) isConnectionUsable(conn driver.Conn) bool {
 	return conn != nil && !r.pluginService.GetTargetDriverDialect().IsClosed(conn)
 }
 
-func (r ReadWriteSplittingPlugin) isWriter(hostInfo *host_info_util.HostInfo) bool {
+func (r *ReadWriteSplittingPlugin) isWriter(hostInfo *host_info_util.HostInfo) bool {
 	return hostInfo != nil && hostInfo.Role == host_info_util.WRITER
 }
 
-func (r ReadWriteSplittingPlugin) isReader(hostInfo *host_info_util.HostInfo) bool {
+func (r *ReadWriteSplittingPlugin) isReader(hostInfo *host_info_util.HostInfo) bool {
 	return hostInfo != nil && hostInfo.Role == host_info_util.READER
 }
 

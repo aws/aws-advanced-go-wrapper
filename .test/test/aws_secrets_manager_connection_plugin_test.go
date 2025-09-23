@@ -28,6 +28,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 
@@ -35,31 +36,30 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func beforeAwsSecretsManagerConnectionPluginTests(props map[string]string) driver_infrastructure.PluginService {
+func beforeAwsSecretsManagerConnectionPluginTests(props *utils.RWMap[string]) driver_infrastructure.PluginService {
 	aws_secrets_manager.SecretsCache.Clear()
 	mockTargetDriver := &MockTargetDriver{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := driver_infrastructure.PluginManager(
-		plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
+	mockPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.NewMySQLDriverDialect(), props, mysqlTestDsn)
-	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
+	mockPluginService := pluginServiceImpl
 	return mockPluginService
 }
 
 func TestAwsSecretsManagerConnectionPluginConnect(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
 
-	props := map[string]string{
-		property_util.SECRETS_MANAGER_REGION.Name:    "us-west-2",
-		property_util.SECRETS_MANAGER_SECRET_ID.Name: "myId",
-		property_util.DRIVER_PROTOCOL.Name:           "mysql",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.SECRETS_MANAGER_REGION.Name, "us-west-2",
+		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
 	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
@@ -67,24 +67,24 @@ func TestAwsSecretsManagerConnectionPluginConnect(t *testing.T) {
 	_, err = awsSecretsManagerConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
 
 	assert.Nil(t, err)
-	assert.Equal(t, "testuser", resultProps[property_util.USER.Name])
-	assert.Equal(t, "testpassword", resultProps[property_util.PASSWORD.Name])
+	assert.Equal(t, "testuser", property_util.USER.Get(resultProps))
+	assert.Equal(t, "testpassword", property_util.PASSWORD.Get(resultProps))
 }
 
 func TestAwsSecretsManagerConnectionPluginForceConnect(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
 
-	props := map[string]string{
-		property_util.SECRETS_MANAGER_REGION.Name:    "us-west-2",
-		property_util.SECRETS_MANAGER_SECRET_ID.Name: "myId",
-		property_util.DRIVER_PROTOCOL.Name:           "mysql",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.SECRETS_MANAGER_REGION.Name, "us-west-2",
+		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
 	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
@@ -92,25 +92,25 @@ func TestAwsSecretsManagerConnectionPluginForceConnect(t *testing.T) {
 	_, err = awsSecretsManagerConnectionPlugin.ForceConnect(hostInfo, props, false, mockConnFunc)
 
 	assert.Nil(t, err)
-	assert.Equal(t, "testuser", resultProps[property_util.USER.Name])
-	assert.Equal(t, "testpassword", resultProps[property_util.PASSWORD.Name])
+	assert.Equal(t, "testuser", property_util.USER.Get(resultProps))
+	assert.Equal(t, "testpassword", property_util.PASSWORD.Get(resultProps))
 }
 
 func TestAwsSecretsManagerConnectionPluginProps(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
 
-	props := map[string]string{
-		property_util.SECRETS_MANAGER_REGION.Name:    "us-west-2",
-		property_util.SECRETS_MANAGER_SECRET_ID.Name: "myId",
-		property_util.SECRETS_MANAGER_ENDPOINT.Name:  "https://someEndpoint.com",
-		property_util.DRIVER_PROTOCOL.Name:           "mysql",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.SECRETS_MANAGER_REGION.Name, "us-west-2",
+		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
+		property_util.SECRETS_MANAGER_ENDPOINT.Name, "https://someEndpoint.com",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
 	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
@@ -118,15 +118,15 @@ func TestAwsSecretsManagerConnectionPluginProps(t *testing.T) {
 	_, err = awsSecretsManagerConnectionPlugin.ForceConnect(hostInfo, props, false, mockConnFunc)
 
 	assert.Nil(t, err)
-	assert.Equal(t, "testuser", resultProps[property_util.USER.Name])
-	assert.Equal(t, "testpassword", resultProps[property_util.PASSWORD.Name])
-	assert.Equal(t, "https://someEndpoint.com", resultProps[property_util.SECRETS_MANAGER_ENDPOINT.Name])
+	assert.Equal(t, "testuser", property_util.USER.Get(resultProps))
+	assert.Equal(t, "testpassword", property_util.PASSWORD.Get(resultProps))
+	assert.Equal(t, "https://someEndpoint.com", property_util.SECRETS_MANAGER_ENDPOINT.Get(resultProps))
 }
 
 func TestAwsSecretsManagerConnectionPluginMissingSecretId(t *testing.T) {
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "mysql",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
 	_, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
@@ -137,11 +137,11 @@ func TestAwsSecretsManagerConnectionPluginMissingSecretId(t *testing.T) {
 }
 
 func TestAwsSecretsManagerConnectionPluginInvalidRegion(t *testing.T) {
-	props := map[string]string{
-		property_util.SECRETS_MANAGER_SECRET_ID.Name: "myId",
-		property_util.SECRETS_MANAGER_REGION.Name:    "invalidRegion",
-		property_util.DRIVER_PROTOCOL.Name:           "mysql",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
+		property_util.SECRETS_MANAGER_REGION.Name, "invalidRegion",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
 	_, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
@@ -152,11 +152,11 @@ func TestAwsSecretsManagerConnectionPluginInvalidRegion(t *testing.T) {
 }
 
 func TestAwsSecretsManagerConnectionPluginValidRegion(t *testing.T) {
-	props := map[string]string{
-		property_util.SECRETS_MANAGER_SECRET_ID.Name: "myId",
-		property_util.SECRETS_MANAGER_REGION.Name:    "us-west-2",
-		property_util.DRIVER_PROTOCOL.Name:           "mysql",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
+		property_util.SECRETS_MANAGER_REGION.Name, "us-west-2",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
 	_, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
@@ -165,32 +165,37 @@ func TestAwsSecretsManagerConnectionPluginValidRegion(t *testing.T) {
 }
 
 func TestAwsSecretsManagerConnectionPluginValidIdInvalidRegion(t *testing.T) {
-	props := map[string]string{
-		property_util.SECRETS_MANAGER_SECRET_ID.Name: "myId",
-		property_util.DRIVER_PROTOCOL.Name:           "mysql",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
-	_, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
+	res, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
 
-	assert.Equal(t,
-		error_util.GetMessage("AwsSecretsManagerConnectionPlugin.unableToDetermineRegion", property_util.SECRETS_MANAGER_REGION.Name),
-		err.Error())
+	fmt.Println(res, err)
+	if err != nil {
+		assert.Equal(t,
+			error_util.GetMessage("AwsSecretsManagerConnectionPlugin.unableToDetermineRegion", property_util.SECRETS_MANAGER_REGION.Name),
+			err.Error())
+	} else {
+		t.Fatalf("expect an error but didn't get one")
+	}
 }
 
 func TestAwsSecretsManagerConnectionPluginValidRegionThroughArn(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
 
-	props := map[string]string{
-		property_util.SECRETS_MANAGER_SECRET_ID.Name: "arn:aws:secretsmanager:us-west-2:account-id:secret:default",
-		property_util.DRIVER_PROTOCOL.Name:           "mysql",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.SECRETS_MANAGER_SECRET_ID.Name, "arn:aws:secretsmanager:us-west-2:account-id:secret:default",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
 	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
@@ -198,16 +203,16 @@ func TestAwsSecretsManagerConnectionPluginValidRegionThroughArn(t *testing.T) {
 	_, err = awsSecretsManagerConnectionPlugin.ForceConnect(hostInfo, props, false, mockConnFunc)
 
 	assert.Nil(t, err)
-	assert.Equal(t, "testuser", resultProps[property_util.USER.Name])
-	assert.Equal(t, "testpassword", resultProps[property_util.PASSWORD.Name])
+	assert.Equal(t, "testuser", property_util.USER.Get(resultProps))
+	assert.Equal(t, "testpassword", property_util.PASSWORD.Get(resultProps))
 }
 
 func TestAwsSecretsManagerConnectionPluginInvalidEndpoint(t *testing.T) {
-	props := map[string]string{
-		property_util.SECRETS_MANAGER_SECRET_ID.Name: "arn:aws:secretsmanager:us-west-2:account-id:secret:default",
-		property_util.SECRETS_MANAGER_ENDPOINT.Name:  "NotAValidEndpoi nt?-!=",
-		property_util.DRIVER_PROTOCOL.Name:           "mysql",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.SECRETS_MANAGER_SECRET_ID.Name, "arn:aws:secretsmanager:us-west-2:account-id:secret:default",
+		property_util.SECRETS_MANAGER_ENDPOINT.Name, "NotAValidEndpoi nt?-!=",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
 	_, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
@@ -223,17 +228,17 @@ func TestAwsSecretsManagerConnectionPluginCacheSize1(t *testing.T) {
 
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
 
-	props := map[string]string{
-		property_util.SECRETS_MANAGER_REGION.Name:    "us-west-2",
-		property_util.SECRETS_MANAGER_SECRET_ID.Name: "myId",
-		property_util.DRIVER_PROTOCOL.Name:           "mysql",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.SECRETS_MANAGER_REGION.Name, "us-west-2",
+		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
 	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
@@ -241,16 +246,16 @@ func TestAwsSecretsManagerConnectionPluginCacheSize1(t *testing.T) {
 	_, err = awsSecretsManagerConnectionPlugin.ForceConnect(hostInfo, props, false, mockConnFunc)
 
 	assert.Nil(t, err)
-	assert.Equal(t, "testuser", resultProps[property_util.USER.Name])
-	assert.Equal(t, "testpassword", resultProps[property_util.PASSWORD.Name])
+	assert.Equal(t, "testuser", property_util.USER.Get(resultProps))
+	assert.Equal(t, "testpassword", property_util.PASSWORD.Get(resultProps))
 	assert.Equal(t, 1, aws_secrets_manager.SecretsCache.Size())
 }
 
 func TestAwsSecretsManagerConnectionPluginUsingExpiredSecret(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -259,11 +264,11 @@ func TestAwsSecretsManagerConnectionPluginUsingExpiredSecret(t *testing.T) {
 	cachedUsername := "cachedUsername"
 	cachedPassword := "cachedPassword"
 
-	props := map[string]string{
-		property_util.SECRETS_MANAGER_REGION.Name:    region,
-		property_util.SECRETS_MANAGER_SECRET_ID.Name: secretId,
-		property_util.DRIVER_PROTOCOL.Name:           "mysql",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.SECRETS_MANAGER_REGION.Name, region,
+		property_util.SECRETS_MANAGER_SECRET_ID.Name, secretId,
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
 	cacheKey := fmt.Sprintf("%s:%s", secretId, region)
@@ -279,16 +284,16 @@ func TestAwsSecretsManagerConnectionPluginUsingExpiredSecret(t *testing.T) {
 	_, err = awsSecretsManagerConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
 
 	assert.Nil(t, err)
-	assert.Equal(t, "testuser", resultProps[property_util.USER.Name])
-	assert.Equal(t, "testpassword", resultProps[property_util.PASSWORD.Name])
+	assert.Equal(t, "testuser", property_util.USER.Get(resultProps))
+	assert.Equal(t, "testpassword", property_util.PASSWORD.Get(resultProps))
 	assert.Equal(t, 1, aws_secrets_manager.SecretsCache.Size())
 }
 
 func TestAwsSecretsManagerConnectionPluginConnectingUsingCache(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -297,11 +302,11 @@ func TestAwsSecretsManagerConnectionPluginConnectingUsingCache(t *testing.T) {
 	cachedUsername := "cachedUsername"
 	cachedPassword := "cachedPassword"
 
-	props := map[string]string{
-		property_util.SECRETS_MANAGER_REGION.Name:    region,
-		property_util.SECRETS_MANAGER_SECRET_ID.Name: secretId,
-		property_util.DRIVER_PROTOCOL.Name:           "mysql",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.SECRETS_MANAGER_REGION.Name, region,
+		property_util.SECRETS_MANAGER_SECRET_ID.Name, secretId,
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
 	cacheKey := fmt.Sprintf("%s:%s", secretId, region)
@@ -317,28 +322,28 @@ func TestAwsSecretsManagerConnectionPluginConnectingUsingCache(t *testing.T) {
 	_, err = awsSecretsManagerConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
 
 	assert.Nil(t, err)
-	assert.Equal(t, cachedUsername, resultProps[property_util.USER.Name])
-	assert.Equal(t, cachedPassword, resultProps[property_util.PASSWORD.Name])
+	assert.Equal(t, cachedUsername, property_util.USER.Get(resultProps))
+	assert.Equal(t, cachedPassword, property_util.PASSWORD.Get(resultProps))
 	assert.Equal(t, 1, aws_secrets_manager.SecretsCache.Size())
 }
 
 func TestAwsSecretsManagerConnectionPluginMultipleConnectionsCache(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 	secretIds := [4]string{"id1", "id1", "id3", "id4"}
 	region := [4]string{"us-west-2", "us-west-1", "us-west-2", "us-west-2"}
 
-	var props [4]map[string]string
+	var props [4]*utils.RWMap[string]
 	var mockPluginServices [4]driver_infrastructure.PluginService
 
 	// setup props map and mock plugin services
 	for i := 0; i < 4; i++ {
-		props[i] = map[string]string{
-			property_util.SECRETS_MANAGER_REGION.Name:    region[i],
-			property_util.SECRETS_MANAGER_SECRET_ID.Name: secretIds[i],
-			property_util.DRIVER_PROTOCOL.Name:           "mysql",
-		}
+		props[i] = MakeMapFromKeysAndVals(
+			property_util.SECRETS_MANAGER_REGION.Name, region[i],
+			property_util.SECRETS_MANAGER_SECRET_ID.Name, secretIds[i],
+			property_util.DRIVER_PROTOCOL.Name, "mysql",
+		)
 		mockPluginServices[i] = beforeAwsSecretsManagerConnectionPluginTests(props[i])
 	}
 
@@ -356,17 +361,17 @@ func TestAwsSecretsManagerConnectionPluginLoginError(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
 	mockLoginError := &mysql.MySQLError{SQLState: [5]byte(([]byte(mysql_driver.SqlStateAccessError))[:5])}
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return nil, mockLoginError
 	}
 
-	props := map[string]string{
-		property_util.SECRETS_MANAGER_REGION.Name:    "us-west-2",
-		property_util.SECRETS_MANAGER_SECRET_ID.Name: "myId",
-		property_util.DRIVER_PROTOCOL.Name:           "mysql",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.SECRETS_MANAGER_REGION.Name, "us-west-2",
+		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
 
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 	awsSecretsManagerConnectionPlugin, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
@@ -377,6 +382,6 @@ func TestAwsSecretsManagerConnectionPluginLoginError(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Equal(t, mockLoginError, err)
 	assert.Equal(t, 1, aws_secrets_manager.SecretsCache.Size())
-	assert.Equal(t, "testuser", resultProps[property_util.USER.Name])
-	assert.Equal(t, "testpassword", resultProps[property_util.PASSWORD.Name])
+	assert.Equal(t, "testuser", property_util.USER.Get(resultProps))
+	assert.Equal(t, "testpassword", property_util.PASSWORD.Get(resultProps))
 }

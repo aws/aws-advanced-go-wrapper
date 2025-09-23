@@ -18,10 +18,11 @@ package driver_infrastructure
 
 import (
 	"database/sql/driver"
+	"log/slog"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"log/slog"
 )
 
 type SessionStateService interface {
@@ -62,10 +63,10 @@ type SessionStateServiceImpl struct {
 	SessionState     *SessionState
 	copySessionState *SessionState
 	pluginService    PluginService
-	props            map[string]string
+	props            *utils.RWMap[string]
 }
 
-func NewSessionStateServiceImpl(pluginService PluginService, props map[string]string) *SessionStateServiceImpl {
+func NewSessionStateServiceImpl(pluginService PluginService, props *utils.RWMap[string]) *SessionStateServiceImpl {
 	return &SessionStateServiceImpl{
 		SessionState:     &SessionState{},
 		copySessionState: nil,

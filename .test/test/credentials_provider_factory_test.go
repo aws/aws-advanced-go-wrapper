@@ -18,30 +18,33 @@ package test
 
 import (
 	"errors"
+
 	"github.com/aws/aws-advanced-go-wrapper/auth-helpers"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
+
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetAwsCredentialsProviderGetSamlAssertionError(t *testing.T) {
-	getSamlAssertionFunc := func(props map[string]string) (string, error) {
+	getSamlAssertionFunc := func(props *utils.RWMap[string]) (string, error) {
 		return "", errors.New("something went wrong")
 	}
 	factory := &auth_helpers.SamlCredentialsProviderFactory{AwsStsClientProvider: NewMockAwsStsClient, GetSamlAssertionFunc: getSamlAssertionFunc}
-	_, err := factory.GetAwsCredentialsProvider(federatedAuthHost, federatedAuthRegion, map[string]string{})
+	_, err := factory.GetAwsCredentialsProvider(federatedAuthHost, federatedAuthRegion, emptyProps)
 	assert.Equal(t, errors.New("something went wrong"), err)
 }
 
 func TestGetAwsCredentialsProviderAssumeRoleError(t *testing.T) {
-	getSamlAssertionFunc := func(props map[string]string) (string, error) {
+	getSamlAssertionFunc := func(props *utils.RWMap[string]) (string, error) {
 		return "saml", nil
 	}
 	getStsClientFunc := func(region string) auth_helpers.AwsStsClient {
 		return &MockAwsStsClient{assumeRoleWithSAMLErr: errors.New("something went wrong")}
 	}
 	factory := &auth_helpers.SamlCredentialsProviderFactory{AwsStsClientProvider: getStsClientFunc, GetSamlAssertionFunc: getSamlAssertionFunc}
-	_, err := factory.GetAwsCredentialsProvider(federatedAuthHost, federatedAuthRegion, map[string]string{})
+	_, err := factory.GetAwsCredentialsProvider(federatedAuthHost, federatedAuthRegion, emptyProps)
 	assert.Equal(t, errors.New("something went wrong"), err)
 }
 

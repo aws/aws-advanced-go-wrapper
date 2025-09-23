@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-package main
+package examples
 
 import (
 	"crypto/tls"

@@ -18,11 +18,12 @@ package test
 
 import (
 	"database/sql/driver"
+	"testing"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestResetSessionStateOnCloseFunc(t *testing.T) {
@@ -32,7 +33,7 @@ func TestResetSessionStateOnCloseFunc(t *testing.T) {
 		return true
 	}
 	driver_infrastructure.SetResetSessionStateOnCloseFunc(resetSessionStateFunc)
-	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, map[string]string{})
+	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, emptyProps)
 	err := sessionStateService.ApplyPristineSessionState(mockConn)
 	assert.Nil(t, err)
 	assert.True(t, usedResetStateFunc)
@@ -49,7 +50,7 @@ func TestTransferSessionStateOnCloseFunc(t *testing.T) {
 		return true
 	}
 	driver_infrastructure.SetTransferSessionStateOnCloseFunc(transferSessionStateFunc)
-	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, map[string]string{})
+	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, emptyProps)
 	err := sessionStateService.ApplyCurrentSessionState(mockConn)
 	assert.Nil(t, err)
 	assert.True(t, usedTransferStateFunc)
@@ -60,13 +61,13 @@ func TestTransferSessionStateOnCloseFunc(t *testing.T) {
 }
 
 func TestGetAndSetAutoCommit(t *testing.T) {
-	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, map[string]string{})
+	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, emptyProps)
 	assert.Nil(t, sessionStateService.GetAutoCommit())
 	sessionStateService.SetAutoCommit(true)
 	assert.NotNil(t, sessionStateService.GetAutoCommit())
 	assert.True(t, *sessionStateService.GetAutoCommit())
 
-	props := map[string]string{property_util.TRANSFER_SESSION_STATE_ON_SWITCH.Name: "false"}
+	props := MakeMapFromKeysAndVals(property_util.TRANSFER_SESSION_STATE_ON_SWITCH.Name, "false")
 	sessionStateServiceTransferDisabled := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, props)
 	assert.Nil(t, sessionStateServiceTransferDisabled.GetAutoCommit())
 	sessionStateServiceTransferDisabled.SetAutoCommit(true)
@@ -74,7 +75,7 @@ func TestGetAndSetAutoCommit(t *testing.T) {
 }
 
 func TestSetupPristineAutoCommit(t *testing.T) {
-	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, map[string]string{})
+	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, emptyProps)
 	sessionStateService.SetupPristineAutoCommitWithVal(true)
 	assert.NotNil(t, sessionStateService.SessionState.AutoCommit.GetPristineValue())
 	assert.True(t, *sessionStateService.SessionState.AutoCommit.GetPristineValue())
@@ -90,7 +91,7 @@ func TestSetupPristineAutoCommit(t *testing.T) {
 	assert.NotNil(t, sessionStateService.SessionState.AutoCommit.GetPristineValue())
 	assert.False(t, *sessionStateService.SessionState.AutoCommit.GetPristineValue())
 
-	props := map[string]string{property_util.TRANSFER_SESSION_STATE_ON_SWITCH.Name: "false"}
+	props := MakeMapFromKeysAndVals(property_util.TRANSFER_SESSION_STATE_ON_SWITCH.Name, "false")
 	sessionStateServiceTransferDisabled := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, props)
 	sessionStateService.SetupPristineAutoCommitWithVal(true)
 	assert.Nil(t, sessionStateServiceTransferDisabled.SessionState.AutoCommit.GetPristineValue())
@@ -100,13 +101,13 @@ func TestSetupPristineAutoCommit(t *testing.T) {
 }
 
 func TestGetAndSetReadOnly(t *testing.T) {
-	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, map[string]string{})
+	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, emptyProps)
 	assert.Nil(t, sessionStateService.GetReadOnly())
 	sessionStateService.SetReadOnly(true)
 	assert.NotNil(t, sessionStateService.GetReadOnly())
 	assert.True(t, *sessionStateService.GetReadOnly())
 
-	props := map[string]string{property_util.TRANSFER_SESSION_STATE_ON_SWITCH.Name: "false"}
+	props := MakeMapFromKeysAndVals(property_util.TRANSFER_SESSION_STATE_ON_SWITCH.Name, "false")
 	sessionStateServiceTransferDisabled := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, props)
 	assert.Nil(t, sessionStateServiceTransferDisabled.GetReadOnly())
 	sessionStateServiceTransferDisabled.SetReadOnly(true)
@@ -114,7 +115,7 @@ func TestGetAndSetReadOnly(t *testing.T) {
 }
 
 func TestSetupPristineReadOnly(t *testing.T) {
-	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, map[string]string{})
+	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, emptyProps)
 	sessionStateService.SetupPristineReadOnlyWithVal(true)
 	assert.NotNil(t, sessionStateService.SessionState.ReadOnly.GetPristineValue())
 	assert.True(t, *sessionStateService.SessionState.ReadOnly.GetPristineValue())
@@ -130,7 +131,7 @@ func TestSetupPristineReadOnly(t *testing.T) {
 	assert.NotNil(t, sessionStateService.SessionState.ReadOnly.GetPristineValue())
 	assert.False(t, *sessionStateService.SessionState.ReadOnly.GetPristineValue())
 
-	props := map[string]string{property_util.TRANSFER_SESSION_STATE_ON_SWITCH.Name: "false"}
+	props := MakeMapFromKeysAndVals(property_util.TRANSFER_SESSION_STATE_ON_SWITCH.Name, "false")
 	sessionStateServiceTransferDisabled := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, props)
 	sessionStateService.SetupPristineReadOnlyWithVal(true)
 	assert.Nil(t, sessionStateServiceTransferDisabled.SessionState.ReadOnly.GetPristineValue())
@@ -140,13 +141,13 @@ func TestSetupPristineReadOnly(t *testing.T) {
 }
 
 func TestGetAndSetCatalog(t *testing.T) {
-	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, map[string]string{})
+	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, emptyProps)
 	assert.Nil(t, sessionStateService.GetCatalog())
 	sessionStateService.SetCatalog("test")
 	assert.NotNil(t, sessionStateService.GetCatalog())
 	assert.Equal(t, "test", *sessionStateService.GetCatalog())
 
-	props := map[string]string{property_util.TRANSFER_SESSION_STATE_ON_SWITCH.Name: "false"}
+	props := MakeMapFromKeysAndVals(property_util.TRANSFER_SESSION_STATE_ON_SWITCH.Name, "false")
 	sessionStateServiceTransferDisabled := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, props)
 	assert.Nil(t, sessionStateServiceTransferDisabled.GetCatalog())
 	sessionStateServiceTransferDisabled.SetCatalog("test")
@@ -154,7 +155,7 @@ func TestGetAndSetCatalog(t *testing.T) {
 }
 
 func TestSetupPristineCatalog(t *testing.T) {
-	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, map[string]string{})
+	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, emptyProps)
 	sessionStateService.SetupPristineCatalogWithVal("test1")
 	assert.NotNil(t, sessionStateService.SessionState.Catalog.GetPristineValue())
 	assert.Equal(t, "test1", *sessionStateService.SessionState.Catalog.GetPristineValue())
@@ -170,7 +171,7 @@ func TestSetupPristineCatalog(t *testing.T) {
 	assert.NotNil(t, sessionStateService.SessionState.Catalog.GetPristineValue())
 	assert.Equal(t, "test2", *sessionStateService.SessionState.Catalog.GetPristineValue())
 
-	props := map[string]string{property_util.TRANSFER_SESSION_STATE_ON_SWITCH.Name: "false"}
+	props := MakeMapFromKeysAndVals(property_util.TRANSFER_SESSION_STATE_ON_SWITCH.Name, "false")
 	sessionStateServiceTransferDisabled := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, props)
 	sessionStateService.SetupPristineCatalogWithVal("test1")
 	assert.Nil(t, sessionStateServiceTransferDisabled.SessionState.Catalog.GetPristineValue())
@@ -180,13 +181,13 @@ func TestSetupPristineCatalog(t *testing.T) {
 }
 
 func TestGetAndSetSchema(t *testing.T) {
-	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, map[string]string{})
+	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, emptyProps)
 	assert.Nil(t, sessionStateService.GetSchema())
 	sessionStateService.SetSchema("test")
 	assert.NotNil(t, sessionStateService.GetSchema())
 	assert.Equal(t, "test", *sessionStateService.GetSchema())
 
-	props := map[string]string{property_util.TRANSFER_SESSION_STATE_ON_SWITCH.Name: "false"}
+	props := MakeMapFromKeysAndVals(property_util.TRANSFER_SESSION_STATE_ON_SWITCH.Name, "false")
 	sessionStateServiceTransferDisabled := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, props)
 	assert.Nil(t, sessionStateServiceTransferDisabled.GetSchema())
 	sessionStateServiceTransferDisabled.SetSchema("test")
@@ -194,7 +195,7 @@ func TestGetAndSetSchema(t *testing.T) {
 }
 
 func TestSetupPristineSchema(t *testing.T) {
-	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, map[string]string{})
+	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, emptyProps)
 	sessionStateService.SetupPristineSchemaWithVal("test1")
 	assert.NotNil(t, sessionStateService.SessionState.Schema.GetPristineValue())
 	assert.Equal(t, "test1", *sessionStateService.SessionState.Schema.GetPristineValue())
@@ -210,7 +211,7 @@ func TestSetupPristineSchema(t *testing.T) {
 	assert.NotNil(t, sessionStateService.SessionState.Schema.GetPristineValue())
 	assert.Equal(t, "test2", *sessionStateService.SessionState.Schema.GetPristineValue())
 
-	props := map[string]string{property_util.TRANSFER_SESSION_STATE_ON_SWITCH.Name: "false"}
+	props := MakeMapFromKeysAndVals(property_util.TRANSFER_SESSION_STATE_ON_SWITCH.Name, "false")
 	sessionStateServiceTransferDisabled := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, props)
 	sessionStateService.SetupPristineSchemaWithVal("test1")
 	assert.Nil(t, sessionStateServiceTransferDisabled.SessionState.Schema.GetPristineValue())
@@ -220,13 +221,13 @@ func TestSetupPristineSchema(t *testing.T) {
 }
 
 func TestGetAndSetTxIsolation(t *testing.T) {
-	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, map[string]string{})
+	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, emptyProps)
 	assert.Nil(t, sessionStateService.GetTransactionIsolation())
 	sessionStateService.SetTransactionIsolation(driver_infrastructure.TRANSACTION_REPEATABLE_READ)
 	assert.NotNil(t, sessionStateService.GetTransactionIsolation())
 	assert.Equal(t, driver_infrastructure.TRANSACTION_REPEATABLE_READ, *sessionStateService.GetTransactionIsolation())
 
-	props := map[string]string{property_util.TRANSFER_SESSION_STATE_ON_SWITCH.Name: "false"}
+	props := MakeMapFromKeysAndVals(property_util.TRANSFER_SESSION_STATE_ON_SWITCH.Name, "false")
 	sessionStateServiceTransferDisabled := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, props)
 	assert.Nil(t, sessionStateServiceTransferDisabled.GetTransactionIsolation())
 	sessionStateServiceTransferDisabled.SetTransactionIsolation(driver_infrastructure.TRANSACTION_REPEATABLE_READ)
@@ -234,7 +235,7 @@ func TestGetAndSetTxIsolation(t *testing.T) {
 }
 
 func TestSetupTxIsolation(t *testing.T) {
-	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, map[string]string{})
+	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, emptyProps)
 	sessionStateService.SetupPristineTransactionIsolationWithVal(driver_infrastructure.TRANSACTION_REPEATABLE_READ)
 	assert.NotNil(t, sessionStateService.SessionState.TransactionIsolation.GetPristineValue())
 	assert.Equal(t, driver_infrastructure.TRANSACTION_REPEATABLE_READ, *sessionStateService.SessionState.TransactionIsolation.GetPristineValue())
@@ -250,7 +251,7 @@ func TestSetupTxIsolation(t *testing.T) {
 	assert.NotNil(t, sessionStateService.SessionState.TransactionIsolation.GetPristineValue())
 	assert.Equal(t, driver_infrastructure.TRANSACTION_SERIALIZABLE, *sessionStateService.SessionState.TransactionIsolation.GetPristineValue())
 
-	props := map[string]string{property_util.TRANSFER_SESSION_STATE_ON_SWITCH.Name: "false"}
+	props := MakeMapFromKeysAndVals(property_util.TRANSFER_SESSION_STATE_ON_SWITCH.Name, "false")
 	sessionStateServiceTransferDisabled := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, props)
 	sessionStateService.SetupPristineTransactionIsolationWithVal(driver_infrastructure.TRANSACTION_REPEATABLE_READ)
 	assert.Nil(t, sessionStateServiceTransferDisabled.SessionState.TransactionIsolation.GetPristineValue())

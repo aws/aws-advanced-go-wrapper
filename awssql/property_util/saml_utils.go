@@ -14,28 +14,29 @@
   limitations under the License.
 */
 
-package utils
+package property_util
 
 import (
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"regexp"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 var httpsUrlPattern = regexp.MustCompile(`^(https)://[-a-zA-Z0-9+&@#/%?=~_!:,.']*[-a-zA-Z0-9+&@#/%=~_']`)
 
 func CheckIdpCredentialsWithFallback(
-	idpUserNameProperty property_util.AwsWrapperProperty,
-	idpPasswordProperty property_util.AwsWrapperProperty,
-	props map[string]string) {
-	_, ok := props[idpUserNameProperty.Name]
+	idpUserNameProperty AwsWrapperProperty,
+	idpPasswordProperty AwsWrapperProperty,
+	props *utils.RWMap[string]) {
+	_, ok := props.Get(idpUserNameProperty.Name)
 	if !ok {
-		idpUserNameProperty.Set(props, property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.USER))
+		idpUserNameProperty.Set(props, GetVerifiedWrapperPropertyValue[string](props, USER))
 	}
 
-	_, ok = props[idpPasswordProperty.Name]
+	_, ok = props.Get(idpPasswordProperty.Name)
 	if !ok {
-		idpPasswordProperty.Set(props, property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PASSWORD))
+		idpPasswordProperty.Set(props, GetVerifiedWrapperPropertyValue[string](props, PASSWORD))
 	}
 }
 

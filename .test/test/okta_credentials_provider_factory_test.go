@@ -18,15 +18,16 @@ package test
 
 import (
 	"errors"
-	"github.com/aws/aws-advanced-go-wrapper/auth-helpers"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/okta"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/aws/aws-advanced-go-wrapper/auth-helpers"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/okta"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -45,15 +46,15 @@ func TestOktaCredentialsProviderGetSamlAssertion(t *testing.T) {
 		return mockHttp
 	}
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.PLUGINS.Name:         "okta",
-		property_util.DB_USER.Name:         "jane_doe",
-		property_util.IDP_ENDPOINT.Name:    "dev-1234.okta.com",
-		property_util.IDP_USERNAME.Name:    "oktauser",
-		property_util.IDP_PASSWORD.Name:    "oktapassword",
-		property_util.APP_ID.Name:          "myapp",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.PLUGINS.Name, "okta",
+		property_util.DB_USER.Name, "jane_doe",
+		property_util.IDP_ENDPOINT.Name, "dev-1234.okta.com",
+		property_util.IDP_USERNAME.Name, "oktauser",
+		property_util.IDP_PASSWORD.Name, "oktapassword",
+		property_util.APP_ID.Name, "myapp",
+	)
 	oktaCredentialsProviderFactory := okta.NewOktaCredentialsProviderFactory(getOktaTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	content := readFile(t, "./resources/okta/okta-saml-value-expected.txt")
@@ -74,15 +75,15 @@ func TestOktaAuthPluginSessionTokenPageError(t *testing.T) {
 		return mockHttp
 	}
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.PLUGINS.Name:         "okta",
-		property_util.DB_USER.Name:         "jane_doe",
-		property_util.IDP_ENDPOINT.Name:    "dev-1234.okta.com",
-		property_util.IDP_USERNAME.Name:    "oktauser",
-		property_util.IDP_PASSWORD.Name:    "oktapassword",
-		property_util.APP_ID.Name:          "myapp",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.PLUGINS.Name, "okta",
+		property_util.DB_USER.Name, "jane_doe",
+		property_util.IDP_ENDPOINT.Name, "dev-1234.okta.com",
+		property_util.IDP_USERNAME.Name, "oktauser",
+		property_util.IDP_PASSWORD.Name, "oktapassword",
+		property_util.APP_ID.Name, "myapp",
+	)
 	oktaCredentialsProviderFactory := okta.NewOktaCredentialsProviderFactory(getOktaTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	samlUrl := "https://dev-1234.okta.com/api/v1/authn"
@@ -102,15 +103,15 @@ func TestOktaGetSessionToken(t *testing.T) {
 		return mockHttp
 	}
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.PLUGINS.Name:         "okta",
-		property_util.DB_USER.Name:         "jane_doe",
-		property_util.IDP_ENDPOINT.Name:    "dev-1234.okta.com",
-		property_util.IDP_USERNAME.Name:    "oktauser",
-		property_util.IDP_PASSWORD.Name:    "oktapassword",
-		property_util.APP_ID.Name:          "myapp",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.PLUGINS.Name, "okta",
+		property_util.DB_USER.Name, "jane_doe",
+		property_util.IDP_ENDPOINT.Name, "dev-1234.okta.com",
+		property_util.IDP_USERNAME.Name, "oktauser",
+		property_util.IDP_PASSWORD.Name, "oktapassword",
+		property_util.APP_ID.Name, "myapp",
+	)
 	oktaCredentialsProviderFactory := okta.NewOktaCredentialsProviderFactory(getOktaTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	content := readFile(t, "./resources/okta/okta-expected-session-token.txt")
@@ -131,15 +132,15 @@ func TestOktaAuthPluginEmptySessionTokenError(t *testing.T) {
 		return mockHttp
 	}
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.PLUGINS.Name:         "okta",
-		property_util.DB_USER.Name:         "jane_doe",
-		property_util.IDP_ENDPOINT.Name:    "dev-1234.okta.com",
-		property_util.IDP_USERNAME.Name:    "oktauser",
-		property_util.IDP_PASSWORD.Name:    "oktapassword",
-		property_util.APP_ID.Name:          "myapp",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.PLUGINS.Name, "okta",
+		property_util.DB_USER.Name, "jane_doe",
+		property_util.IDP_ENDPOINT.Name, "dev-1234.okta.com",
+		property_util.IDP_USERNAME.Name, "oktauser",
+		property_util.IDP_PASSWORD.Name, "oktapassword",
+		property_util.APP_ID.Name, "myapp",
+	)
 	oktaCredentialsProviderFactory := okta.NewOktaCredentialsProviderFactory(getOktaTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	samlAssertion, err := oktaCredentialsProviderFactory.GetSamlAssertion(props)
@@ -159,15 +160,15 @@ func TestOktaAuthPluginHttpClientError(t *testing.T) {
 		return mockHttp
 	}
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.PLUGINS.Name:         "okta",
-		property_util.DB_USER.Name:         "jane_doe",
-		property_util.IDP_ENDPOINT.Name:    "dev-1234.okta.com",
-		property_util.IDP_USERNAME.Name:    "oktauser",
-		property_util.IDP_PASSWORD.Name:    "oktapassword",
-		property_util.APP_ID.Name:          "myapp",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.PLUGINS.Name, "okta",
+		property_util.DB_USER.Name, "jane_doe",
+		property_util.IDP_ENDPOINT.Name, "dev-1234.okta.com",
+		property_util.IDP_USERNAME.Name, "oktauser",
+		property_util.IDP_PASSWORD.Name, "oktapassword",
+		property_util.APP_ID.Name, "myapp",
+	)
 	oktaCredentialsProviderFactory := okta.NewOktaCredentialsProviderFactory(getOktaTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	samlAssertion, err := oktaCredentialsProviderFactory.GetSamlAssertion(props)
@@ -190,15 +191,15 @@ func TestOktaAuthPluginHttpErrorOnSamlRequest(t *testing.T) {
 		return mockHttp
 	}
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.PLUGINS.Name:         "okta",
-		property_util.DB_USER.Name:         "jane_doe",
-		property_util.IDP_ENDPOINT.Name:    "dev-1234.okta.com",
-		property_util.IDP_USERNAME.Name:    "oktauser",
-		property_util.IDP_PASSWORD.Name:    "oktapassword",
-		property_util.APP_ID.Name:          "myapp",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.PLUGINS.Name, "okta",
+		property_util.DB_USER.Name, "jane_doe",
+		property_util.IDP_ENDPOINT.Name, "dev-1234.okta.com",
+		property_util.IDP_USERNAME.Name, "oktauser",
+		property_util.IDP_PASSWORD.Name, "oktapassword",
+		property_util.APP_ID.Name, "myapp",
+	)
 	oktaCredentialsProviderFactory := okta.NewOktaCredentialsProviderFactory(getOktaTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	content := readFile(t, "./resources/okta/okta-expected-session-token.txt")

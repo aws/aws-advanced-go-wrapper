@@ -42,7 +42,7 @@ func TestConnectionProviderManagerGetProvider(t *testing.T) {
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{DefaultProvider: defaultConnProvider}
 
 	// When there is no other connection provider available returns the default.
-	assert.Equal(t, defaultConnProvider, connectionProviderManager.GetConnectionProvider(*host0, nil))
+	assert.Equal(t, defaultConnProvider, connectionProviderManager.GetConnectionProvider(*host0, emptyProps))
 
 	effectiveConnProvider := mock_driver_infrastructure.NewMockConnectionProvider(ctrl)
 	effectiveConnProvider.EXPECT().AcceptsUrl(*host0, gomock.Any()).Return(true).AnyTimes()
@@ -52,8 +52,8 @@ func TestConnectionProviderManagerGetProvider(t *testing.T) {
 		DefaultProvider: defaultConnProvider, EffectiveProvider: effectiveConnProvider}
 
 	// If the EffectiveProvider accepts the host/props returns that as the provider.
-	assert.Equal(t, effectiveConnProvider, connectionProviderManager.GetConnectionProvider(*host0, nil))
-	assert.Equal(t, defaultConnProvider, connectionProviderManager.GetConnectionProvider(*host1, nil))
+	assert.Equal(t, effectiveConnProvider, connectionProviderManager.GetConnectionProvider(*host0, emptyProps))
+	assert.Equal(t, defaultConnProvider, connectionProviderManager.GetConnectionProvider(*host1, emptyProps))
 
 	customConnProvider := mock_driver_infrastructure.NewMockConnectionProvider(ctrl)
 	customConnProvider.EXPECT().AcceptsUrl(*host1, gomock.Any()).Return(true).AnyTimes()
@@ -62,8 +62,8 @@ func TestConnectionProviderManagerGetProvider(t *testing.T) {
 	driver_infrastructure.SetCustomConnectionProvider(customConnProvider)
 
 	// If a Custom ConnectionProvider is set and accepts the host/props returns that as the provider.
-	assert.Equal(t, customConnProvider, connectionProviderManager.GetConnectionProvider(*host1, nil))
-	assert.Equal(t, effectiveConnProvider, connectionProviderManager.GetConnectionProvider(*host0, nil))
+	assert.Equal(t, customConnProvider, connectionProviderManager.GetConnectionProvider(*host1, emptyProps))
+	assert.Equal(t, effectiveConnProvider, connectionProviderManager.GetConnectionProvider(*host0, emptyProps))
 	assert.Equal(t, defaultConnProvider, connectionProviderManager.GetDefaultProvider())
 	driver_infrastructure.ResetCustomConnectionProvider()
 }
@@ -119,10 +119,10 @@ func TestConnectionProviderManagerGetHostInfo(t *testing.T) {
 	notAcceptedStrategy := "unacceptable"
 
 	// When there is no other connection provider available returns the default provider's result.
-	host, err := connectionProviderManager.GetHostInfoByStrategy(hosts, host_info_util.WRITER, "random", nil)
+	host, err := connectionProviderManager.GetHostInfoByStrategy(hosts, host_info_util.WRITER, "random", emptyProps)
 	assert.Nil(t, err)
 	assert.Equal(t, host, host0)
-	_, err = connectionProviderManager.GetHostInfoByStrategy(hosts, host_info_util.WRITER, notAcceptedStrategy, nil)
+	_, err = connectionProviderManager.GetHostInfoByStrategy(hosts, host_info_util.WRITER, notAcceptedStrategy, emptyProps)
 	assert.NotNil(t, err)
 
 	effectiveConnProvider := mock_driver_infrastructure.NewMockConnectionProvider(ctrl)
@@ -134,9 +134,9 @@ func TestConnectionProviderManagerGetHostInfo(t *testing.T) {
 		DefaultProvider: defaultConnProvider, EffectiveProvider: effectiveConnProvider}
 
 	// If the EffectiveProvider is present and accepts the strategy returns the effective provider's result.
-	host, _ = connectionProviderManager.GetHostInfoByStrategy(hosts, host_info_util.WRITER, "effective", nil)
+	host, _ = connectionProviderManager.GetHostInfoByStrategy(hosts, host_info_util.WRITER, "effective", emptyProps)
 	assert.Equal(t, host, host1)
-	_, err = connectionProviderManager.GetHostInfoByStrategy(hosts, host_info_util.WRITER, notAcceptedStrategy, nil)
+	_, err = connectionProviderManager.GetHostInfoByStrategy(hosts, host_info_util.WRITER, notAcceptedStrategy, emptyProps)
 	assert.NotNil(t, err)
 
 	customConnProvider := mock_driver_infrastructure.NewMockConnectionProvider(ctrl)
@@ -148,11 +148,11 @@ func TestConnectionProviderManagerGetHostInfo(t *testing.T) {
 	driver_infrastructure.SetCustomConnectionProvider(customConnProvider)
 
 	// If a Custom ConnectionProvider is present and accepts the strategy returns the effective provider's result.
-	host, _ = connectionProviderManager.GetHostInfoByStrategy(hosts, host_info_util.WRITER, "custom", nil)
+	host, _ = connectionProviderManager.GetHostInfoByStrategy(hosts, host_info_util.WRITER, "custom", emptyProps)
 	assert.Equal(t, host, host0)
-	host, _ = connectionProviderManager.GetHostInfoByStrategy(hosts, host_info_util.WRITER, "effective", nil)
+	host, _ = connectionProviderManager.GetHostInfoByStrategy(hosts, host_info_util.WRITER, "effective", emptyProps)
 	assert.Equal(t, host, host1)
-	_, err = connectionProviderManager.GetHostInfoByStrategy(hosts, host_info_util.WRITER, notAcceptedStrategy, nil)
+	_, err = connectionProviderManager.GetHostInfoByStrategy(hosts, host_info_util.WRITER, notAcceptedStrategy, emptyProps)
 	assert.NotNil(t, err)
 	driver_infrastructure.ResetCustomConnectionProvider()
 }
@@ -188,7 +188,7 @@ func TestConnectionProviderManagerGetHostSelector(t *testing.T) {
 	// If the EffectiveProvider is present and accepts the strategy returns the effective provider's result.
 	selector, _ = connectionProviderManager.GetHostSelectorStrategy("effective")
 	assert.Equal(t, effectiveHostSelector, selector)
-	_, err = connectionProviderManager.GetHostInfoByStrategy(hosts, host_info_util.WRITER, notAcceptedStrategy, nil)
+	_, err = connectionProviderManager.GetHostInfoByStrategy(hosts, host_info_util.WRITER, notAcceptedStrategy, emptyProps)
 	assert.NotNil(t, err)
 
 	customConnProvider := mock_driver_infrastructure.NewMockConnectionProvider(ctrl)
@@ -206,7 +206,7 @@ func TestConnectionProviderManagerGetHostSelector(t *testing.T) {
 	assert.NotEqual(t, effectiveHostSelector, selector)
 	selector, _ = connectionProviderManager.GetHostSelectorStrategy("effective")
 	assert.Equal(t, effectiveHostSelector, selector)
-	_, err = connectionProviderManager.GetHostInfoByStrategy(hosts, host_info_util.WRITER, notAcceptedStrategy, nil)
+	_, err = connectionProviderManager.GetHostInfoByStrategy(hosts, host_info_util.WRITER, notAcceptedStrategy, emptyProps)
 	assert.NotNil(t, err)
 	driver_infrastructure.ResetCustomConnectionProvider()
 }

@@ -26,6 +26,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 const WEIGHT_RELATIVE_TO_PRIOR_PLUGIN = -1
@@ -54,7 +55,7 @@ type ConnectionPluginChainBuilder struct {
 func (builder *ConnectionPluginChainBuilder) GetPlugins(
 	pluginService driver_infrastructure.PluginService,
 	pluginManager driver_infrastructure.PluginManager,
-	props map[string]string,
+	props *utils.RWMap[string],
 	availablePlugins map[string]driver_infrastructure.ConnectionPluginFactory) ([]driver_infrastructure.ConnectionPlugin, error) {
 	var resultPlugins []driver_infrastructure.ConnectionPlugin
 	var pluginFactoryWeights []PluginFactoryWeight

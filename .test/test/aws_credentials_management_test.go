@@ -21,12 +21,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/stretchr/testify/assert"
 
 	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 )
 
 type mockCredentialsProviderHandler struct {
@@ -34,7 +35,7 @@ type mockCredentialsProviderHandler struct {
 	called   bool
 }
 
-func (m *mockCredentialsProviderHandler) GetAwsCredentialsProvider(hostInfo host_info_util.HostInfo, props map[string]string) (aws.CredentialsProvider, error) {
+func (m *mockCredentialsProviderHandler) GetAwsCredentialsProvider(_ host_info_util.HostInfo, _ *utils.RWMap[string]) (aws.CredentialsProvider, error) {
 	m.called = true
 	return m.provider, nil
 }
@@ -43,7 +44,7 @@ type staticProvider struct {
 	creds aws.Credentials
 }
 
-func (s *staticProvider) Retrieve(ctx context.Context) (aws.Credentials, error) {
+func (s *staticProvider) Retrieve(_ context.Context) (aws.Credentials, error) {
 	return s.creds, nil
 }
 
@@ -66,7 +67,7 @@ func Test_GetAwsCredentialsProvider_WithCustomHandler(t *testing.T) {
 
 	auth_helpers.SetAwsCredentialsProviderHandler(mockHandler)
 
-	provider, err := auth_helpers.GetAwsCredentialsProvider(host_info_util.HostInfo{}, map[string]string{})
+	provider, err := auth_helpers.GetAwsCredentialsProvider(host_info_util.HostInfo{}, emptyProps)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, provider)
@@ -82,9 +83,9 @@ func Test_GetAwsCredentialsProvider_DefaultProvider_InvalidProfile(t *testing.T)
 	resetAwsCredProviderHandler()
 
 	profileName := "nonexistent-profile"
-	props := map[string]string{
-		property_util.AWS_PROFILE.Name: profileName,
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.AWS_PROFILE.Name, profileName,
+	)
 
 	provider, err := auth_helpers.GetAwsCredentialsProvider(host_info_util.HostInfo{}, props)
 
@@ -101,11 +102,9 @@ func Test_GetAwsCredentialsProvider_DefaultProvider_InvalidProfile(t *testing.T)
 func Test_GetAwsCredentialsProvider_DefaultProvider_EmptyProfile(t *testing.T) {
 	resetAwsCredProviderHandler()
 
-	props := map[string]string{}
-
 	// default credentials should still be valid even if cred file does not exist
 	// it will be populated with empty credentials
-	provider, err := auth_helpers.GetAwsCredentialsProvider(host_info_util.HostInfo{}, props)
+	provider, err := auth_helpers.GetAwsCredentialsProvider(host_info_util.HostInfo{}, emptyProps)
 	assert.NoError(t, err)
 	assert.NotNil(t, provider)
 }

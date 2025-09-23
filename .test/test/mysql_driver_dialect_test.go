@@ -17,9 +17,10 @@
 package test
 
 import (
+	"testing"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/mysql-driver"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )

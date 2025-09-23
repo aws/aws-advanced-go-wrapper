@@ -48,7 +48,7 @@ type BlueGreenStatusMonitor struct {
 	hostListProvider                 driver_infrastructure.HostListProvider
 	pluginService                    driver_infrastructure.PluginService
 	blueGreenDialect                 driver_infrastructure.BlueGreenDialect
-	props                            map[string]string
+	props                            *utils.RWMap[string]
 	statusCheckIntervalMap           map[driver_infrastructure.BlueGreenIntervalRate]int
 	onBlueGreenStatusChangeFunc      func(role driver_infrastructure.BlueGreenRole, interimStatus BlueGreenInterimStatus)
 	currentPhase                     driver_infrastructure.BlueGreenPhase
@@ -76,7 +76,7 @@ type BlueGreenStatusMonitor struct {
 }
 
 func NewBlueGreenStatusMonitor(blueGreenRole driver_infrastructure.BlueGreenRole, bgdId string, hostInfo *host_info_util.HostInfo,
-	pluginService driver_infrastructure.PluginService, monitoringProps map[string]string, statusCheckIntervalMap map[driver_infrastructure.BlueGreenIntervalRate]int,
+	pluginService driver_infrastructure.PluginService, monitoringProps *utils.RWMap[string], statusCheckIntervalMap map[driver_infrastructure.BlueGreenIntervalRate]int,
 	onBlueGreenStatusChangeFunc func(role driver_infrastructure.BlueGreenRole, interimStatus BlueGreenInterimStatus)) *BlueGreenStatusMonitor {
 	dialect, _ := pluginService.GetDialect().(driver_infrastructure.BlueGreenDialect)
 	monitor := BlueGreenStatusMonitor{
@@ -382,16 +382,16 @@ func (b *BlueGreenStatusMonitor) InitHostListProvider() {
 		return
 	}
 
-	hostListProps := utils.CreateMapCopy(b.props)
+	hostListProps := utils.NewRWMapFromCopy(b.props)
 
 	// Need to instantiate a separate HostListProvider with
 	// a special unique clusterId to avoid interference with other HostListProviders opened for this cluster.
 	// Blue and Green clusters are expected to have different clusterId.
 	clusterId := fmt.Sprintf("%s::%v::%s", b.bgId, b.role, BG_CLUSTER_ID)
-	hostListProps[property_util.CLUSTER_ID.Name] = clusterId
+	hostListProps.Put(property_util.CLUSTER_ID.Name, clusterId)
 	if hostInfo := b.connectionHostInfo.Load(); !hostInfo.IsNil() && b.connectionHostInfoCorrect.Load() {
-		hostListProps[property_util.PORT.Name] = strconv.Itoa(hostInfo.Port)
-		hostListProps[property_util.HOST.Name] = hostInfo.Host
+		hostListProps.Put(property_util.PORT.Name, strconv.Itoa(hostInfo.Port))
+		hostListProps.Put(property_util.HOST.Name, hostInfo.Host)
 	}
 	slog.Debug(error_util.GetMessage("BlueGreenDeployment.createHostListProvider", b.role, clusterId))
 	b.hostListProvider = b.pluginService.CreateHostListProvider(hostListProps)
@@ -419,8 +419,8 @@ func (b *BlueGreenStatusMonitor) OpenConnection() {
 	if b.useIpAddress.Load() && connectedIpAddressCopy != "" {
 		if connectionWithIpHostInfo, err := host_info_util.NewHostInfoBuilder().CopyFrom(connectionHostInfoCopy).SetHost(connectedIpAddressCopy).Build(); err == nil {
 			slog.Debug(error_util.GetMessage("BlueGreenDeployment.openingConnectionWithIp", b.role, connectionHostInfoCopy.Host))
-			connectWithIpProps := utils.CreateMapCopy(b.props)
-			connectWithIpProps[property_util.IAM_HOST.Name] = connectionHostInfoCopy.Host
+			connectWithIpProps := utils.NewRWMapFromCopy(b.props)
+			connectWithIpProps.Put(property_util.IAM_HOST.Name, connectionHostInfoCopy.Host)
 			if conn, err := b.pluginService.ForceConnect(connectionWithIpHostInfo, connectWithIpProps); err == nil {
 				b.connection.Store(&conn)
 				slog.Debug(error_util.GetMessage("BlueGreenDeployment.openedConnectionWithIp", b.role, connectionHostInfoCopy.Host))

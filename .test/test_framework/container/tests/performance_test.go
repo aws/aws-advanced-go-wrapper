@@ -420,11 +420,11 @@ func initPerfProps(testEnvironment *test_utils.TestEnvironment) map[string]strin
 	switch testEnvironment.Info().Request.Engine {
 	case test_utils.PG:
 		monitoringConnectTimeoutParameterName = monitoringConnectTimeoutParameterName + "connect_timeout"
-		driverProtocol = utils.PGX_DRIVER_PROTOCOL
+		driverProtocol = property_util.PGX_DRIVER_PROTOCOL
 	case test_utils.MYSQL:
 		monitoringConnectTimeoutParameterName = monitoringConnectTimeoutParameterName + "readTimeout"
 		monitoringConnectTimeoutSeconds = monitoringConnectTimeoutSeconds + "s"
-		driverProtocol = utils.MYSQL_DRIVER_PROTOCOL
+		driverProtocol = property_util.MYSQL_DRIVER_PROTOCOL
 	}
 
 	props := map[string]string{
