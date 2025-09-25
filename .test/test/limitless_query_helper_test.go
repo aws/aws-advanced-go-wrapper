@@ -78,6 +78,90 @@ func TestQueryForLimitlessRouters_Success(t *testing.T) {
 	assert.Equal(t, 5432, result[0].Port)
 }
 
+func TestQueryForLimitlessRouters_HighLoad_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := &mockConnWithQueryer{
+		MockConn:           mock_database_sql_driver.NewMockConn(ctrl),
+		MockQueryerContext: mock_database_sql_driver.NewMockQueryerContext(ctrl),
+	}
+	mockPlugin := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+	dialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
+	query := dialect.GetLimitlessRouterEndpointQuery()
+
+	props := map[string]string{
+		property_util.LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name: "100",
+	}
+
+	mockPlugin.EXPECT().GetDialect().Return(dialect)
+
+	mockConn.MockQueryerContext.EXPECT().
+		QueryContext(gomock.Any(), query, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{"hostname", "load"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = "router1"
+		dest[1] = 0.95
+		return nil
+	})
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrBadConn)
+	mockRows.EXPECT().Close().Return(nil)
+
+	helper := limitless.NewLimitlessQueryHelperImpl(mockPlugin)
+	result, err := helper.QueryForLimitlessRouters(mockConn, 5432, props)
+
+	assert.NoError(t, err)
+	assert.Len(t, result, 1)
+	assert.Equal(t, "router1", result[0].Host)
+	assert.Equal(t, 1, result[0].Weight)
+	assert.Equal(t, 5432, result[0].Port)
+}
+
+func TestQueryForLimitlessRouters_InvalidLoad_Defaults(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := &mockConnWithQueryer{
+		MockConn:           mock_database_sql_driver.NewMockConn(ctrl),
+		MockQueryerContext: mock_database_sql_driver.NewMockQueryerContext(ctrl),
+	}
+	mockPlugin := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+	dialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
+	query := dialect.GetLimitlessRouterEndpointQuery()
+
+	props := map[string]string{
+		property_util.LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name: "100",
+	}
+
+	mockPlugin.EXPECT().GetDialect().Return(dialect)
+
+	mockConn.MockQueryerContext.EXPECT().
+		QueryContext(gomock.Any(), query, gomock.Nil()).
+		Return(mockRows, nil)
+
+	mockRows.EXPECT().Columns().Return([]string{"hostname", "load"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = "router1"
+		dest[1] = 11.95
+		return nil
+	})
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrBadConn)
+	mockRows.EXPECT().Close().Return(nil)
+
+	helper := limitless.NewLimitlessQueryHelperImpl(mockPlugin)
+	result, err := helper.QueryForLimitlessRouters(mockConn, 5432, props)
+
+	assert.NoError(t, err)
+	assert.Len(t, result, 1)
+	assert.Equal(t, "router1", result[0].Host)
+	assert.Equal(t, 1, result[0].Weight)
+	assert.Equal(t, 5432, result[0].Port)
+}
+
 func TestQueryForLimitlessRouters_ConnDoesNotImplementQueryerContext(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

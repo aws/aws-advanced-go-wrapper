@@ -121,7 +121,7 @@ func mapLimitlessQueryRowsToHostInfoList(rows driver.Rows, hostPortToMap int) []
 }
 
 func mapLimitlessRouterLoadToHostInfoWeight(hostName string, routerLoad float64) int {
-	weight := int(math.Round(10 - routerLoad*10))
+	weight := int(10 - math.Floor(routerLoad*10))
 	if weight < 1 || weight > 10 {
 		weight = 1
 		slog.Warn(error_util.GetMessage("LimitlessQueryHelperImpl.invalidRouterLoad", routerLoad, hostName))
