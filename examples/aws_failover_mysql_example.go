@@ -18,12 +18,12 @@ package examples
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
+	"log"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	_ "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
-	"log"
 )
 
 func main() {

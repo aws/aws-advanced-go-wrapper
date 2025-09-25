@@ -109,7 +109,7 @@ func (c *CustomConnectionProvider) GetHostInfoByStrategy(hosts []*host_info_util
 	if err != nil {
 		return selector.GetHost(hosts, role, props)
 	}
-	return nil, fmt.Errorf("Unsupported strategy.")
+	return nil, fmt.Errorf("unsupported strategy")
 }
 
 // Returns a HostSelector that will select a preferred host from a list of hosts.
@@ -119,7 +119,7 @@ func (c *CustomConnectionProvider) GetHostSelectorStrategy(strategy string) (dri
 	if ok {
 		return acceptedStrategy, nil
 	}
-	return nil, fmt.Errorf("No selector.")
+	return nil, fmt.Errorf("no selector")
 }
 
 // Additonal customization is possible through a custom HostSelector.
@@ -132,5 +132,5 @@ func (h *FirstHostSelector) GetHost(hosts []*host_info_util.HostInfo, role host_
 	if len(hosts) > 0 {
 		return hosts[0], nil
 	}
-	return nil, fmt.Errorf("Empty host list.")
+	return nil, fmt.Errorf("empty host list")
 }

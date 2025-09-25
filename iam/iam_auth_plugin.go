@@ -125,20 +125,19 @@ func (iamAuthPlugin *IamAuthPlugin) connectInternal(
 		region,
 	)
 
-	propsCopy := utils.NewRWMapFromCopy(props)
 	token, cachedTokenFound := TokenCache.Get(cacheKey)
 	isCachedToken := cachedTokenFound && token != ""
 	if isCachedToken {
 		slog.Debug(error_util.GetMessage("IamAuthPlugin.useCachedToken"))
-		property_util.PASSWORD.Set(propsCopy, token)
+		property_util.PASSWORD.Set(props, token)
 	} else {
-		err := iamAuthPlugin.fetchAndSetToken(hostInfo, host, port, region, cacheKey, propsCopy)
+		err := iamAuthPlugin.fetchAndSetToken(hostInfo, host, port, region, cacheKey, props)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	conn, err := connectFunc(propsCopy)
+	conn, err := connectFunc(props)
 	if err == nil {
 		return conn, nil
 	} else {
@@ -150,12 +149,12 @@ func (iamAuthPlugin *IamAuthPlugin) connectInternal(
 
 	// Login unsuccessful with cached token
 	// Try to generate a new token and connect again
-	err = iamAuthPlugin.fetchAndSetToken(hostInfo, host, port, region, cacheKey, propsCopy)
+	err = iamAuthPlugin.fetchAndSetToken(hostInfo, host, port, region, cacheKey, props)
 	if err != nil {
 		return nil, err
 	}
 
-	return connectFunc(propsCopy)
+	return connectFunc(props)
 }
 
 func (iamAuthPlugin *IamAuthPlugin) fetchAndSetToken(
@@ -166,7 +165,7 @@ func (iamAuthPlugin *IamAuthPlugin) fetchAndSetToken(
 	cacheKey string,
 	props *utils.RWMap[string]) error {
 	tokenExpirationSec := property_util.GetExpirationValue(props, property_util.IAM_EXPIRATION_SEC)
-	awsCredentialsProvider, err := auth_helpers.GetAwsCredentialsProvider(*hostInfo, props)
+	awsCredentialsProvider, err := auth_helpers.GetAwsCredentialsProvider(*hostInfo, props.GetAllEntries())
 	if err != nil {
 		slog.Error(error_util.GetMessage("IamAuthPlugin.errorGettingAwsCredentialsProvider", err))
 		return err

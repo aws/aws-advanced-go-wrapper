@@ -150,11 +150,9 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectInternal(
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	secretsWasFetched, _ := awsSecretsManagerPlugin.updateSecrets(hostInfo, props, false)
 
-	propsCopy := utils.NewRWMapFromCopy(props)
-
 	// try and connect
-	awsSecretsManagerPlugin.applySecretToProperties(propsCopy)
-	conn, err := connectFunc(propsCopy)
+	awsSecretsManagerPlugin.applySecretToProperties(props)
+	conn, err := connectFunc(props)
 
 	if err == nil {
 		if !secretsWasFetched {
@@ -166,13 +164,13 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectInternal(
 	if awsSecretsManagerPlugin.pluginService.IsLoginError(err) && !secretsWasFetched {
 		// Login unsuccessful with cached credentials
 		// Try to re-fetch credentials and try again
-		secretsWasFetched, err = awsSecretsManagerPlugin.updateSecrets(hostInfo, propsCopy, true)
+		secretsWasFetched, err = awsSecretsManagerPlugin.updateSecrets(hostInfo, props, true)
 
 		if secretsWasFetched {
 			slog.Debug("AwsSecretsManagerConnectionPlugin: failed initial connection, trying again after fetching new secret value.")
 
-			awsSecretsManagerPlugin.applySecretToProperties(propsCopy)
-			return connectFunc(propsCopy)
+			awsSecretsManagerPlugin.applySecretToProperties(props)
+			return connectFunc(props)
 		}
 	}
 

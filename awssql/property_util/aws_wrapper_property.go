@@ -72,6 +72,18 @@ func (prop *AwsWrapperProperty) Set(props *utils.RWMap[string], val string) {
 
 func GetVerifiedWrapperPropertyValue[T any](props *utils.RWMap[string], property AwsWrapperProperty) T {
 	propValue := property.Get(props)
+	return convertValue[T](propValue, property)
+}
+
+func GetVerifiedWrapperPropertyValueFromMap[T any](props map[string]string, property AwsWrapperProperty) T {
+	propValue, ok := props[property.Name]
+	if !ok {
+		propValue = property.defaultValue
+	}
+	return convertValue[T](propValue, property)
+}
+
+func convertValue[T any](propValue string, property AwsWrapperProperty) T {
 	var parsedValue any
 	var err error
 	switch property.wrapperPropertyType {

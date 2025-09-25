@@ -127,12 +127,12 @@ func (p *InternalPooledConnectionProvider) getPoolKey(hostInfo *host_info_util.H
 		return p.poolKeyFunc(hostInfo, props)
 	}
 
-	user := props[property_util.USER.Name]
+	user := property_util.GetVerifiedWrapperPropertyValueFromMap[string](props, property_util.USER)
 
 	if user != "" {
 		return user
 	}
-	return props[property_util.DB_USER.Name]
+	return property_util.GetVerifiedWrapperPropertyValueFromMap[string](props, property_util.DB_USER)
 }
 
 func (p *InternalPooledConnectionProvider) ReleaseResources() {

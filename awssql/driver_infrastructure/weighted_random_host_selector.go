@@ -33,7 +33,7 @@ type WeightedRandomHostSelector struct {
 
 func (r *WeightedRandomHostSelector) GetHost(hosts []*host_info_util.HostInfo, role host_info_util.HostRole, props map[string]string) (*host_info_util.HostInfo, error) {
 	if len(r.hostWeightMap) == 0 {
-		hostWeightMap, err := GetHostWeightMapFromString(props[property_util.WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS.Name])
+		hostWeightMap, err := GetHostWeightMapFromString(property_util.GetVerifiedWrapperPropertyValueFromMap[string](props, property_util.WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS))
 		if err != nil {
 			return nil, err
 		}

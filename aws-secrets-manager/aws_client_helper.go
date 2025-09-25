@@ -42,7 +42,7 @@ func NewAwsSecretsManagerClient(hostInfo *host_info_util.HostInfo,
 	props *utils.RWMap[string],
 	endpoint string,
 	region string) (AwsSecretsManagerClient, error) {
-	awsCredentialsProvider, err := auth_helpers.GetAwsCredentialsProvider(*hostInfo, props)
+	awsCredentialsProvider, err := auth_helpers.GetAwsCredentialsProvider(*hostInfo, props.GetAllEntries())
 
 	if err != nil {
 		slog.Error(error_util.GetMessage("AwsClientHelper.errorGettingAwsCredentialsProvider"))

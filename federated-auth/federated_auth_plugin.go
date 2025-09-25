@@ -142,27 +142,26 @@ func (f *FederatedAuthPlugin) connectInternal(
 		region)
 
 	token, isCachedToken := TokenCache.Get(cacheKey)
-	propsCopy := utils.NewRWMapFromCopy(props)
 
 	if isCachedToken {
 		slog.Debug(error_util.GetMessage("AuthenticationToken.useCachedToken"))
-		property_util.PASSWORD.Set(propsCopy, token)
+		property_util.PASSWORD.Set(props, token)
 	} else {
-		updateErr := f.updateAuthenticationToken(propsCopy, region, cacheKey, host, port)
+		updateErr := f.updateAuthenticationToken(props, region, cacheKey, host, port)
 		if updateErr != nil {
 			return nil, updateErr
 		}
 	}
 
-	property_util.USER.Set(propsCopy, property_util.DB_USER.Get(propsCopy))
+	property_util.USER.Set(props, property_util.DB_USER.Get(props))
 
-	result, err := connectFunc(propsCopy)
+	result, err := connectFunc(props)
 	if err != nil && f.pluginService.IsLoginError(err) && isCachedToken {
-		updateErr := f.updateAuthenticationToken(propsCopy, region, cacheKey, host, port)
+		updateErr := f.updateAuthenticationToken(props, region, cacheKey, host, port)
 		if updateErr != nil {
 			return nil, updateErr
 		}
-		return connectFunc(propsCopy)
+		return connectFunc(props)
 	}
 	return result, err
 }

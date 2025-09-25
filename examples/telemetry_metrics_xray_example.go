@@ -20,6 +20,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
+	"log/slog"
+	"os"
+	"time"
+
 	"github.com/aws/aws-xray-sdk-go/strategy/sampling"
 	"github.com/aws/aws-xray-sdk-go/xray"
 	"github.com/aws/aws-xray-sdk-go/xraylog"
@@ -27,12 +32,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"go.opentelemetry.io/otel/sdk/resource"
-	"log"
-	"log/slog"
-	"os"
-	"time"
 
 	_ "github.com/aws/aws-advanced-go-wrapper/xray"
 )

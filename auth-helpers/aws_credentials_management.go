@@ -22,26 +22,25 @@ import (
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 )
 
 type AwsCredentialsProviderHandler interface {
-	GetAwsCredentialsProvider(hostInfo host_info_util.HostInfo, props *utils.RWMap[string]) (aws.CredentialsProvider, error)
+	GetAwsCredentialsProvider(hostInfo host_info_util.HostInfo, props map[string]string) (aws.CredentialsProvider, error)
 }
 
 var awsCredentialsProviderHandler AwsCredentialsProviderHandler
 
 var awsCredentialsProviderManageLock sync.RWMutex
 
-func GetAwsCredentialsProvider(hostInfo host_info_util.HostInfo, props *utils.RWMap[string]) (aws.CredentialsProvider, error) {
+func GetAwsCredentialsProvider(hostInfo host_info_util.HostInfo, props map[string]string) (aws.CredentialsProvider, error) {
 	awsCredentialsProviderManageLock.RLock()
 	defer awsCredentialsProviderManageLock.RUnlock()
 	if awsCredentialsProviderHandler != nil {
 		return awsCredentialsProviderHandler.GetAwsCredentialsProvider(hostInfo, props)
 	}
-	return getDefaultProvider(property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.AWS_PROFILE))
+	return getDefaultProvider(property_util.GetVerifiedWrapperPropertyValueFromMap[string](props, property_util.AWS_PROFILE))
 }
 
 func SetAwsCredentialsProviderHandler(credentialsHandler AwsCredentialsProviderHandler) {

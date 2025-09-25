@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/stretchr/testify/assert"
 
@@ -35,7 +34,7 @@ type mockCredentialsProviderHandler struct {
 	called   bool
 }
 
-func (m *mockCredentialsProviderHandler) GetAwsCredentialsProvider(_ host_info_util.HostInfo, _ *utils.RWMap[string]) (aws.CredentialsProvider, error) {
+func (m *mockCredentialsProviderHandler) GetAwsCredentialsProvider(_ host_info_util.HostInfo, _ map[string]string) (aws.CredentialsProvider, error) {
 	m.called = true
 	return m.provider, nil
 }
@@ -67,7 +66,7 @@ func Test_GetAwsCredentialsProvider_WithCustomHandler(t *testing.T) {
 
 	auth_helpers.SetAwsCredentialsProviderHandler(mockHandler)
 
-	provider, err := auth_helpers.GetAwsCredentialsProvider(host_info_util.HostInfo{}, emptyProps)
+	provider, err := auth_helpers.GetAwsCredentialsProvider(host_info_util.HostInfo{}, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, provider)
@@ -83,9 +82,9 @@ func Test_GetAwsCredentialsProvider_DefaultProvider_InvalidProfile(t *testing.T)
 	resetAwsCredProviderHandler()
 
 	profileName := "nonexistent-profile"
-	props := MakeMapFromKeysAndVals(
-		property_util.AWS_PROFILE.Name, profileName,
-	)
+	props := map[string]string{
+		property_util.AWS_PROFILE.Name: profileName,
+	}
 
 	provider, err := auth_helpers.GetAwsCredentialsProvider(host_info_util.HostInfo{}, props)
 
@@ -104,7 +103,7 @@ func Test_GetAwsCredentialsProvider_DefaultProvider_EmptyProfile(t *testing.T) {
 
 	// default credentials should still be valid even if cred file does not exist
 	// it will be populated with empty credentials
-	provider, err := auth_helpers.GetAwsCredentialsProvider(host_info_util.HostInfo{}, emptyProps)
+	provider, err := auth_helpers.GetAwsCredentialsProvider(host_info_util.HostInfo{}, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, provider)
 }
