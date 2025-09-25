@@ -85,7 +85,8 @@ func NewAwsSecretsManagerPlugin(pluginService driver_infrastructure.PluginServic
 	}
 
 	// Get and validate region
-	region, err := GetAwsSecretsManagerRegion(property_util.SECRETS_MANAGER_REGION.Get(props), property_util.SECRETS_MANAGER_SECRET_ID.Get(props))
+	regionStr, _ := props.Get(property_util.SECRETS_MANAGER_REGION.Name)
+	region, err := GetAwsSecretsManagerRegion(regionStr, property_util.SECRETS_MANAGER_SECRET_ID.Get(props))
 	if err != nil {
 		return nil, err
 	}

@@ -437,7 +437,7 @@ var SECRETS_MANAGER_SECRET_ID = AwsWrapperProperty{
 var SECRETS_MANAGER_REGION = AwsWrapperProperty{
 	Name:                "secretsManagerRegion",
 	description:         "The region of the secret to retrieve.",
-	defaultValue:        "",
+	defaultValue:        "us-east-1",
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 

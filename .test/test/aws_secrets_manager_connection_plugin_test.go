@@ -164,23 +164,16 @@ func TestAwsSecretsManagerConnectionPluginValidRegion(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestAwsSecretsManagerConnectionPluginValidIdInvalidRegion(t *testing.T) {
+func TestAwsSecretsManagerConnectionPluginValidIdDefaultRegion(t *testing.T) {
 	props := MakeMapFromKeysAndVals(
 		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
 	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
 
-	res, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
+	_, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
 
-	fmt.Println(res, err)
-	if err != nil {
-		assert.Equal(t,
-			error_util.GetMessage("AwsSecretsManagerConnectionPlugin.unableToDetermineRegion", property_util.SECRETS_MANAGER_REGION.Name),
-			err.Error())
-	} else {
-		t.Fatalf("expect an error but didn't get one")
-	}
+	assert.NoError(t, err)
 }
 
 func TestAwsSecretsManagerConnectionPluginValidRegionThroughArn(t *testing.T) {

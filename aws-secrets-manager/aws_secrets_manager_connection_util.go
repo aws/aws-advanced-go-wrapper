@@ -98,7 +98,13 @@ func GetAwsSecretsManagerRegion(regionStr string, secretId string) (region_util.
 
 	region := region_util.GetRegionFromArn(secretId)
 	if region == "" {
-		return region, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.unableToDetermineRegion", property_util.SECRETS_MANAGER_REGION.Name))
+		defaultValue := property_util.GetVerifiedWrapperPropertyValueFromMap[string](map[string]string{}, property_util.SECRETS_MANAGER_REGION)
+		region := region_util.GetRegionFromRegionString(defaultValue)
+
+		if region == "" {
+			// This should not be reached.
+			return "", errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.unableToDetermineRegion", property_util.SECRETS_MANAGER_REGION.Name))
+		}
 	}
 	return region, nil
 }
