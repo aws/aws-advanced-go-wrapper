@@ -37,13 +37,14 @@ import (
 )
 
 var pluginFactoryByCode = map[string]driver_infrastructure.ConnectionPluginFactory{
-	driver_infrastructure.FAILOVER_PLUGIN_CODE:             plugins.NewFailoverPluginFactory(),
-	driver_infrastructure.EFM_PLUGIN_CODE:                  efm.NewHostMonitoringPluginFactory(),
-	driver_infrastructure.LIMITLESS_PLUGIN_CODE:            limitless.NewLimitlessPluginFactory(),
-	driver_infrastructure.EXECUTION_TIME_PLUGIN_CODE:       plugins.NewExecutionTimePluginFactory(),
-	driver_infrastructure.READ_WRITE_SPLITTING_PLUGIN_CODE: read_write_splitting.NewReadWriteSplittingPluginFactory(),
-	driver_infrastructure.BLUE_GREEN_PLUGIN_CODE:           bg.NewBlueGreenPluginFactory(),
-	driver_infrastructure.CONNECT_TIME_PLUGIN_CODE:         plugins.NewConnectTimePluginFactory(),
+	driver_infrastructure.FAILOVER_PLUGIN_CODE:                  plugins.NewFailoverPluginFactory(),
+	driver_infrastructure.EFM_PLUGIN_CODE:                       efm.NewHostMonitoringPluginFactory(),
+	driver_infrastructure.LIMITLESS_PLUGIN_CODE:                 limitless.NewLimitlessPluginFactory(),
+	driver_infrastructure.EXECUTION_TIME_PLUGIN_CODE:            plugins.NewExecutionTimePluginFactory(),
+	driver_infrastructure.READ_WRITE_SPLITTING_PLUGIN_CODE:      read_write_splitting.NewReadWriteSplittingPluginFactory(),
+	driver_infrastructure.BLUE_GREEN_PLUGIN_CODE:                bg.NewBlueGreenPluginFactory(),
+	driver_infrastructure.CONNECT_TIME_PLUGIN_CODE:              plugins.NewConnectTimePluginFactory(),
+	driver_infrastructure.AURORA_CONNECTION_TRACKER_PLUGIN_CODE: plugins.NewAuroraConnectionTrackerPluginFactory(),
 }
 
 var underlyingDriverList = map[string]driver.Driver{}

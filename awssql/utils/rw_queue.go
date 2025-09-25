@@ -60,3 +60,24 @@ func (q *RWQueue[T]) IsEmpty() bool {
 	defer q.lock.RUnlock()
 	return len(q.items) == 0
 }
+
+func (q *RWQueue[T]) ForEach(fn func(T)) {
+	q.lock.RLock()
+	defer q.lock.RUnlock()
+	for _, item := range q.items {
+		fn(item)
+	}
+}
+
+func (q *RWQueue[T]) RemoveIf(condition func(T) bool) {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+
+	filtered := make([]T, 0, len(q.items))
+	for _, item := range q.items {
+		if !condition(item) {
+			filtered = append(filtered, item)
+		}
+	}
+	q.items = filtered
+}
