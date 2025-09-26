@@ -210,6 +210,8 @@ func (p *FailoverPlugin) Connect(
 		err := p.Failover()
 		if errors.Is(err, error_util.FailoverSuccessError) {
 			conn = p.pluginService.GetCurrentConnection()
+		} else {
+			return nil, err
 		}
 	}
 
