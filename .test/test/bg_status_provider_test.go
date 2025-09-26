@@ -158,7 +158,7 @@ func TestBlueGreenStatusProviderGetStatusOfPreparation(t *testing.T) {
 	assert.Equal(t, driver_infrastructure.PREPARATION, status.GetCurrentPhase())
 	assert.NotNil(t, status.GetConnectRoutings())
 
-	provider.SetPostStatusEndTime(time.Now())
+	provider.SetPostStatusEndTime(time.Now().Add(-time.Minute))
 	status = provider.GetStatusOfPreparation()
 	assert.Equal(t, "test-bg-id", status.GetBgId())
 	assert.Equal(t, driver_infrastructure.COMPLETED, status.GetCurrentPhase(),
@@ -243,7 +243,7 @@ func TestBlueGreenStatusProviderGetStatusOfInProgress(t *testing.T) {
 	t.Run("PastEndTime", func(t *testing.T) {
 		provider := bg.NewTestBlueGreenStatusProvider(mockPluginService, nil, "test-bg-id")
 		provider.ClearMonitors()
-		provider.SetPostStatusEndTime(time.Now())
+		provider.SetPostStatusEndTime(time.Now().Add(-time.Minute))
 		status := provider.GetStatusOfInProgress()
 		assert.Equal(t, "test-bg-id", status.GetBgId())
 		assert.Equal(t, driver_infrastructure.COMPLETED, status.GetCurrentPhase(),
@@ -253,7 +253,7 @@ func TestBlueGreenStatusProviderGetStatusOfInProgress(t *testing.T) {
 	t.Run("PastEndTimeRollback", func(t *testing.T) {
 		provider := bg.NewTestBlueGreenStatusProvider(mockPluginService, nil, "test-bg-id")
 		provider.ClearMonitors()
-		provider.SetPostStatusEndTime(time.Now())
+		provider.SetPostStatusEndTime(time.Now().Add(-time.Minute))
 		provider.SetRollback(true)
 		status := provider.GetStatusOfInProgress()
 		assert.Equal(t, "test-bg-id", status.GetBgId())
@@ -280,7 +280,7 @@ func TestBlueGreenStatusProviderGetStatusOfPost(t *testing.T) {
 	assert.NotNil(t, status.GetConnectRoutings())
 	assert.Empty(t, status.GetExecuteRoutings())
 
-	provider.SetPostStatusEndTime(time.Now())
+	provider.SetPostStatusEndTime(time.Now().Add(-time.Minute))
 	status = provider.GetStatusOfPost()
 	assert.Equal(t, "test-bg-id", status.GetBgId())
 	assert.Equal(t, driver_infrastructure.COMPLETED, status.GetCurrentPhase(),
@@ -325,7 +325,7 @@ func TestBlueGreenStatusProviderGetStatusOfCompleted(t *testing.T) {
 	assert.Equal(t, driver_infrastructure.POST, status.GetCurrentPhase(),
 		"DNS not updated to reflect completion yet, mark as POST")
 
-	provider.SetPostStatusEndTime(time.Now())
+	provider.SetPostStatusEndTime(time.Now().Add(-time.Minute))
 	status = provider.GetStatusOfPost()
 	assert.Equal(t, "test-bg-id", status.GetBgId())
 	assert.Equal(t, driver_infrastructure.COMPLETED, status.GetCurrentPhase(),
