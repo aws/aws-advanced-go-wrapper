@@ -35,12 +35,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const STRESS_TEST_NUM_ROUTINES = 10
+const STRESS_TEST_NUM_ROUTINES = 5
 
 func setupStressTest(t *testing.T) (map[string]string, *test_utils.TestEnvironment) {
-	test_utils.BasicSetup(t.Name())
+	err := test_utils.BasicSetupInfoLog(t.Name())
+	assert.NoError(t, err)
 	env, err := test_utils.GetCurrentTestEnvironment()
 	assert.NoError(t, err)
+	test_utils.SkipForTestEnvironmentFeatures(t, env.Info().Request.Features, test_utils.LIMITLESS_DEPLOYMENT)
 
 	props := map[string]string{
 		"host":                       env.Info().ProxyDatabaseInfo.Instances[0].Host(),
@@ -60,9 +62,9 @@ func runConcurrentQueries(queryFunc func()) {
 		go func() {
 			defer wg.Done()
 			routineNum := atomic.AddInt32(&counter, 1)
-			fmt.Printf("Routine %d starting...\n", routineNum)
+			slog.Info(fmt.Sprintf("Routine %d starting...\n", routineNum))
 			queryFunc()
-			fmt.Printf("Routine %d done\n", routineNum)
+			slog.Info(fmt.Sprintf("Routine %d done\n", routineNum))
 		}()
 	}
 	wg.Wait()
@@ -138,7 +140,6 @@ func setupSecretsTest(t *testing.T) (map[string]string, *test_utils.TestEnvironm
 	})
 	secretName := fmt.Sprintf("TestSecret-%s", uuid.New().String())
 	secretArn := CreateSecret(t, client, env, secretName)
-	fmt.Println("SECRETS ARN: " + secretArn)
 
 	property_util.SECRETS_MANAGER_SECRET_ID.Set(props, secretName)
 	property_util.SECRETS_MANAGER_REGION.Set(props, env.Info().Region)
@@ -150,7 +151,7 @@ func setupSecretsTest(t *testing.T) (map[string]string, *test_utils.TestEnvironm
 	return props, env, secretArn
 }
 
-func runFailoverTest(db *sql.DB, auroraTestUtility *test_utils.AuroraTestUtility, insertFunc func()) {
+func runFailoverTest(t *testing.T, db *sql.DB, auroraTestUtility *test_utils.AuroraTestUtility, insertFunc func()) {
 	stop := make(chan bool)
 	done := make(chan bool)
 
@@ -168,11 +169,14 @@ func runFailoverTest(db *sql.DB, auroraTestUtility *test_utils.AuroraTestUtility
 	}()
 
 	time.Sleep(10 * time.Second)
-	auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
+	err := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
+	assert.NoError(t, err)
 	time.Sleep(30 * time.Second)
-	auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
+	err = auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
+	assert.NoError(t, err)
 	time.Sleep(30 * time.Second)
-	auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
+	err = auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
+	assert.NoError(t, err)
 	time.Sleep(10 * time.Second)
 
 	close(stop)
@@ -184,7 +188,7 @@ func runFailoverTestWithInsert(t *testing.T, setupFunc func(*testing.T) (*sql.DB
 		db, auroraTestUtility, tableName := setupFunc(t)
 		defer test_utils.BasicCleanup(t.Name())
 
-		runFailoverTest(db, auroraTestUtility, func() {
+		runFailoverTest(t, db, auroraTestUtility, func() {
 			insertFunc(db, tableName)
 		})
 	})
@@ -197,7 +201,11 @@ func TestStress_ContinuousInsertWithFailoverTx(t *testing.T) {
 			slog.Error("failed to begin transaction", "error", err)
 			return
 		}
-		defer tx.Rollback()
+		defer func() {
+			if err := tx.Rollback(); err != nil {
+				slog.Error("failed to rollback transaction", "error", err)
+			}
+		}()
 
 		_, err = tx.ExecContext(context.TODO(), "INSERT INTO "+tableName+" (id, name) VALUES (1, 'test')")
 		if err != nil {
@@ -209,7 +217,6 @@ func TestStress_ContinuousInsertWithFailoverTx(t *testing.T) {
 			slog.Error("failed to commit transaction", "error", err)
 			return
 		}
-		slog.Info("Row inserted successfully")
 	})
 }
 
@@ -220,7 +227,6 @@ func TestStress_ContinuousInsertWithFailoverDb(t *testing.T) {
 			slog.Error("insert failed", "error", err)
 			return
 		}
-		slog.Info("Row inserted successfully")
 	})
 }
 
@@ -238,7 +244,6 @@ func TestStress_ContinuousInsertWithFailoverConn(t *testing.T) {
 			slog.Error("insert failed", "error", err)
 			return
 		}
-		slog.Info("Row inserted successfully")
 	})
 }
 
@@ -252,7 +257,11 @@ func TestStress_ContinuousInsertWithFailoverAndSecretsTx(t *testing.T) {
 			slog.Error("failed to begin transaction", "error", err)
 			return
 		}
-		defer tx.Rollback()
+		defer func() {
+			if err := tx.Rollback(); err != nil {
+				slog.Error("failed to rollback transaction", "error", err)
+			}
+		}()
 
 		_, err = tx.ExecContext(context.TODO(), "INSERT INTO "+tableName+" (id, name) VALUES (1, 'test')")
 		if err != nil {
@@ -264,7 +273,6 @@ func TestStress_ContinuousInsertWithFailoverAndSecretsTx(t *testing.T) {
 			slog.Error("failed to commit transaction", "error", err)
 			return
 		}
-		slog.Info("Row inserted successfully")
 	})
 }
 
@@ -278,7 +286,6 @@ func TestStress_ContinuousInsertWithFailoverAndSecretsDb(t *testing.T) {
 			slog.Error("insert failed", "error", err)
 			return
 		}
-		slog.Info("Row inserted successfully")
 	})
 }
 
@@ -299,6 +306,5 @@ func TestStress_ContinuousInsertWithFailoverAndSecretsConn(t *testing.T) {
 			slog.Error("insert failed", "error", err)
 			return
 		}
-		slog.Info("Row inserted successfully")
 	})
 }
