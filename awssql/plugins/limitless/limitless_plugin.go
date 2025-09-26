@@ -32,7 +32,8 @@ import (
 type LimitlessPluginFactory struct {
 }
 
-func (factory LimitlessPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService, props map[string]string) (driver_infrastructure.ConnectionPlugin, error) {
+func (factory LimitlessPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
+	props *utils.RWMap[string]) (driver_infrastructure.ConnectionPlugin, error) {
 	return NewLimitlessPlugin(pluginService, props)
 }
 
@@ -45,11 +46,11 @@ func NewLimitlessPluginFactory() driver_infrastructure.ConnectionPluginFactory {
 type LimitlessPlugin struct {
 	plugins.BaseConnectionPlugin
 	pluginService driver_infrastructure.PluginService
-	props         map[string]string
+	props         *utils.RWMap[string]
 	routerService LimitlessRouterService
 }
 
-func NewLimitlessPlugin(pluginService driver_infrastructure.PluginService, props map[string]string) (*LimitlessPlugin, error) {
+func NewLimitlessPlugin(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string]) (*LimitlessPlugin, error) {
 	validateShardGroupUrl := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.LIMITLESS_USE_SHARD_GROUP_URL)
 	if validateShardGroupUrl {
 		host := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.HOST)
@@ -66,7 +67,8 @@ func NewLimitlessPlugin(pluginService driver_infrastructure.PluginService, props
 }
 
 // Note: This method is for testing purposes.
-func NewLimitlessPluginWithRouterService(pluginService driver_infrastructure.PluginService, props map[string]string, routerService LimitlessRouterService) *LimitlessPlugin {
+func NewLimitlessPluginWithRouterService(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string],
+	routerService LimitlessRouterService) *LimitlessPlugin {
 	return &LimitlessPlugin{
 		pluginService: pluginService,
 		props:         props,
@@ -84,7 +86,7 @@ func (plugin *LimitlessPlugin) GetSubscribedMethods() []string {
 
 func (plugin *LimitlessPlugin) Connect(
 	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
+	props *utils.RWMap[string],
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	var conn driver.Conn = nil

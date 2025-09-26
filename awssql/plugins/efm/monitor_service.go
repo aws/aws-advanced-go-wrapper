@@ -34,7 +34,7 @@ import (
 var EFM_MONITORS *utils.SlidingExpirationCache[Monitor]
 
 type MonitorService interface {
-	StartMonitoring(conn *driver.Conn, hostInfo *host_info_util.HostInfo, props map[string]string,
+	StartMonitoring(conn *driver.Conn, hostInfo *host_info_util.HostInfo, props *utils.RWMap[string],
 		failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionCount int, monitorDisposalTimeMillis int) (*MonitorConnectionState, error)
 	StopMonitoring(state *MonitorConnectionState, connToAbort driver.Conn)
 }
@@ -64,7 +64,7 @@ func NewMonitorServiceImpl(pluginService driver_infrastructure.PluginService) (*
 	return &MonitorServiceImpl{pluginService: pluginService, abortedConnectionsCounter: abortedConnectionsCounter}, nil
 }
 
-func (m *MonitorServiceImpl) StartMonitoring(conn *driver.Conn, hostInfo *host_info_util.HostInfo, props map[string]string,
+func (m *MonitorServiceImpl) StartMonitoring(conn *driver.Conn, hostInfo *host_info_util.HostInfo, props *utils.RWMap[string],
 	failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionCount int, monitorDisposalTimeMillis int) (*MonitorConnectionState, error) {
 	if conn == nil {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("MonitorServiceImpl.illegalArgumentError", "conn"))
@@ -90,7 +90,7 @@ func (m *MonitorServiceImpl) StopMonitoring(state *MonitorConnectionState, connT
 	}
 }
 
-func (m *MonitorServiceImpl) getMonitor(hostInfo *host_info_util.HostInfo, props map[string]string, failureDetectionTimeMillis int,
+func (m *MonitorServiceImpl) getMonitor(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string], failureDetectionTimeMillis int,
 	failureDetectionIntervalMillis int, failureDetectionCount int, monitorDisposalTimeMillis int) Monitor {
 	monitorKey := fmt.Sprintf("%d:%d:%d:%s", failureDetectionTimeMillis, failureDetectionIntervalMillis, failureDetectionCount, hostInfo.GetUrl())
 	cacheExpirationNano := time.Millisecond * time.Duration(monitorDisposalTimeMillis)

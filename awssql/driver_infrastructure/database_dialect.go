@@ -18,7 +18,9 @@ package driver_infrastructure
 
 import (
 	"database/sql/driver"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 type DatabaseDialect interface {
@@ -27,7 +29,7 @@ type DatabaseDialect interface {
 	GetServerVersionQuery() string
 	GetDialectUpdateCandidates() []string
 	IsDialect(conn driver.Conn) bool
-	GetHostListProvider(props map[string]string, hostListProviderService HostListProviderService, pluginService PluginService) HostListProvider
+	GetHostListProvider(props *utils.RWMap[string], hostListProviderService HostListProviderService, pluginService PluginService) HostListProvider
 	DoesStatementSetAutoCommit(statement string) (bool, bool)
 	DoesStatementSetReadOnly(statement string) (bool, bool)
 	DoesStatementSetCatalog(statement string) (string, bool)
@@ -58,4 +60,3 @@ type BlueGreenDialect interface {
 	IsBlueGreenStatusAvailable(conn driver.Conn) bool
 	DatabaseDialect
 }
-

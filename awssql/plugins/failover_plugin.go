@@ -62,7 +62,7 @@ type ReaderFailoverResult struct {
 
 type FailoverPluginFactory struct{}
 
-func (f FailoverPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService, props map[string]string) (driver_infrastructure.ConnectionPlugin, error) {
+func (f FailoverPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string]) (driver_infrastructure.ConnectionPlugin, error) {
 	return NewFailoverPlugin(pluginService, props)
 }
 
@@ -75,7 +75,7 @@ func NewFailoverPluginFactory() driver_infrastructure.ConnectionPluginFactory {
 type FailoverPlugin struct {
 	pluginService                              driver_infrastructure.PluginService
 	hostListProviderService                    driver_infrastructure.HostListProviderService
-	props                                      map[string]string
+	props                                      *utils.RWMap[string]
 	failoverTimeoutMsSetting                   int
 	failoverReaderHostSelectorStrategySetting  string
 	FailoverMode                               FailoverMode
@@ -93,7 +93,7 @@ type FailoverPlugin struct {
 	BaseConnectionPlugin
 }
 
-func NewFailoverPlugin(pluginService driver_infrastructure.PluginService, props map[string]string) (*FailoverPlugin, error) {
+func NewFailoverPlugin(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string]) (*FailoverPlugin, error) {
 	failoverTimeoutMsSetting, err := property_util.GetPositiveIntProperty(props, property_util.FAILOVER_TIMEOUT_MS)
 	if err != nil {
 		return nil, err
@@ -158,7 +158,7 @@ func (p *FailoverPlugin) GetSubscribedMethods() []string {
 }
 
 func (p *FailoverPlugin) InitHostProvider(
-	props map[string]string,
+	_ *utils.RWMap[string],
 	hostListProviderService driver_infrastructure.HostListProviderService,
 	initHostProviderFunc func() error) error {
 	p.hostListProviderService = hostListProviderService
@@ -167,14 +167,14 @@ func (p *FailoverPlugin) InitHostProvider(
 
 func (p *FailoverPlugin) Connect(
 	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
+	props *utils.RWMap[string],
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	p.InitFailoverMode()
 
 	var conn driver.Conn
 
-	_, internalConnect := props[property_util.INTERNAL_CONNECT_PROPERTY_NAME]
+	_, internalConnect := props.Get(property_util.INTERNAL_CONNECT_PROPERTY_NAME)
 	if !property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.ENABLE_CONNECT_FAILOVER) || internalConnect {
 		return p.staleDnsHelper.GetVerifiedConnection(hostInfo.Host, isInitialConnection, p.hostListProviderService, props, connectFunc)
 	}
@@ -247,10 +247,10 @@ func (p *FailoverPlugin) InitFailoverMode() {
 }
 
 func (p *FailoverPlugin) Execute(
-	connInvokedOn driver.Conn,
+	_ driver.Conn,
 	methodName string,
 	executeFunc driver_infrastructure.ExecuteFunc,
-	methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
+	_ ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
 	if p.canDirectExecute(methodName) {
 		return executeFunc()
 	}
@@ -373,7 +373,7 @@ func (p *FailoverPlugin) FailoverWriter() error {
 	if role != host_info_util.WRITER {
 		_ = writerCandidateConn.Close()
 
-		message := error_util.GetMessage("Failover.unexpectedReaderRole", writerCandidate.Host, role)
+		message := error_util.GetMessage("Failover.unexpectedReaderRole", writerCandidate.GetHost(), role)
 		slog.Error(message)
 		err = error_util.NewFailoverFailedError(message)
 		p.recordTelemetryWriterFailoverFailed(telemetryCtx, ctx, err)
@@ -387,7 +387,7 @@ func (p *FailoverPlugin) FailoverWriter() error {
 	}
 
 	currentHostInfo, err := p.pluginService.GetCurrentHostInfo()
-	if currentHostInfo.IsNil() || err != nil {
+	if err != nil {
 		p.recordTelemetryWriterFailoverFailed(telemetryCtx, ctx, err)
 		return err
 	}
@@ -612,8 +612,8 @@ func (p *FailoverPlugin) shouldErrorTriggerConnectionSwitch(err error) bool {
 }
 
 func (p *FailoverPlugin) createConnectionForHost(hostInfo *host_info_util.HostInfo) (driver.Conn, error) {
-	propsCopy := utils.CreateMapCopy(p.props)
+	propsCopy := utils.NewRWMapFromCopy(p.props)
 	property_util.HOST.Set(propsCopy, hostInfo.Host)
-	propsCopy[property_util.INTERNAL_CONNECT_PROPERTY_NAME] = "true"
+	propsCopy.Put(property_util.INTERNAL_CONNECT_PROPERTY_NAME, "true")
 	return p.pluginService.Connect(hostInfo, propsCopy, p)
 }

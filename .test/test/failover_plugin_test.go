@@ -80,7 +80,7 @@ type MockMonitoringRdsHostListProvider struct {
 func newTestMockMonitoringRdsHostListProvider(
 	hostListProviderService driver_infrastructure.HostListProviderService,
 	databaseDialect driver_infrastructure.TopologyAwareDialect,
-	properties map[string]string,
+	properties *utils.RWMap[string],
 	pluginService driver_infrastructure.PluginService) *MockMonitoringRdsHostListProvider {
 	provider := &MockMonitoringRdsHostListProvider{
 		MonitoringRdsHostListProvider: driver_infrastructure.NewMonitoringRdsHostListProvider(
@@ -108,7 +108,7 @@ type MockPluginServiceImpl struct {
 func newMockPluginServiceImpl(
 	pluginManager driver_infrastructure.PluginManager,
 	driverDialect driver_infrastructure.DriverDialect,
-	props map[string]string,
+	props *utils.RWMap[string],
 	dsn string,
 	inTransactionResult bool,
 	isCurrentHostNil bool,
@@ -161,21 +161,21 @@ type mockAuroraMysqlDialect struct {
 }
 
 func (t *mockAuroraMysqlDialect) GetHostListProvider(
-	props map[string]string,
-	hostListProviderService driver_infrastructure.HostListProviderService,
-	pluginService driver_infrastructure.PluginService) driver_infrastructure.HostListProvider {
+	_ *utils.RWMap[string],
+	_ driver_infrastructure.HostListProviderService,
+	_ driver_infrastructure.PluginService) driver_infrastructure.HostListProvider {
 	return mockMonitoringRdsHostListProvider
 }
 
-func (t *mockAuroraMysqlDialect) GetWriterHostName(conn driver.Conn) (string, error) {
+func (t *mockAuroraMysqlDialect) GetWriterHostName(_ driver.Conn) (string, error) {
 	return "mydatabase-instance-1", nil
 }
 
-func (t *mockAuroraMysqlDialect) GetTopology(conn driver.Conn, provider driver_infrastructure.HostListProvider) ([]*host_info_util.HostInfo, error) {
+func (t *mockAuroraMysqlDialect) GetTopology(_ driver.Conn, _ driver_infrastructure.HostListProvider) ([]*host_info_util.HostInfo, error) {
 	return []*host_info_util.HostInfo{host1, host2}, nil
 }
 
-func (t *mockAuroraMysqlDialect) GetHostRole(conn driver.Conn) host_info_util.HostRole {
+func (t *mockAuroraMysqlDialect) GetHostRole(_ driver.Conn) host_info_util.HostRole {
 	if t.isRoleWriter {
 		return host_info_util.WRITER
 	}
@@ -189,10 +189,10 @@ type mockDefaultPlugin struct {
 }
 
 func (t *mockDefaultPlugin) Connect(
-	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
-	isInitialConnection bool,
-	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
+	_ *host_info_util.HostInfo,
+	_ *utils.RWMap[string],
+	_ bool,
+	_ driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	if t.connectFails {
 		return nil, errors.New("invalid connection")
 	}
@@ -200,10 +200,10 @@ func (t *mockDefaultPlugin) Connect(
 }
 
 func (t *mockDefaultPlugin) ForceConnect(
-	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
-	isInitialConnection bool,
-	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
+	_ *host_info_util.HostInfo,
+	_ *utils.RWMap[string],
+	_ bool,
+	_ driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	if t.connectFails {
 		return nil, errors.New("invalid connection")
 	}
@@ -211,7 +211,7 @@ func (t *mockDefaultPlugin) ForceConnect(
 }
 
 func (t *mockDefaultPlugin) GetHostInfoByStrategy(
-	role host_info_util.HostRole,
+	_ host_info_util.HostRole,
 	strategy string,
 	hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
 	if slices.Contains(t.acceptedStrategies, strategy) {
@@ -226,16 +226,16 @@ func execFunc() (any, any, bool, error) {
 }
 
 func initializeTest(
-	props map[string]string,
+	propsMap map[string]string,
 	isInTransaction bool,
 	isRoleWriter bool,
 	isCurrentHostNil bool,
 	connectFails bool,
 	forceRefreshFails bool,
 	isCurrentConnNil bool) (*MockFailoverPlugin, *MockPluginServiceImpl) {
+	props := utils.NewRWMapFromMap(propsMap)
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := driver_infrastructure.PluginManager(
-		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
+	mockPluginManager := plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
 	pluginServiceImpl := newMockPluginServiceImpl(
 		mockPluginManager,
 		mysql_driver.MySQLDriverDialect{},
@@ -248,13 +248,13 @@ func initializeTest(
 
 	pluginServiceImpl.SetDialect(&mockAuroraMysqlDialect{isRoleWriter: isRoleWriter})
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
-	mySqlTestDsnProps, _ := utils.ParseDsn(mysqlTestDsn)
+	mySqlTestDsnProps, _ := property_util.ParseDsn(mysqlTestDsn)
 
 	hostListProviderService := driver_infrastructure.HostListProviderService(pluginServiceImpl)
 	mockMonitoringRdsHostListProvider = newTestMockMonitoringRdsHostListProvider(
 		hostListProviderService,
 		&mockAuroraMysqlDialect{isRoleWriter: isRoleWriter},
-		utils.CombineMaps(props, mySqlTestDsnProps),
+		utils.CombineRWMaps(props, mySqlTestDsnProps),
 		pluginServiceImpl)
 	hostListProviderService.SetHostListProvider(mockMonitoringRdsHostListProvider)
 

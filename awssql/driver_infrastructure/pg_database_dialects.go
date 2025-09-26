@@ -58,17 +58,17 @@ func (p *PgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 }
 
 func (p *PgDatabaseDialect) GetHostListProvider(
-	props map[string]string,
+	props *utils.RWMap[string],
 	hostListProviderService HostListProviderService,
-	pluginService PluginService) HostListProvider {
+	_ PluginService) HostListProvider {
 	return NewDsnHostListProvider(props, hostListProviderService)
 }
 
-func (p *PgDatabaseDialect) DoesStatementSetAutoCommit(statement string) (bool, bool) {
+func (p *PgDatabaseDialect) DoesStatementSetAutoCommit(_ string) (bool, bool) {
 	return false, false
 }
 
-func (p *PgDatabaseDialect) DoesStatementSetCatalog(statement string) (string, bool) {
+func (p *PgDatabaseDialect) DoesStatementSetCatalog(_ string) (string, bool) {
 	return "", false
 }
 
@@ -116,7 +116,7 @@ func (p *PgDatabaseDialect) DoesStatementSetTransactionIsolation(statement strin
 	return TRANSACTION_READ_UNCOMMITTED, false
 }
 
-func (p *PgDatabaseDialect) GetSetAutoCommitQuery(autoCommit bool) (string, error) {
+func (p *PgDatabaseDialect) GetSetAutoCommitQuery(_ bool) (string, error) {
 	return "", error_util.NewGenericAwsWrapperError(error_util.GetMessage("AwsWrapper.unsupportedMethodError", "SetAutoCommit", fmt.Sprintf("%T", p)))
 }
 
@@ -128,7 +128,7 @@ func (p *PgDatabaseDialect) GetSetReadOnlyQuery(readOnly bool) (string, error) {
 	return fmt.Sprintf("set session characteristics as transaction read %v", readOnlyStr), nil
 }
 
-func (p *PgDatabaseDialect) GetSetCatalogQuery(catalog string) (string, error) {
+func (p *PgDatabaseDialect) GetSetCatalogQuery(_ string) (string, error) {
 	return "", error_util.NewGenericAwsWrapperError(error_util.GetMessage("AwsWrapper.unsupportedMethodError", "SetCatalog", fmt.Sprintf("%T", p)))
 }
 
@@ -191,7 +191,7 @@ type PgTopologyAwareDatabaseDialect struct {
 }
 
 func (m *PgTopologyAwareDatabaseDialect) GetTopology(
-	conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
+	_ driver.Conn, _ HostListProvider) ([]*host_info_util.HostInfo, error) {
 	return nil, nil
 }
 
@@ -210,15 +210,15 @@ func (m *PgTopologyAwareDatabaseDialect) GetHostRole(conn driver.Conn) host_info
 	return host_info_util.UNKNOWN
 }
 
-func (m *PgTopologyAwareDatabaseDialect) GetHostName(conn driver.Conn) string {
+func (m *PgTopologyAwareDatabaseDialect) GetHostName(_ driver.Conn) string {
 	return ""
 }
-func (m *PgTopologyAwareDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, error) {
+func (m *PgTopologyAwareDatabaseDialect) GetWriterHostName(_ driver.Conn) (string, error) {
 	return "", nil
 }
 
 func (m *PgTopologyAwareDatabaseDialect) GetHostListProvider(
-	props map[string]string,
+	props *utils.RWMap[string],
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
 	return m.getTopologyAwareHostListProvider(m, props, hostListProviderService, pluginService)
@@ -226,7 +226,7 @@ func (m *PgTopologyAwareDatabaseDialect) GetHostListProvider(
 
 func (m *PgTopologyAwareDatabaseDialect) getTopologyAwareHostListProvider(
 	dialect TopologyAwareDialect,
-	props map[string]string,
+	props *utils.RWMap[string],
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
 	pluginsProp := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PLUGINS)
@@ -345,7 +345,7 @@ func (m *AuroraPgDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, e
 }
 
 func (m *AuroraPgDatabaseDialect) GetHostListProvider(
-	props map[string]string,
+	props *utils.RWMap[string],
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
 	return m.getTopologyAwareHostListProvider(m, props, hostListProviderService, pluginService)
@@ -507,7 +507,7 @@ func (r *RdsMultiAzClusterPgDatabaseDialect) GetWriterHostName(conn driver.Conn)
 }
 
 func (r *RdsMultiAzClusterPgDatabaseDialect) GetHostListProvider(
-	props map[string]string,
+	props *utils.RWMap[string],
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
 	return r.getTopologyAwareHostListProvider(r, props, hostListProviderService, pluginService)

@@ -23,11 +23,12 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 type BenchmarkPluginFactory struct{}
 
-func (b BenchmarkPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService, props map[string]string) (driver_infrastructure.ConnectionPlugin, error) {
+func (b BenchmarkPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string]) (driver_infrastructure.ConnectionPlugin, error) {
 	return NewBenchmarkPlugin(pluginService, props), nil
 }
 
@@ -35,10 +36,10 @@ type BenchmarkPlugin struct {
 	plugins.BaseConnectionPlugin
 	resources     []string
 	pluginService driver_infrastructure.PluginService
-	props         map[string]string
+	props         *utils.RWMap[string]
 }
 
-func NewBenchmarkPlugin(pluginService driver_infrastructure.PluginService, props map[string]string) *BenchmarkPlugin {
+func NewBenchmarkPlugin(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string]) *BenchmarkPlugin {
 	return &BenchmarkPlugin{
 		pluginService: pluginService,
 		props:         props,
@@ -50,52 +51,52 @@ func (b *BenchmarkPlugin) GetSubscribedMethods() []string {
 }
 
 func (b *BenchmarkPlugin) Connect(
-	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
-	isInitialConnection bool,
+	_ *host_info_util.HostInfo,
+	props *utils.RWMap[string],
+	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	b.resources = append(b.resources, "connect")
 	return connectFunc(props)
 }
 
 func (b *BenchmarkPlugin) ForceConnect(
-	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
-	isInitialConnection bool,
+	_ *host_info_util.HostInfo,
+	props *utils.RWMap[string],
+	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	b.resources = append(b.resources, "forceConnect")
 	return connectFunc(props)
 }
 
 func (b *BenchmarkPlugin) Execute(
-	connInvokedOn driver.Conn,
-	methodName string,
+	_ driver.Conn,
+	_ string,
 	executeFunc driver_infrastructure.ExecuteFunc,
-	methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
+	_ ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
 	b.resources = append(b.resources, "execute")
 	return executeFunc()
 }
 
-func (b *BenchmarkPlugin) AcceptsStrategy(strategy string) bool {
+func (b *BenchmarkPlugin) AcceptsStrategy(_ string) bool {
 	return false
 }
-func (b *BenchmarkPlugin) GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
+func (b *BenchmarkPlugin) GetHostInfoByStrategy(role host_info_util.HostRole, _ string, _ []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
 	b.resources = append(b.resources, "getHostInfoByStrategy")
 	return host_info_util.NewHostInfoBuilder().SetHost("host").SetPort(1234).SetRole(role).Build()
 }
 
-func (b *BenchmarkPlugin) NotifyConnectionChanged(changes map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {
+func (b *BenchmarkPlugin) NotifyConnectionChanged(_ map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {
 	return driver_infrastructure.NO_OPINION
 }
 
-func (b *BenchmarkPlugin) NotifyHostListChanged(changes map[string]map[driver_infrastructure.HostChangeOptions]bool) {
+func (b *BenchmarkPlugin) NotifyHostListChanged(_ map[string]map[driver_infrastructure.HostChangeOptions]bool) {
 	b.resources = append(b.resources, "notifyHostListChanged")
 }
 
 func (b *BenchmarkPlugin) InitHostProvider(
-	props map[string]string,
-	hostListProviderService driver_infrastructure.HostListProviderService,
-	initHostProviderFunc func() error) error {
+	_ *utils.RWMap[string],
+	_ driver_infrastructure.HostListProviderService,
+	_ func() error) error {
 	b.resources = append(b.resources, "initHostProvider")
 	return nil
 }

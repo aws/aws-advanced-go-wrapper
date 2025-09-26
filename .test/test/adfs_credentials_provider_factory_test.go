@@ -18,14 +18,15 @@ package test
 
 import (
 	"errors"
-	"github.com/aws/aws-advanced-go-wrapper/auth-helpers"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/federated-auth"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/aws/aws-advanced-go-wrapper/auth-helpers"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/federated-auth"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -46,14 +47,14 @@ func TestAdfsCredProviderGetSamlAssertion(t *testing.T) {
 		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValues: []*http.Response{&doReturnValue}, doCallCount: new(int)}
 	}
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.PLUGINS.Name:         "federatedAuth",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-		property_util.IDP_ENDPOINT.Name:    "ec2amaz-ab3cdef.example.com",
-		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
-		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.PLUGINS.Name, "federatedAuth",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+		property_util.IDP_ENDPOINT.Name, "ec2amaz-ab3cdef.example.com",
+		property_util.IDP_USERNAME.Name, federatedAuthUsername,
+		property_util.IDP_PASSWORD.Name, federatedAuthPassword,
+	)
 	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	content := readFile(t, "./resources/saml-assertion.txt")
@@ -77,14 +78,14 @@ func TestAdfsCredProviderGetSignInPageFailure(t *testing.T) {
 		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValues: []*http.Response{&doReturnValue}, doCallCount: new(int)}
 	}
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.PLUGINS.Name:         "federatedAuth",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-		property_util.IDP_ENDPOINT.Name:    "ec2amaz-ab3cdef.example.com",
-		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
-		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.PLUGINS.Name, "federatedAuth",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+		property_util.IDP_ENDPOINT.Name, "ec2amaz-ab3cdef.example.com",
+		property_util.IDP_USERNAME.Name, federatedAuthUsername,
+		property_util.IDP_PASSWORD.Name, federatedAuthPassword,
+	)
 	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	samlAssertion, err := adfsCredentialsProviderFactory.GetSamlAssertion(props)
@@ -107,14 +108,14 @@ func TestAdfsCredProviderGetSignInPageError(t *testing.T) {
 		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValues: []*http.Response{&doReturnValue}, doCallCount: new(int), errReturnValue: errReturnValue}
 	}
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.PLUGINS.Name:         "federatedAuth",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-		property_util.IDP_ENDPOINT.Name:    "ec2amaz-ab3cdef.example.com",
-		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
-		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.PLUGINS.Name, "federatedAuth",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+		property_util.IDP_ENDPOINT.Name, "ec2amaz-ab3cdef.example.com",
+		property_util.IDP_USERNAME.Name, federatedAuthUsername,
+		property_util.IDP_PASSWORD.Name, federatedAuthPassword,
+	)
 	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	samlAssertion, err := adfsCredentialsProviderFactory.GetSamlAssertion(props)
@@ -135,14 +136,14 @@ func TestAdfsCredProviderGetSamlAssertionLoginFailure(t *testing.T) {
 		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValues: []*http.Response{&doReturnValue}, doCallCount: new(int)}
 	}
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.PLUGINS.Name:         "federatedAuth",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-		property_util.IDP_ENDPOINT.Name:    "ec2amaz-ab3cdef.example.com",
-		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
-		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.PLUGINS.Name, "federatedAuth",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+		property_util.IDP_ENDPOINT.Name, "ec2amaz-ab3cdef.example.com",
+		property_util.IDP_USERNAME.Name, federatedAuthUsername,
+		property_util.IDP_PASSWORD.Name, federatedAuthPassword,
+	)
 	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	samlAssertion, err := adfsCredentialsProviderFactory.GetSamlAssertion(props)
@@ -164,14 +165,14 @@ func TestAdfsCredProviderGetSamlAssertionPostFailure(t *testing.T) {
 		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValues: []*http.Response{&doReturnValue}, doCallCount: new(int)}
 	}
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.PLUGINS.Name:         "federatedAuth",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-		property_util.IDP_ENDPOINT.Name:    "ec2amaz-ab3cdef.example.com",
-		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
-		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.PLUGINS.Name, "federatedAuth",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+		property_util.IDP_ENDPOINT.Name, "ec2amaz-ab3cdef.example.com",
+		property_util.IDP_USERNAME.Name, federatedAuthUsername,
+		property_util.IDP_PASSWORD.Name, federatedAuthPassword,
+	)
 	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	samlAssertion, err := adfsCredentialsProviderFactory.GetSamlAssertion(props)
@@ -194,14 +195,14 @@ func TestAdfsCredProviderGetSamlAssertionPostError(t *testing.T) {
 		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValues: []*http.Response{&doReturnValue}, doCallCount: new(int), errReturnValue: errReturnValue}
 	}
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.PLUGINS.Name:         "federatedAuth",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-		property_util.IDP_ENDPOINT.Name:    "ec2amaz-ab3cdef.example.com",
-		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
-		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.PLUGINS.Name, "federatedAuth",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+		property_util.IDP_ENDPOINT.Name, "ec2amaz-ab3cdef.example.com",
+		property_util.IDP_USERNAME.Name, federatedAuthUsername,
+		property_util.IDP_PASSWORD.Name, federatedAuthPassword,
+	)
 	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	samlAssertion, err := adfsCredentialsProviderFactory.GetSamlAssertion(props)
@@ -222,14 +223,14 @@ func TestAdfsCredProviderGetUriAndParametersFromSignInPage(t *testing.T) {
 		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValues: []*http.Response{&doReturnValue}, doCallCount: new(int)}
 	}
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.PLUGINS.Name:         "federatedAuth",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-		property_util.IDP_ENDPOINT.Name:    "ec2amaz-ab3cdef.example.com",
-		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
-		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.PLUGINS.Name, "federatedAuth",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+		property_util.IDP_ENDPOINT.Name, "ec2amaz-ab3cdef.example.com",
+		property_util.IDP_USERNAME.Name, federatedAuthUsername,
+		property_util.IDP_PASSWORD.Name, federatedAuthPassword,
+	)
 	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 	uri, params, err := adfsCredentialsProviderFactory.GetUriAndParamsFromSignInPage("https://ec2amaz-ab3cdef.example.com", props)
 	assert.Nil(t, err)
@@ -256,14 +257,14 @@ func TestAdfsCredProviderMissingInputTags(t *testing.T) {
 		return MockHttpClient{getReturnValue: &getReturnValue, doReturnValues: []*http.Response{&doReturnValue}, doCallCount: new(int)}
 	}
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.PLUGINS.Name:         "federatedAuth",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-		property_util.IDP_ENDPOINT.Name:    "ec2amaz-ab3cdef.example.com",
-		property_util.IDP_USERNAME.Name:    federatedAuthUsername,
-		property_util.IDP_PASSWORD.Name:    federatedAuthPassword,
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.PLUGINS.Name, "federatedAuth",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+		property_util.IDP_ENDPOINT.Name, "ec2amaz-ab3cdef.example.com",
+		property_util.IDP_USERNAME.Name, federatedAuthUsername,
+		property_util.IDP_PASSWORD.Name, federatedAuthPassword,
+	)
 	adfsCredentialsProviderFactory := federated_auth.NewAdfsCredentialsProviderFactory(getAdfsTestHttpClientFunc, NewMockAwsStsClient, CreateMockPluginService(props))
 
 	_, params, err := adfsCredentialsProviderFactory.GetUriAndParamsFromSignInPage("https://ec2amaz-ab3cdef.example.com", props)
@@ -272,18 +273,18 @@ func TestAdfsCredProviderMissingInputTags(t *testing.T) {
 }
 
 func TestAdfsCredProviderGetSignInPageUrl(t *testing.T) {
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.PLUGINS.Name:         "federatedAuth",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-		property_util.IDP_ENDPOINT.Name:    "ec2amaz-ab3cdef.example.com",
-	}
-	propsWithUrlScheme := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.PLUGINS.Name:         "federatedAuth",
-		property_util.DB_USER.Name:         federatedAuthDbUser,
-		property_util.IDP_ENDPOINT.Name:    "ec2amaz-ab3cdef.example.com",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.PLUGINS.Name, "federatedAuth",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+		property_util.IDP_ENDPOINT.Name, "ec2amaz-ab3cdef.example.com",
+	)
+	propsWithUrlScheme := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.PLUGINS.Name, "federatedAuth",
+		property_util.DB_USER.Name, federatedAuthDbUser,
+		property_util.IDP_ENDPOINT.Name, "ec2amaz-ab3cdef.example.com",
+	)
 	adfsCredentialsProviderFactory := &federated_auth.AdfsCredentialsProviderFactory{}
 
 	url1 := adfsCredentialsProviderFactory.GetSignInPageUrl(props)

@@ -16,6 +16,8 @@
 
 package error_util
 
+import "errors"
+
 type AwsWrapperErrorType int
 
 const (
@@ -47,7 +49,8 @@ func (a *AwsWrapperError) IsType(errorType AwsWrapperErrorType) bool {
 }
 
 func IsType(err error, errorType AwsWrapperErrorType) bool {
-	awsWrapperError, ok := err.(*AwsWrapperError)
+	var awsWrapperError *AwsWrapperError
+	ok := errors.As(err, &awsWrapperError)
 	if ok {
 		return awsWrapperError.IsType(errorType)
 	}

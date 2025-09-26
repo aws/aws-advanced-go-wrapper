@@ -24,7 +24,6 @@ import (
 	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
 	mock_telemetry "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/util/telemetry"
 	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/rds/auth"
 	"github.com/golang/mock/gomock"
@@ -63,7 +62,7 @@ func TestGenerateAuthenticationToken_Success(t *testing.T) {
 	utility.SetBuildAuthTokenFunc(mockBuildTokenFunc)
 
 	token, err := utility.GenerateAuthenticationToken(
-		"testuser", "localhost", 3306, region_util.Region("us-west-2"), nil, mockPluginService,
+		"testuser", "localhost", 3306, "us-west-2", nil, mockPluginService,
 	)
 
 	assert.NoError(t, err)
@@ -103,7 +102,7 @@ func TestGenerateAuthenticationToken_Error(t *testing.T) {
 	utility.SetBuildAuthTokenFunc(mockBuildTokenFunc)
 
 	token, err := utility.GenerateAuthenticationToken(
-		"testuser", "localhost", 3306, region_util.Region("us-west-2"), nil, mockPluginService,
+		"testuser", "localhost", 3306, "us-west-2", nil, mockPluginService,
 	)
 
 	assert.Error(t, err)

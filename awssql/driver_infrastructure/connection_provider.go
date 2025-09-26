@@ -18,6 +18,7 @@ package driver_infrastructure
 
 import (
 	"database/sql/driver"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 )
 

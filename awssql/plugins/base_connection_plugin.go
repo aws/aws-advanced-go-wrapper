@@ -23,6 +23,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 type BaseConnectionPlugin struct {
@@ -37,52 +38,52 @@ func (b BaseConnectionPlugin) GetSubscribedMethods() []string {
 }
 
 func (b BaseConnectionPlugin) Execute(
-	connInvokedOn driver.Conn,
-	methodName string,
+	_ driver.Conn,
+	_ string,
 	executeFunc driver_infrastructure.ExecuteFunc,
-	methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
+	_ ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
 	return executeFunc()
 }
 
 func (b BaseConnectionPlugin) Connect(
-	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
-	isInitialConnection bool,
+	_ *host_info_util.HostInfo,
+	props *utils.RWMap[string],
+	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	return connectFunc(props)
 }
 
 func (b BaseConnectionPlugin) ForceConnect(
-	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
-	isInitialConnection bool,
+	_ *host_info_util.HostInfo,
+	props *utils.RWMap[string],
+	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	return connectFunc(props)
 }
 
-func (b BaseConnectionPlugin) AcceptsStrategy(strategy string) bool {
+func (b BaseConnectionPlugin) AcceptsStrategy(_ string) bool {
 	return false
 }
 
-func (b BaseConnectionPlugin) GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
+func (b BaseConnectionPlugin) GetHostInfoByStrategy(_ host_info_util.HostRole, _ string, _ []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
 	return nil, error_util.NewUnsupportedMethodError("GetHostInfoByStrategy", fmt.Sprintf("%T", b))
 }
 
-func (b BaseConnectionPlugin) GetHostSelectorStrategy(strategy string) (driver_infrastructure.HostSelector, error) {
+func (b BaseConnectionPlugin) GetHostSelectorStrategy(_ string) (driver_infrastructure.HostSelector, error) {
 	return nil, error_util.NewUnsupportedMethodError("GetHostSelectorStrategy", fmt.Sprintf("%T", b))
 }
 
-func (b BaseConnectionPlugin) NotifyConnectionChanged(changes map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {
+func (b BaseConnectionPlugin) NotifyConnectionChanged(_ map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {
 	return driver_infrastructure.NO_OPINION
 }
 
-func (b BaseConnectionPlugin) NotifyHostListChanged(changes map[string]map[driver_infrastructure.HostChangeOptions]bool) {
+func (b BaseConnectionPlugin) NotifyHostListChanged(_ map[string]map[driver_infrastructure.HostChangeOptions]bool) {
 	// Do nothing.
 }
 
 func (b BaseConnectionPlugin) InitHostProvider(
-	props map[string]string,
-	hostListProviderService driver_infrastructure.HostListProviderService,
+	_ *utils.RWMap[string],
+	_ driver_infrastructure.HostListProviderService,
 	initHostProviderFunc func() error) error {
 	return initHostProviderFunc()
 }

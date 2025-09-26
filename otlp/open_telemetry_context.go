@@ -19,12 +19,13 @@ package otlp
 import (
 	"context"
 	"fmt"
+	"log/slog"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
-	"log/slog"
 )
 
 type OpenTelemetryContext struct {

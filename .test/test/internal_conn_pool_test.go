@@ -34,7 +34,7 @@ type mockPoolConn struct {
 	driver.Conn
 }
 
-func (c *mockPoolConn) ResetSession(ctx context.Context) error {
+func (c *mockPoolConn) ResetSession(_ context.Context) error {
 	return nil
 }
 

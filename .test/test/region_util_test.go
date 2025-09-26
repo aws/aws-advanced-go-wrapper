@@ -21,7 +21,6 @@ import (
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -42,17 +41,17 @@ func TestGetRegionFromHost(t *testing.T) {
 }
 
 func TestGetRegionFromProps(t *testing.T) {
-	props := map[string]string{
-		property_util.IAM_REGION.Name: "me-south-1",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.IAM_REGION.Name, "me-south-1",
+	)
 	assert.Equal(t, region_util.ME_SOUTH_1, region_util.GetRegionFromProps(props, property_util.IAM_REGION))
 }
 
 func TestGetRegion(t *testing.T) {
-	propsWithIamRegion := map[string]string{
-		property_util.IAM_REGION.Name: "me-south-1",
-	}
-	propsWithoutIamRegion := map[string]string{}
+	propsWithIamRegion := MakeMapFromKeysAndVals(
+		property_util.IAM_REGION.Name, "me-south-1",
+	)
+	propsWithoutIamRegion := emptyProps
 
 	assert.Equal(t, region_util.ME_SOUTH_1, region_util.GetRegion("", propsWithIamRegion, property_util.IAM_REGION))
 	assert.Equal(t, region_util.US_GOV_EAST_1, region_util.GetRegion(usGovEastRegionCluster, propsWithoutIamRegion, property_util.IAM_REGION))

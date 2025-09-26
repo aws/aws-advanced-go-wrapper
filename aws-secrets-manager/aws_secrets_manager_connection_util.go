@@ -27,7 +27,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
-
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 )
 
@@ -45,7 +45,7 @@ func getCacheKey(
 
 func getRdsSecretFromAwsSecretsManager(
 	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
+	props *utils.RWMap[string],
 	endpoint string,
 	region string,
 	clientProvider NewAwsSecretsManagerClientProvider,
@@ -64,7 +64,7 @@ func getRdsSecretFromAwsSecretsManager(
 		return secret, err
 	}
 
-	secretId := props[property_util.SECRETS_MANAGER_SECRET_ID.Name]
+	secretId, _ := props.Get(property_util.SECRETS_MANAGER_SECRET_ID.Name)
 	// Get the secret value
 	secretOutput, err := svc.GetSecretValue(context.TODO(), &secretsmanager.GetSecretValueInput{
 		SecretId: &secretId,
@@ -98,7 +98,13 @@ func GetAwsSecretsManagerRegion(regionStr string, secretId string) (region_util.
 
 	region := region_util.GetRegionFromArn(secretId)
 	if region == "" {
-		return region, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.unableToDetermineRegion", property_util.SECRETS_MANAGER_REGION.Name))
+		defaultValue := property_util.GetVerifiedWrapperPropertyValueFromMap[string](map[string]string{}, property_util.SECRETS_MANAGER_REGION)
+		region := region_util.GetRegionFromRegionString(defaultValue)
+
+		if region == "" {
+			// This should not be reached.
+			return "", errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.unableToDetermineRegion", property_util.SECRETS_MANAGER_REGION.Name))
+		}
 	}
 	return region, nil
 }

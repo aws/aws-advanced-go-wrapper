@@ -18,6 +18,7 @@ package otlp
 
 import (
 	"context"
+
 	"go.opentelemetry.io/otel/metric"
 )
 

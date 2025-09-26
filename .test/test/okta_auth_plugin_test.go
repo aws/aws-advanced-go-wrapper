@@ -30,6 +30,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	"github.com/aws/aws-advanced-go-wrapper/okta"
 	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
@@ -39,7 +40,7 @@ import (
 )
 
 func newOktaAuthPluginTest(
-	props map[string]string) (
+	props *utils.RWMap[string]) (
 	*MockCredentialsProviderFactory,
 	*MockIamTokenUtility,
 	*okta.OktaAuthPlugin,
@@ -47,10 +48,9 @@ func newOktaAuthPluginTest(
 	okta.OktaTokenCache.Clear()
 	mockTargetDriver := &MockTargetDriver{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := driver_infrastructure.PluginManager(
-		plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
+	mockPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
-	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
+	mockPluginService := pluginServiceImpl
 	iamTokenUtility := &MockIamTokenUtility{}
 	mockCredProviderFactory := &MockCredentialsProviderFactory{}
 	oktaPlugin, _ := okta.NewOktaAuthPlugin(mockPluginService, mockCredProviderFactory, iamTokenUtility)
@@ -58,7 +58,7 @@ func newOktaAuthPluginTest(
 }
 
 func TestGetOktaAuthPlugin(t *testing.T) {
-	props := map[string]string{property_util.DRIVER_PROTOCOL.Name: "postgresql"}
+	props := MakeMapFromKeysAndVals(property_util.DRIVER_PROTOCOL.Name, "postgresql")
 	_, _, _, pluginService := newOktaAuthPluginTest(props)
 	pluginFactory := okta.NewOktaAuthPluginFactory()
 	_, err := pluginFactory.GetInstance(pluginService, props)
@@ -68,72 +68,72 @@ func TestGetOktaAuthPlugin(t *testing.T) {
 func TestOktaAuthPluginConnect(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.DB_USER.Name:         "jane_doe",
-		property_util.IDP_USERNAME.Name:    "username",
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-		property_util.APP_ID.Name:          "appId",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.DB_USER.Name, "jane_doe",
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+		property_util.APP_ID.Name, "appId",
+	)
 	_, _, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
 
 	_, err = oktaAuthConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
 	assert.NoError(t, err)
-	assert.Equal(t, "someToken", resultProps[property_util.PASSWORD.Name])
-	assert.Equal(t, "jane_doe", resultProps[property_util.USER.Name])
+	assert.Equal(t, "someToken", property_util.PASSWORD.Get(resultProps))
+	assert.Equal(t, "jane_doe", property_util.USER.Get(resultProps))
 }
 
 func TestOktaAuthPluginForceConnect(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.DB_USER.Name:         "jane_doe",
-		property_util.IDP_USERNAME.Name:    "username",
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-		property_util.APP_ID.Name:          "appId",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.DB_USER.Name, "jane_doe",
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+		property_util.APP_ID.Name, "appId",
+	)
 	_, _, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
 
 	_, err = oktaAuthConnectionPlugin.ForceConnect(hostInfo, props, false, mockConnFunc)
 	assert.NoError(t, err)
-	assert.Equal(t, "someToken", resultProps[property_util.PASSWORD.Name])
-	assert.Equal(t, "jane_doe", resultProps[property_util.USER.Name])
+	assert.Equal(t, "someToken", property_util.PASSWORD.Get(resultProps))
+	assert.Equal(t, "jane_doe", property_util.USER.Get(resultProps))
 }
 
 func TestOktaAuthPluginInvalidRegion(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.invalid-region.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.DB_USER.Name:         "jane_doe",
-		property_util.IDP_USERNAME.Name:    "username",
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-		property_util.APP_ID.Name:          "appId",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.DB_USER.Name, "jane_doe",
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+		property_util.APP_ID.Name, "appId",
+	)
 	_, _, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
 
 	_, err = oktaAuthConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
@@ -143,29 +143,29 @@ func TestOktaAuthPluginInvalidRegion(t *testing.T) {
 func TestOktaAuthPluginValidRegionThroughIam(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.invalid-region.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.DB_USER.Name:         "jane_doe",
-		property_util.IDP_USERNAME.Name:    "username",
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-		property_util.APP_ID.Name:          "appId",
-		property_util.IAM_REGION.Name:      "us-west-2",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.DB_USER.Name, "jane_doe",
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+		property_util.APP_ID.Name, "appId",
+		property_util.IAM_REGION.Name, "us-west-2",
+	)
 	_, mockIamToken, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
 
 	_, err = oktaAuthConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
 	assert.NoError(t, err)
-	assert.Equal(t, mockIamToken.GetMockTokenValue(), resultProps[property_util.PASSWORD.Name])
-	assert.Equal(t, "jane_doe", resultProps[property_util.USER.Name])
+	assert.Equal(t, mockIamToken.GetMockTokenValue(), property_util.PASSWORD.Get(resultProps))
+	assert.Equal(t, "jane_doe", property_util.USER.Get(resultProps))
 }
 
 func TestOktaAuthPluginCachedToken(t *testing.T) {
@@ -173,22 +173,22 @@ func TestOktaAuthPluginCachedToken(t *testing.T) {
 	port := 1234
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost(host).SetPort(port).Build()
 	assert.NoError(t, err)
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.DB_USER.Name:         "jane_doe",
-		property_util.IDP_USERNAME.Name:    "username",
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-		property_util.APP_ID.Name:          "appId",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.DB_USER.Name, "jane_doe",
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+		property_util.APP_ID.Name, "appId",
+	)
 	_, _, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
 	cacheKey := auth_helpers.GetCacheKey(
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.DB_USER),
@@ -200,8 +200,8 @@ func TestOktaAuthPluginCachedToken(t *testing.T) {
 
 	_, err = oktaAuthConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
 	assert.NoError(t, err)
-	assert.Equal(t, "cachedPassword", resultProps[property_util.PASSWORD.Name])
-	assert.Equal(t, "jane_doe", resultProps[property_util.USER.Name])
+	assert.Equal(t, "cachedPassword", property_util.PASSWORD.Get(resultProps))
+	assert.Equal(t, "jane_doe", property_util.USER.Get(resultProps))
 	assert.Equal(t, 1, okta.OktaTokenCache.Size())
 }
 
@@ -210,16 +210,16 @@ func TestOktaAuthPluginConnectWithRetry(t *testing.T) {
 	port := 1234
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost(host).SetPort(port).Build()
 	assert.NoError(t, err)
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.DB_USER.Name:         "jane_doe",
-		property_util.IDP_USERNAME.Name:    "username",
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-		property_util.APP_ID.Name:          "appId",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.DB_USER.Name, "jane_doe",
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+		property_util.APP_ID.Name, "appId",
+	)
 	_, _, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
 
 	cacheKey := auth_helpers.GetCacheKey(
@@ -229,8 +229,8 @@ func TestOktaAuthPluginConnectWithRetry(t *testing.T) {
 		"us-east-2")
 	okta.OktaTokenCache.Put(cacheKey, "cachedToken", time.Minute)
 	connAttempts := 0
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		connAttempts++
 		cachedToken, ok := okta.OktaTokenCache.Get(cacheKey)
 		if ok && cachedToken == "cachedToken" {
@@ -245,8 +245,8 @@ func TestOktaAuthPluginConnectWithRetry(t *testing.T) {
 
 	// Retry connection with a new token when the cached token fails with a login error.
 	assert.NoError(t, err)
-	assert.Equal(t, "someToken", resultProps[property_util.PASSWORD.Name])
-	assert.Equal(t, "jane_doe", resultProps[property_util.USER.Name])
+	assert.Equal(t, "someToken", property_util.PASSWORD.Get(resultProps))
+	assert.Equal(t, "jane_doe", property_util.USER.Get(resultProps))
 	assert.Equal(t, 1, okta.OktaTokenCache.Size())
 	assert.Equal(t, 2, connAttempts)
 }
@@ -256,16 +256,16 @@ func TestOktaAuthPluginDoesNotRetryConnect(t *testing.T) {
 	port := 1234
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost(host).SetPort(port).Build()
 	assert.NoError(t, err)
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.DB_USER.Name:         "jane_doe",
-		property_util.IDP_USERNAME.Name:    "username",
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-		property_util.APP_ID.Name:          "appId",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.DB_USER.Name, "jane_doe",
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+		property_util.APP_ID.Name, "appId",
+	)
 	_, _, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
 
 	cacheKey := auth_helpers.GetCacheKey(
@@ -275,8 +275,8 @@ func TestOktaAuthPluginDoesNotRetryConnect(t *testing.T) {
 		"us-east-2")
 	testErr := errors.New("test")
 	connAttempts := 0
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		connAttempts++
 		cachedPassword, ok := okta.OktaTokenCache.Get(cacheKey)
@@ -292,8 +292,8 @@ func TestOktaAuthPluginDoesNotRetryConnect(t *testing.T) {
 	// Should only generate a new token once, if it fails does not retry.
 	require.Error(t, err)
 	assert.Equal(t, pgx_driver.AccessErrors[0], err.Error())
-	assert.Equal(t, "someToken", resultProps[property_util.PASSWORD.Name])
-	assert.Equal(t, "jane_doe", resultProps[property_util.USER.Name])
+	assert.Equal(t, "someToken", property_util.PASSWORD.Get(resultProps))
+	assert.Equal(t, "jane_doe", property_util.USER.Get(resultProps))
 	assert.Equal(t, 1, okta.OktaTokenCache.Size())
 	assert.Equal(t, 1, connAttempts)
 
@@ -303,8 +303,8 @@ func TestOktaAuthPluginDoesNotRetryConnect(t *testing.T) {
 
 	// Should not retry if the error is not a login error.
 	assert.NotEqual(t, testErr, err)
-	assert.Equal(t, "oldPassword", resultProps[property_util.PASSWORD.Name])
-	assert.Equal(t, "jane_doe", resultProps[property_util.USER.Name])
+	assert.Equal(t, "oldPassword", property_util.PASSWORD.Get(resultProps))
+	assert.Equal(t, "jane_doe", property_util.USER.Get(resultProps))
 	assert.Equal(t, 1, okta.OktaTokenCache.Size())
 	assert.Equal(t, 1, connAttempts)
 }
@@ -314,8 +314,8 @@ func TestOktaAuthPluginCachedIamHostToken(t *testing.T) {
 	port := 1234
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost(host).SetPort(port).Build()
 	assert.NoError(t, err)
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -323,19 +323,19 @@ func TestOktaAuthPluginCachedIamHostToken(t *testing.T) {
 	iamPort := 543
 	iamRegion := "us-east-1"
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name:  "postgresql",
-		property_util.DB_USER.Name:          "jane_doe",
-		property_util.IDP_USERNAME.Name:     "username",
-		property_util.IDP_PASSWORD.Name:     "password",
-		property_util.IDP_ENDPOINT.Name:     "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:     "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:      "iamIdpArn",
-		property_util.APP_ID.Name:           "appId",
-		property_util.IAM_HOST.Name:         iamHost,
-		property_util.IAM_REGION.Name:       iamRegion,
-		property_util.IAM_DEFAULT_PORT.Name: strconv.FormatInt(int64(iamPort), 10),
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.DB_USER.Name, "jane_doe",
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+		property_util.APP_ID.Name, "appId",
+		property_util.IAM_HOST.Name, iamHost,
+		property_util.IAM_REGION.Name, iamRegion,
+		property_util.IAM_DEFAULT_PORT.Name, strconv.FormatInt(int64(iamPort), 10),
+	)
 	_, _, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
 	cacheKey := auth_helpers.GetCacheKey(
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.DB_USER),
@@ -347,8 +347,8 @@ func TestOktaAuthPluginCachedIamHostToken(t *testing.T) {
 
 	_, err = oktaAuthConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
 	assert.NoError(t, err)
-	assert.Equal(t, "cachedPassword", resultProps[property_util.PASSWORD.Name])
-	assert.Equal(t, "jane_doe", resultProps[property_util.USER.Name])
+	assert.Equal(t, "cachedPassword", property_util.PASSWORD.Get(resultProps))
+	assert.Equal(t, "jane_doe", property_util.USER.Get(resultProps))
 	assert.Equal(t, 1, okta.OktaTokenCache.Size())
 }
 
@@ -357,8 +357,8 @@ func TestOktaAuthPluginExpiredTokenWithIamHost(t *testing.T) {
 	port := 1234
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost(host).SetPort(port).Build()
 	assert.NoError(t, err)
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -367,19 +367,19 @@ func TestOktaAuthPluginExpiredTokenWithIamHost(t *testing.T) {
 	iamRegion := "us-east-1"
 	iamPort := 5435
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name:  "postgresql",
-		property_util.DB_USER.Name:          "jane_doe",
-		property_util.IDP_USERNAME.Name:     "username",
-		property_util.IDP_PASSWORD.Name:     "password",
-		property_util.IDP_ENDPOINT.Name:     "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:     "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:      "iamIdpArn",
-		property_util.APP_ID.Name:           "appId",
-		property_util.IAM_HOST.Name:         iamHost,
-		property_util.IAM_REGION.Name:       iamRegion,
-		property_util.IAM_DEFAULT_PORT.Name: strconv.FormatInt(int64(iamPort), 10),
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.DB_USER.Name, "jane_doe",
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+		property_util.APP_ID.Name, "appId",
+		property_util.IAM_HOST.Name, iamHost,
+		property_util.IAM_REGION.Name, iamRegion,
+		property_util.IAM_DEFAULT_PORT.Name, strconv.FormatInt(int64(iamPort), 10),
+	)
 	_, mockIamToken, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
 	cacheKey := auth_helpers.GetCacheKey(
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.DB_USER),
@@ -391,8 +391,8 @@ func TestOktaAuthPluginExpiredTokenWithIamHost(t *testing.T) {
 
 	_, err = oktaAuthConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
 	assert.NoError(t, err)
-	assert.Equal(t, mockIamToken.GetMockTokenValue(), resultProps[property_util.PASSWORD.Name])
-	assert.Equal(t, "jane_doe", resultProps[property_util.USER.Name])
+	assert.Equal(t, mockIamToken.GetMockTokenValue(), property_util.PASSWORD.Get(resultProps))
+	assert.Equal(t, "jane_doe", property_util.USER.Get(resultProps))
 }
 
 func TestOktaAuthGenerateTokenFailure(t *testing.T) {
@@ -400,21 +400,21 @@ func TestOktaAuthGenerateTokenFailure(t *testing.T) {
 	port := 1234
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost(host).SetPort(port).Build()
 	assert.NoError(t, err)
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.DB_USER.Name:         "jane_doe",
-		property_util.IDP_USERNAME.Name:    "username",
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-		property_util.APP_ID.Name:          "appId",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.DB_USER.Name, "jane_doe",
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+		property_util.APP_ID.Name, "appId",
+	)
 	_, mockIamToken, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
 
-	errMsg := "Generated token error"
+	errMsg := "generated token error"
 	mockIamToken.GenerateTokenError = errors.New(errMsg)
 
 	_, err = oktaAuthConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
@@ -422,18 +422,18 @@ func TestOktaAuthGenerateTokenFailure(t *testing.T) {
 }
 
 func TestOktaAuthPluginGetAwsCredentialsProviderError(t *testing.T) {
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.DB_USER.Name:         "jane_doe",
-		property_util.IDP_USERNAME.Name:    "username",
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IDP_ENDPOINT.Name:    "idpEndpoint",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-		property_util.APP_ID.Name:          "appId",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.DB_USER.Name, "jane_doe",
+		property_util.IDP_USERNAME.Name, "username",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IDP_ENDPOINT.Name, "idpEndpoint",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+		property_util.APP_ID.Name, "appId",
+	)
 
-	connectFunc := func(props map[string]string) (driver.Conn, error) {
+	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		return &MockConn{throwError: true}, nil
 	}
 
@@ -448,18 +448,18 @@ func TestOktaAuthPluginGetAwsCredentialsProviderError(t *testing.T) {
 func TestOktaAuthPluginMissingParams(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		return &MockConn{throwError: true}, nil
 	}
 
 	missingParams := []string{property_util.IDP_USERNAME.Name, property_util.IDP_ENDPOINT.Name, property_util.APP_ID.Name}
-	props := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name: "postgresql",
-		property_util.DB_USER.Name:         "jane_doe",
-		property_util.IDP_PASSWORD.Name:    "password",
-		property_util.IAM_ROLE_ARN.Name:    "iamRoleArn",
-		property_util.IAM_IDP_ARN.Name:     "iamIdpArn",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.DB_USER.Name, "jane_doe",
+		property_util.IDP_PASSWORD.Name, "password",
+		property_util.IAM_ROLE_ARN.Name, "iamRoleArn",
+		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
+	)
 	_, _, oktaAuthConnectionPlugin, _ := newOktaAuthPluginTest(props)
 
 	_, err = oktaAuthConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)

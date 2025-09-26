@@ -45,17 +45,18 @@ type Monitor interface {
 func NewMonitorImpl(
 	pluginService driver_infrastructure.PluginService,
 	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
+	props *utils.RWMap[string],
 	failureDetectionTimeMillis int,
 	failureDetectionIntervalMillis int,
 	failureDetectionCount int,
 	abortedConnectionsCounter telemetry.TelemetryCounter,
 ) *MonitorImpl {
-	monitoringConnectionProps := utils.CreateMapCopy(props)
-	for propKey, propValue := range props {
+	copyProps := props.GetAllEntries()
+	monitoringConnectionProps := utils.NewRWMapFromMap(copyProps)
+	for propKey, propValue := range copyProps {
 		if strings.HasPrefix(propKey, property_util.MONITORING_PROPERTY_PREFIX) {
-			monitoringConnectionProps[strings.TrimPrefix(propKey, property_util.MONITORING_PROPERTY_PREFIX)] = propValue
-			delete(monitoringConnectionProps, propKey)
+			monitoringConnectionProps.Put(strings.TrimPrefix(propKey, property_util.MONITORING_PROPERTY_PREFIX), propValue)
+			monitoringConnectionProps.Remove(propKey)
 		}
 	}
 	monitor := &MonitorImpl{
@@ -80,7 +81,7 @@ type MonitorImpl struct {
 	hostInfo                      *host_info_util.HostInfo
 	MonitoringConn                driver.Conn
 	pluginService                 driver_infrastructure.PluginService
-	monitoringProps               map[string]string
+	monitoringProps               *utils.RWMap[string]
 	failureDetectionTimeNanos     time.Duration
 	failureDetectionIntervalNanos time.Duration
 	FailureCount                  int
@@ -185,7 +186,7 @@ func (m *MonitorImpl) run() {
 				connToAbort := monitorState.GetConn()
 				monitorState.SetInactive()
 				if connToAbort != nil {
-					(*connToAbort).Close()
+					_ = (*connToAbort).Close()
 					m.abortedConnectionsCounter.Inc(m.pluginService.GetTelemetryContext())
 				}
 			} else if monitorState.IsActive() {
@@ -204,7 +205,7 @@ func (m *MonitorImpl) run() {
 		time.Sleep(delayDurationNanos)
 	}
 	if m.MonitoringConn != nil {
-		m.MonitoringConn.Close()
+		_ = m.MonitoringConn.Close()
 	}
 	slog.Debug(error_util.GetMessage("MonitorImpl.stopMonitoringRoutine", m.hostInfo.Host))
 }
@@ -253,7 +254,7 @@ func (m *MonitorImpl) CheckConnectionStatus() bool {
 	if m.MonitoringConn == nil || m.pluginService.GetTargetDriverDialect().IsClosed(m.MonitoringConn) {
 		// Open a new connection.
 		slog.Debug(error_util.GetMessage("MonitorImpl.openingMonitoringConnection", m.hostInfo.Host))
-		newMonitoringConn, err := m.pluginService.ForceConnect(m.hostInfo, utils.CreateMapCopy(m.monitoringProps))
+		newMonitoringConn, err := m.pluginService.ForceConnect(m.hostInfo, m.monitoringProps)
 		if err != nil || newMonitoringConn == nil {
 			return false
 		}

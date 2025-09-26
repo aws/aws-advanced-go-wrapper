@@ -18,6 +18,7 @@ package auth_helpers
 
 import (
 	"fmt"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
 )

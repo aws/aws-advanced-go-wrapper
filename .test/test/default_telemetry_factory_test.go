@@ -22,18 +22,19 @@ import (
 
 	mock_telemetry "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/util/telemetry"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
 
-func setUpProps(enableTelemetry string, tracesBackend, metricsBackend string, submitTopLevel string) map[string]string {
-	return map[string]string{
-		property_util.ENABLE_TELEMETRY.Name:           enableTelemetry,
-		property_util.TELEMETRY_TRACES_BACKEND.Name:   tracesBackend,
-		property_util.TELEMETRY_METRICS_BACKEND.Name:  metricsBackend,
-		property_util.TELEMETRY_SUBMIT_TOP_LEVEL.Name: submitTopLevel,
-	}
+func setUpProps(enableTelemetry string, tracesBackend, metricsBackend string, submitTopLevel string) *utils.RWMap[string] {
+	return MakeMapFromKeysAndVals(
+		property_util.ENABLE_TELEMETRY.Name, enableTelemetry,
+		property_util.TELEMETRY_TRACES_BACKEND.Name, tracesBackend,
+		property_util.TELEMETRY_METRICS_BACKEND.Name, metricsBackend,
+		property_util.TELEMETRY_SUBMIT_TOP_LEVEL.Name, submitTopLevel,
+	)
 }
 
 func TestNewDefaultTelemetryFactory_ValidOTLP(t *testing.T) {

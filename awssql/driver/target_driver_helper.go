@@ -23,10 +23,10 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
-func GetDatabaseEngine(props map[string]string) (driver_infrastructure.DatabaseEngine, error) {
-	if property_util.DRIVER_PROTOCOL.Get(props) == utils.MYSQL_DRIVER_PROTOCOL {
+func GetDatabaseEngine(props *utils.RWMap[string]) (driver_infrastructure.DatabaseEngine, error) {
+	if property_util.DRIVER_PROTOCOL.Get(props) == property_util.MYSQL_DRIVER_PROTOCOL {
 		return driver_infrastructure.MYSQL, nil
-	} else if property_util.DRIVER_PROTOCOL.Get(props) == utils.PGX_DRIVER_PROTOCOL {
+	} else if property_util.DRIVER_PROTOCOL.Get(props) == property_util.PGX_DRIVER_PROTOCOL {
 		return driver_infrastructure.PG, nil
 	}
 	return "", error_util.NewGenericAwsWrapperError(error_util.GetMessage("TargetDriverHelper.invalidProtocol", property_util.DRIVER_PROTOCOL.Get(props)))

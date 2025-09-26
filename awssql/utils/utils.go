@@ -261,6 +261,14 @@ func CombineMaps[K comparable, V any](mapToCopy map[K]V, mapToAdd map[K]V) map[K
 	return mapToReturn
 }
 
+func CombineRWMaps[V any](mapToCopy *RWMap[V], mapToAdd *RWMap[V]) *RWMap[V] {
+	mapToReturn := NewRWMapFromCopy(mapToCopy)
+	for key, value := range mapToAdd.GetAllEntries() {
+		mapToReturn.Put(key, value)
+	}
+	return mapToReturn
+}
+
 func Rollback(conn driver.Conn, currentTx driver.Tx) {
 	if currentTx != nil {
 		err := currentTx.Rollback()

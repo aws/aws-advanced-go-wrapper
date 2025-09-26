@@ -39,11 +39,11 @@ var KnownDialectsByCode = map[string]DatabaseDialect{
 	RDS_PG_MULTI_AZ_CLUSTER_DIALECT:    &RdsMultiAzClusterPgDatabaseDialect{},
 }
 
-var knownEndpointDialectsCache *utils.CacheMap[string] = utils.NewCache[string]()
+var knownEndpointDialectsCache = utils.NewCache[string]()
 var ENDPOINT_CACHE_EXPIRATION = time.Hour * 24
 
 type DialectProvider interface {
-	GetDialect(dsn string, props map[string]string) (DatabaseDialect, error)
+	GetDialect(dsn string, props *utils.RWMap[string]) (DatabaseDialect, error)
 	GetDialectForUpdate(conn driver.Conn, originalHost string, newHost string) DatabaseDialect
 }
 
@@ -54,7 +54,7 @@ type DialectManager struct {
 	FindRegisteredDriver func(dialectCode string) bool
 }
 
-func (d *DialectManager) GetDialect(dsn string, props map[string]string) (DatabaseDialect, error) {
+func (d *DialectManager) GetDialect(dsn string, props *utils.RWMap[string]) (DatabaseDialect, error) {
 	if d.FindRegisteredDriver == nil {
 		d.FindRegisteredDriver = utils.FindRegisteredDriver
 	}
@@ -78,7 +78,7 @@ func (d *DialectManager) GetDialect(dsn string, props map[string]string) (Databa
 	driverProtocol := property_util.DRIVER_PROTOCOL.Get(props)
 
 	hostString := dsn
-	hostInfoList, err := utils.GetHostsFromDsn(dsn, true)
+	hostInfoList, err := property_util.GetHostsFromDsn(dsn, true)
 	if err == nil && len(hostInfoList) > 0 {
 		hostString = hostInfoList[0].Host
 	}

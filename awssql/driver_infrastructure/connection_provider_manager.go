@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 type ConnectionProviderManager struct {
@@ -29,7 +30,8 @@ type ConnectionProviderManager struct {
 
 func (connProviderManager *ConnectionProviderManager) GetConnectionProvider(
 	hostInfo host_info_util.HostInfo,
-	props map[string]string) ConnectionProvider {
+	rwProps *utils.RWMap[string]) ConnectionProvider {
+	props := rwProps.GetAllEntries()
 	if customConnectionProvider := getCustomConnectionProvider(); customConnectionProvider != nil && customConnectionProvider.AcceptsUrl(hostInfo, props) {
 		return customConnectionProvider
 	}
@@ -61,7 +63,8 @@ func (connProviderManager *ConnectionProviderManager) GetHostInfoByStrategy(
 	hosts []*host_info_util.HostInfo,
 	role host_info_util.HostRole,
 	strategy string,
-	props map[string]string) (*host_info_util.HostInfo, error) {
+	rwProps *utils.RWMap[string]) (*host_info_util.HostInfo, error) {
+	props := rwProps.GetAllEntries()
 	if customConnectionProvider := getCustomConnectionProvider(); customConnectionProvider != nil && customConnectionProvider.AcceptsStrategy(strategy) {
 		host, err := customConnectionProvider.GetHostInfoByStrategy(hosts, role, strategy, props)
 		if err == nil {

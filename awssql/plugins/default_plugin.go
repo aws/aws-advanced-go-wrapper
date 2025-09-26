@@ -39,9 +39,9 @@ func (d *DefaultPlugin) GetPluginCode() string {
 }
 
 func (d *DefaultPlugin) InitHostProvider(
-	props map[string]string,
-	hostListProviderService driver_infrastructure.HostListProviderService,
-	initHostProviderFunc func() error) error {
+	_ *utils.RWMap[string],
+	_ driver_infrastructure.HostListProviderService,
+	_ func() error) error {
 	// Do nothing.
 	// It's guaranteed that this plugin is always the last in plugin chain so initHostProviderFunc can be omitted.
 	return nil
@@ -78,9 +78,9 @@ func (d *DefaultPlugin) Execute(
 
 func (d *DefaultPlugin) Connect(
 	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
+	props *utils.RWMap[string],
 	isInitialConnection bool,
-	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
+	_ driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	// It's guaranteed that this plugin is always the last in plugin chain so connectFunc can be ignored.
 	connProvider := d.ConnProviderManager.GetConnectionProvider(*hostInfo, props)
 	return d.connectInternal(hostInfo, props, connProvider, isInitialConnection)
@@ -88,16 +88,16 @@ func (d *DefaultPlugin) Connect(
 
 func (d *DefaultPlugin) ForceConnect(
 	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
+	props *utils.RWMap[string],
 	isInitialConnection bool,
-	forceConnectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
+	_ driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	// It's guaranteed that this plugin is always the last in plugin chain so connectFunc can be ignored.
 	return d.connectInternal(hostInfo, props, d.DefaultConnProvider, isInitialConnection)
 }
 
 func (d *DefaultPlugin) connectInternal(
 	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
+	props *utils.RWMap[string],
 	connProvider driver_infrastructure.ConnectionProvider,
 	isInitialConnection bool) (driver.Conn, error) {
 	parentCtx := d.PluginService.GetTelemetryContext()
@@ -109,7 +109,7 @@ func (d *DefaultPlugin) connectInternal(
 		d.PluginService.SetTelemetryContext(parentCtx)
 	}()
 
-	conn, err := connProvider.Connect(hostInfo, props, d.PluginService)
+	conn, err := connProvider.Connect(hostInfo, props.GetAllEntries(), d.PluginService)
 	if err == nil {
 		d.PluginService.SetAvailability(hostInfo.AllAliases, host_info_util.AVAILABLE)
 		if isInitialConnection {
@@ -137,10 +137,10 @@ func (d *DefaultPlugin) GetHostSelectorStrategy(strategy string) (driver_infrast
 	return d.ConnProviderManager.GetHostSelectorStrategy(strategy)
 }
 
-func (d *DefaultPlugin) NotifyConnectionChanged(changes map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {
+func (d *DefaultPlugin) NotifyConnectionChanged(_ map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {
 	return driver_infrastructure.NO_OPINION
 }
 
-func (d *DefaultPlugin) NotifyHostListChanged(changes map[string]map[driver_infrastructure.HostChangeOptions]bool) {
+func (d *DefaultPlugin) NotifyHostListChanged(_ map[string]map[driver_infrastructure.HostChangeOptions]bool) {
 	// Do nothing.
 }

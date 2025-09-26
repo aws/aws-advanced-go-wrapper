@@ -21,11 +21,12 @@ import (
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 type LimitlessConnectionContext struct {
 	Host             host_info_util.HostInfo
-	Props            map[string]string
+	Props            *utils.RWMap[string]
 	connection       driver.Conn
 	ConnectFunc      driver_infrastructure.ConnectFunc
 	LimitlessRouters []*host_info_util.HostInfo
@@ -34,7 +35,7 @@ type LimitlessConnectionContext struct {
 
 func NewConnectionContext(
 	hostInfo host_info_util.HostInfo,
-	props map[string]string,
+	props *utils.RWMap[string],
 	conn driver.Conn,
 	connectFunc driver_infrastructure.ConnectFunc,
 	limitlessRouters []*host_info_util.HostInfo,

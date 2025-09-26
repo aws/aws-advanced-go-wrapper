@@ -19,7 +19,6 @@ package limitless
 import (
 	"database/sql/driver"
 	"log/slog"
-	"maps"
 	"sync/atomic"
 	"time"
 
@@ -40,7 +39,7 @@ type LimitlessRouterMonitorImpl struct {
 	routerCacheKey string
 	intervalMs     int
 	pluginService  driver_infrastructure.PluginService
-	props          map[string]string
+	props          *utils.RWMap[string]
 	queryHelper    LimitlessQueryHelper
 	monitoringConn driver.Conn
 	stopped        atomic.Bool
@@ -53,7 +52,7 @@ func NewLimitlessRouterMonitorImpl(
 	routerCache *utils.SlidingExpirationCache[[]*host_info_util.HostInfo],
 	routerCacheKey string,
 	intervalMs int,
-	props map[string]string) *LimitlessRouterMonitorImpl {
+	props *utils.RWMap[string]) *LimitlessRouterMonitorImpl {
 	monitor := &LimitlessRouterMonitorImpl{
 		queryHelper:    queryHelper,
 		pluginService:  pluginService,
@@ -61,7 +60,7 @@ func NewLimitlessRouterMonitorImpl(
 		routerCache:    routerCache,
 		routerCacheKey: routerCacheKey,
 		intervalMs:     intervalMs,
-		props:          maps.Clone(props),
+		props:          props,
 	}
 
 	property_util.LIMITLESS_WAIT_FOR_ROUTER_INFO.Set(monitor.props, "false")
@@ -144,7 +143,7 @@ func (monitor *LimitlessRouterMonitorImpl) openConnection() error {
 	if monitor.monitoringConn == nil {
 		// open a new connection
 		slog.Info(error_util.GetMessage("LimitlessRouterMonitorImpl.openingConnection", monitor.hostInfo.Host))
-		newConn, err := monitor.pluginService.ForceConnect(monitor.hostInfo, utils.CreateMapCopy(monitor.props))
+		newConn, err := monitor.pluginService.ForceConnect(monitor.hostInfo, monitor.props)
 		if err != nil {
 			if newConn != nil {
 				_ = newConn.Close()

@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-package utils
+package property_util
 
 import (
 	"errors"
@@ -26,7 +26,7 @@ import (
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 const (
@@ -54,9 +54,11 @@ func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []*host_i
 	return GetHostsFromProps(properties, isSingleWriterDsn)
 }
 
-func GetHostsFromProps(properties map[string]string, isSingleWriterDsn bool) (hostInfoList []*host_info_util.HostInfo, err error) {
-	hostStringList := strings.Split(properties[property_util.HOST.Name], ",")
-	portStringList := strings.Split(properties[property_util.PORT.Name], ",")
+func GetHostsFromProps(properties *utils.RWMap[string], isSingleWriterDsn bool) (hostInfoList []*host_info_util.HostInfo, err error) {
+	hostVal, _ := properties.Get(HOST.Name)
+	portVal, _ := properties.Get(PORT.Name)
+	hostStringList := strings.Split(hostVal, ",")
+	portStringList := strings.Split(portVal, ",")
 	port := host_info_util.HOST_NO_PORT
 	if len(portStringList) > 1 {
 		return hostInfoList, error_util.NewDsnParsingError(
@@ -79,8 +81,8 @@ func GetHostsFromProps(properties map[string]string, isSingleWriterDsn bool) (ho
 				hostRole = host_info_util.WRITER
 			}
 		} else {
-			urlType := IdentifyRdsUrlType(hostString)
-			if urlType == RDS_READER_CLUSTER {
+			urlType := utils.IdentifyRdsUrlType(hostString)
+			if urlType == utils.RDS_READER_CLUSTER {
 				hostRole = host_info_util.READER
 			} else {
 				hostRole = host_info_util.WRITER
@@ -102,7 +104,7 @@ func ParseHostPortPair(instanceClusterTemplate string, defaultPort int) (*host_i
 	hostPortPair := strings.Split(instanceClusterTemplate, ":")
 
 	host := hostPortPair[0]
-	urlType := IdentifyRdsUrlType(host)
+	urlType := utils.IdentifyRdsUrlType(host)
 
 	port := defaultPort
 	var err error
@@ -116,7 +118,7 @@ func ParseHostPortPair(instanceClusterTemplate string, defaultPort int) (*host_i
 
 	hostRole := host_info_util.WRITER
 
-	if urlType == RDS_READER_CLUSTER {
+	if urlType == utils.RDS_READER_CLUSTER {
 		hostRole = host_info_util.READER
 	}
 
@@ -128,7 +130,7 @@ func ParseHostPortPair(instanceClusterTemplate string, defaultPort int) (*host_i
 func ParseDatabaseFromDsn(dsn string) (string, error) {
 	props, err := ParseDsn(dsn)
 	if err == nil {
-		return property_util.DATABASE.Get(props), nil
+		return DATABASE.Get(props), nil
 	}
 	return "", err
 }
@@ -136,7 +138,7 @@ func ParseDatabaseFromDsn(dsn string) (string, error) {
 func ParseUserFromDsn(dsn string) (string, error) {
 	props, err := ParseDsn(dsn)
 	if err == nil {
-		return property_util.USER.Get(props), nil
+		return USER.Get(props), nil
 	}
 	return "", err
 }
@@ -144,7 +146,7 @@ func ParseUserFromDsn(dsn string) (string, error) {
 func ParsePasswordFromDsn(dsn string) (string, error) {
 	props, err := ParseDsn(dsn)
 	if err == nil {
-		return property_util.PASSWORD.Get(props), nil
+		return PASSWORD.Get(props), nil
 	}
 	return "", err
 }
@@ -166,8 +168,8 @@ func GetProtocol(dsn string) (string, error) {
 		error_util.GetMessage("DsnParser.unableToDetermineProtocol", MaskSensitiveInfoFromDsn(dsn)))
 }
 
-func ParseDsn(dsn string) (map[string]string, error) {
-	connStringSettings := make(map[string]string)
+func ParseDsn(dsn string) (*utils.RWMap[string], error) {
+	connStringSettings := utils.NewRWMap[string]()
 	var err error
 	if isDsnPgxUrl(dsn) {
 		connStringSettings, err = parsePgxURLSettings(dsn)
@@ -208,8 +210,8 @@ func isDsnMySql(dsn string) bool {
 	return !spaceBetweenWordsPattern.MatchString(dsn) && mySqlDsnPattern.MatchString(dsn)
 }
 
-func parsePgxURLSettings(connString string) (map[string]string, error) {
-	properties := make(map[string]string)
+func parsePgxURLSettings(connString string) (*utils.RWMap[string], error) {
+	properties := utils.NewRWMap[string]()
 	connString = strings.TrimSpace(connString)
 
 	parsedURL, err := url.Parse(connString)
@@ -221,9 +223,9 @@ func parsePgxURLSettings(connString string) (map[string]string, error) {
 	}
 
 	if parsedURL.User != nil {
-		properties[property_util.USER.Name] = parsedURL.User.Username()
+		properties.Put(USER.Name, parsedURL.User.Username())
 		if password, present := parsedURL.User.Password(); present {
-			properties[property_util.PASSWORD.Name] = password
+			properties.Put(PASSWORD.Name, password)
 		}
 	}
 
@@ -250,15 +252,15 @@ func parsePgxURLSettings(connString string) (map[string]string, error) {
 		}
 	}
 	if len(hosts) > 0 {
-		properties[property_util.HOST.Name] = strings.Join(hosts, ",")
+		properties.Put(HOST.Name, strings.Join(hosts, ","))
 	}
 	if len(ports) > 0 {
-		properties[property_util.PORT.Name] = strings.Join(ports, ",")
+		properties.Put(PORT.Name, strings.Join(ports, ","))
 	}
 
 	database := strings.TrimLeft(parsedURL.Path, "/")
 	if database != "" {
-		properties[property_util.DATABASE.Name] = database
+		properties.Put(DATABASE.Name, database)
 	}
 
 	nameMap := map[string]string{
@@ -270,10 +272,10 @@ func parsePgxURLSettings(connString string) (map[string]string, error) {
 			k = k2
 		}
 
-		properties[k] = v[0]
+		properties.Put(k, v[0])
 	}
 
-	properties[property_util.DRIVER_PROTOCOL.Name] = PGX_DRIVER_PROTOCOL
+	properties.Put(DRIVER_PROTOCOL.Name, PGX_DRIVER_PROTOCOL)
 	return properties, nil
 }
 
@@ -283,8 +285,8 @@ func isIPOnly(host string) bool {
 
 var asciiSpace = [256]uint8{'\t': 1, '\n': 1, '\v': 1, '\f': 1, '\r': 1, ' ': 1}
 
-func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
-	properties := make(map[string]string)
+func parsePgxKeywordValueSettings(dsn string) (*utils.RWMap[string], error) {
+	properties := utils.NewRWMap[string]()
 
 	nameMap := map[string]string{
 		"dbname": "database",
@@ -354,16 +356,16 @@ func parsePgxKeywordValueSettings(dsn string) (map[string]string, error) {
 				error_util.GetMessage("DsnParser.invalidKeyValue", MaskSensitiveInfoFromDsn(dsn)))
 		}
 
-		properties[key] = val
+		properties.Put(key, val)
 	}
 
-	properties[property_util.DRIVER_PROTOCOL.Name] = PGX_DRIVER_PROTOCOL
+	properties.Put(DRIVER_PROTOCOL.Name, PGX_DRIVER_PROTOCOL)
 
 	return properties, nil
 }
 
-func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
-	properties = make(map[string]string)
+func parseMySqlDsn(dsn string) (*utils.RWMap[string], error) {
+	properties := utils.NewRWMap[string]()
 	dsn = strings.TrimSpace(dsn)
 
 	matches := mySqlDsnPattern.FindStringSubmatch(dsn)
@@ -380,56 +382,58 @@ func parseMySqlDsn(dsn string) (properties map[string]string, err error) {
 		switch names[i] {
 		case "user":
 			if match != "" {
-				properties[property_util.USER.Name] = match
+				properties.Put(USER.Name, match)
 			}
 		case "passwd":
 			if match != "" {
-				properties[property_util.PASSWORD.Name] = match
+				properties.Put(PASSWORD.Name, match)
 			}
 		case "net":
 			if match != "" {
-				properties[NET_PROP_KEY] = match
+				properties.Put(NET_PROP_KEY, match)
 			}
 		case "addr":
 			if match != "" {
 				hostPortPair := strings.Split(match, ":")
-				properties[property_util.HOST.Name] = hostPortPair[0]
+				properties.Put(HOST.Name, hostPortPair[0])
 				if len(hostPortPair) > 1 {
-					properties[property_util.PORT.Name] = hostPortPair[1]
+					properties.Put(PORT.Name, hostPortPair[1])
 				}
 			}
 		case "dbname":
 			if match != "" {
-				properties[property_util.DATABASE.Name], err = url.PathUnescape(match)
+				dbname, err := url.PathUnescape(match)
 				if err != nil {
-					return
+					return properties, err
 				}
+				properties.Put(DATABASE.Name, dbname)
 			}
 		case "params":
 			if match != "" {
-				err = parseDSNParams(properties, match)
+				err := parseDSNParams(properties, match)
 				if err != nil {
-					return
+					return properties, err
 				}
 			}
 		}
 	}
 
-	properties[property_util.DRIVER_PROTOCOL.Name] = MYSQL_DRIVER_PROTOCOL
-	return
+	properties.Put(DRIVER_PROTOCOL.Name, MYSQL_DRIVER_PROTOCOL)
+	return properties, nil
 }
 
-func parseDSNParams(properties map[string]string, params string) (err error) {
+func parseDSNParams(properties *utils.RWMap[string], params string) error {
 	for _, v := range strings.Split(params, "&") {
 		key, value, ok := strings.Cut(v, "=")
 		if !ok {
 			continue
 		}
 
-		properties[key], err = url.QueryUnescape(value)
+		propVal, err := url.QueryUnescape(value)
 		if err != nil {
-			return
+			return err
 		}
+		properties.Put(key, propVal)
 	}
-	return
+	return nil
 }

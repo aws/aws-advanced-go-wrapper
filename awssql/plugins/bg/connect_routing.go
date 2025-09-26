@@ -36,7 +36,7 @@ type RejectConnectRouting struct {
 	BaseRouting
 }
 
-func (r *RejectConnectRouting) Apply(_ driver_infrastructure.ConnectionPlugin, _ *host_info_util.HostInfo, _ map[string]string,
+func (r *RejectConnectRouting) Apply(_ driver_infrastructure.ConnectionPlugin, _ *host_info_util.HostInfo, _ *utils.RWMap[string],
 	_ bool, _ driver_infrastructure.PluginService) (driver.Conn, error) {
 	message := error_util.GetMessage("BlueGreenDeployment.inProgressCantConnect")
 	slog.Debug(message)
@@ -56,7 +56,7 @@ type SubstituteConnectRouting struct {
 	BaseRouting
 }
 
-func (r *SubstituteConnectRouting) Apply(plugin driver_infrastructure.ConnectionPlugin, _ *host_info_util.HostInfo, props map[string]string,
+func (r *SubstituteConnectRouting) Apply(plugin driver_infrastructure.ConnectionPlugin, _ *host_info_util.HostInfo, props *utils.RWMap[string],
 	_ bool, pluginService driver_infrastructure.PluginService) (driver.Conn, error) {
 	if utils.IsIP(r.substituteHostInfo.GetHost()) {
 		return pluginService.Connect(r.substituteHostInfo, props, plugin)
@@ -83,10 +83,10 @@ func (r *SubstituteConnectRouting) Apply(plugin driver_infrastructure.Connection
 			reroutedHostInfo, _ = host_info_util.NewHostInfoBuilder().CopyFrom(r.substituteHostInfo).SetHostId(iamHost.HostId).SetAvailability(host_info_util.AVAILABLE).Build()
 			reroutedHostInfo.AddAlias(iamHost.GetHost())
 		}
-		rerouteProps := utils.CreateMapCopy(props)
-		rerouteProps[property_util.IAM_HOST.Name] = iamHost.GetHost()
+		rerouteProps := utils.NewRWMapFromCopy(props)
+		rerouteProps.Put(property_util.IAM_HOST.Name, iamHost.GetHost())
 		if iamHost.IsPortSpecified() {
-			rerouteProps[property_util.IAM_DEFAULT_PORT.Name] = strconv.Itoa(iamHost.Port)
+			rerouteProps.Put(property_util.IAM_DEFAULT_PORT.Name, strconv.Itoa(iamHost.Port))
 		}
 
 		conn, err := pluginService.Connect(reroutedHostInfo, rerouteProps, nil)
@@ -144,7 +144,7 @@ type SuspendConnectRouting struct {
 	BaseRouting
 }
 
-func (r *SuspendConnectRouting) Apply(_ driver_infrastructure.ConnectionPlugin, _ *host_info_util.HostInfo, props map[string]string,
+func (r *SuspendConnectRouting) Apply(_ driver_infrastructure.ConnectionPlugin, _ *host_info_util.HostInfo, props *utils.RWMap[string],
 	_ bool, pluginService driver_infrastructure.PluginService) (driver.Conn, error) {
 	slog.Debug(error_util.GetMessage("BlueGreenDeployment.inProgressSuspendConnect"))
 	parentCtx := pluginService.GetTelemetryContext()
@@ -187,7 +187,7 @@ type SuspendUntilCorrespondingHostFoundConnectRouting struct {
 	BaseRouting
 }
 
-func (r *SuspendUntilCorrespondingHostFoundConnectRouting) Apply(_ driver_infrastructure.ConnectionPlugin, hostInfo *host_info_util.HostInfo, props map[string]string,
+func (r *SuspendUntilCorrespondingHostFoundConnectRouting) Apply(_ driver_infrastructure.ConnectionPlugin, hostInfo *host_info_util.HostInfo, props *utils.RWMap[string],
 	_ bool, pluginService driver_infrastructure.PluginService) (driver.Conn, error) {
 	slog.Debug(error_util.GetMessage("BlueGreenDeployment.waitConnectUntilCorrespondingHostFound", hostInfo.GetHost()))
 	parentCtx := pluginService.GetTelemetryContext()

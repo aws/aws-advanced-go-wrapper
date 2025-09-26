@@ -280,7 +280,7 @@ Please see [Internal Connection Pooling Postgres Example](../../../examples/read
 
 2. Set the connection provider by running `driver_infrastructure.SetCustomConnectionProvider(provider)`.
 
-3. By default, the read/write plugin randomly selects a reader instance the first time a query runs with a context containg a key-value pair of `awsctx.setReadOnly` to true. If you would like the plugin to select a reader based on a different selection strategy, please see the [Reader Selection](#reader-selection) section for more information.
+3. By default, the read/write plugin randomly selects a reader instance the first time a query runs with a context containing a key-value pair of `awsctx.setReadOnly` to true. If you would like the plugin to select a reader based on a different selection strategy, please see the [Reader Selection](#reader-selection) section for more information.
 
 4. Continue as normal: create connections and use them as needed. Signal using `awsctx.setReadOnly` whether you want each operation to be on a reader or writer instance. Remember that not providing this value is equivalent to setting `awsctx.setReadOnly` to false.
 

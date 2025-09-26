@@ -233,7 +233,7 @@ type ConnectRouting interface {
 	Apply(
 		plugin ConnectionPlugin,
 		hostInfo *host_info_util.HostInfo,
-		properties map[string]string,
+		properties *utils.RWMap[string],
 		isInitialConnection bool,
 		pluginService PluginService,
 	) (driver.Conn, error)
@@ -243,7 +243,7 @@ type ExecuteRouting interface {
 	IsMatch(hostInfo *host_info_util.HostInfo, hostRole BlueGreenRole) bool
 	Apply(
 		plugin ConnectionPlugin,
-		properties map[string]string,
+		properties *utils.RWMap[string],
 		pluginService PluginService,
 		methodName string,
 		methodFunc ExecuteFunc,

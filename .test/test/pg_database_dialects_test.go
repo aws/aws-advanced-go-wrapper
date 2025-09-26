@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 
 	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
@@ -29,7 +30,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_info"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
@@ -110,7 +110,7 @@ func TestPgDatabaseDialect(t *testing.T) {
 func TestPgDatabaseDialect_GetHostListProvider(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.PgDatabaseDialect{}
 	hostListProvider := testDatabaseDialect.GetHostListProvider(
-		make(map[string]string),
+		emptyProps,
 		nil,
 		nil)
 
@@ -236,7 +236,7 @@ func TestRdsPgDatabaseDialect_IsDialect(t *testing.T) {
 func TestRdsPgDatabaseDialect_GetHostListProvider(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.RdsPgDatabaseDialect{}
 	hostListProvider := testDatabaseDialect.GetHostListProvider(
-		make(map[string]string),
+		emptyProps,
 		nil,
 		nil)
 
@@ -427,7 +427,7 @@ func TestAuroraRdsPgDatabaseDialect_IsDialect(t *testing.T) {
 func TestAuroraRdsPgDatabaseDialect_GetHostListProvider(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
 
-	propsNoFailover := make(map[string]string)
+	propsNoFailover := emptyProps
 	property_util.PLUGINS.Set(propsNoFailover, "efm")
 	hostListProvider := testDatabaseDialect.GetHostListProvider(
 		propsNoFailover,
@@ -438,7 +438,7 @@ func TestAuroraRdsPgDatabaseDialect_GetHostListProvider(t *testing.T) {
 	assert.True(t, ok, "expected an RdsHostListProvider to be returned")
 	assert.NotNil(t, rdsHostListProvider)
 
-	propsWithFailover := make(map[string]string)
+	propsWithFailover := emptyProps
 	property_util.PLUGINS.Set(propsWithFailover, "failover")
 	hostListProvider = testDatabaseDialect.GetHostListProvider(
 		propsWithFailover,
@@ -723,7 +723,7 @@ func TestRdsMultiAzDbClusterPgDialect_GetServerVersion(t *testing.T) {
 func TestRdsMultiAzDbClusterPgDialect_GetHostListProvider(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.RdsMultiAzClusterPgDatabaseDialect{}
 
-	propsNoFailover := make(map[string]string)
+	propsNoFailover := emptyProps
 	property_util.PLUGINS.Set(propsNoFailover, "efm")
 	hostListProvider := testDatabaseDialect.GetHostListProvider(
 		propsNoFailover,
@@ -734,7 +734,7 @@ func TestRdsMultiAzDbClusterPgDialect_GetHostListProvider(t *testing.T) {
 	assert.True(t, ok, "expected an RdsHostListProvider to be returned")
 	assert.NotNil(t, rdsHostListProvider)
 
-	propsWithFailover := make(map[string]string)
+	propsWithFailover := emptyProps
 	property_util.PLUGINS.Set(propsWithFailover, "failover")
 	hostListProvider = testDatabaseDialect.GetHostListProvider(
 		propsWithFailover,

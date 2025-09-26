@@ -43,7 +43,7 @@ var TokenCache = utils.NewCache[string]()
 
 type FederatedAuthPluginFactory struct{}
 
-func (f FederatedAuthPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService, props map[string]string) (driver_infrastructure.ConnectionPlugin, error) {
+func (f FederatedAuthPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService, _ *utils.RWMap[string]) (driver_infrastructure.ConnectionPlugin, error) {
 	providerFactory := NewAdfsCredentialsProviderFactory(auth_helpers.GetBasicHttpClient, auth_helpers.NewAwsStsClient, pluginService)
 	return NewFederatedAuthPlugin(pluginService, providerFactory, &auth_helpers.RegularIamTokenUtility{})
 }
@@ -90,25 +90,25 @@ func (f *FederatedAuthPlugin) GetSubscribedMethods() []string {
 
 func (f *FederatedAuthPlugin) Connect(
 	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
-	isInitialConnection bool,
+	props *utils.RWMap[string],
+	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	return f.connectInternal(hostInfo, props, connectFunc)
 }
 
 func (f *FederatedAuthPlugin) ForceConnect(
 	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
-	isInitialConnection bool,
+	props *utils.RWMap[string],
+	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	return f.connectInternal(hostInfo, props, connectFunc)
 }
 
 func (f *FederatedAuthPlugin) connectInternal(
 	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
+	props *utils.RWMap[string],
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-	utils.CheckIdpCredentialsWithFallback(property_util.IDP_USERNAME, property_util.IDP_PASSWORD, props)
+	property_util.CheckIdpCredentialsWithFallback(property_util.IDP_USERNAME, property_util.IDP_PASSWORD, props)
 
 	err := auth_helpers.ValidateAuthParams("adfs",
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.DB_USER),
@@ -142,33 +142,32 @@ func (f *FederatedAuthPlugin) connectInternal(
 		region)
 
 	token, isCachedToken := TokenCache.Get(cacheKey)
-	propsCopy := utils.CreateMapCopy(props)
 
 	if isCachedToken {
 		slog.Debug(error_util.GetMessage("AuthenticationToken.useCachedToken"))
-		property_util.PASSWORD.Set(propsCopy, token)
+		property_util.PASSWORD.Set(props, token)
 	} else {
-		updateErr := f.updateAuthenticationToken(propsCopy, region, cacheKey, host, port)
+		updateErr := f.updateAuthenticationToken(props, region, cacheKey, host, port)
 		if updateErr != nil {
 			return nil, updateErr
 		}
 	}
 
-	property_util.USER.Set(propsCopy, property_util.DB_USER.Get(propsCopy))
+	property_util.USER.Set(props, property_util.DB_USER.Get(props))
 
-	result, err := connectFunc(propsCopy)
+	result, err := connectFunc(props)
 	if err != nil && f.pluginService.IsLoginError(err) && isCachedToken {
-		updateErr := f.updateAuthenticationToken(propsCopy, region, cacheKey, host, port)
+		updateErr := f.updateAuthenticationToken(props, region, cacheKey, host, port)
 		if updateErr != nil {
 			return nil, updateErr
 		}
-		return connectFunc(propsCopy)
+		return connectFunc(props)
 	}
 	return result, err
 }
 
 func (f *FederatedAuthPlugin) updateAuthenticationToken(
-	props map[string]string,
+	props *utils.RWMap[string],
 	region region_util.Region,
 	cacheKey string,
 	host string,

@@ -24,6 +24,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 type ExecutionTimePluginFactory struct{}
@@ -33,7 +34,7 @@ func NewExecutionTimePluginFactory() driver_infrastructure.ConnectionPluginFacto
 }
 
 func (factory ExecutionTimePluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
-	props map[string]string,
+	props *utils.RWMap[string],
 ) (driver_infrastructure.ConnectionPlugin, error) {
 	return NewExecutionTimePlugin(pluginService, props)
 }
@@ -45,8 +46,8 @@ type ExecutionTimePlugin struct {
 	executionTime int64
 }
 
-func NewExecutionTimePlugin(pluginService driver_infrastructure.PluginService,
-	props map[string]string) (*ExecutionTimePlugin, error) {
+func NewExecutionTimePlugin(_ driver_infrastructure.PluginService,
+	_ *utils.RWMap[string]) (*ExecutionTimePlugin, error) {
 	return &ExecutionTimePlugin{}, nil
 }
 
@@ -59,10 +60,10 @@ func (d *ExecutionTimePlugin) GetSubscribedMethods() []string {
 }
 
 func (d *ExecutionTimePlugin) Execute(
-	connInvokedOn driver.Conn,
+	_ driver.Conn,
 	methodName string,
 	executeFunc driver_infrastructure.ExecuteFunc,
-	methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
+	_ ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
 	start := time.Now()
 	wrappedReturnValue, wrappedReturnValue2, wrappedOk, wrappedErr = executeFunc()
 	elapsed := time.Since(start)

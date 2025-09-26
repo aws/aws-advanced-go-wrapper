@@ -37,16 +37,16 @@ func TestBlueGreenStatusProviderGetMonitoringProperties(t *testing.T) {
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 	mockDialect := &driver_infrastructure.MySQLDatabaseDialect{}
 
-	props := map[string]string{
-		property_util.BG_INTERVAL_BASELINE_MS.Name:         "300000",
-		property_util.BG_INTERVAL_INCREASED_MS.Name:        "60000",
-		property_util.BG_INTERVAL_HIGH_MS.Name:             "5000",
-		property_util.BG_SWITCHOVER_TIMEOUT_MS.Name:        "600000",
-		property_util.BG_SUSPEND_NEW_BLUE_CONNECTIONS.Name: "false",
-		property_util.BG_PROPERTY_PREFIX + "user":          "testuser",
-		property_util.BG_PROPERTY_PREFIX + "password":      "testpass",
-		"normalProp": "normalValue",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.BG_INTERVAL_BASELINE_MS.Name, "300000",
+		property_util.BG_INTERVAL_INCREASED_MS.Name, "60000",
+		property_util.BG_INTERVAL_HIGH_MS.Name, "5000",
+		property_util.BG_SWITCHOVER_TIMEOUT_MS.Name, "600000",
+		property_util.BG_SUSPEND_NEW_BLUE_CONNECTIONS.Name, "false",
+		property_util.BG_PROPERTY_PREFIX+"user", "testuser",
+		property_util.BG_PROPERTY_PREFIX+"password", "testpass",
+		"normalProp", "normalValue",
+	)
 
 	mockPluginService.EXPECT().GetDialect().Return(mockDialect).AnyTimes()
 	mockPluginService.EXPECT().GetCurrentHostInfo().Return(&host_info_util.HostInfo{Host: "test-host"}, nil).AnyTimes()
@@ -58,15 +58,18 @@ func TestBlueGreenStatusProviderGetMonitoringProperties(t *testing.T) {
 	monitoringProps := provider.GetMonitoringProperties()
 
 	// BG prefixed properties should be stripped of prefix
-	assert.Equal(t, "testuser", monitoringProps["user"])
-	assert.Equal(t, "testpass", monitoringProps["password"])
+	assert.Equal(t, "testuser", property_util.USER.Get(monitoringProps))
+	assert.Equal(t, "testpass", property_util.PASSWORD.Get(monitoringProps))
 
 	// Normal properties should remain
-	assert.Equal(t, "normalValue", monitoringProps["normalProp"])
+	normalPropVal, _ := monitoringProps.Get("normalProp")
+	assert.Equal(t, "normalValue", normalPropVal)
 
 	// BG prefixed properties should be removed from monitoring props
-	assert.NotContains(t, monitoringProps, property_util.BG_PROPERTY_PREFIX+"user")
-	assert.NotContains(t, monitoringProps, property_util.BG_PROPERTY_PREFIX+"password")
+	_, isBGPrefixedUserPresent := monitoringProps.Get(property_util.BG_PROPERTY_PREFIX + "user")
+	_, isBGPrefixedPasswordPresent := monitoringProps.Get(property_util.BG_PROPERTY_PREFIX + "password")
+	assert.False(t, isBGPrefixedUserPresent)
+	assert.False(t, isBGPrefixedPasswordPresent)
 }
 
 func TestBlueGreenStatusProviderUpdatePhaseForward(t *testing.T) {
@@ -155,7 +158,7 @@ func TestBlueGreenStatusProviderGetStatusOfPreparation(t *testing.T) {
 	assert.Equal(t, driver_infrastructure.PREPARATION, status.GetCurrentPhase())
 	assert.NotNil(t, status.GetConnectRoutings())
 
-	provider.SetPostStatusEndTime(time.Now())
+	provider.SetPostStatusEndTime(time.Now().Add(-time.Minute))
 	status = provider.GetStatusOfPreparation()
 	assert.Equal(t, "test-bg-id", status.GetBgId())
 	assert.Equal(t, driver_infrastructure.COMPLETED, status.GetCurrentPhase(),
@@ -218,9 +221,9 @@ func TestBlueGreenStatusProviderGetStatusOfInProgress(t *testing.T) {
 	})
 
 	t.Run("SuspendNewBlueConnectionsWhenInProgressTrue", func(t *testing.T) {
-		provider := bg.NewTestBlueGreenStatusProvider(mockPluginService, map[string]string{
-			property_util.BG_SUSPEND_NEW_BLUE_CONNECTIONS.Name: "true",
-		}, "test-bg-id")
+		provider := bg.NewTestBlueGreenStatusProvider(mockPluginService, MakeMapFromKeysAndVals(
+			property_util.BG_SUSPEND_NEW_BLUE_CONNECTIONS.Name, "true",
+		), "test-bg-id")
 		provider.ClearMonitors()
 		provider.GetHostIpAddresses().Put("blue-host", "192.168.1.1")
 		provider.GetHostIpAddresses().Put("green-host", "192.168.1.2")
@@ -240,7 +243,7 @@ func TestBlueGreenStatusProviderGetStatusOfInProgress(t *testing.T) {
 	t.Run("PastEndTime", func(t *testing.T) {
 		provider := bg.NewTestBlueGreenStatusProvider(mockPluginService, nil, "test-bg-id")
 		provider.ClearMonitors()
-		provider.SetPostStatusEndTime(time.Now())
+		provider.SetPostStatusEndTime(time.Now().Add(-time.Minute))
 		status := provider.GetStatusOfInProgress()
 		assert.Equal(t, "test-bg-id", status.GetBgId())
 		assert.Equal(t, driver_infrastructure.COMPLETED, status.GetCurrentPhase(),
@@ -250,7 +253,7 @@ func TestBlueGreenStatusProviderGetStatusOfInProgress(t *testing.T) {
 	t.Run("PastEndTimeRollback", func(t *testing.T) {
 		provider := bg.NewTestBlueGreenStatusProvider(mockPluginService, nil, "test-bg-id")
 		provider.ClearMonitors()
-		provider.SetPostStatusEndTime(time.Now())
+		provider.SetPostStatusEndTime(time.Now().Add(-time.Minute))
 		provider.SetRollback(true)
 		status := provider.GetStatusOfInProgress()
 		assert.Equal(t, "test-bg-id", status.GetBgId())
@@ -277,7 +280,7 @@ func TestBlueGreenStatusProviderGetStatusOfPost(t *testing.T) {
 	assert.NotNil(t, status.GetConnectRoutings())
 	assert.Empty(t, status.GetExecuteRoutings())
 
-	provider.SetPostStatusEndTime(time.Now())
+	provider.SetPostStatusEndTime(time.Now().Add(-time.Minute))
 	status = provider.GetStatusOfPost()
 	assert.Equal(t, "test-bg-id", status.GetBgId())
 	assert.Equal(t, driver_infrastructure.COMPLETED, status.GetCurrentPhase(),
@@ -322,7 +325,7 @@ func TestBlueGreenStatusProviderGetStatusOfCompleted(t *testing.T) {
 	assert.Equal(t, driver_infrastructure.POST, status.GetCurrentPhase(),
 		"DNS not updated to reflect completion yet, mark as POST")
 
-	provider.SetPostStatusEndTime(time.Now())
+	provider.SetPostStatusEndTime(time.Now().Add(-time.Minute))
 	status = provider.GetStatusOfPost()
 	assert.Equal(t, "test-bg-id", status.GetBgId())
 	assert.Equal(t, driver_infrastructure.COMPLETED, status.GetCurrentPhase(),
@@ -482,9 +485,9 @@ func TestBlueGreenStatusProviderStartSwitchoverTimer(t *testing.T) {
 	mockPluginService.EXPECT().GetDialect().Return(mockDialect).AnyTimes()
 	mockPluginService.EXPECT().GetCurrentHostInfo().Return(&host_info_util.HostInfo{Host: "test-host"}, nil).AnyTimes()
 
-	props := map[string]string{
-		property_util.BG_SWITCHOVER_TIMEOUT_MS.Name: "5000", // 5 seconds
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.BG_SWITCHOVER_TIMEOUT_MS.Name, "5000", // 5 seconds
+	)
 
 	provider := bg.NewTestBlueGreenStatusProvider(mockPluginService, props, "test-bg-id")
 	provider.ClearMonitors()

@@ -36,7 +36,7 @@ import (
 func NewRdsHostListProvider(
 	hostListProviderService HostListProviderService,
 	databaseDialect TopologyAwareDialect,
-	properties map[string]string,
+	properties *utils.RWMap[string],
 	queryForTopologyFunc func(conn driver.Conn) ([]*host_info_util.HostInfo, error),
 	clusterIdChangedFunc func(oldClusterId string)) *RdsHostListProvider {
 	r := &RdsHostListProvider{
@@ -62,7 +62,7 @@ var TopologyCache = utils.NewCache[[]*host_info_util.HostInfo]()
 type RdsHostListProvider struct {
 	hostListProviderService HostListProviderService
 	databaseDialect         TopologyAwareDialect
-	properties              map[string]string
+	properties              *utils.RWMap[string]
 	isInitialized           bool
 	// The following properties are initialized from the above in init().
 	initialHostList         []*host_info_util.HostInfo
@@ -84,7 +84,7 @@ func (r *RdsHostListProvider) init() {
 	}
 	refreshRateInt := property_util.GetRefreshRateValue(r.properties, property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS)
 	r.refreshRateNanos = time.Millisecond * time.Duration(refreshRateInt)
-	hostListFromDsn, err := utils.GetHostsFromProps(r.properties, false)
+	hostListFromDsn, err := property_util.GetHostsFromProps(r.properties, false)
 	if err != nil || len(hostListFromDsn) == 0 {
 		return
 	}
@@ -101,7 +101,7 @@ func (r *RdsHostListProvider) init() {
 	}
 
 	if clusterInstancePattern != "" {
-		r.clusterInstanceTemplate, err = utils.ParseHostPortPair(clusterInstancePattern, r.initialHostInfo.Port)
+		r.clusterInstanceTemplate, err = property_util.ParseHostPortPair(clusterInstancePattern, r.initialHostInfo.Port)
 	}
 	if err == nil && !r.clusterInstanceTemplate.IsNil() {
 		rdsUrlType := utils.IdentifyRdsUrlType(r.clusterInstanceTemplate.Host)

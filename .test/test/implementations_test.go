@@ -20,6 +20,7 @@ import (
 	"database/sql/driver"
 
 	aws_secrets_manager "github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/internal_pool"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
@@ -77,6 +78,7 @@ func TestImplementations(t *testing.T) {
 	var _ driver_infrastructure.BlockingHostListProvider = (*driver_infrastructure.MonitoringRdsHostListProvider)(nil)
 	var _ driver_infrastructure.ClusterTopologyMonitor = (*driver_infrastructure.ClusterTopologyMonitorImpl)(nil)
 	var _ driver_infrastructure.ConnectionProvider = (*driver_infrastructure.DriverConnectionProvider)(nil)
+	var _ driver_infrastructure.ConnectionProvider = (*internal_pool.InternalPooledConnectionProvider)(nil)
 	var _ driver_infrastructure.ConnectionPlugin = (*plugins.DefaultPlugin)(nil)
 	var _ driver_infrastructure.ConnectionPlugin = (*plugins.BaseConnectionPlugin)(nil)
 	var _ driver_infrastructure.ConnectionPlugin = (*efm.HostMonitorConnectionPlugin)(nil)

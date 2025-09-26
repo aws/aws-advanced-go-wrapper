@@ -18,11 +18,12 @@ package driver_infrastructure
 
 import (
 	"errors"
+	"math/rand/v2"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"math/rand/v2"
 )
 
 type WeightedRandomHostSelector struct {
@@ -32,7 +33,7 @@ type WeightedRandomHostSelector struct {
 
 func (r *WeightedRandomHostSelector) GetHost(hosts []*host_info_util.HostInfo, role host_info_util.HostRole, props map[string]string) (*host_info_util.HostInfo, error) {
 	if len(r.hostWeightMap) == 0 {
-		hostWeightMap, err := GetHostWeightMapFromString(property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS))
+		hostWeightMap, err := GetHostWeightMapFromString(property_util.GetVerifiedWrapperPropertyValueFromMap[string](props, property_util.WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS))
 		if err != nil {
 			return nil, err
 		}

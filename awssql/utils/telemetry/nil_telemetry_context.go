@@ -19,13 +19,13 @@ package telemetry
 type NilTelemetryContext struct {
 }
 
-func (n NilTelemetryContext) SetSuccess(success bool) {
+func (n NilTelemetryContext) SetSuccess(_ bool) {
 }
 
-func (n NilTelemetryContext) SetAttribute(key string, value string) {
+func (n NilTelemetryContext) SetAttribute(_ string, _ string) {
 }
 
-func (n NilTelemetryContext) SetError(err error) {
+func (n NilTelemetryContext) SetError(_ error) {
 }
 
 func (n NilTelemetryContext) GetName() string {

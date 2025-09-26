@@ -26,6 +26,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -40,30 +41,29 @@ func TestBaseConnectionPlugin_Execute_CallsExecuteFunc(t *testing.T) {
 
 	expectedReturn1 := "value1"
 	expectedReturn2 := "value2"
-	expectedOk := true
 	expectedErr := error(nil)
 
 	mockFunc := func() (any, any, bool, error) {
-		return expectedReturn1, expectedReturn2, expectedOk, expectedErr
+		return expectedReturn1, expectedReturn2, true, expectedErr
 	}
 
 	r1, r2, ok, err := plugin.Execute(nil, "TestMethod", mockFunc)
 	assert.Equal(t, expectedReturn1, r1)
 	assert.Equal(t, expectedReturn2, r2)
-	assert.Equal(t, expectedOk, ok)
+	assert.True(t, ok)
 	assert.Equal(t, expectedErr, err)
 }
 
 func TestBaseConnectionPlugin_Connect_DelegatesToConnectFunc(t *testing.T) {
 	plugin := plugins.BaseConnectionPlugin{}
 
-	props := map[string]string{"key": "value"}
+	props := MakeMapFromKeysAndVals("key", "value")
 	hostInfo := &host_info_util.HostInfo{}
 
 	expectedConn := &mock_database_sql_driver.MockConn{}
 	expectedErr := error(nil)
 
-	connectFunc := func(p map[string]string) (driver.Conn, error) {
+	connectFunc := func(p *utils.RWMap[string]) (driver.Conn, error) {
 		assert.Equal(t, props, p)
 		return expectedConn, expectedErr
 	}
@@ -76,13 +76,13 @@ func TestBaseConnectionPlugin_Connect_DelegatesToConnectFunc(t *testing.T) {
 func TestBaseConnectionPlugin_ForceConnect_DelegatesToConnectFunc(t *testing.T) {
 	plugin := plugins.BaseConnectionPlugin{}
 
-	props := map[string]string{"key": "value"}
+	props := MakeMapFromKeysAndVals("key", "value")
 	hostInfo := &host_info_util.HostInfo{}
 
 	expectedConn := &mock_database_sql_driver.MockConn{}
 	expectedErr := error(nil)
 
-	connectFunc := func(p map[string]string) (driver.Conn, error) {
+	connectFunc := func(p *utils.RWMap[string]) (driver.Conn, error) {
 		assert.Equal(t, props, p)
 		return expectedConn, expectedErr
 	}
@@ -141,7 +141,7 @@ func TestBaseConnectionPlugin_InitHostProvider_CallsInitHostProviderFunc(t *test
 		return nil
 	}
 
-	err := plugin.InitHostProvider(map[string]string{}, nil, initFunc)
+	err := plugin.InitHostProvider(emptyProps, nil, initFunc)
 	assert.True(t, called)
 	assert.NoError(t, err)
 }
@@ -154,6 +154,6 @@ func TestBaseConnectionPlugin_InitHostProvider_PropagatesError(t *testing.T) {
 		return expectedErr
 	}
 
-	err := plugin.InitHostProvider(map[string]string{}, nil, initFunc)
+	err := plugin.InitHostProvider(emptyProps, nil, initFunc)
 	assert.ErrorIs(t, err, expectedErr)
 }

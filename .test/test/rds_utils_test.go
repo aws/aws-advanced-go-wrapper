@@ -305,7 +305,7 @@ func TestIsGreenInstance(t *testing.T) {
 		"myapp-green-abc123.def456.us-east-1.rds.amazonaws.com",
 		"database-green-xyz789.cluster-abc123.us-west-2.rds.amazonaws.com",
 		"test-green-123abc.instance.eu-west-1.rds.amazonaws.com",
-		"prod-GREEN-456DEF.cluster.ap-southeast-1.rds.amazonaws.com", // case insensitive
+		"prod-GREEN-456DEF.cluster.ap-southeast-1.rds.amazonaws.com", // case-insensitive
 	}
 
 	for _, host := range greenInstances {

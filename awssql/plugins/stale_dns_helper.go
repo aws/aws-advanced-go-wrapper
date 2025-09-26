@@ -48,7 +48,7 @@ func (s *StaleDnsHelper) GetVerifiedConnection(
 	host string,
 	isInitialConnection bool,
 	hostListProviderService driver_infrastructure.HostListProviderService,
-	props map[string]string,
+	props *utils.RWMap[string],
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	conn, err := connectFunc(props)
 
@@ -93,7 +93,7 @@ func (s *StaleDnsHelper) GetVerifiedConnection(
 
 	if s.writerHostInfo.IsNil() {
 		writerCandidate := host_info_util.GetWriter(s.pluginService.GetHosts())
-		if !writerCandidate.IsNil() && utils.IsRdsClusterDns(writerCandidate.Host) {
+		if !writerCandidate.IsNil() && utils.IsRdsClusterDns(writerCandidate.GetHost()) {
 			return nil, nil
 		}
 		s.writerHostInfo = writerCandidate
@@ -126,7 +126,7 @@ func (s *StaleDnsHelper) GetVerifiedConnection(
 
 		s.staleDnsCounter.Inc(s.pluginService.GetTelemetryContext())
 
-		writerConn, connectErr := s.pluginService.Connect(s.writerHostInfo, utils.CreateMapCopy(props), nil)
+		writerConn, connectErr := s.pluginService.Connect(s.writerHostInfo, props, nil)
 		if connectErr != nil {
 			return nil, connectErr
 		}

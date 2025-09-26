@@ -38,7 +38,7 @@ import (
 
 func TestExecuteFunctionCallA(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
-	props := make(map[string]string)
+	props := emptyProps
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager, telemetryFactory)
@@ -80,7 +80,7 @@ func TestExecuteFunctionCallA(t *testing.T) {
 
 func TestExecuteFunctionCallB(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
-	props := make(map[string]string)
+	props := emptyProps
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager, telemetryFactory)
@@ -120,7 +120,7 @@ func TestExecuteFunctionCallB(t *testing.T) {
 
 func TestExecuteFunctionCallC(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
-	props := make(map[string]string)
+	props := emptyProps
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager, telemetryFactory)
@@ -158,7 +158,7 @@ func TestExecuteFunctionCallC(t *testing.T) {
 
 func TestConnect(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
-	props := make(map[string]string)
+	props := emptyProps
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager, telemetryFactory)
@@ -190,7 +190,7 @@ func TestConnect(t *testing.T) {
 
 func TestForceConnect(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
-	props := make(map[string]string)
+	props := emptyProps
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager, telemetryFactory)
@@ -223,7 +223,7 @@ func TestForceConnect(t *testing.T) {
 func TestConnectWithErrorBefore(t *testing.T) {
 	expectedError := errors.New("test error")
 	mockTargetDriver := &MockTargetDriver{}
-	props := make(map[string]string)
+	props := emptyProps
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager, telemetryFactory)
@@ -257,7 +257,7 @@ func TestConnectWithErrorBefore(t *testing.T) {
 func TestConnectWithErrorAfter(t *testing.T) {
 	expectedError := errors.New("test error")
 	mockTargetDriver := &MockTargetDriver{}
-	props := make(map[string]string)
+	props := emptyProps
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	target := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager, telemetryFactory)
@@ -300,7 +300,7 @@ func TestTwoConnectionsDoNotBlockOneAnother(t *testing.T) {
 	waitForReleaseDbResourceToProceed.Add(1)
 
 	mockTargetDriver := &MockTargetDriver{}
-	props := make(map[string]string)
+	props := emptyProps
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
 	pluginServiceImpl := driver_infrastructure.PluginService(&plugin_helpers.PluginServiceImpl{})
 
@@ -388,7 +388,7 @@ func TestGetHostInfoByStrategyPluginNotSubscribed(t *testing.T) {
 	mockPlugin.EXPECT().GetHostInfoByStrategy(gomock.Any(), gomock.Any(), gomock.Any()).Return(host0, nil).AnyTimes()
 
 	strategy := "random"
-	props := make(map[string]string)
+	props := emptyProps
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	pluginManager := plugin_helpers.NewPluginManagerImpl(&MockTargetDriver{}, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
 	err := pluginManager.Init(mockPluginService, []driver_infrastructure.ConnectionPlugin{mockPlugin})
@@ -419,7 +419,7 @@ func TestGetHostInfoByStrategyPluginDiffSubscribed(t *testing.T) {
 	mockPlugin.EXPECT().GetHostInfoByStrategy(gomock.Any(), gomock.Any(), gomock.Any()).Return(host0, nil).AnyTimes()
 
 	strategy := "random"
-	props := make(map[string]string)
+	props := emptyProps
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	pluginManager := plugin_helpers.NewPluginManagerImpl(&MockTargetDriver{}, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
 	err := pluginManager.Init(mockPluginService, []driver_infrastructure.ConnectionPlugin{mockPlugin})
@@ -450,7 +450,7 @@ func TestGetHostInfoByStrategyPluginUnsupported(t *testing.T) {
 	mockPlugin.EXPECT().GetHostInfoByStrategy(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, testError).AnyTimes()
 
 	strategy := "random"
-	props := make(map[string]string)
+	props := emptyProps
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	pluginManager := plugin_helpers.NewPluginManagerImpl(&MockTargetDriver{}, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
 	err := pluginManager.Init(mockPluginService, []driver_infrastructure.ConnectionPlugin{mockPlugin})
@@ -480,7 +480,7 @@ func TestGetHostInfoByStrategyPluginSupported(t *testing.T) {
 	mockPlugin.EXPECT().GetHostInfoByStrategy(gomock.Any(), gomock.Any(), gomock.Any()).Return(host0, nil).AnyTimes()
 
 	strategy := "random"
-	props := make(map[string]string)
+	props := emptyProps
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	pluginManager := plugin_helpers.NewPluginManagerImpl(&MockTargetDriver{}, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
 	err := pluginManager.Init(mockPluginService, []driver_infrastructure.ConnectionPlugin{mockPlugin})
@@ -533,7 +533,7 @@ func TestGetHostInfoByStrategyMultiplePlugins(t *testing.T) {
 	}
 
 	strategy := "random"
-	props := make(map[string]string)
+	props := emptyProps
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	pluginManager := plugin_helpers.NewPluginManagerImpl(&MockTargetDriver{}, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
 	err := pluginManager.Init(mockPluginService, plugins)
@@ -565,7 +565,7 @@ func TestConnectPluginToSkip(t *testing.T) {
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 
-	props := make(map[string]string)
+	props := emptyProps
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	pluginManager := plugin_helpers.NewPluginManagerImpl(&MockTargetDriver{}, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
 
@@ -612,7 +612,7 @@ func TestConnectPluginToSkip(t *testing.T) {
 
 func TestIsPluginInUse(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
-	props := make(map[string]string)
+	props := emptyProps
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	pluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, connectionProviderManager, telemetryFactory)

@@ -40,7 +40,7 @@ func GetAwsCredentialsProvider(hostInfo host_info_util.HostInfo, props map[strin
 	if awsCredentialsProviderHandler != nil {
 		return awsCredentialsProviderHandler.GetAwsCredentialsProvider(hostInfo, props)
 	}
-	return getDefaultProvider(property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.AWS_PROFILE))
+	return getDefaultProvider(property_util.GetVerifiedWrapperPropertyValueFromMap[string](props, property_util.AWS_PROFILE))
 }
 
 func SetAwsCredentialsProviderHandler(credentialsHandler AwsCredentialsProviderHandler) {

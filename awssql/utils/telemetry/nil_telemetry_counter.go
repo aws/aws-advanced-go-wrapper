@@ -21,8 +21,8 @@ import "context"
 type NilTelemetryCounter struct {
 }
 
-func (n NilTelemetryCounter) Add(ctx context.Context, val int64) {
+func (n NilTelemetryCounter) Add(_ context.Context, _ int64) {
 }
 
-func (n NilTelemetryCounter) Inc(ctx context.Context) {
+func (n NilTelemetryCounter) Inc(_ context.Context) {
 }

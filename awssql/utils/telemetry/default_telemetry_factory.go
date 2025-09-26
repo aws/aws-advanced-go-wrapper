@@ -18,9 +18,12 @@ package telemetry
 
 import (
 	"context"
+
+	"strings"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"strings"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 var availableTelemetryFactories = map[string]TelemetryFactory{}
@@ -35,7 +38,7 @@ type DefaultTelemetryFactory struct {
 	metricsTelemetryFactory TelemetryFactory
 }
 
-func NewDefaultTelemetryFactory(props map[string]string) (*DefaultTelemetryFactory, error) {
+func NewDefaultTelemetryFactory(props *utils.RWMap[string]) (*DefaultTelemetryFactory, error) {
 	enableTelemetry := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.ENABLE_TELEMETRY)
 	tracesTelemetryBackend := strings.ToLower(property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.TELEMETRY_TRACES_BACKEND))
 	metricsTelemetryBackend := strings.ToLower(property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.TELEMETRY_METRICS_BACKEND))

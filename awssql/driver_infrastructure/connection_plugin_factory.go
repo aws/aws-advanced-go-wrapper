@@ -16,7 +16,11 @@
 
 package driver_infrastructure
 
+import (
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
+)
+
 type ConnectionPluginFactory interface {
-	GetInstance(pluginService PluginService, props map[string]string) (ConnectionPlugin, error)
+	GetInstance(pluginService PluginService, props *utils.RWMap[string]) (ConnectionPlugin, error)
 	ClearCaches()
 }

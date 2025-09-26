@@ -65,7 +65,7 @@ type ClusterTopologyMonitorImpl struct {
 	refreshRateNano                         time.Duration
 	topologyCacheExpirationNano             time.Duration
 	topologyMap                             *utils.CacheMap[topologyMapEntry]
-	monitoringProps                         map[string]string
+	monitoringProps                         *utils.RWMap[string]
 	initialHostInfo                         *host_info_util.HostInfo
 	clusterInstanceTemplate                 *host_info_util.HostInfo
 	pluginService                           PluginService
@@ -92,7 +92,7 @@ func NewClusterTopologyMonitorImpl(
 	highRefreshRateNano time.Duration,
 	refreshRateNano time.Duration,
 	topologyCacheExpirationNano time.Duration,
-	props map[string]string,
+	props *utils.RWMap[string],
 	initialHostInfo *host_info_util.HostInfo,
 	clusterInstanceTemplate *host_info_util.HostInfo,
 	pluginService PluginService) *ClusterTopologyMonitorImpl {
@@ -100,7 +100,7 @@ func NewClusterTopologyMonitorImpl(
 		hostListProvider:               hostListProvider,
 		databaseDialect:                dialect,
 		clusterId:                      clusterId,
-		monitoringProps:                utils.CreateMapCopy(props),
+		monitoringProps:                props,
 		initialHostInfo:                initialHostInfo,
 		clusterInstanceTemplate:        clusterInstanceTemplate,
 		pluginService:                  pluginService,
@@ -237,7 +237,7 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 
 	if c.loadConn(c.monitoringConn) == nil {
 		// Open a new connection.
-		conn, err := c.pluginService.ForceConnect(c.initialHostInfo, utils.CreateMapCopy(c.monitoringProps))
+		conn, err := c.pluginService.ForceConnect(c.initialHostInfo, c.monitoringProps)
 		if err != nil || conn == nil {
 			// Can't connect.
 			return nil, err
@@ -544,7 +544,7 @@ func (h *HostMonitoringRoutine) run() {
 
 	for !h.monitor.hostRoutinesStop.Load() {
 		if conn == nil {
-			conn, err = h.monitor.pluginService.ForceConnect(h.hostInfo, utils.CreateMapCopy(h.monitor.monitoringProps))
+			conn, err = h.monitor.pluginService.ForceConnect(h.hostInfo, h.monitor.monitoringProps)
 			if err != nil {
 				// Connect issues.
 				h.monitor.pluginService.SetAvailability(h.hostInfo.AllAliases, host_info_util.UNAVAILABLE)
@@ -627,7 +627,7 @@ func (h *HostMonitoringRoutine) readerRoutineFetchTopology(conn driver.Conn, wri
 		// Writer host has changed.
 		h.writerChanged = true
 
-		slog.Debug(error_util.GetMessage("HostMonitoringRoutine.writerHostChanged", writerHostInfo.Host, latestWriterHostInfo.Host))
+		slog.Debug(error_util.GetMessage("HostMonitoringRoutine.writerHostChanged", writerHostInfo.GetHost(), latestWriterHostInfo.GetHost()))
 
 		// We can update topology cache and notify all waiting routines.
 		h.monitor.updateTopologyCache(hosts)

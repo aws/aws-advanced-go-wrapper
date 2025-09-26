@@ -32,18 +32,18 @@ func NewNilTelemetryFactory() *NilTelemetryFactory {
 	}
 }
 
-func (n NilTelemetryFactory) OpenTelemetryContext(name string, traceLevel TelemetryTraceLevel, ctx context.Context) (TelemetryContext, context.Context) {
+func (n NilTelemetryFactory) OpenTelemetryContext(_ string, _ TelemetryTraceLevel, ctx context.Context) (TelemetryContext, context.Context) {
 	return n.nilTelemetryContext, ctx
 }
 
-func (n NilTelemetryFactory) PostCopy(telemetryContext TelemetryContext, traceLevel TelemetryTraceLevel) error {
+func (n NilTelemetryFactory) PostCopy(_ TelemetryContext, _ TelemetryTraceLevel) error {
 	return nil
 }
 
-func (n NilTelemetryFactory) CreateCounter(name string) (TelemetryCounter, error) {
+func (n NilTelemetryFactory) CreateCounter(_ string) (TelemetryCounter, error) {
 	return n.nilTelemetryCounter, nil
 }
 
-func (n NilTelemetryFactory) CreateGauge(name string) (TelemetryGauge, error) {
+func (n NilTelemetryFactory) CreateGauge(_ string) (TelemetryGauge, error) {
 	return n.nilTelemetryGauge, nil
 }

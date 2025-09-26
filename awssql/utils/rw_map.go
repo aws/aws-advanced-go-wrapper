@@ -39,6 +39,19 @@ func NewRWMapWithDisposalFunc[T any](disposalFunc DisposalFunc[T]) *RWMap[T] {
 	}
 }
 
+func NewRWMapFromCopy[T any](rwMap *RWMap[T]) *RWMap[T] {
+	if rwMap == nil {
+		return NewRWMap[T]()
+	}
+	return NewRWMapFromMap(rwMap.GetAllEntries())
+}
+
+func NewRWMapFromMap[T any](mapForCache map[string]T) *RWMap[T] {
+	return &RWMap[T]{
+		cache: mapForCache,
+	}
+}
+
 func (c *RWMap[T]) Put(key string, value T) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -82,6 +95,7 @@ func (c *RWMap[T]) PutIfAbsent(key string, value T) {
 
 func (c *RWMap[T]) Remove(key string) {
 	c.lock.Lock()
+	defer c.lock.Unlock()
 	val, ok := c.cache[key]
 	if ok {
 		if c.disposalFunc != nil {
@@ -89,7 +103,6 @@ func (c *RWMap[T]) Remove(key string) {
 		}
 		delete(c.cache, key)
 	}
-	c.lock.Unlock()
 }
 
 func (c *RWMap[T]) Clear() {
@@ -130,6 +143,10 @@ func (c *RWMap[T]) GetAllEntries() map[string]T {
 func (c *RWMap[T]) ReplaceCacheWithCopy(mapToCopy *RWMap[T]) {
 	entryMap := mapToCopy.GetAllEntries()
 
+	c.ReplaceCacheWithMap(entryMap)
+}
+
+func (c *RWMap[T]) ReplaceCacheWithMap(entryMap map[string]T) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	if c.disposalFunc != nil {

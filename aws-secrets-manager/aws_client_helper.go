@@ -18,12 +18,14 @@ package aws_secrets_manager
 
 import (
 	"context"
+	"log/slog"
+
 	"github.com/aws/aws-advanced-go-wrapper/auth-helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
-	"log/slog"
 )
 
 // Aws Secrets Manager Client.
@@ -32,15 +34,15 @@ type AwsSecretsManagerClient interface {
 }
 
 type NewAwsSecretsManagerClientProvider func(hostInfo *host_info_util.HostInfo,
-	props map[string]string,
+	props *utils.RWMap[string],
 	endpoint string,
 	region string) (AwsSecretsManagerClient, error)
 
 func NewAwsSecretsManagerClient(hostInfo *host_info_util.HostInfo,
-	props map[string]string,
+	props *utils.RWMap[string],
 	endpoint string,
 	region string) (AwsSecretsManagerClient, error) {
-	awsCredentialsProvider, err := auth_helpers.GetAwsCredentialsProvider(*hostInfo, props)
+	awsCredentialsProvider, err := auth_helpers.GetAwsCredentialsProvider(*hostInfo, props.GetAllEntries())
 
 	if err != nil {
 		slog.Error(error_util.GetMessage("AwsClientHelper.errorGettingAwsCredentialsProvider"))

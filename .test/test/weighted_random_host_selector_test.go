@@ -17,11 +17,12 @@
 package test
 
 import (
+	"testing"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
