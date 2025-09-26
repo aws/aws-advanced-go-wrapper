@@ -66,7 +66,7 @@ func (r *roundRobinHostSelector) GetHost(hosts []*host_info_util.HostInfo, role 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	eligibleHosts := utils.FilterSlice(hosts, func(hostInfo *host_info_util.HostInfo) bool {
-		return role == hostInfo.Role && hostInfo.Availability == host_info_util.AVAILABLE
+		return role == hostInfo.Role && host_info_util.AVAILABLE == hostInfo.Availability
 	})
 
 	slices.SortFunc(eligibleHosts, func(i, j *host_info_util.HostInfo) int {
@@ -232,7 +232,7 @@ func (r *roundRobinHostSelector) updateCachedHostWeightPairsPropsForRoundRobinCl
 	}
 
 	hostWeights := property_util.ROUND_ROBIN_HOST_WEIGHT_PAIRS.Get(props)
-	roundRobinClusterInfo.lastClusterHostWeightPairPropertyValue = property_util.ROUND_ROBIN_HOST_WEIGHT_PAIRS.Get(props)
+	roundRobinClusterInfo.lastClusterHostWeightPairPropertyValue = hostWeights
 	if hostWeights == "" {
 		clear(roundRobinClusterInfo.clusterWeightsMap)
 		return nil

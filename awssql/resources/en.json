@@ -151,7 +151,7 @@
   "HostSelector.invalidHostWeightPairs": "The provided host weight pairs have not been configured correctly. Please ensure the provided host weight pairs is a comma separated list of pairs, each pair in the format of <host>:<weight>. Weight values must be an integer greater than or equal to the default weight value of 1.",
   "HostSelector.noHostsMatchingRole": "No available hosts were found matching the requested '%v' role.",
   "HostSelector.roundRobinInvalidDefaultWeight": "The provided default weight value is invalid. Weight values must be an integer greater than or equal 1.",
-  "HostSelector.roundRobinMissingClusterInfo": "Could not find a cluster info in the cache in round robin selector with the specified host '%s'",
+  "HostSelector.roundRobinMissingClusterInfo": "Round Robin Host Selector could not find cluster info in the cache with specified host '%s'",
   "IamAuthPlugin.connectionError": "Error occurred while opening a connection to host %v: '%v'.",
   "IamAuthPlugin.errorGeneratingNewToken": "Error occurred while generating authentication token: '%v'.",
   "IamAuthPlugin.errorGettingAwsCredentialsProvider": "Error occurred while getting aws.CredentialsProvider: '%v'.",
