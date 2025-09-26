@@ -400,6 +400,13 @@ func BasicSetup(name string) error {
 	return VerifyClusterStatus()
 }
 
+func BasicSetupInfoLog(name string) error {
+	slog.SetLogLoggerLevel(slog.LevelInfo)
+	slog.Info(fmt.Sprintf("Test started: %s.", name))
+	EnableAllConnectivity(false)
+	return VerifyClusterStatus()
+}
+
 func BasicCleanup(name string) {
 	awsDriver.ClearCaches()
 	slog.Info(fmt.Sprintf("Test finished: %s.", name))
