@@ -206,18 +206,21 @@ func ExecuteInstanceQueryContextWithTimeout(
 	return instanceId, nil
 }
 
-func ExecuteInstanceQueryWithSleep(engine DatabaseEngine, deployment DatabaseEngineDeployment, db *sql.DB) (instanceId string, err error) {
-	sql1 := GetSleepSql(engine, 10)
+func ExecuteInstanceQueryWithSleep(
+	engine DatabaseEngine,
+	deployment DatabaseEngineDeployment,
+	rowQuerier RowQuerier, sleepSec int) (instanceId string, err error) {
+	sql1 := GetSleepSql(engine, sleepSec)
 	sql2, err := GetInstanceIdSql(engine, deployment)
 	if err != nil {
 		return
 	}
-
-	_, err = db.Query(sql1)
-	if err != nil {
+	var sleepResult int
+	if err := rowQuerier.QueryRowContext(context.TODO(), sql1).Scan(&sleepResult); err != nil {
 		return "", err
 	}
-	if err := db.QueryRow(sql2).Scan(&instanceId); err != nil {
+
+	if err := rowQuerier.QueryRowContext(context.TODO(), sql2).Scan(&instanceId); err != nil {
 		return "", err
 	}
 	return instanceId, nil
