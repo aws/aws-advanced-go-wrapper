@@ -708,6 +708,19 @@ var BG_SUSPEND_NEW_BLUE_CONNECTIONS = AwsWrapperProperty{
 	wrapperPropertyType: WRAPPER_TYPE_BOOL,
 }
 
+var ROUND_ROBIN_HOST_WEIGHT_PAIRS = AwsWrapperProperty{
+	Name:         "roundRobinHostWeightPairs",
+	description:  "Comma separated list of database host-weight pairs in the format of `<host>:<weight>`.",
+	defaultValue: "",
+}
+
+var ROUND_ROBIN_DEFAULT_WEIGHT = AwsWrapperProperty{
+	Name:                "roundRobinDefaultWeight",
+	description:         "Default weight for any hosts that have not been configured with the `roundRobinHostWeightPairs` parameter.",
+	defaultValue:        "1",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
 func RemoveInternalAwsWrapperProperties(props map[string]string) map[string]string {
 	copyProps := map[string]string{}
 
