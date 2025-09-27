@@ -56,7 +56,7 @@ func TestFailoverWriterDB(t *testing.T) {
 	var triggerFailoverError error
 	go func() {
 		time.Sleep(5 * time.Second) // Give the query time to reach the database.
-		triggerFailoverError = auroraTestUtility.CrashInstance("", "", "")
+		triggerFailoverError = auroraTestUtility.TriggerFailover("", "", "")
 		close(failoverComplete)
 	}()
 	_, queryError := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, test_utils.GetSleepSql(environment.Info().Request.Engine, 60), 61)
@@ -102,7 +102,7 @@ func TestFailoverWriterDBWithTelemetryOtel(t *testing.T) {
 	var triggerFailoverError error
 	go func() {
 		time.Sleep(5 * time.Second) // Give the query time to reach the database.
-		triggerFailoverError = auroraTestUtility.CrashInstance("", "", "")
+		triggerFailoverError = auroraTestUtility.TriggerFailover("", "", "")
 		close(failoverComplete)
 	}()
 	_, queryError := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, test_utils.GetSleepSql(environment.Info().Request.Engine, 60), 61)
@@ -148,7 +148,7 @@ func TestFailoverWriterDBWithTelemetryXray(t *testing.T) {
 	var triggerFailoverError error
 	go func() {
 		time.Sleep(5 * time.Second) // Give the query time to reach the database.
-		triggerFailoverError = auroraTestUtility.CrashInstance("", "", "")
+		triggerFailoverError = auroraTestUtility.TriggerFailover("", "", "")
 		close(failoverComplete)
 	}()
 	_, queryError := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, test_utils.GetSleepSql(environment.Info().Request.Engine, 60), 61)
@@ -170,7 +170,7 @@ func TestFailoverWriterInTransactionWithBegin(t *testing.T) {
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	test_utils.SkipForMultiAzMySql(t, environment.Info().Request.Deployment, environment.Info().Request.Engine)
-	
+
 	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
 		"host":    environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(),
 		"plugins": "failover",
@@ -200,7 +200,7 @@ func TestFailoverWriterInTransactionWithBegin(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.CrashInstance("", "", "")
+	triggerFailoverError := auroraTestUtility.TriggerFailover("", "", "")
 	assert.Nil(t, triggerFailoverError)
 
 	_, txErr := tx.Exec("INSERT INTO test_failover_tx_rollback VALUES (2, 'should fail to execute')")

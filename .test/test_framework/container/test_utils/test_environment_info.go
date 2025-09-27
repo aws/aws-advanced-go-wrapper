@@ -78,7 +78,7 @@ func NewTestEnvironmentInfo(testInfo map[string]any) (info TestEnvironmentInfo, 
 		iamUser, ok = testInfo["iamUsername"].(string)
 
 		if !ok {
-			err = errors.New("unable to get IAM username")
+			err = errors.New("IAM tests enabled: unable to get IAM username")
 			return
 		}
 	}

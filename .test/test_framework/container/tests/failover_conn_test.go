@@ -65,7 +65,7 @@ func TestFailoverWriter(t *testing.T) {
 	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.CrashInstance(instanceId, "", "")
+	triggerFailoverError := auroraTestUtility.TriggerFailover(instanceId, "", "")
 	assert.Nil(t, triggerFailoverError)
 	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -77,8 +77,11 @@ func TestFailoverWriter(t *testing.T) {
 	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, newInstanceId)
-	// Skip this check if deployment is multi-az because it is proxied and instanceId will not change
-	if environment.Info().Request.Deployment != test_utils.RDS_MULTI_AZ_CLUSTER {
+
+	// Skip for multi-AZ b/c it simulates failover which reconnects to the original instance.
+	if environment.Info().Request.Deployment == test_utils.RDS_MULTI_AZ_CLUSTER {
+		assert.Equal(t, instanceId, newInstanceId)
+	} else {
 		assert.NotEqual(t, instanceId, newInstanceId)
 	}
 }
@@ -113,7 +116,7 @@ func TestFailoverWriterWithTelemetryOtel(t *testing.T) {
 	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.CrashInstance(instanceId, "", "")
+	triggerFailoverError := auroraTestUtility.TriggerFailover(instanceId, "", "")
 	assert.Nil(t, triggerFailoverError)
 	_, queryErr := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryErr, "Failover plugin did not complete failover successfully.")
@@ -156,7 +159,7 @@ func TestFailoverWriterWithTelemetryXray(t *testing.T) {
 	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.CrashInstance(instanceId, "", "")
+	triggerFailoverError := auroraTestUtility.TriggerFailover(instanceId, "", "")
 	assert.Nil(t, triggerFailoverError)
 	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -169,8 +172,10 @@ func TestFailoverWriterWithTelemetryXray(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, newInstanceId)
 
-	// Skip this check if deployment is multi-az because it is proxied and instanceId will not change
-	if environment.Info().Request.Deployment != test_utils.RDS_MULTI_AZ_CLUSTER {
+	// Skip for multi-AZ b/c it simulates failover which reconnects to the original instance.
+	if environment.Info().Request.Deployment == test_utils.RDS_MULTI_AZ_CLUSTER {
+		assert.Equal(t, instanceId, newInstanceId)
+	} else {
 		assert.NotEqual(t, instanceId, newInstanceId)
 	}
 }
@@ -197,7 +202,7 @@ func TestFailoverWriterEndpoint(t *testing.T) {
 	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.CrashInstance(instanceId, "", "")
+	triggerFailoverError := auroraTestUtility.TriggerFailover(instanceId, "", "")
 	assert.Nil(t, triggerFailoverError)
 	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -210,8 +215,10 @@ func TestFailoverWriterEndpoint(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, newInstanceId)
 
-	// Skip this check if deployment is multi-az because it is proxied, and instanceId will not change
-	if environment.Info().Request.Deployment != test_utils.RDS_MULTI_AZ_CLUSTER {
+	// Skip for multi-AZ b/c it simulates failover which reconnects to the original instance.
+	if environment.Info().Request.Deployment == test_utils.RDS_MULTI_AZ_CLUSTER {
+		assert.Equal(t, instanceId, newInstanceId)
+	} else {
 		assert.NotEqual(t, instanceId, newInstanceId)
 	}
 }
@@ -239,7 +246,7 @@ func TestFailoverReaderOrWriter(t *testing.T) {
 	assert.NotZero(t, instanceId)
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.CrashInstance("", "", "")
+	triggerFailoverError := auroraTestUtility.TriggerFailover("", "", "")
 	assert.Nil(t, triggerFailoverError)
 	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -277,7 +284,7 @@ func TestFailoverStrictReader(t *testing.T) {
 	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.CrashInstance("", "", "")
+	triggerFailoverError := auroraTestUtility.TriggerFailover("", "", "")
 	assert.Nil(t, triggerFailoverError)
 	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -328,7 +335,7 @@ func TestFailoverWriterInTransactionWithSQL(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.CrashInstance("", "", "")
+	triggerFailoverError := auroraTestUtility.TriggerFailover("", "", "")
 	assert.Nil(t, triggerFailoverError)
 	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -418,7 +425,7 @@ func TestFailoverWriterMaintainSessionState(t *testing.T) {
 	SetupSessionState(t, environment.Info().Request.Engine, conn)
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.CrashInstance(instanceId, "", "")
+	triggerFailoverError := auroraTestUtility.TriggerFailover(instanceId, "", "")
 	assert.Nil(t, triggerFailoverError)
 	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -430,7 +437,11 @@ func TestFailoverWriterMaintainSessionState(t *testing.T) {
 	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, newInstanceId)
-	if environment.Info().Request.Deployment != test_utils.RDS_MULTI_AZ_CLUSTER {
+
+	// Skip for multi-AZ b/c it simulates failover which reconnects to the original instance.
+	if environment.Info().Request.Deployment == test_utils.RDS_MULTI_AZ_CLUSTER {
+		assert.Equal(t, instanceId, newInstanceId)
+	} else {
 		assert.NotEqual(t, instanceId, newInstanceId)
 	}
 
