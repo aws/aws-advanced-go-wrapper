@@ -213,7 +213,7 @@ func (a AuroraTestUtility) getDbCluster(clusterId string) (cluster types.DBClust
 	return resp.DBClusters[0], nil
 }
 
-func (a AuroraTestUtility) CrashInstance(initialWriter string, clusterId string, targetWriterId string) (err error) {
+func (a AuroraTestUtility) TriggerFailover(initialWriter string, clusterId string, targetWriterId string) (err error) {
 	env, err := GetCurrentTestEnvironment()
 	if err != nil {
 		return err
@@ -221,11 +221,11 @@ func (a AuroraTestUtility) CrashInstance(initialWriter string, clusterId string,
 	deployment := env.Info().Request.Deployment
 
 	if RDS_MULTI_AZ_CLUSTER == deployment {
-		slog.Debug("CrashInstance() - RDS_MULTI_AZ_CLUSTER deployment detected. Simulating temporary failure")
+		slog.Debug("TriggerFailover() - RDS_MULTI_AZ_CLUSTER deployment detected. Simulating temporary failure")
 		a.SimulateTemporaryFailure()
 		return nil
 	} else {
-		slog.Debug(fmt.Sprintf("CrashInstance() - dbengine deployment %v detected. FailoverClusterAndWaitTillWriterChanged", deployment))
+		slog.Debug(fmt.Sprintf("TriggerFailover() - dbengine deployment %v detected. FailoverClusterAndWaitTillWriterChanged", deployment))
 		return a.FailoverClusterAndWaitTillWriterChanged(initialWriter, clusterId, targetWriterId)
 	}
 }
@@ -618,8 +618,10 @@ func (a AuroraTestUtility) SwitchoverBlueGreenDeployment(ctx context.Context, bl
 
 	return nil
 }
+
+// NOTE: This is for skipping flakey MultiAZ MySQL tests. These tests should be fixed. ItemId=130960814
 func SkipForMultiAzMySql(t *testing.T, deployment DatabaseEngineDeployment, engine DatabaseEngine) {
 	if RDS_MULTI_AZ_CLUSTER == deployment && MYSQL == engine {
-		t.Skipf("Skipping test for RDS Multi-AZ MySQL")
+		t.Skipf("Skipping test for RDS Multi-AZ MySQL b/c they are flakey.")
 	}
 }
