@@ -49,8 +49,8 @@ The following additional permissions are required when connecting to a Multi-AZ 
 
 | Engine | Deployment             | Additional Required Permissions                                                                                                                       |
 |--------|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| mysql  | Multi-AZ or Blue/Green | `GRANT SELECT ON mysql.* TO '" + dbUser + "'@'%'`                                                                                                     |
-| pg     | Multi-AZ               | `CREATE EXTENSION rds_tools`<br>`GRANT USAGE ON SCHEMA rds_tools TO " + dbUser`<br>`GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA rds_tools TO " + dbUser` |
+| mysql  | Multi-AZ or Blue/Green | `GRANT SELECT ON mysql.* TO '<dbUser>'@'%'`                                                                                                     |
+| pg     | Multi-AZ               | `CREATE EXTENSION rds_tools`<br>`GRANT USAGE ON SCHEMA rds_tools TO <dbUser>`<br>`GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA rds_tools TO <dbUser>` |
 
 ## IAM Authentication Plugin Parameters
 
