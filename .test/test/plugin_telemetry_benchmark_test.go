@@ -33,22 +33,22 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 )
 
-func getDefaultProps() map[string]string {
-	props := make(map[string]string)
+func getDefaultProps() *utils.RWMap[string] {
+	props := emptyProps
 	property_util.USER.Set(props, "test")
 	property_util.PASSWORD.Set(props, "mypassword")
 	property_util.HOST.Set(props, "host")
 	property_util.PORT.Set(props, "1234")
 	property_util.DATABASE.Set(props, "mydb")
 	property_util.PLUGINS.Set(props, "")
-	property_util.DRIVER_PROTOCOL.Set(props, utils.MYSQL_DRIVER_PROTOCOL)
+	property_util.DRIVER_PROTOCOL.Set(props, property_util.MYSQL_DRIVER_PROTOCOL)
 	property_util.ENABLE_TELEMETRY.Set(props, "true")
 	property_util.TELEMETRY_TRACES_BACKEND.Set(props, "otlp")
 	property_util.TELEMETRY_METRICS_BACKEND.Set(props, "otlp")
 	return props
 }
 
-func getPropsExecute() map[string]string {
+func getPropsExecute() *utils.RWMap[string] {
 	props := getDefaultProps()
 	property_util.PLUGINS.Set(props, "executionTime")
 	return props
@@ -61,7 +61,7 @@ var pluginFactoryByCode = map[string]driver_infrastructure.ConnectionPluginFacto
 	"executionTime": plugins.NewExecutionTimePluginFactory(),
 }
 
-func initResources(props map[string]string) (
+func initResources(props *utils.RWMap[string]) (
 	pluginManager driver_infrastructure.PluginManager,
 	pluginService driver_infrastructure.PluginService,
 ) {
@@ -117,7 +117,7 @@ func BenchmarkExecuteStatementBaseline(b *testing.B) {
 	for i := 1; i < b.N; i++ {
 		testWrapper := NewTestConnectionWrapper(manager, service, driver_infrastructure.MYSQL)
 		//nolint:errcheck
-		testWrapper.AwsWrapperConn.QueryContext(context.TODO(), "Select 1", nil)
+		_, _ = testWrapper.AwsWrapperConn.QueryContext(context.TODO(), "Select 1", nil)
 		testWrapper.PluginManager.ReleaseResources()
 	}
 }
@@ -129,7 +129,7 @@ func BenchmarkExecuteStatementWithExecutionTimePlugin(b *testing.B) {
 	for i := 1; i < b.N; i++ {
 		testWrapper := NewTestConnectionWrapper(manager, service, driver_infrastructure.MYSQL)
 		//nolint:errcheck
-		testWrapper.AwsWrapperConn.QueryContext(context.TODO(), "Select 1", nil)
+		_, _ = testWrapper.AwsWrapperConn.QueryContext(context.TODO(), "Select 1", nil)
 		testWrapper.PluginManager.ReleaseResources()
 	}
 }

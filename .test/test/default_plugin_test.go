@@ -29,14 +29,13 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDefaultPlugin_InitHostProvider(t *testing.T) {
 	dp := &plugins.DefaultPlugin{}
-	err := dp.InitHostProvider(map[string]string{}, nil, nil)
+	err := dp.InitHostProvider(emptyProps, nil, nil)
 	assert.NoError(t, err)
 }
 
@@ -165,7 +164,7 @@ func TestDefaultPlugin_Connect_Success(t *testing.T) {
 		Port:       5432,
 		AllAliases: map[string]bool{"localhost": true},
 	}
-	props := map[string]string{}
+	props := emptyProps
 
 	// Create dummy contexts
 	ctxBefore := context.Background()
@@ -184,7 +183,7 @@ func TestDefaultPlugin_Connect_Success(t *testing.T) {
 
 	// Connection expectation
 	mockConnProvider.EXPECT().
-		Connect(hostInfo, props, mockPluginService).
+		Connect(hostInfo, gomock.Any(), mockPluginService).
 		Return(mockConn, nil).Times(1)
 
 	// Post-connection behaviors
@@ -218,7 +217,7 @@ func TestDefaultPlugin_ForceConnect_Success(t *testing.T) {
 		Port:       5432,
 		AllAliases: map[string]bool{"primary": true},
 	}
-	props := map[string]string{}
+	props := emptyProps
 
 	// Proper context objects
 	ctxBefore := context.Background()
@@ -237,7 +236,7 @@ func TestDefaultPlugin_ForceConnect_Success(t *testing.T) {
 
 	// Connection expectation
 	mockConnProvider.EXPECT().
-		Connect(hostInfo, props, mockPluginService).
+		Connect(hostInfo, gomock.Any(), mockPluginService).
 		Return(mockConn, nil).Times(1)
 
 	mockPluginService.EXPECT().SetAvailability(hostInfo.AllAliases, host_info_util.AVAILABLE).Times(1)

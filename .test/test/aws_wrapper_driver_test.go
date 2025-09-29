@@ -193,10 +193,9 @@ func TestIsDialectMySQL(t *testing.T) {
 }
 
 func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
-	props := map[string]string{"protocol": "mysql"}
+	props := MakeMapFromKeysAndVals("protocol", "mysql")
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := driver_infrastructure.PluginManager(
-		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
+	mockPluginManager := plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
 	mockPluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.MySQLDriverDialect{}, props, mysqlTestDsn)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
@@ -238,10 +237,9 @@ func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
 }
 
 func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
-	props := map[string]string{"protocol": "postgres"}
+	props := MakeMapFromKeysAndVals("protocol", "postgres")
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := driver_infrastructure.PluginManager(
-		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
+	mockPluginManager := plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
 	mockPluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
@@ -285,10 +283,9 @@ func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
 }
 
 func TestWrapperUtilsExecWithPlugins(t *testing.T) {
-	props := map[string]string{"protocol": "postgres"}
+	props := MakeMapFromKeysAndVals("protocol", "postgres")
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := driver_infrastructure.PluginManager(
-		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
+	mockPluginManager := plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
 	mockPluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
@@ -317,10 +314,9 @@ func TestWrapperUtilsExecWithPlugins(t *testing.T) {
 }
 
 func TestWrapperUtilsBeginWithPlugins(t *testing.T) {
-	props := map[string]string{"protocol": "postgres"}
+	props := MakeMapFromKeysAndVals("protocol", "postgres")
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := driver_infrastructure.PluginManager(
-		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
+	mockPluginManager := plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
 	mockPluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
@@ -349,10 +345,9 @@ func TestWrapperUtilsBeginWithPlugins(t *testing.T) {
 }
 
 func TestWrapperUtilsPrepareWithPlugins(t *testing.T) {
-	props := map[string]string{"protocol": "postgres"}
+	props := MakeMapFromKeysAndVals("protocol", "postgres")
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := driver_infrastructure.PluginManager(
-		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
+	mockPluginManager := plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
 	mockPluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
@@ -389,10 +384,9 @@ func TestWrapperUtilsPrepareWithPlugins(t *testing.T) {
 }
 
 func TestMethodInvokedOnOldConnection(t *testing.T) {
-	props := map[string]string{"protocol": "postgres"}
+	props := MakeMapFromKeysAndVals("protocol", "postgres")
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := driver_infrastructure.PluginManager(
-		plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
+	mockPluginManager := plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
 	mockPluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, pgx_driver.PgxDriverDialect{}, props, pgTestDsn)
 	plugins := []driver_infrastructure.ConnectionPlugin{
 		CreateTestPlugin(nil, 1, nil, nil, false),
@@ -465,8 +459,8 @@ func TestMethodInvokedOnOldConnection(t *testing.T) {
 }
 
 func TestWrapperDriverOpen_ParseError(t *testing.T) {
-	driver := &awsDriver.AwsWrapperDriver{}
-	_, err := driver.Open("parseError")
+	newAwsDriver := &awsDriver.AwsWrapperDriver{}
+	_, err := newAwsDriver.Open("parseError")
 
 	// parse error
 	assert.Error(t, err)
@@ -482,11 +476,11 @@ func TestAwsWrapperDriver_Open_WorkingDsn(t *testing.T) {
 	mockDriver.
 		EXPECT().Open(gomock.Any()).Return(mockConn, nil)
 
-	driver := &awsDriver.AwsWrapperDriver{
+	newAwsDriver := &awsDriver.AwsWrapperDriver{
 		DriverDialect:    pgx_driver.NewPgxDriverDialect(),
 		UnderlyingDriver: mockDriver,
 	}
-	wrapperConn, err := driver.Open("user=someuser host=somehost port=5432 database=postgres")
+	wrapperConn, err := newAwsDriver.Open("user=someuser host=somehost port=5432 database=postgres")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, wrapperConn)
@@ -500,13 +494,13 @@ func TestAwsWrapperDriver_Open_ConnectionError(t *testing.T) {
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 
 	mockDriver.
-		EXPECT().Open(gomock.Any()).Return(mockConn, errors.New("Connect-error"))
+		EXPECT().Open(gomock.Any()).Return(mockConn, errors.New("connect-error"))
 
-	driver := &awsDriver.AwsWrapperDriver{
+	newAwsDriver := &awsDriver.AwsWrapperDriver{
 		DriverDialect:    pgx_driver.NewPgxDriverDialect(),
 		UnderlyingDriver: mockDriver,
 	}
-	wrapperConn, err := driver.Open("user=someuser host=somehost port=5432 database=postgres")
+	wrapperConn, err := newAwsDriver.Open("user=someuser host=somehost port=5432 database=postgres")
 
 	assert.Error(t, err)
 	assert.Nil(t, wrapperConn)

@@ -23,6 +23,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 )
 
@@ -31,7 +32,7 @@ type SuspendExecuteRouting struct {
 	BaseRouting
 }
 
-func (r *SuspendExecuteRouting) Apply(_ driver_infrastructure.ConnectionPlugin, props map[string]string,
+func (r *SuspendExecuteRouting) Apply(_ driver_infrastructure.ConnectionPlugin, props *utils.RWMap[string],
 	pluginService driver_infrastructure.PluginService, methodName string, _ driver_infrastructure.ExecuteFunc,
 	_ ...any) driver_infrastructure.RoutingResultHolder {
 	slog.Debug(error_util.GetMessage("BlueGreenDeployment.inProgressSuspendMethod", methodName))

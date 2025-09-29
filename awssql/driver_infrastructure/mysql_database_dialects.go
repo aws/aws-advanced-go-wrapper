@@ -66,9 +66,9 @@ func (m *MySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 }
 
 func (m *MySQLDatabaseDialect) GetHostListProvider(
-	props map[string]string,
+	props *utils.RWMap[string],
 	hostListProviderService HostListProviderService,
-	pluginService PluginService) HostListProvider {
+	_ PluginService) HostListProvider {
 	return NewDsnHostListProvider(props, hostListProviderService)
 }
 
@@ -88,7 +88,7 @@ func (m *MySQLDatabaseDialect) GetSetCatalogQuery(catalog string) (string, error
 	return fmt.Sprintf("use %v", catalog), nil
 }
 
-func (m *MySQLDatabaseDialect) GetSetSchemaQuery(schema string) (string, error) {
+func (m *MySQLDatabaseDialect) GetSetSchemaQuery(_ string) (string, error) {
 	return "", error_util.NewGenericAwsWrapperError(error_util.GetMessage("AwsWrapper.unsupportedMethodError", "SetSchema", fmt.Sprintf("%T", m)))
 }
 
@@ -148,7 +148,7 @@ func (m *MySQLDatabaseDialect) DoesStatementSetReadOnly(statement string) (bool,
 	return false, false
 }
 
-func (m *MySQLDatabaseDialect) DoesStatementSetSchema(statement string) (string, bool) {
+func (m *MySQLDatabaseDialect) DoesStatementSetSchema(_ string) (string, bool) {
 	return "", false
 }
 
@@ -207,7 +207,7 @@ type MySQLTopologyAwareDatabaseDialect struct {
 }
 
 func (m *MySQLTopologyAwareDatabaseDialect) GetTopology(
-	conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
+	_ driver.Conn, _ HostListProvider) ([]*host_info_util.HostInfo, error) {
 	return nil, nil
 }
 
@@ -226,16 +226,16 @@ func (m *MySQLTopologyAwareDatabaseDialect) GetHostRole(conn driver.Conn) host_i
 	return host_info_util.UNKNOWN
 }
 
-func (m *MySQLTopologyAwareDatabaseDialect) GetHostName(conn driver.Conn) string {
+func (m *MySQLTopologyAwareDatabaseDialect) GetHostName(_ driver.Conn) string {
 	return ""
 }
 
-func (m *MySQLTopologyAwareDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, error) {
+func (m *MySQLTopologyAwareDatabaseDialect) GetWriterHostName(_ driver.Conn) (string, error) {
 	return "", nil
 }
 
 func (m *MySQLTopologyAwareDatabaseDialect) GetHostListProvider(
-	props map[string]string,
+	props *utils.RWMap[string],
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
 	return m.getTopologyAwareHostListProvider(m, props, hostListProviderService, pluginService)
@@ -243,7 +243,7 @@ func (m *MySQLTopologyAwareDatabaseDialect) GetHostListProvider(
 
 func (m *MySQLTopologyAwareDatabaseDialect) getTopologyAwareHostListProvider(
 	dialect TopologyAwareDialect,
-	props map[string]string,
+	props *utils.RWMap[string],
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
 	pluginsProp := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PLUGINS)
@@ -295,7 +295,7 @@ func (m *AuroraMySQLDatabaseDialect) GetWriterHostName(conn driver.Conn) (string
 }
 
 func (m *AuroraMySQLDatabaseDialect) GetHostListProvider(
-	props map[string]string,
+	props *utils.RWMap[string],
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
 	return m.getTopologyAwareHostListProvider(m, props, hostListProviderService, pluginService)
@@ -552,7 +552,7 @@ func (r *RdsMultiAzClusterMySQLDatabaseDialect) getHostIdOfCurrentConnection(con
 }
 
 func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetHostListProvider(
-	props map[string]string,
+	props *utils.RWMap[string],
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
 	return r.getTopologyAwareHostListProvider(r, props, hostListProviderService, pluginService)

@@ -28,10 +28,11 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 type LimitlessQueryHelper interface {
-	QueryForLimitlessRouters(conn driver.Conn, hostPortToMap int, props map[string]string) (hostInfoList []*host_info_util.HostInfo, err error)
+	QueryForLimitlessRouters(conn driver.Conn, hostPortToMap int, props *utils.RWMap[string]) (hostInfoList []*host_info_util.HostInfo, err error)
 }
 
 type LimitlessQueryHelperImpl struct {
@@ -47,7 +48,7 @@ func NewLimitlessQueryHelperImpl(pluginService driver_infrastructure.PluginServi
 func (queryHelper *LimitlessQueryHelperImpl) QueryForLimitlessRouters(
 	conn driver.Conn,
 	hostPortToMap int,
-	props map[string]string) (hostInfoList []*host_info_util.HostInfo, err error) {
+	props *utils.RWMap[string]) (hostInfoList []*host_info_util.HostInfo, err error) {
 	dialect, isDialectLimitless := queryHelper.pluginService.GetDialect().(driver_infrastructure.AuroraLimitlessDialect)
 	if !isDialectLimitless {
 		return nil, errors.New(error_util.GetMessage("LimitlessQueryHelperImpl.invalidDatabaseDialect", dialect))

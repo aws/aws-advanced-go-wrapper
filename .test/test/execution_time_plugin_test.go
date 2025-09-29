@@ -34,7 +34,7 @@ func TestFactoryReturnsExecutionTimePlugin(t *testing.T) {
 	mockService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 
 	factory := plugins.NewExecutionTimePluginFactory()
-	plugin, err := factory.GetInstance(mockService, map[string]string{})
+	plugin, err := factory.GetInstance(mockService, emptyProps)
 	assert.NoError(t, err)
 
 	_, ok := plugin.(*plugins.ExecutionTimePlugin)

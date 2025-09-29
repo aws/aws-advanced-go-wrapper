@@ -47,8 +47,8 @@ type PluginChain struct {
 	execChain    func(pluginFunc driver_infrastructure.PluginExecFunc, execFunc func() (any, any, bool, error)) (any, any, bool, error)
 	connectChain func(
 		pluginFunc driver_infrastructure.PluginConnectFunc,
-		props map[string]string,
-		connectFunc func(props map[string]string) (driver.Conn, error)) (driver.Conn, error)
+		props *utils.RWMap[string],
+		connectFunc func(props *utils.RWMap[string]) (driver.Conn, error)) (driver.Conn, error)
 }
 
 func (chain *PluginChain) ExecAddToHead(plugin driver_infrastructure.ConnectionPlugin) {
@@ -68,17 +68,17 @@ func (chain *PluginChain) ConnectAddToHead(plugin driver_infrastructure.Connecti
 	if chain.connectChain == nil {
 		chain.connectChain = func(
 			pluginFunc driver_infrastructure.PluginConnectFunc,
-			props map[string]string,
-			connectFunc func(props map[string]string) (driver.Conn, error)) (driver.Conn, error) {
+			props *utils.RWMap[string],
+			connectFunc func(props *utils.RWMap[string]) (driver.Conn, error)) (driver.Conn, error) {
 			return pluginFunc(plugin, props, connectFunc)
 		}
 	} else {
 		pipelineSoFar := chain.connectChain
 		chain.connectChain = func(
 			pluginFunc driver_infrastructure.PluginConnectFunc,
-			props map[string]string,
-			connectFunc func(props map[string]string) (driver.Conn, error)) (driver.Conn, error) {
-			return pluginFunc(plugin, props, func(props map[string]string) (driver.Conn, error) {
+			props *utils.RWMap[string],
+			connectFunc func(props *utils.RWMap[string]) (driver.Conn, error)) (driver.Conn, error) {
+			return pluginFunc(plugin, props, func(props *utils.RWMap[string]) (driver.Conn, error) {
 				return pipelineSoFar(pluginFunc, props, connectFunc)
 			})
 		}
@@ -95,8 +95,8 @@ func (chain *PluginChain) Execute(pluginFunc driver_infrastructure.PluginExecFun
 
 func (chain *PluginChain) Connect(
 	pluginFunc driver_infrastructure.PluginConnectFunc,
-	props map[string]string,
-	connectFunc func(props map[string]string) (driver.Conn, error)) (driver.Conn, error) {
+	props *utils.RWMap[string],
+	connectFunc func(props *utils.RWMap[string]) (driver.Conn, error)) (driver.Conn, error) {
 	if chain.connectChain == nil {
 		slog.Warn(error_util.GetMessage("PluginManager.pipelineNone"))
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginManager.pipelineNone"))
@@ -108,7 +108,7 @@ type PluginManagerImpl struct {
 	targetDriver        driver.Driver
 	pluginService       driver_infrastructure.PluginService
 	connProviderManager driver_infrastructure.ConnectionProviderManager
-	props               map[string]string
+	props               *utils.RWMap[string]
 	pluginFuncMap       *utils.RWMap[PluginChain]
 	plugins             []driver_infrastructure.ConnectionPlugin
 	telemetryFactory    telemetry.TelemetryFactory
@@ -118,7 +118,7 @@ type PluginManagerImpl struct {
 
 func NewPluginManagerImpl(
 	targetDriver driver.Driver,
-	props map[string]string,
+	props *utils.RWMap[string],
 	connProviderManager driver_infrastructure.ConnectionProviderManager,
 	telemetryFactory telemetry.TelemetryFactory) driver_infrastructure.PluginManager {
 	pluginFuncMap := utils.NewRWMap[PluginChain]()
@@ -140,7 +140,7 @@ func (pluginManager *PluginManagerImpl) Init(
 }
 
 func (pluginManager *PluginManagerImpl) InitHostProvider(
-	props map[string]string,
+	props *utils.RWMap[string],
 	hostListProviderService driver_infrastructure.HostListProviderService) error {
 	parentCtx := pluginManager.GetTelemetryContext()
 	telemetryCtx, ctx := pluginManager.telemetryFactory.OpenTelemetryContext(telemetry.TELEMETRY_INIT_HOST_PROVIDER, telemetry.NESTED, parentCtx)
@@ -181,7 +181,7 @@ func (pluginManager *PluginManagerImpl) InitHostProvider(
 
 func (pluginManager *PluginManagerImpl) Connect(
 	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
+	props *utils.RWMap[string],
 	isInitialConnection bool,
 	pluginToSkip driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
 	parentCtx := pluginManager.GetTelemetryContext()
@@ -194,8 +194,8 @@ func (pluginManager *PluginManagerImpl) Connect(
 
 	pluginFunc := func(
 		plugin driver_infrastructure.ConnectionPlugin,
-		props map[string]string,
-		targetFunc func(props map[string]string) (driver.Conn, error)) (driver.Conn, error) {
+		props *utils.RWMap[string],
+		targetFunc func(props *utils.RWMap[string]) (driver.Conn, error)) (driver.Conn, error) {
 		parentCtx1 := pluginManager.GetTelemetryContext()
 		telemetryCtx1, ctx1 := pluginManager.telemetryFactory.OpenTelemetryContext(utils.GetStructName(plugin), telemetry.NESTED, parentCtx1)
 		pluginManager.SetTelemetryContext(ctx1)
@@ -205,7 +205,7 @@ func (pluginManager *PluginManagerImpl) Connect(
 		}()
 		return plugin.Connect(hostInfo, props, isInitialConnection, targetFunc)
 	}
-	targetFunc := func(props map[string]string) (driver.Conn, error) {
+	targetFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		return nil, error_util.ShouldNotBeCalledError
 	}
 	return pluginManager.connectWithSubscribedPlugins(CONNECT_METHOD, pluginFunc, targetFunc, props, pluginToSkip)
@@ -213,15 +213,15 @@ func (pluginManager *PluginManagerImpl) Connect(
 
 func (pluginManager *PluginManagerImpl) ForceConnect(
 	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
+	props *utils.RWMap[string],
 	isInitialConnection bool) (driver.Conn, error) {
 	pluginFunc := func(
 		plugin driver_infrastructure.ConnectionPlugin,
-		props map[string]string,
-		targetFunc func(props map[string]string) (driver.Conn, error)) (driver.Conn, error) {
+		props *utils.RWMap[string],
+		targetFunc func(props *utils.RWMap[string]) (driver.Conn, error)) (driver.Conn, error) {
 		return plugin.ForceConnect(hostInfo, props, isInitialConnection, targetFunc)
 	}
-	targetFunc := func(props map[string]string) (driver.Conn, error) {
+	targetFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		return nil, error_util.ShouldNotBeCalledError
 	}
 	return pluginManager.connectWithSubscribedPlugins(FORCE_CONNECT_METHOD, pluginFunc, targetFunc, props, nil)
@@ -272,7 +272,7 @@ func (pluginManager *PluginManagerImpl) executeWithSubscribedPlugins(
 }
 
 func (pluginManager *PluginManagerImpl) connectWithSubscribedPlugins(methodName string, pluginFunc driver_infrastructure.PluginConnectFunc,
-	targetFunc driver_infrastructure.ConnectFunc, props map[string]string, pluginToSkip driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
+	targetFunc driver_infrastructure.ConnectFunc, props *utils.RWMap[string], pluginToSkip driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
 	var chain PluginChain
 	if pluginToSkip == nil {
 		chain = pluginManager.pluginFuncMap.ComputeIfAbsent(methodName, func() PluginChain {

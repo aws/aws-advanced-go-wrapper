@@ -31,7 +31,7 @@ type TestBlueGreenStatusMonitor struct {
 }
 
 func NewTestBlueGreenStatusMonitor(blueGreenRole driver_infrastructure.BlueGreenRole, bgdId string, hostInfo *host_info_util.HostInfo,
-	pluginService driver_infrastructure.PluginService, monitoringProps map[string]string, statusCheckIntervalMap map[driver_infrastructure.BlueGreenIntervalRate]int,
+	pluginService driver_infrastructure.PluginService, monitoringProps *utils.RWMap[string], statusCheckIntervalMap map[driver_infrastructure.BlueGreenIntervalRate]int,
 	onBlueGreenStatusChangeFunc func(role driver_infrastructure.BlueGreenRole, interimStatus BlueGreenInterimStatus)) *TestBlueGreenStatusMonitor {
 	dialect, _ := pluginService.GetDialect().(driver_infrastructure.BlueGreenDialect)
 	monitor := BlueGreenStatusMonitor{
@@ -181,7 +181,7 @@ type TestBlueGreenStatusProvider struct {
 	*BlueGreenStatusProvider
 }
 
-func NewTestBlueGreenStatusProvider(pluginService driver_infrastructure.PluginService, props map[string]string, bgId string) *TestBlueGreenStatusProvider {
+func NewTestBlueGreenStatusProvider(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string], bgId string) *TestBlueGreenStatusProvider {
 	statusCheckIntervalMap := map[driver_infrastructure.BlueGreenIntervalRate]int{
 		driver_infrastructure.BASELINE:  property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.BG_INTERVAL_BASELINE_MS),
 		driver_infrastructure.INCREASED: property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.BG_INTERVAL_INCREASED_MS),

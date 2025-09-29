@@ -50,7 +50,7 @@ func MonitoringRdsHostListProviderClearCaches() {
 func NewMonitoringRdsHostListProvider(
 	hostListProviderService HostListProviderService,
 	databaseDialect TopologyAwareDialect,
-	properties map[string]string,
+	properties *utils.RWMap[string],
 	pluginService PluginService) *MonitoringRdsHostListProvider {
 	clusterTopologyMonitorsMutex.Lock()
 	if clusterTopologyMonitors == nil {

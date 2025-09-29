@@ -26,37 +26,34 @@ import (
 )
 
 func TestMaskProperties_WithSensitiveProps(t *testing.T) {
-	props := make(map[string]string)
-
-	props[property_util.PASSWORD.Name] = "DoNotShow"
-	props[property_util.IDP_PASSWORD.Name] = "AlsoDoNotShow"
-	props[property_util.USER.Name] = "username"
-
-	maskedProps := utils.MaskProperties(props)
+	props := MakeMapFromKeysAndVals(
+		property_util.PASSWORD.Name, "DoNotShow",
+		property_util.IDP_PASSWORD.Name, "AlsoDoNotShow",
+		property_util.USER.Name, "username",
+	)
+	maskedProps := property_util.MaskProperties(props)
 	assert.Equal(t, "***", maskedProps[property_util.PASSWORD.Name])
 	assert.Equal(t, "***", maskedProps[property_util.IDP_PASSWORD.Name])
 	assert.Equal(t, "username", maskedProps[property_util.USER.Name])
 }
 
 func TestMaskProperties_WithNoSensitiveProps(t *testing.T) {
-	props := make(map[string]string)
+	props := MakeMapFromKeysAndVals(property_util.USER.Name, "username")
 
-	props[property_util.USER.Name] = "username"
-
-	maskedProps := utils.MaskProperties(props)
+	maskedProps := property_util.MaskProperties(props)
 	assert.Equal(t, "username", maskedProps[property_util.USER.Name])
 }
 
 func TestMaskProperties_WithEmptyProps(t *testing.T) {
-	props := make(map[string]string)
-	maskedProps := utils.MaskProperties(props)
+	props := utils.NewRWMap[string]()
+	maskedProps := property_util.MaskProperties(props)
 	assert.Equal(t, 0, len(maskedProps))
 }
 
 func TestMaskSensitiveInfoFromDsn_PgxUrl(t *testing.T) {
 	dsnWithPass := "postgres://someUser:somePassword@mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:5432/pgx_test?sslmode=disable&foo=bar&idpPassword=myIdpPassword"
 
-	maskedDsn := utils.MaskSensitiveInfoFromDsn(dsnWithPass)
+	maskedDsn := property_util.MaskSensitiveInfoFromDsn(dsnWithPass)
 
 	// Cannot check with string because order is not guaranteed with Url.
 	assert.True(t, strings.Contains(maskedDsn, "someUser:***"))
@@ -65,18 +62,18 @@ func TestMaskSensitiveInfoFromDsn_PgxUrl(t *testing.T) {
 	assert.False(t, strings.Contains(maskedDsn, "myIdpPassword"))
 
 	dsnWithNoPassWithIdpPassword := "postgres://@mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:5432/pgx_test?sslmode=disable&foo=bar&idpPassword=myIdpPassword"
-	maskedDsn = utils.MaskSensitiveInfoFromDsn(dsnWithNoPassWithIdpPassword)
+	maskedDsn = property_util.MaskSensitiveInfoFromDsn(dsnWithNoPassWithIdpPassword)
 	assert.False(t, strings.Contains(maskedDsn, "myIdpPassword"))
 
 	dsnWithNoSensitiveInfo := "postgres://@mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:5432/pgx_test?sslmode=disable&foo=bar"
-	maskedDsn = utils.MaskSensitiveInfoFromDsn(dsnWithNoSensitiveInfo)
+	maskedDsn = property_util.MaskSensitiveInfoFromDsn(dsnWithNoSensitiveInfo)
 	assert.Equal(t, len(dsnWithNoSensitiveInfo), len(maskedDsn))
 }
 
 func TestMaskSensitiveInfoFromDsn_MySQL(t *testing.T) {
 	dsnWithPass := "someUser:somePassword@tcp(mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:3306)/myDatabase?foo=bar&pop=snap&idpPassword=myIdpPassword"
 
-	maskedDsn := utils.MaskSensitiveInfoFromDsn(dsnWithPass)
+	maskedDsn := property_util.MaskSensitiveInfoFromDsn(dsnWithPass)
 
 	// Cannot check with string because order is not guaranteed with Url.
 	assert.True(t, strings.Contains(maskedDsn, "someUser:***"))
@@ -85,11 +82,11 @@ func TestMaskSensitiveInfoFromDsn_MySQL(t *testing.T) {
 	assert.False(t, strings.Contains(maskedDsn, "myIdpPassword"))
 
 	dsnWithNoPassWithIdpPassword := "@tcp(mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:3306)/myDatabase?foo=bar&pop=snap&idpPassword=myIdpPassword"
-	maskedDsn = utils.MaskSensitiveInfoFromDsn(dsnWithNoPassWithIdpPassword)
+	maskedDsn = property_util.MaskSensitiveInfoFromDsn(dsnWithNoPassWithIdpPassword)
 	assert.False(t, strings.Contains(maskedDsn, "myIdpPassword"))
 
 	dsnWithNoSensitiveInfo := "@tcp(mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:3306)/myDatabase?foo=bar&pop=snap"
-	maskedDsn = utils.MaskSensitiveInfoFromDsn(dsnWithNoSensitiveInfo)
+	maskedDsn = property_util.MaskSensitiveInfoFromDsn(dsnWithNoSensitiveInfo)
 	assert.Equal(t, dsnWithNoSensitiveInfo, maskedDsn)
 }
 
@@ -97,16 +94,16 @@ func TestMaskSensitiveInfoFromDsn_PgxKeywordValue(t *testing.T) {
 	dsnWithPass := "host=myHost port=5432 user=user password=somePassword dbname=db idpPassword=myIdpPassword"
 
 	expectedMaskedDsnWithPass := "host=myHost port=5432 user=user password=*** dbname=db idpPassword=***"
-	maskedDsn := utils.MaskSensitiveInfoFromDsn(dsnWithPass)
+	maskedDsn := property_util.MaskSensitiveInfoFromDsn(dsnWithPass)
 
 	assert.Equal(t, expectedMaskedDsnWithPass, maskedDsn)
 
 	dsnWithNoPassWithIdpPassword := "host=myHost port=5432 user=user dbname=db idpPassword=myIdpPassword"
 	expectedMaskedDsnWithNoPassWithIdpPassword := "host=myHost port=5432 user=user dbname=db idpPassword=***"
-	maskedDsn = utils.MaskSensitiveInfoFromDsn(dsnWithNoPassWithIdpPassword)
+	maskedDsn = property_util.MaskSensitiveInfoFromDsn(dsnWithNoPassWithIdpPassword)
 	assert.Equal(t, expectedMaskedDsnWithNoPassWithIdpPassword, maskedDsn)
 
 	dsnWithNoSensitiveInfo := "host=myHost port=5432 user=user dbname=db"
-	maskedDsn = utils.MaskSensitiveInfoFromDsn(dsnWithNoSensitiveInfo)
+	maskedDsn = property_util.MaskSensitiveInfoFromDsn(dsnWithNoSensitiveInfo)
 	assert.Equal(t, dsnWithNoSensitiveInfo, maskedDsn)
 }

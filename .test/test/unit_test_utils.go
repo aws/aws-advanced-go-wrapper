@@ -19,8 +19,12 @@ package test
 import (
 	"context"
 	"errors"
+	"os"
+	"testing"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 	"github.com/aws/aws-xray-sdk-go/strategy/sampling"
@@ -32,9 +36,27 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdkTrace "go.opentelemetry.io/otel/sdk/trace"
-	"os"
-	"testing"
 )
+
+var emptyProps = utils.NewRWMap[string]()
+
+func MakeMapFromKeysAndVals(keysAndVals ...string) *utils.RWMap[string] {
+	result := utils.NewRWMap[string]()
+
+	// If there's an odd number of elements, we'll skip the last one.
+	for i := 0; i < len(keysAndVals)-1; i += 2 {
+		key := keysAndVals[i]
+		val := keysAndVals[i+1]
+		result.Put(key, val)
+	}
+
+	return result
+}
+
+func GetValueOrEmptyString(rwMap *utils.RWMap[string], key string) string {
+	val, _ := rwMap.Get(key)
+	return val
+}
 
 func readFile(t *testing.T, fileName string) []byte {
 	content, err := os.ReadFile(fileName)
@@ -63,7 +85,7 @@ func SetupTelemetry() error {
 		sdkTrace.WithMaxExportBatchSize(10_000))
 	defer func() { _ = bsp.Shutdown(ctx) }()
 
-	resource, err := resource.New(ctx,
+	newResource, err := resource.New(ctx,
 		resource.WithFromEnv(),
 		resource.WithTelemetrySDK(),
 		resource.WithHost(),
@@ -76,7 +98,7 @@ func SetupTelemetry() error {
 	}
 
 	tracerProvider := sdkTrace.NewTracerProvider(
-		sdkTrace.WithResource(resource),
+		sdkTrace.WithResource(newResource),
 		sdkTrace.WithIDGenerator(xray2.NewIDGenerator()),
 	)
 	tracerProvider.RegisterSpanProcessor(bsp)
@@ -93,11 +115,10 @@ func SetupTelemetry() error {
 	return nil
 }
 
-func CreateMockPluginService(props map[string]string) driver_infrastructure.PluginService {
+func CreateMockPluginService(props *utils.RWMap[string]) driver_infrastructure.PluginService {
 	mockTargetDriver := &MockTargetDriver{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := driver_infrastructure.PluginManager(
-		plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory))
+	mockPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.NewMySQLDriverDialect(), props, mysqlTestDsn)
-	return driver_infrastructure.PluginService(pluginServiceImpl)
+	return pluginServiceImpl
 }

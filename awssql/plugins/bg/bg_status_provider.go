@@ -36,11 +36,11 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
-type BlueGreenProviderSupplier = func(pluginService driver_infrastructure.PluginService, props map[string]string, bgdId string) *BlueGreenStatusProvider
+type BlueGreenProviderSupplier = func(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string], bgdId string) *BlueGreenStatusProvider
 
 type BlueGreenStatusProvider struct {
 	pluginService                           driver_infrastructure.PluginService
-	props                                   map[string]string
+	props                                   *utils.RWMap[string]
 	bgdId                                   string
 	statusCheckIntervalMap                  map[driver_infrastructure.BlueGreenIntervalRate]int
 	switchoverDuration                      time.Duration
@@ -66,7 +66,7 @@ type BlueGreenStatusProvider struct {
 	processStatusLock                       sync.Mutex
 }
 
-func NewBlueGreenStatusProvider(pluginService driver_infrastructure.PluginService, props map[string]string, bgId string) *BlueGreenStatusProvider {
+func NewBlueGreenStatusProvider(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string], bgId string) *BlueGreenStatusProvider {
 	statusCheckIntervalMap := map[driver_infrastructure.BlueGreenIntervalRate]int{
 		driver_infrastructure.BASELINE:  property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.BG_INTERVAL_BASELINE_MS),
 		driver_infrastructure.INCREASED: property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.BG_INTERVAL_INCREASED_MS),
@@ -136,12 +136,12 @@ func (b *BlueGreenStatusProvider) initMonitoring() {
 		b.PrepareStatus)
 }
 
-func (b *BlueGreenStatusProvider) GetMonitoringProperties() map[string]string {
-	monitoringConnectionProps := utils.CreateMapCopy(b.props)
-	for propKey, propValue := range b.props {
+func (b *BlueGreenStatusProvider) GetMonitoringProperties() *utils.RWMap[string] {
+	monitoringConnectionProps := utils.NewRWMapFromCopy(b.props)
+	for propKey, propValue := range b.props.GetAllEntries() {
 		if strings.HasPrefix(propKey, property_util.BG_PROPERTY_PREFIX) {
-			monitoringConnectionProps[strings.TrimPrefix(propKey, property_util.BG_PROPERTY_PREFIX)] = propValue
-			delete(monitoringConnectionProps, propKey)
+			monitoringConnectionProps.Put(strings.TrimPrefix(propKey, property_util.BG_PROPERTY_PREFIX), propValue)
+			monitoringConnectionProps.Remove(propKey)
 		}
 	}
 	return monitoringConnectionProps

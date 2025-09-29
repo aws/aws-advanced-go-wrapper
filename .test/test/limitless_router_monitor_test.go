@@ -24,11 +24,11 @@ import (
 	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
 	mock_limitless "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/limitless"
 	mock_database_sql_driver "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/database_sql_driver"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/golang/mock/gomock"
 )
@@ -81,9 +81,9 @@ func TestMonitor_RunAndClose_SuccessfulCycle(t *testing.T) {
 		QueryForLimitlessRouters(fakeConn, host.Port, gomock.Any()).
 		Return([]*host_info_util.HostInfo{}, nil)
 
-	props := map[string]string{
-		property_util.LIMITLESS_ROUTER_CACHE_EXPIRATION_TIME_MS.Name: "100",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.LIMITLESS_ROUTER_CACHE_EXPIRATION_TIME_MS.Name, "100",
+	)
 
 	monitor := limitless.NewLimitlessRouterMonitorImpl(
 		mockQuery,
@@ -136,7 +136,7 @@ func TestOpenConnection_ErrorClosesConn(t *testing.T) {
 		cache,
 		"any",
 		10,
-		map[string]string{},
+		emptyProps,
 	)
 
 	time.Sleep(20 * time.Millisecond)

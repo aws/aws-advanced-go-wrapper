@@ -14,25 +14,25 @@
   limitations under the License.
 */
 
-package utils
+package property_util
 
 import (
 	"net/url"
 	"regexp"
 	"strings"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 var SENSITIVE_PROPERTIES = map[string]struct{}{
-	property_util.PASSWORD.Name:     {},
-	property_util.IDP_PASSWORD.Name: {},
+	PASSWORD.Name:     {},
+	IDP_PASSWORD.Name: {},
 }
 
-func MaskProperties(props map[string]string) map[string]string {
-	maskedProps := make(map[string]string)
+func MaskProperties(props *utils.RWMap[string]) map[string]string {
+	maskedProps := props.GetAllEntries()
 
-	for key, property := range props {
+	for key, property := range maskedProps {
 		if _, exists := SENSITIVE_PROPERTIES[key]; exists {
 			maskedProps[key] = "***"
 		} else {

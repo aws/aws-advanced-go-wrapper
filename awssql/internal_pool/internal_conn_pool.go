@@ -71,40 +71,40 @@ func (pc *internalPooledConn) Close() error {
 	return pc.Conn.Close()
 }
 
-func (p *internalPooledConn) Ping(ctx context.Context) error {
-	if pinger, ok := p.Conn.(driver.Pinger); ok {
+func (pc *internalPooledConn) Ping(ctx context.Context) error {
+	if pinger, ok := pc.Conn.(driver.Pinger); ok {
 		return pinger.Ping(ctx)
 	}
 	return error_util.NewGenericAwsWrapperError(
 		error_util.GetMessage("InternalPooledConn.UnsupportedOperation", "driver.Pinger"))
 }
 
-func (p *internalPooledConn) ResetSession(ctx context.Context) error {
-	if resetter, ok := p.Conn.(driver.SessionResetter); ok {
+func (pc *internalPooledConn) ResetSession(ctx context.Context) error {
+	if resetter, ok := pc.Conn.(driver.SessionResetter); ok {
 		return resetter.ResetSession(ctx)
 	}
 	return error_util.NewGenericAwsWrapperError(
 		error_util.GetMessage("InternalPooledConn.UnsupportedOperation", "driver.SessionResetter"))
 }
 
-func (p *internalPooledConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
-	if execer, ok := p.Conn.(driver.ExecerContext); ok {
+func (pc *internalPooledConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
+	if execer, ok := pc.Conn.(driver.ExecerContext); ok {
 		return execer.ExecContext(ctx, query, args)
 	}
 	return nil, error_util.NewGenericAwsWrapperError(
 		error_util.GetMessage("InternalPooledConn.UnsupportedOperation", "driver.ExecerContext"))
 }
 
-func (p *internalPooledConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
-	if queryer, ok := p.Conn.(driver.QueryerContext); ok {
+func (pc *internalPooledConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
+	if queryer, ok := pc.Conn.(driver.QueryerContext); ok {
 		return queryer.QueryContext(ctx, query, args)
 	}
 	return nil, error_util.NewGenericAwsWrapperError(
 		error_util.GetMessage("InternalPooledConn.UnsupportedOperation", "driver.QueryerContext"))
 }
 
-func (p *internalPooledConn) IsValid() bool {
-	return !p.returned
+func (pc *internalPooledConn) IsValid() bool {
+	return !pc.returned
 }
 
 type InternalConnPool struct {

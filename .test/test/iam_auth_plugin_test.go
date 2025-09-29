@@ -18,6 +18,9 @@ package test
 
 import (
 	"database/sql/driver"
+	"testing"
+	"time"
+
 	"github.com/aws/aws-advanced-go-wrapper/auth-helpers"
 	awssql "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
@@ -25,16 +28,15 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/iam"
 	"github.com/aws/aws-advanced-go-wrapper/mysql-driver"
-	"testing"
-	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 )
 
-func beforeIamAuthPluginTests(props map[string]string) (driver_infrastructure.PluginService, auth_helpers.IamTokenUtility) {
+func beforeIamAuthPluginTests(props *utils.RWMap[string]) (driver_infrastructure.PluginService, auth_helpers.IamTokenUtility) {
 	awssql.ClearCaches()
 	return CreateMockPluginService(props), &MockIamTokenUtility{}
 }
@@ -42,16 +44,16 @@ func beforeIamAuthPluginTests(props map[string]string) (driver_infrastructure.Pl
 func TestIamAuthPluginConnect(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
 
-	props := map[string]string{
-		property_util.USER.Name:            "someUser",
-		property_util.DRIVER_PROTOCOL.Name: "mysql",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.USER.Name, "someUser",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
 	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
 
 	iamAuthPlugin, _ := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
@@ -71,19 +73,19 @@ func TestIamAuthPluginConnect(t *testing.T) {
 func TestIamAuthPluginConnectWithIamProps(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
 
-	props := map[string]string{
-		property_util.USER.Name:             "someUser",
-		property_util.DRIVER_PROTOCOL.Name:  "mysql",
-		property_util.IAM_HOST.Name:         "someIamHost",
-		property_util.IAM_REGION.Name:       string(region_util.US_EAST_1),
-		property_util.IAM_DEFAULT_PORT.Name: "9999",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.USER.Name, "someUser",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+		property_util.IAM_HOST.Name, "someIamHost",
+		property_util.IAM_REGION.Name, string(region_util.US_EAST_1),
+		property_util.IAM_DEFAULT_PORT.Name, "9999",
+	)
 	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
 
 	iamAuthPlugin, _ := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
@@ -103,13 +105,13 @@ func TestIamAuthPluginConnectWithIamProps(t *testing.T) {
 func TestIamAuthPluginConnectInvalidRegionError(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("mydatabasewithnoregion.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 
-	props := map[string]string{
-		property_util.USER.Name:            "someUser",
-		property_util.DRIVER_PROTOCOL.Name: "mysql",
-		property_util.IAM_REGION.Name:      "someUnknownRegion",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.USER.Name, "someUser",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+		property_util.IAM_REGION.Name, "someUnknownRegion",
+	)
 	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
 
 	iamAuthPlugin, _ := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
@@ -123,12 +125,12 @@ func TestIamAuthPluginConnectInvalidRegionError(t *testing.T) {
 func TestIamAuthPluginConnectPopulatesEmptyTokenCache(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 
-	props := map[string]string{
-		property_util.USER.Name:            "someUser",
-		property_util.DRIVER_PROTOCOL.Name: "mysql",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.USER.Name, "someUser",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
 	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
 
 	iamAuthPlugin, _ := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
@@ -144,15 +146,15 @@ func TestIamAuthPluginConnectPopulatesEmptyTokenCache(t *testing.T) {
 func TestIamAuthPluginConnectUsesCachedToken(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 
-	props := map[string]string{
-		property_util.USER.Name:             "someUser",
-		property_util.DRIVER_PROTOCOL.Name:  "mysql",
-		property_util.IAM_HOST.Name:         "someIamHost",
-		property_util.IAM_REGION.Name:       string(region_util.US_EAST_1),
-		property_util.IAM_DEFAULT_PORT.Name: "9999",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.USER.Name, "someUser",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+		property_util.IAM_HOST.Name, "someIamHost",
+		property_util.IAM_REGION.Name, string(region_util.US_EAST_1),
+		property_util.IAM_DEFAULT_PORT.Name, "9999",
+	)
 
 	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
 
@@ -178,19 +180,19 @@ func TestIamAuthPluginConnectUsesCachedToken(t *testing.T) {
 func TestIamAuthPluginConnectCacheExpiredToken(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
 
-	props := map[string]string{
-		property_util.USER.Name:             "someUser",
-		property_util.DRIVER_PROTOCOL.Name:  "mysql",
-		property_util.IAM_HOST.Name:         "someIamHost",
-		property_util.IAM_REGION.Name:       string(region_util.US_EAST_1),
-		property_util.IAM_DEFAULT_PORT.Name: "9999",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.USER.Name, "someUser",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+		property_util.IAM_HOST.Name, "someIamHost",
+		property_util.IAM_REGION.Name, string(region_util.US_EAST_1),
+		property_util.IAM_DEFAULT_PORT.Name, "9999",
+	)
 
 	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
 
@@ -225,8 +227,8 @@ func TestIamAuthPluginConnectTtlExpiredCachedToken(t *testing.T) {
 	assert.Nil(t, err)
 	mockLoginError := &mysql.MySQLError{SQLState: [5]byte(([]byte(mysql_driver.SqlStateAccessError))[:5])}
 	mockConnFuncCallCounter := 0
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		if mockConnFuncCallCounter == 0 {
 			mockConnFuncCallCounter++
@@ -237,13 +239,13 @@ func TestIamAuthPluginConnectTtlExpiredCachedToken(t *testing.T) {
 		}
 	}
 
-	props := map[string]string{
-		property_util.USER.Name:             "someUser",
-		property_util.DRIVER_PROTOCOL.Name:  "mysql",
-		property_util.IAM_HOST.Name:         "someIamHost",
-		property_util.IAM_REGION.Name:       string(region_util.US_EAST_1),
-		property_util.IAM_DEFAULT_PORT.Name: "9999",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.USER.Name, "someUser",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+		property_util.IAM_HOST.Name, "someIamHost",
+		property_util.IAM_REGION.Name, string(region_util.US_EAST_1),
+		property_util.IAM_DEFAULT_PORT.Name, "9999",
+	)
 
 	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
 
@@ -277,16 +279,16 @@ func TestIamAuthPluginConnectLoginError(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
 	mockLoginError := &mysql.MySQLError{SQLState: [5]byte(([]byte(mysql_driver.SqlStateAccessError))[:5])}
-	var resultProps map[string]string
-	mockConnFunc := func(props map[string]string) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string]
+	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		resultProps = props
 		return nil, mockLoginError
 	}
 
-	props := map[string]string{
-		property_util.USER.Name:            "someUser",
-		property_util.DRIVER_PROTOCOL.Name: "mysql",
-	}
+	props := MakeMapFromKeysAndVals(
+		property_util.USER.Name, "someUser",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
 	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
 
 	iamAuthPlugin, _ := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)

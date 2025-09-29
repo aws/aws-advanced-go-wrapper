@@ -47,7 +47,7 @@ func main() {
 	// Optional: Setup internal pool (recommended if executing queries through sql.DB object)
 	poolOptions := internal_pool.NewInternalPoolOptions(
 		internal_pool.WithMaxIdleConns(2),                                // default value is 2
-		internal_pool.WithMaxConnLifetime(time.Duration(10)*time.Minute), // default is 0, infinite life time
+		internal_pool.WithMaxConnLifetime(time.Duration(10)*time.Minute), // default is 0, infinite lifetime
 		internal_pool.WithMaxConnIdleTime(time.Duration(10)*time.Minute), // default is 0, infinite idle time
 	)
 

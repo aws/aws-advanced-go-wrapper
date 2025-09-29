@@ -29,11 +29,11 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 )
 
-var BENCHMARK_DEFAULT_NUM_PLUGINS int = 10
+var BENCHMARK_DEFAULT_NUM_PLUGINS = 10
 var PLUGIN_COUNTS = []int{0, 1, 2, 5, 10}
 
 func initPluginManagerWithPlugins(numPlugins int,
-	props map[string]string) driver_infrastructure.PluginManager {
+	props *utils.RWMap[string]) driver_infrastructure.PluginManager {
 	property_util.PLUGINS.Set(props, "")
 	property_util.ENABLE_TELEMETRY.Set(props, "true")
 	property_util.TELEMETRY_TRACES_BACKEND.Set(props, "none")
@@ -60,7 +60,7 @@ func initPluginManagerWithPlugins(numPlugins int,
 }
 
 func BenchmarkConnectWithPlugins(b *testing.B) {
-	props := make(map[string]string)
+	props := utils.NewRWMap[string]()
 	host, _ := host_info_util.NewHostInfoBuilder().SetHost("host").SetPort(1234).Build()
 
 	for _, count := range PLUGIN_COUNTS {
@@ -71,7 +71,7 @@ func BenchmarkConnectWithPlugins(b *testing.B) {
 			b.ResetTimer() // reset timer to ignore setup time
 			for i := 0; i < b.N; i++ {
 				//nolint:errcheck
-				pluginManager.Connect(
+				_, _ = pluginManager.Connect(
 					host,
 					props,
 					true,
@@ -84,7 +84,7 @@ func BenchmarkConnectWithPlugins(b *testing.B) {
 }
 
 func BenchmarkExecute(b *testing.B) {
-	props := make(map[string]string)
+	props := utils.NewRWMap[string]()
 
 	for _, count := range PLUGIN_COUNTS {
 		count := count // capture range variable
@@ -94,7 +94,7 @@ func BenchmarkExecute(b *testing.B) {
 			b.ResetTimer() // reset timer to ignore setup time
 			for i := 0; i < b.N; i++ {
 				//nolint:errcheck
-				pluginManager.Execute(
+				_, _, _, _ = pluginManager.Execute(
 					nil,
 					"callA",
 					execFunc,
@@ -108,7 +108,7 @@ func BenchmarkExecute(b *testing.B) {
 }
 
 func BenchmarkInitHostProvider(b *testing.B) {
-	props, _ := utils.ParseDsn(mysqlTestDsn)
+	props, _ := property_util.ParseDsn(mysqlTestDsn)
 
 	for _, count := range PLUGIN_COUNTS {
 		count := count // capture range variable
@@ -118,7 +118,7 @@ func BenchmarkInitHostProvider(b *testing.B) {
 			b.ResetTimer() // reset timer to ignore setup time
 			for i := 0; i < b.N; i++ {
 				//nolint:errcheck
-				pluginManager.InitHostProvider(
+				_ = pluginManager.InitHostProvider(
 					props,
 					&MockRdsHostListProviderService{},
 				)
@@ -129,7 +129,7 @@ func BenchmarkInitHostProvider(b *testing.B) {
 }
 
 func BenchmarkNotifyConnectionChanged(b *testing.B) {
-	props := make(map[string]string)
+	props := utils.NewRWMap[string]()
 	hostChanged := map[driver_infrastructure.HostChangeOptions]bool{
 		driver_infrastructure.HOST_CHANGED: true,
 	}
@@ -152,7 +152,7 @@ func BenchmarkNotifyConnectionChanged(b *testing.B) {
 }
 
 func BenchmarkReleaseResources(b *testing.B) {
-	props := make(map[string]string)
+	props := utils.NewRWMap[string]()
 	for _, count := range PLUGIN_COUNTS {
 		count := count // capture range variable
 		b.Run(fmt.Sprintf("%d_Plugins", count), func(b *testing.B) {

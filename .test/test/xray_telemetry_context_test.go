@@ -17,11 +17,12 @@
 package test
 
 import (
+	"log/slog"
+	"testing"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	"github.com/aws/aws-advanced-go-wrapper/xray"
 	"github.com/stretchr/testify/assert"
-	"log/slog"
-	"testing"
 )
 
 func TestNewXRayContext(t *testing.T) {

@@ -31,14 +31,14 @@ import (
 
 type DsnHostListProvider struct {
 	isSingleWriterConnectionString bool
-	props                          map[string]string
+	props                          *utils.RWMap[string]
 	hostListProviderService        HostListProviderService
 	isInitialized                  bool
 	hostList                       []*host_info_util.HostInfo
 	initialHost                    string
 }
 
-func NewDsnHostListProvider(props map[string]string, hostListProviderService HostListProviderService) *DsnHostListProvider {
+func NewDsnHostListProvider(props *utils.RWMap[string], hostListProviderService HostListProviderService) *DsnHostListProvider {
 	isSingleWriterConnectionString := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.SINGLE_WRITER_DSN)
 	initialHost := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.HOST)
 	return &DsnHostListProvider{
@@ -56,7 +56,7 @@ func (c *DsnHostListProvider) init() error {
 		return nil
 	}
 
-	hosts, err := utils.GetHostsFromProps(c.props, c.isSingleWriterConnectionString)
+	hosts, err := property_util.GetHostsFromProps(c.props, c.isSingleWriterConnectionString)
 	if err != nil {
 		return err
 	}
@@ -75,22 +75,22 @@ func (c *DsnHostListProvider) IsStaticHostListProvider() bool {
 	return true
 }
 
-func (c *DsnHostListProvider) Refresh(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
+func (c *DsnHostListProvider) Refresh(_ driver.Conn) ([]*host_info_util.HostInfo, error) {
 	err := c.init()
 	return c.hostList, err
 }
 
-func (c *DsnHostListProvider) ForceRefresh(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
+func (c *DsnHostListProvider) ForceRefresh(_ driver.Conn) ([]*host_info_util.HostInfo, error) {
 	err := c.init()
 	return c.hostList, err
 }
 
-func (c *DsnHostListProvider) GetHostRole(conn driver.Conn) host_info_util.HostRole {
+func (c *DsnHostListProvider) GetHostRole(_ driver.Conn) host_info_util.HostRole {
 	slog.Warn(error_util.GetMessage("DsnHostListProvider.unsupportedGetHostRole"))
 	return host_info_util.UNKNOWN
 }
 
-func (c *DsnHostListProvider) IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error) {
+func (c *DsnHostListProvider) IdentifyConnection(_ driver.Conn) (*host_info_util.HostInfo, error) {
 	return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DsnHostListProvider.unsupportedIdentifyConnection"))
 }
 

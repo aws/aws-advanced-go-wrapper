@@ -31,7 +31,7 @@ import (
 )
 
 func beforePluginServiceTests() (*plugin_helpers.PluginServiceImpl, *MockPluginManager, *host_info_util.HostInfoBuilder, error) {
-	props := map[string]string{"protocol": "postgresql"}
+	props := MakeMapFromKeysAndVals("protocol", "postgresql")
 	mockTargetDriver := &MockTargetDriver{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	mockPluginManager := &MockPluginManager{

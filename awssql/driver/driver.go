@@ -31,6 +31,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/efm"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/read_write_splitting"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 )
@@ -57,11 +58,11 @@ func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("Driver.missingUnderlyingDriverOrDialect"))
 	}
 
-	props, parseErr := utils.ParseDsn(dsn)
+	props, parseErr := property_util.ParseDsn(dsn)
 	if parseErr != nil {
 		return nil, parseErr
 	}
-	slog.Debug(error_util.GetMessage("AwsWrapper.initializingDatabaseHandle", utils.MaskProperties(props)))
+	slog.Debug(error_util.GetMessage("AwsWrapper.initializingDatabaseHandle", property_util.MaskProperties(props)))
 
 	defaultConnProvider := driver_infrastructure.NewDriverConnectionProvider(d.UnderlyingDriver)
 	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{DefaultProvider: defaultConnProvider}
@@ -71,11 +72,10 @@ func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 		return nil, err
 	}
 	pluginManager := plugin_helpers.NewPluginManagerImpl(d.UnderlyingDriver, props, connectionProviderManager, telemetryFactory)
-	pluginServiceImpl, err := plugin_helpers.NewPluginServiceImpl(pluginManager, d.DriverDialect, props, dsn)
+	pluginService, err := plugin_helpers.NewPluginServiceImpl(pluginManager, d.DriverDialect, props, dsn)
 	if err != nil {
 		return nil, err
 	}
-	pluginService := driver_infrastructure.PluginService(pluginServiceImpl)
 
 	pluginChainBuilder := ConnectionPluginChainBuilder{}
 	currentPlugins, err := pluginChainBuilder.GetPlugins(pluginService, pluginManager, props, pluginFactoryByCode)
@@ -88,7 +88,7 @@ func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 		return nil, err
 	}
 
-	hostListProviderService := driver_infrastructure.HostListProviderService(pluginServiceImpl)
+	hostListProviderService := driver_infrastructure.HostListProviderService(pluginService)
 	provider := hostListProviderService.CreateHostListProvider(props)
 	hostListProviderService.SetHostListProvider(provider)
 

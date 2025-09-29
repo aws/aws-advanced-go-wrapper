@@ -17,12 +17,13 @@
 package test
 
 import (
+	"testing"
+
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	wrapperOtel "github.com/aws/aws-advanced-go-wrapper/otlp"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
-	"testing"
 )
 
 func TestNewOtelContext(t *testing.T) {

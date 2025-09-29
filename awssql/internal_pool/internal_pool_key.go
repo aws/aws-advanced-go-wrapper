@@ -46,6 +46,6 @@ func (pk *PoolKey) GetDriverName() string {
 	return pk.driverName
 }
 
-func (pk PoolKey) String() string {
+func (pk *PoolKey) String() string {
 	return fmt.Sprint("PoolKey [url=", pk.GetUrl(), ", driverNamey=", pk.GetDriverName(), ", extraKey=", pk.GetExtraKey(), "]")
 }

@@ -58,7 +58,7 @@ func TestNewBlueGreenStatusMonitor(t *testing.T) {
 		"test-bg-id",
 		hostInfo,
 		mockPluginService,
-		map[string]string{},
+		emptyProps,
 		statusCheckIntervalMap,
 		onStatusChangeFunc,
 	)
@@ -154,7 +154,7 @@ func TestBlueGreenStatusMonitorUpdateIpAddressFlags(t *testing.T) {
 			"test-bg-id",
 			hostInfo1,
 			mockPluginService,
-			map[string]string{},
+			emptyProps,
 			statusCheckIntervalMap,
 			nil,
 		)
@@ -275,7 +275,7 @@ func TestBlueGreenStatusMonitorCollectHostIpAddresses(t *testing.T) {
 		"test-bg-id",
 		hostInfo,
 		mockPluginService,
-		map[string]string{},
+		emptyProps,
 		statusCheckIntervalMap,
 		nil,
 	)
@@ -424,7 +424,7 @@ func collectTopologySetUp(hostInfo *host_info_util.HostInfo, ctrl *gomock.Contro
 		"test-bg-id",
 		hostInfo,
 		mockPluginService,
-		map[string]string{},
+		emptyProps,
 		statusCheckIntervalMap,
 		nil,
 	)
@@ -449,7 +449,7 @@ func TestBlueGreenStatusMonitorInitHostListProvider(t *testing.T) {
 		"test-bg-id",
 		hostInfo,
 		mockPluginService,
-		map[string]string{},
+		emptyProps,
 		statusCheckIntervalMap,
 		nil,
 	)
@@ -498,7 +498,7 @@ func TestBlueGreenStatusMonitorOpenConnection(t *testing.T) {
 		"test-bg-id",
 		hostInfo,
 		mockPluginService,
-		map[string]string{},
+		emptyProps,
 		statusCheckIntervalMap,
 		nil,
 	)
@@ -555,7 +555,7 @@ func TestBlueGreenStatusMonitorCloseConnection(t *testing.T) {
 		"test-bg-id",
 		hostInfo,
 		mockPluginService,
-		map[string]string{},
+		emptyProps,
 		statusCheckIntervalMap,
 		nil,
 	)
@@ -593,7 +593,7 @@ func TestBlueGreenStatusMonitorResetCollectedData(t *testing.T) {
 		"test-bg-id",
 		hostInfo,
 		mockPluginService,
-		map[string]string{},
+		emptyProps,
 		statusCheckIntervalMap,
 		nil,
 	)
@@ -623,7 +623,7 @@ func TestBlueGreenStatusMonitorCollectStatus(t *testing.T) {
 		"test-bg-id",
 		hostInfo,
 		mockPluginService,
-		map[string]string{},
+		emptyProps,
 		statusCheckIntervalMap,
 		nil,
 	)

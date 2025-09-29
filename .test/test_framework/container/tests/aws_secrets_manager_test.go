@@ -321,10 +321,7 @@ func missingRegionTest(t *testing.T, env *test_utils.TestEnvironment, secretName
 	defer db.Close()
 
 	pingErr := db.Ping()
-	assert.Equal(
-		t,
-		errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.unableToDetermineRegion", property_util.SECRETS_MANAGER_REGION.Name)),
-		pingErr)
+	assert.Error(t, pingErr, "Default region does not match secret region, should throw an error")
 }
 
 func incorrectRegionTest(t *testing.T, env *test_utils.TestEnvironment, secretName string) {

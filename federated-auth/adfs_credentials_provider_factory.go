@@ -53,7 +53,7 @@ func NewAdfsCredentialsProviderFactory(
 	return providerFactory
 }
 
-func (a *AdfsCredentialsProviderFactory) GetSamlAssertion(props map[string]string) (string, error) {
+func (a *AdfsCredentialsProviderFactory) GetSamlAssertion(props *utils.RWMap[string]) (string, error) {
 	parentCtx := a.pluginService.GetTelemetryContext()
 	telemetryCtx, ctx := a.pluginService.GetTelemetryFactory().OpenTelemetryContext(telemetry.TELEMETRY_FETCH_SAML_ADFS, telemetry.NESTED, parentCtx)
 	a.pluginService.SetTelemetryContext(ctx)
@@ -81,7 +81,7 @@ func (a *AdfsCredentialsProviderFactory) GetSamlAssertion(props map[string]strin
 	return samlAssertion, nil
 }
 
-func (a *AdfsCredentialsProviderFactory) GetSignInPageUrl(props map[string]string) string {
+func (a *AdfsCredentialsProviderFactory) GetSignInPageUrl(props *utils.RWMap[string]) string {
 	return a.FormatIdpEndpoint(property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IDP_ENDPOINT)) +
 		":" +
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IDP_PORT) +
@@ -89,9 +89,9 @@ func (a *AdfsCredentialsProviderFactory) GetSignInPageUrl(props map[string]strin
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.RELAYING_PARTY_ID)
 }
 
-func (a *AdfsCredentialsProviderFactory) GetUriAndParamsFromSignInPage(uri string, props map[string]string) (string, map[string]string, error) {
+func (a *AdfsCredentialsProviderFactory) GetUriAndParamsFromSignInPage(uri string, props *utils.RWMap[string]) (string, map[string]string, error) {
 	slog.Debug(error_util.GetMessage("AdfsCredentialsProviderFactory.signOnPageUrl", uri))
-	err := utils.ValidateUrl(uri)
+	err := property_util.ValidateUrl(uri)
 	if err != nil {
 		return "", nil, err
 	}
@@ -146,16 +146,16 @@ func (a *AdfsCredentialsProviderFactory) GetUriAndParamsFromSignInPage(uri strin
 	return postUri, params, err
 }
 
-func (a *AdfsCredentialsProviderFactory) getFormActionUrl(props map[string]string, action string) string {
+func (a *AdfsCredentialsProviderFactory) getFormActionUrl(props *utils.RWMap[string], action string) string {
 	return a.FormatIdpEndpoint(property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IDP_ENDPOINT)) +
 		":" +
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IDP_PORT) +
 		action
 }
 
-func (a *AdfsCredentialsProviderFactory) getSamlAssertionFromPost(uri string, params map[string]string, props map[string]string) (string, error) {
+func (a *AdfsCredentialsProviderFactory) getSamlAssertionFromPost(uri string, params map[string]string, props *utils.RWMap[string]) (string, error) {
 	slog.Debug(error_util.GetMessage("AdfsCredentialsProviderFactory.signOnPagePostActionUrl", uri))
-	err := utils.ValidateUrl(uri)
+	err := property_util.ValidateUrl(uri)
 	if err != nil {
 		return "", err
 	}
