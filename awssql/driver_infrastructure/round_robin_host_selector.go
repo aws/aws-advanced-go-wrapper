@@ -34,11 +34,11 @@ const ROUND_ROBIN_DEFAULT_WEIGHT = 1
 const ROUND_ROBIN_DEFAULT_CACHE_EXPIRE_NANO = time.Duration(10) * time.Minute
 
 var (
-	roundRobinHostSelectorInstance *roundRobinHostSelector
+	roundRobinHostSelectorInstance *RoundRobinHostSelector
 	roundRobinOnce                 sync.Once
 )
 
-type roundRobinHostSelector struct {
+type RoundRobinHostSelector struct {
 	cache *utils.CacheMap[*RoundRobinClusterInfo]
 	mu    sync.RWMutex
 }
@@ -53,16 +53,16 @@ type RoundRobinClusterInfo struct {
 }
 
 // GetRoundRobinHostSelector returns a shared instance of roundRobinHostSelector.
-func GetRoundRobinHostSelector() *roundRobinHostSelector {
+func GetRoundRobinHostSelector() *RoundRobinHostSelector {
 	roundRobinOnce.Do(func() {
-		roundRobinHostSelectorInstance = &roundRobinHostSelector{
+		roundRobinHostSelectorInstance = &RoundRobinHostSelector{
 			cache: utils.NewCache[*RoundRobinClusterInfo](),
 		}
 	})
 	return roundRobinHostSelectorInstance
 }
 
-func (r *roundRobinHostSelector) GetHost(hosts []*host_info_util.HostInfo, role host_info_util.HostRole, props map[string]string) (*host_info_util.HostInfo, error) {
+func (r *RoundRobinHostSelector) GetHost(hosts []*host_info_util.HostInfo, role host_info_util.HostRole, props map[string]string) (*host_info_util.HostInfo, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	eligibleHosts := utils.FilterSlice(hosts, func(hostInfo *host_info_util.HostInfo) bool {
@@ -122,7 +122,7 @@ func (r *roundRobinHostSelector) GetHost(hosts []*host_info_util.HostInfo, role 
 	return eligibleHosts[targetHostIndex], nil
 }
 
-func (r *roundRobinHostSelector) createCacheEntryForHosts(hosts []*host_info_util.HostInfo, props map[string]string) error {
+func (r *RoundRobinHostSelector) createCacheEntryForHosts(hosts []*host_info_util.HostInfo, props map[string]string) error {
 	hostsWithCacheEntry := []*host_info_util.HostInfo{}
 
 	for _, host := range hosts {
@@ -138,7 +138,7 @@ func (r *roundRobinHostSelector) createCacheEntryForHosts(hosts []*host_info_uti
 		roundRobinClusterInfo, found := r.cache.Get(hostsWithCacheEntry[0].GetHost())
 
 		if found &&
-			r.hasPropertyChanged(roundRobinClusterInfo.lastClusterHostWeightPairPropertyValue, property_util.ROUND_ROBIN_HOST_WEIGHT_PAIRS, props) {
+			hasPropertyChanged(roundRobinClusterInfo.lastClusterHostWeightPairPropertyValue, property_util.ROUND_ROBIN_HOST_WEIGHT_PAIRS, props) {
 			roundRobinClusterInfo.lastHost = nil
 			roundRobinClusterInfo.weightCounter = 0
 			err := r.updateCachedHostWeightPairsPropsForRoundRobinClusterInfo(roundRobinClusterInfo, props)
@@ -148,7 +148,7 @@ func (r *roundRobinHostSelector) createCacheEntryForHosts(hosts []*host_info_uti
 		}
 
 		if found &&
-			r.hasPropertyChanged(strconv.Itoa(roundRobinClusterInfo.lastClusterDefaultWeightPropertyValue), property_util.ROUND_ROBIN_DEFAULT_WEIGHT, props) {
+			hasPropertyChanged(roundRobinClusterInfo.lastClusterDefaultWeightPropertyValue, property_util.ROUND_ROBIN_DEFAULT_WEIGHT, props) {
 			roundRobinClusterInfo.lastHost = nil
 			roundRobinClusterInfo.weightCounter = 0
 			err := r.updateCachedDefaultWeightPropsForRoundRobinClusterInfo(roundRobinClusterInfo, props)
@@ -164,7 +164,7 @@ func (r *roundRobinHostSelector) createCacheEntryForHosts(hosts []*host_info_uti
 			clusterWeightsMap:                      make(map[string]int),
 			defaultWeight:                          ROUND_ROBIN_DEFAULT_WEIGHT,
 			weightCounter:                          0,
-			lastClusterHostWeightPairPropertyValue: property_util.ROUND_ROBIN_HOST_WEIGHT_PAIRS.Get(props),
+			lastClusterHostWeightPairPropertyValue: property_util.GetVerifiedWrapperPropertyValueFromMap[string](props, property_util.ROUND_ROBIN_HOST_WEIGHT_PAIRS),
 			lastClusterDefaultWeightPropertyValue:  ROUND_ROBIN_DEFAULT_WEIGHT,
 		}
 		err := r.updateCachePropertiesForRoundRobinClusterInfo(&roundRobinClusterInfo, props)
@@ -178,18 +178,7 @@ func (r *roundRobinHostSelector) createCacheEntryForHosts(hosts []*host_info_uti
 	return nil
 }
 
-func (r *roundRobinHostSelector) hasPropertyChanged(
-	lastPropertyValue string,
-	wrapperProperty property_util.AwsWrapperProperty,
-	props map[string]string) bool {
-	if props == nil {
-		return false
-	}
-	propValue := wrapperProperty.Get(props)
-	return propValue != lastPropertyValue
-}
-
-func (r *roundRobinHostSelector) updateCachePropertiesForRoundRobinClusterInfo(
+func (r *RoundRobinHostSelector) updateCachePropertiesForRoundRobinClusterInfo(
 	roundRobinClusterInfo *RoundRobinClusterInfo,
 	props map[string]string) error {
 	err := r.updateCachedDefaultWeightPropsForRoundRobinClusterInfo(roundRobinClusterInfo, props)
@@ -205,13 +194,13 @@ func (r *roundRobinHostSelector) updateCachePropertiesForRoundRobinClusterInfo(
 	return nil
 }
 
-func (r *roundRobinHostSelector) updateCachedDefaultWeightPropsForRoundRobinClusterInfo(
+func (r *RoundRobinHostSelector) updateCachedDefaultWeightPropsForRoundRobinClusterInfo(
 	roundRobinClusterInfo *RoundRobinClusterInfo,
 	props map[string]string) error {
 	defaultWeight := ROUND_ROBIN_DEFAULT_WEIGHT
 
 	if props != nil {
-		weightProps := property_util.ROUND_ROBIN_DEFAULT_WEIGHT.Get(props)
+		weightProps := property_util.ROUND_ROBIN_DEFAULT_WEIGHT.GetFromMap(props)
 		convertedWeight, err := strconv.Atoi(weightProps)
 		if err != nil || convertedWeight <= 0 {
 			return errors.New(error_util.GetMessage("HostSelector.roundRobinInvalidDefaultWeight"))
@@ -224,14 +213,14 @@ func (r *roundRobinHostSelector) updateCachedDefaultWeightPropsForRoundRobinClus
 	return nil
 }
 
-func (r *roundRobinHostSelector) updateCachedHostWeightPairsPropsForRoundRobinClusterInfo(
+func (r *RoundRobinHostSelector) updateCachedHostWeightPairsPropsForRoundRobinClusterInfo(
 	roundRobinClusterInfo *RoundRobinClusterInfo,
 	props map[string]string) error {
 	if props == nil {
 		return nil
 	}
 
-	hostWeights := property_util.ROUND_ROBIN_HOST_WEIGHT_PAIRS.Get(props)
+	hostWeights := property_util.GetVerifiedWrapperPropertyValueFromMap[string](props, property_util.ROUND_ROBIN_HOST_WEIGHT_PAIRS)
 	roundRobinClusterInfo.lastClusterHostWeightPairPropertyValue = hostWeights
 	if hostWeights == "" {
 		clear(roundRobinClusterInfo.clusterWeightsMap)
@@ -265,8 +254,19 @@ func (r *roundRobinHostSelector) updateCachedHostWeightPairsPropsForRoundRobinCl
 }
 
 // For testing purposes only.
-func (r *roundRobinHostSelector) ClearCache() {
+func (r *RoundRobinHostSelector) ClearCache() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.cache.Clear()
+}
+
+func hasPropertyChanged[T comparable](
+	lastPropertyValue T,
+	wrapperProperty property_util.AwsWrapperProperty,
+	props map[string]string) bool {
+	if props == nil {
+		return false
+	}
+	propValue := property_util.GetVerifiedWrapperPropertyValueFromMap[T](props, wrapperProperty)
+	return propValue != lastPropertyValue
 }

@@ -24,6 +24,7 @@ import (
 	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
@@ -35,7 +36,7 @@ func TestConnectTimeFactoryReturnsConnectTimePlugin(t *testing.T) {
 	mockService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 
 	factory := plugins.NewConnectTimePluginFactory()
-	plugin, err := factory.GetInstance(mockService, map[string]string{})
+	plugin, err := factory.GetInstance(mockService, emptyProps)
 	assert.NoError(t, err)
 
 	_, ok := plugin.(*plugins.ConnectTimePlugin)
@@ -46,13 +47,13 @@ func TestConnectTimePlugin_ConnectTracksTime(t *testing.T) {
 	plugin := &plugins.ConnectTimePlugin{}
 
 	connected := false
-	mockConnectFunc := func(props map[string]string) (driver.Conn, error) {
+	mockConnectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		time.Sleep(10 * time.Millisecond)
 		connected = true
 		return nil, nil
 	}
 
-	conn, err := plugin.Connect(nil, map[string]string{}, true, mockConnectFunc)
+	conn, err := plugin.Connect(nil, emptyProps, true, mockConnectFunc)
 
 	assert.True(t, connected)
 	assert.Nil(t, conn)
@@ -66,13 +67,13 @@ func TestConnectTimePlugin_ForceConnectTracksTime(t *testing.T) {
 	plugin := &plugins.ConnectTimePlugin{}
 
 	connected := false
-	mockForceConnectFunc := func(props map[string]string) (driver.Conn, error) {
+	mockForceConnectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		time.Sleep(10 * time.Millisecond)
 		connected = true
 		return nil, nil
 	}
 
-	conn, err := plugin.ForceConnect(nil, map[string]string{}, true, mockForceConnectFunc)
+	conn, err := plugin.ForceConnect(nil, emptyProps, true, mockForceConnectFunc)
 
 	assert.True(t, connected)
 	assert.Nil(t, conn)
@@ -84,12 +85,12 @@ func TestConnectTimePlugin_ForceConnectTracksTime(t *testing.T) {
 
 func TestConnectTimePlugin_ResetConnectTime(t *testing.T) {
 	plugin := &plugins.ConnectTimePlugin{}
-	mockConnectFunc := func(props map[string]string) (driver.Conn, error) {
+	mockConnectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		time.Sleep(5 * time.Millisecond)
 		return nil, nil
 	}
 
-	_, err := plugin.Connect(nil, map[string]string{}, true, mockConnectFunc)
+	_, err := plugin.Connect(nil, emptyProps, true, mockConnectFunc)
 	assert.NoError(t, err)
 	assert.Greater(t, plugin.GetTotalConnectTime(), int64(0))
 
@@ -107,16 +108,16 @@ func TestConnectTimePlugin_GetSubscribedMethods(t *testing.T) {
 
 func TestConnectTimePlugin_AccumulatesTime(t *testing.T) {
 	plugin := &plugins.ConnectTimePlugin{}
-	mockConnectFunc := func(props map[string]string) (driver.Conn, error) {
+	mockConnectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
 		time.Sleep(5 * time.Millisecond)
 		return nil, nil
 	}
 
-	_, err := plugin.Connect(nil, map[string]string{}, true, mockConnectFunc)
+	_, err := plugin.Connect(nil, emptyProps, true, mockConnectFunc)
 	assert.NoError(t, err)
 	firstTime := plugin.GetTotalConnectTime()
 
-	_, err = plugin.ForceConnect(nil, map[string]string{}, true, mockConnectFunc)
+	_, err = plugin.ForceConnect(nil, emptyProps, true, mockConnectFunc)
 	assert.NoError(t, err)
 	totalTime := plugin.GetTotalConnectTime()
 

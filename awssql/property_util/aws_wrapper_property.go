@@ -66,6 +66,14 @@ func (prop *AwsWrapperProperty) Get(props *utils.RWMap[string]) string {
 	return result
 }
 
+func (prop *AwsWrapperProperty) GetFromMap(props map[string]string) string {
+	result, ok := props[prop.Name]
+	if !ok {
+		result = prop.defaultValue
+	}
+	return result
+}
+
 func (prop *AwsWrapperProperty) Set(props *utils.RWMap[string], val string) {
 	props.Put(prop.Name, val)
 }
@@ -76,10 +84,7 @@ func GetVerifiedWrapperPropertyValue[T any](props *utils.RWMap[string], property
 }
 
 func GetVerifiedWrapperPropertyValueFromMap[T any](props map[string]string, property AwsWrapperProperty) T {
-	propValue, ok := props[property.Name]
-	if !ok {
-		propValue = property.defaultValue
-	}
+	propValue := property.GetFromMap(props)
 	return convertValue[T](propValue, property)
 }
 

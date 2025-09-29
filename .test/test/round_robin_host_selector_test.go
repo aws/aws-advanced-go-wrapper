@@ -241,7 +241,7 @@ func TestRoundRobinHostSelector(t *testing.T) {
 		assert.Equal(t, readerHost3.Host, host.Host)
 
 		// Change property to 2
-		property_util.ROUND_ROBIN_DEFAULT_WEIGHT.Set(props, "2")
+		props[property_util.ROUND_ROBIN_DEFAULT_WEIGHT.Name] = "2"
 
 		host, err = selector.GetHost(hostsList13, host_info_util.READER, props)
 		assert.NoError(t, err)
@@ -330,7 +330,7 @@ func TestRoundRobinHostSelector(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, readerHost3.Host, host.Host)
 
-		property_util.ROUND_ROBIN_HOST_WEIGHT_PAIRS.Set(props, hostWeights2)
+		props[property_util.ROUND_ROBIN_HOST_WEIGHT_PAIRS.Name] = hostWeights2
 
 		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
 		assert.NoError(t, err)
@@ -362,7 +362,7 @@ func TestRoundRobinHostSelector(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, readerHost2.Host, host.Host)
 
-		property_util.ROUND_ROBIN_HOST_WEIGHT_PAIRS.Set(props, hostWeights3)
+		props[property_util.ROUND_ROBIN_HOST_WEIGHT_PAIRS.Name] = hostWeights3
 
 		host, err = selector.GetHost(hostsList123, host_info_util.READER, props)
 		assert.NoError(t, err)
