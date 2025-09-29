@@ -43,6 +43,7 @@ func setupStressTest(t *testing.T) (map[string]string, *test_utils.TestEnvironme
 	env, err := test_utils.GetCurrentTestEnvironment()
 	assert.NoError(t, err)
 	test_utils.SkipForTestEnvironmentFeatures(t, env.Info().Request.Features, test_utils.LIMITLESS_DEPLOYMENT)
+	test_utils.SkipIfInsufficientInstances(t, env, 2)
 
 	props := map[string]string{
 		"host":                       env.Info().ProxyDatabaseInfo.Instances[0].Host(),
@@ -198,23 +199,23 @@ func TestStress_ContinuousInsertWithFailoverTx(t *testing.T) {
 	runFailoverTestWithInsert(t, setupFailoverTest, func(db *sql.DB, tableName string) {
 		tx, err := db.Begin()
 		if err != nil {
-			slog.Error("failed to begin transaction", "error", err)
+			slog.Info("failed to begin transaction", "error", err)
 			return
 		}
 		defer func() {
 			if err := tx.Rollback(); err != nil {
-				slog.Error("failed to rollback transaction", "error", err)
+				slog.Info("failed to rollback transaction", "error", err)
 			}
 		}()
 
 		_, err = tx.ExecContext(context.TODO(), "INSERT INTO "+tableName+" (id, name) VALUES (1, 'test')")
 		if err != nil {
-			slog.Error("insert failed", "error", err)
+			slog.Info("insert failed", "error", err)
 			return
 		}
 
 		if err := tx.Commit(); err != nil {
-			slog.Error("failed to commit transaction", "error", err)
+			slog.Info("failed to commit transaction", "error", err)
 			return
 		}
 	})
@@ -224,7 +225,7 @@ func TestStress_ContinuousInsertWithFailoverDb(t *testing.T) {
 	runFailoverTestWithInsert(t, setupFailoverTest, func(db *sql.DB, tableName string) {
 		_, err := db.ExecContext(context.TODO(), "INSERT INTO "+tableName+" (id, name) VALUES (1, 'test')")
 		if err != nil {
-			slog.Error("insert failed", "error", err)
+			slog.Info("insert failed", "error", err)
 			return
 		}
 	})
@@ -234,14 +235,14 @@ func TestStress_ContinuousInsertWithFailoverConn(t *testing.T) {
 	runFailoverTestWithInsert(t, setupFailoverTest, func(db *sql.DB, tableName string) {
 		conn, err := db.Conn(context.TODO())
 		if err != nil {
-			slog.Error("failed to get connection", "error", err)
+			slog.Info("failed to get connection", "error", err)
 			return
 		}
 		defer conn.Close()
 
 		_, err = conn.ExecContext(context.TODO(), "INSERT INTO "+tableName+" (id, name) VALUES (1, 'test')")
 		if err != nil {
-			slog.Error("insert failed", "error", err)
+			slog.Info("insert failed", "error", err)
 			return
 		}
 	})
@@ -254,23 +255,23 @@ func TestStress_ContinuousInsertWithFailoverAndSecretsTx(t *testing.T) {
 	}, func(db *sql.DB, tableName string) {
 		tx, err := db.Begin()
 		if err != nil {
-			slog.Error("failed to begin transaction", "error", err)
+			slog.Info("failed to begin transaction", "error", err)
 			return
 		}
 		defer func() {
 			if err := tx.Rollback(); err != nil {
-				slog.Error("failed to rollback transaction", "error", err)
+				slog.Info("failed to rollback transaction", "error", err)
 			}
 		}()
 
 		_, err = tx.ExecContext(context.TODO(), "INSERT INTO "+tableName+" (id, name) VALUES (1, 'test')")
 		if err != nil {
-			slog.Error("insert failed", "error", err)
+			slog.Info("insert failed", "error", err)
 			return
 		}
 
 		if err := tx.Commit(); err != nil {
-			slog.Error("failed to commit transaction", "error", err)
+			slog.Info("failed to commit transaction", "error", err)
 			return
 		}
 	})
@@ -283,7 +284,7 @@ func TestStress_ContinuousInsertWithFailoverAndSecretsDb(t *testing.T) {
 	}, func(db *sql.DB, tableName string) {
 		_, err := db.ExecContext(context.TODO(), "INSERT INTO "+tableName+" (id, name) VALUES (1, 'test')")
 		if err != nil {
-			slog.Error("insert failed", "error", err)
+			slog.Info("insert failed", "error", err)
 			return
 		}
 	})
@@ -296,14 +297,14 @@ func TestStress_ContinuousInsertWithFailoverAndSecretsConn(t *testing.T) {
 	}, func(db *sql.DB, tableName string) {
 		conn, err := db.Conn(context.TODO())
 		if err != nil {
-			slog.Error("failed to get connection", "error", err)
+			slog.Info("failed to get connection", "error", err)
 			return
 		}
 		defer conn.Close()
 
 		_, err = conn.ExecContext(context.TODO(), "INSERT INTO "+tableName+" (id, name) VALUES (1, 'test')")
 		if err != nil {
-			slog.Error("insert failed", "error", err)
+			slog.Info("insert failed", "error", err)
 			return
 		}
 	})

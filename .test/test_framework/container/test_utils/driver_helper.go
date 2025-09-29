@@ -215,7 +215,8 @@ func ExecuteInstanceQueryWithSleep(
 	if err != nil {
 		return
 	}
-	var sleepResult int
+
+	var sleepResult any
 	if err := rowQuerier.QueryRowContext(context.TODO(), sql1).Scan(&sleepResult); err != nil {
 		return "", err
 	}
