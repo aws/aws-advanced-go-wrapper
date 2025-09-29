@@ -51,7 +51,6 @@ type ClusterTopologyMonitor interface {
 	SetClusterId(clusterId string)
 	ForceRefreshVerifyWriter(writerImportant bool, timeoutMs int) ([]*host_info_util.HostInfo, error)
 	ForceRefreshUsingConn(conn driver.Conn, timeoutMs int) ([]*host_info_util.HostInfo, error)
-	CanDispose() bool
 	Close()
 	Start(wg *sync.WaitGroup)
 }
@@ -290,10 +289,6 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 	}
 
 	return hosts, nil
-}
-
-func (c *ClusterTopologyMonitorImpl) CanDispose() bool {
-	return true
 }
 
 func (c *ClusterTopologyMonitorImpl) Close() {
