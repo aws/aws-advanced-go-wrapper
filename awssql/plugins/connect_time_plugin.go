@@ -25,6 +25,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 type ConnectTimePluginFactory struct{}
@@ -34,7 +35,7 @@ func NewConnectTimePluginFactory() driver_infrastructure.ConnectionPluginFactory
 }
 
 func (factory ConnectTimePluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
-	props map[string]string,
+	props *utils.RWMap[string],
 ) (driver_infrastructure.ConnectionPlugin, error) {
 	return NewConnectTimePlugin(pluginService, props)
 }
@@ -46,8 +47,8 @@ type ConnectTimePlugin struct {
 	connectTimeNano int64
 }
 
-func NewConnectTimePlugin(pluginService driver_infrastructure.PluginService,
-	props map[string]string) (*ConnectTimePlugin, error) {
+func NewConnectTimePlugin(_ driver_infrastructure.PluginService,
+	_ *utils.RWMap[string]) (*ConnectTimePlugin, error) {
 	return &ConnectTimePlugin{}, nil
 }
 
@@ -60,9 +61,9 @@ func (d *ConnectTimePlugin) GetSubscribedMethods() []string {
 }
 
 func (d *ConnectTimePlugin) Connect(
-	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
-	isInitialConnection bool,
+	_ *host_info_util.HostInfo,
+	props *utils.RWMap[string],
+	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	start := time.Now()
 	conn, err := connectFunc(props)
@@ -74,9 +75,9 @@ func (d *ConnectTimePlugin) Connect(
 }
 
 func (d *ConnectTimePlugin) ForceConnect(
-	hostInfo *host_info_util.HostInfo,
-	props map[string]string,
-	isInitialConnection bool,
+	_ *host_info_util.HostInfo,
+	props *utils.RWMap[string],
+	_ bool,
 	forceConnectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	start := time.Now()
 	conn, err := forceConnectFunc(props)
