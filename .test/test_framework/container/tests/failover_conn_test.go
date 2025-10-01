@@ -257,7 +257,7 @@ func TestFailoverStrictReader(t *testing.T) {
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":              environment.Info().DatabaseInfo.ReaderInstance().Host(),
+		"host":              environment.Info().DatabaseInfo.WriterInstanceEndpoint(),
 		"port":              strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
 		"plugins":           "failover",
 		"failoverMode":      "strict-reader",
@@ -271,10 +271,10 @@ func TestFailoverStrictReader(t *testing.T) {
 	}
 	defer conn.Close()
 
-	// Check that we are not connected to the writer.
+	// Check that we are connected to the writer.
 	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	assert.Nil(t, err)
-	assert.False(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
+	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Failover and check that it has failed over.
 	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
