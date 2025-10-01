@@ -48,6 +48,7 @@ To find all the documentation and concrete examples on how to use the AWS Advanc
 
 #### Amazon RDS Blue/Green Deployments
 
+- **Database compatibility:** The plugin is compatible with RDS Multi-AZ clusters (MySQL/PostgreSQL) and Aurora Global Database configurations (MySQL/PostgreSQL). For detailed information on supported database versions, refer to the [Blue/Green Deployment Plugin Documentation](./docs/user-guide/using-plugins/UsingTheBlueGreenPlugin.md).
 - **Post-switchover failures:** After a Blue/Green switchover, the wrapper may not properly detect the new cluster topology, leading to failed failover attempts.
 - **Metadata inconsistencies:** Discrepancies between topology metadata and actual available endpoints prevent reliable operation.
 - **Version-specific issues:** Requirements vary between Aurora MySQL and Aurora PostgreSQL due to different internal systems.
