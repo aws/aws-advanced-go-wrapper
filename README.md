@@ -54,12 +54,7 @@ Support for Blue/Green deployments using the AWS Advanced Go Wrapper requires sp
 - Supported Aurora PostgreSQL Versions: Engine Release `17.5, 16.9, 15.13, 14.18, 13.21` and above.
 - Supported Aurora MySQL Versions: Engine Release `3.07` and above.
 
-Please note that Aurora Global Database and RDS Multi-AZ clusters with Blue/Green deployments is currently not supported. For detailed information on supported database versions, refer to the [Blue/Green Deployment Plugin Documentation](./docs/user-guide/using-plugins/UsingTheBlueGreenPlugin.md).
-
-In addition:
-- **Post-switchover failures:** After a Blue/Green switchover, the wrapper may not properly detect the new cluster topology, leading to failed failover attempts.
-- **Metadata inconsistencies:** Discrepancies between topology metadata and actual available endpoints prevent reliable operation.
-- **Version-specific issues:** Requirements vary between Aurora MySQL and Aurora PostgreSQL due to different internal systems.
+Please note that Aurora Global Database and RDS Multi-AZ clusters with Blue/Green deployments are not currently supported. For detailed information on using Blue/Green and supported database versions, refer to the [Blue/Green Deployment Plugin Documentation](./docs/user-guide/using-plugins/UsingTheBlueGreenPlugin.md).
 
 #### Amazon Aurora Global Databases
 
