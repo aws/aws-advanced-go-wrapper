@@ -1390,7 +1390,8 @@ func TestRdsPgDatabaseDialect_GetBlueGreenStatus(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT version, endpoint, port, role, status FROM rds_tools.show_topology('aws_advanced_go_wrapper-1.0.0')"
+	expectedQuery := "SELECT version, endpoint, port, role, status FROM rds_tools.show_topology('aws_advanced_go_wrapper-" +
+		driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
 
 	mockQueryer.EXPECT().
 		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
@@ -1437,7 +1438,9 @@ func TestRdsPgDatabaseDialect_GetBlueGreenStatus_EmptyResults(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT version, endpoint, port, role, status FROM rds_tools.show_topology('aws_advanced_go_wrapper-1.0.0')"
+	expectedQuery :=
+		"SELECT version, endpoint, port, role, status FROM rds_tools.show_topology('aws_advanced_go_wrapper-" +
+			driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
 
 	mockQueryer.EXPECT().
 		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
@@ -1563,7 +1566,8 @@ func TestPgGetBlueGreenStatus_InsufficientColumns(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT version, endpoint, port, role, status FROM rds_tools.show_topology('aws_advanced_go_wrapper-1.0.0')"
+	expectedQuery := "SELECT version, endpoint, port, role, status FROM rds_tools.show_topology('aws_advanced_go_wrapper-" +
+		driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
 
 	mockQueryer.EXPECT().
 		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
