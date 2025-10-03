@@ -127,6 +127,7 @@ func (m *MonitorImpl) newStateRun() {
 
 	for !m.isStopped() {
 		currentTime := time.Now()
+		m.lock.Lock()
 		for startMonitoringTime, queuedStates := range m.NewStates {
 			// Get entries with a starting time less than or equal to the current time.
 			if startMonitoringTime.Before(currentTime) {
@@ -139,11 +140,10 @@ func (m *MonitorImpl) newStateRun() {
 					}
 				}
 				// Remove the processed entry from new states.
-				m.lock.Lock()
 				delete(m.NewStates, startMonitoringTime)
-				m.lock.Unlock()
 			}
 		}
+		m.lock.Unlock()
 		time.Sleep(time.Second)
 	}
 
