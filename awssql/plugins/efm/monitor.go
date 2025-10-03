@@ -97,6 +97,8 @@ type MonitorImpl struct {
 }
 
 func (m *MonitorImpl) CanDispose() bool {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
 	return len(m.ActiveStates) == 0 && len(m.NewStates) == 0
 }
 
