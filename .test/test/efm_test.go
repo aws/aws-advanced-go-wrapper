@@ -94,7 +94,7 @@ func TestMonitorServiceImpl(t *testing.T) {
 
 	state2, err := monitorService.StartMonitoring(&testConn, mockHostInfo, emptyProps, 0, 900, 3, 600000)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(monitor.NewStates))
+	assert.Equal(t, 2, monitor.NewStates.Size())
 	// Monitoring on the same host should not increase the cache size.
 	assert.Equal(t, efm.EFM_MONITORS.Size(), 1)
 	assert.True(t, state2.IsActive())
@@ -104,11 +104,11 @@ func TestMonitorServiceImpl(t *testing.T) {
 	monitor.MonitoringConn = monitoringConn
 
 	// Let the newStates monitoring routine update.
-	for len(monitor.ActiveStates) != 2 {
+	for monitor.ActiveStates.Size() != 2 {
 		time.Sleep(time.Second)
 	}
-	assert.Equal(t, 2, len(monitor.ActiveStates))
-	assert.Equal(t, 0, len(monitor.NewStates))
+	assert.Equal(t, 2, monitor.ActiveStates.Size())
+	assert.Equal(t, 0, monitor.NewStates.Size())
 
 	monitorService.StopMonitoring(state2, testConn)
 	assert.Equal(t, efm.EFM_MONITORS.Size(), 1)
@@ -116,17 +116,17 @@ func TestMonitorServiceImpl(t *testing.T) {
 	assert.False(t, state2.IsActive())
 	assert.True(t, state.IsActive())
 
-	assert.Equal(t, 2, len(monitor.ActiveStates))
+	assert.Equal(t, 2, monitor.ActiveStates.Size())
 	time.Sleep(time.Second) // Let the monitoring routine update.
-	assert.Equal(t, 1, len(monitor.ActiveStates))
+	assert.Equal(t, 1, monitor.ActiveStates.Size())
 
 	monitorService.StopMonitoring(state, testConn)
 	assert.Equal(t, efm.EFM_MONITORS.Size(), 1)
 	assert.False(t, state.IsActive())
 
-	assert.Equal(t, 1, len(monitor.ActiveStates))
+	assert.Equal(t, 1, monitor.ActiveStates.Size())
 	time.Sleep(time.Second) // Let the monitoring routine update.
-	assert.Equal(t, 0, len(monitor.ActiveStates))
+	assert.Equal(t, 0, monitor.ActiveStates.Size())
 
 	efm.EFM_MONITORS.Clear()
 	assert.Equal(t, efm.EFM_MONITORS.Size(), 0)
@@ -291,15 +291,13 @@ func TestMonitorCanDispose(t *testing.T) {
 	// If there are no states, monitor can be disposed.
 	assert.True(t, monitor.CanDispose())
 
-	monitor.NewStates[time.Time{}] = nil
+	monitor.NewStates.Put(time.Time{}, nil)
 	assert.False(t, monitor.CanDispose())
 
-	monitor.ActiveStates = append(monitor.ActiveStates, weak.Make(state))
+	monitor.ActiveStates.Enqueue(weak.Make(state))
 	assert.False(t, monitor.CanDispose())
 
-	for t2 := range monitor.NewStates {
-		delete(monitor.NewStates, t2)
-	}
+	monitor.NewStates.Clear()
 	assert.False(t, monitor.CanDispose())
 	monitor.Close()
 }
@@ -310,10 +308,10 @@ func TestMonitorClose(t *testing.T) {
 	mockConn := &MockDriverConnection{}
 	monitor.MonitoringConn = mockConn
 
-	assert.False(t, monitor.Stopped)
+	assert.False(t, monitor.Stopped.Load())
 	assert.False(t, mockConn.IsClosed)
 	monitor.Close()
-	assert.True(t, monitor.Stopped)
+	assert.True(t, monitor.Stopped.Load())
 	assert.True(t, mockConn.IsClosed)
 }
 
@@ -381,15 +379,15 @@ func TestMonitorUpdateHostHealthStatusValid(t *testing.T) {
 	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, emptyProps, 0, 10, 0, telemetry.NilTelemetryCounter{})
 	monitor.Close() // Ensures none of the monitoring goroutines are running in the background.
 
-	monitor.FailureCount = 1
+	monitor.FailureCount.Store(1)
 	monitor.InvalidHostStartTime = time.Now()
-	monitor.HostUnhealthy = true
+	monitor.HostUnhealthy.Store(true)
 
 	monitor.UpdateHostHealthStatus(true, time.Now(), time.Now().Add(5))
 
-	assert.Zero(t, monitor.FailureCount)
+	assert.Zero(t, monitor.FailureCount.Load())
 	assert.Zero(t, monitor.InvalidHostStartTime)
-	assert.False(t, monitor.HostUnhealthy)
+	assert.False(t, monitor.HostUnhealthy.Load())
 	monitor.Close()
 }
 
@@ -398,15 +396,15 @@ func TestMonitorUpdateHostHealthStatusInvalid(t *testing.T) {
 	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, emptyProps, 0, 10, 0, telemetry.NilTelemetryCounter{})
 	monitor.Close() // Ensures none of the monitoring goroutines are running in the background.
 
-	assert.Zero(t, monitor.FailureCount)
+	assert.Zero(t, monitor.FailureCount.Load())
 	assert.Zero(t, monitor.InvalidHostStartTime)
-	assert.False(t, monitor.HostUnhealthy)
+	assert.False(t, monitor.HostUnhealthy.Load())
 
 	startTime := time.Now()
 	monitor.UpdateHostHealthStatus(false, startTime, time.Now().Add(5))
 
-	assert.Equal(t, 1, monitor.FailureCount)
+	assert.Equal(t, int32(1), monitor.FailureCount.Load())
 	assert.Equal(t, startTime, monitor.InvalidHostStartTime)
-	assert.True(t, monitor.HostUnhealthy)
+	assert.True(t, monitor.HostUnhealthy.Load())
 	monitor.Close()
 }
