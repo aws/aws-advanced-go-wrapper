@@ -112,7 +112,6 @@ func (m *MonitoringRdsHostListProvider) getMonitor() ClusterTopologyMonitor {
 			m.clusterInstanceTemplate,
 			m.pluginService)
 		monitor.Start(clusterTopologyMonitorWg)
-		clusterTopologyMonitorWg.Add(1)
 		return monitor
 	}
 	return clusterTopologyMonitors.ComputeIfAbsent(m.clusterId, computeFunc, MONITOR_EXPIRATION_NANOS)
