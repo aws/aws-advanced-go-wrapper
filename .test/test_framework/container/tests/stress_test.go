@@ -142,46 +142,69 @@ func setupSecretsTest(t *testing.T) (map[string]string, *test_utils.TestEnvironm
 	secretName := fmt.Sprintf("TestSecret-%s", uuid.New().String())
 	secretArn := CreateSecret(t, client, env, secretName)
 
-	property_util.SECRETS_MANAGER_SECRET_ID.Set(props, secretName)
-	property_util.SECRETS_MANAGER_REGION.Set(props, env.Info().Region)
-	property_util.USER.Set(props, "incorrectUser")
-	property_util.PASSWORD.Set(props, "incorrectPassword")
-	property_util.PLUGINS.Set(props, "failover,efm,awsSecretsManager")
+	props[property_util.SECRETS_MANAGER_SECRET_ID.Name] = secretName
+	props[property_util.SECRETS_MANAGER_REGION.Name] = env.Info().Region
+	props[property_util.USER.Name] = "incorrectUser"
+	props[property_util.PASSWORD.Name] = "incorrectPassword"
+	props[property_util.PLUGINS.Name] = "failover,efm,awsSecretsManager"
+
+	t.Cleanup(func() { DeleteSecret(t, client, secretArn) })
+	return props, env, secretArn
+}
+func setupMultiplePluginsTest(t *testing.T) (map[string]string, *test_utils.TestEnvironment, string) {
+	props, env := setupStressTest(t)
+	cfg, _ := config.LoadDefaultConfig(context.TODO())
+	client := secretsmanager.NewFromConfig(cfg, func(o *secretsmanager.Options) {
+		o.Region = env.Info().Region
+	})
+	secretName := fmt.Sprintf("TestSecret-%s", uuid.New().String())
+	secretArn := CreateSecret(t, client, env, secretName)
+
+	props[property_util.SECRETS_MANAGER_SECRET_ID.Name] = secretName
+	props[property_util.SECRETS_MANAGER_REGION.Name] = env.Info().Region
+	props[property_util.USER.Name] = "incorrectUser"
+	props[property_util.PASSWORD.Name] = "incorrectPassword"
+	props[property_util.PLUGINS.Name] = "failover,efm,awsSecretsManager,readWriteSplitting,executionTime,connectTime,bg"
 
 	t.Cleanup(func() { DeleteSecret(t, client, secretArn) })
 	return props, env, secretArn
 }
 
-func runFailoverTest(t *testing.T, db *sql.DB, auroraTestUtility *test_utils.AuroraTestUtility, insertFunc func()) {
-	stop := make(chan bool)
-	done := make(chan bool)
+func runFailoverTest(
+	t *testing.T,
+	db *sql.DB,
+	auroraTestUtility *test_utils.AuroraTestUtility,
+	functions ...func()) {
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
 
-	go func() {
-		defer close(done)
-		for {
-			select {
-			case <-stop:
-				return
-			default:
+	// Create and start a goroutine for each function
+	for _, fn := range functions {
+		wg.Add(1)
+		go func(f func()) {
+			defer wg.Done()
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					f()
+					time.Sleep(100 * time.Millisecond)
+				}
 			}
-			time.Sleep(100 * time.Millisecond)
-			insertFunc()
-		}
-	}()
+		}(fn)
+	}
 
 	time.Sleep(10 * time.Second)
 	err := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
 	assert.NoError(t, err)
-	time.Sleep(30 * time.Second)
-	err = auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
-	assert.NoError(t, err)
-	time.Sleep(30 * time.Second)
+	time.Sleep(10 * time.Second)
 	err = auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
 	assert.NoError(t, err)
 	time.Sleep(10 * time.Second)
 
 	close(stop)
-	<-done
+	wg.Wait()
 }
 
 func runFailoverTestWithInsert(t *testing.T, setupFunc func(*testing.T) (*sql.DB, *test_utils.AuroraTestUtility, string), insertFunc func(*sql.DB, string)) {
@@ -195,6 +218,21 @@ func runFailoverTestWithInsert(t *testing.T, setupFunc func(*testing.T) (*sql.DB
 	})
 }
 
+func runFailoverTestWithSelectInsert(
+	t *testing.T,
+	setupFunc func(*testing.T) (*sql.DB, *test_utils.AuroraTestUtility, string),
+	selectFunc func(*sql.DB, string), insertFunc func(*sql.DB, string)) {
+	assert.NotPanics(t, func() {
+		db, auroraTestUtility, tableName := setupFunc(t)
+		defer test_utils.BasicCleanup(t.Name())
+		runFailoverTest(t, db, auroraTestUtility, func() {
+			selectFunc(db, tableName)
+		}, func() {
+			insertFunc(db, tableName)
+		})
+	})
+}
+
 func TestStress_ContinuousInsertWithFailoverTx(t *testing.T) {
 	runFailoverTestWithInsert(t, setupFailoverTest, func(db *sql.DB, tableName string) {
 		tx, err := db.Begin()
@@ -202,11 +240,6 @@ func TestStress_ContinuousInsertWithFailoverTx(t *testing.T) {
 			slog.Info("failed to begin transaction", "error", err)
 			return
 		}
-		defer func() {
-			if err := tx.Rollback(); err != nil {
-				slog.Info("failed to rollback transaction", "error", err)
-			}
-		}()
 
 		_, err = tx.ExecContext(context.TODO(), "INSERT INTO "+tableName+" (id, name) VALUES (1, 'test')")
 		if err != nil {
@@ -216,6 +249,9 @@ func TestStress_ContinuousInsertWithFailoverTx(t *testing.T) {
 
 		if err := tx.Commit(); err != nil {
 			slog.Info("failed to commit transaction", "error", err)
+			if err := tx.Rollback(); err != nil {
+				slog.Info("failed to rollback transaction", "error", err)
+			}
 			return
 		}
 	})
@@ -258,12 +294,6 @@ func TestStress_ContinuousInsertWithFailoverAndSecretsTx(t *testing.T) {
 			slog.Info("failed to begin transaction", "error", err)
 			return
 		}
-		defer func() {
-			if err := tx.Rollback(); err != nil {
-				slog.Info("failed to rollback transaction", "error", err)
-			}
-		}()
-
 		_, err = tx.ExecContext(context.TODO(), "INSERT INTO "+tableName+" (id, name) VALUES (1, 'test')")
 		if err != nil {
 			slog.Info("insert failed", "error", err)
@@ -272,6 +302,9 @@ func TestStress_ContinuousInsertWithFailoverAndSecretsTx(t *testing.T) {
 
 		if err := tx.Commit(); err != nil {
 			slog.Info("failed to commit transaction", "error", err)
+			if err := tx.Rollback(); err != nil {
+				slog.Info("failed to rollback transaction", "error", err)
+			}
 			return
 		}
 	})
@@ -305,6 +338,119 @@ func TestStress_ContinuousInsertWithFailoverAndSecretsConn(t *testing.T) {
 		_, err = conn.ExecContext(context.TODO(), "INSERT INTO "+tableName+" (id, name) VALUES (1, 'test')")
 		if err != nil {
 			slog.Info("insert failed", "error", err)
+			return
+		}
+	})
+}
+
+func TestStress_ContinuousSelectInsertWithFailoverAndMultiplePluginsConn(t *testing.T) {
+	props, env, _ := setupMultiplePluginsTest(t)
+	runFailoverTestWithSelectInsert(t, func(t *testing.T) (*sql.DB, *test_utils.AuroraTestUtility, string) {
+		return setupFailoverTestWithProps(t, props, env)
+	}, func(db *sql.DB, tableName string) {
+		conn, err := db.Conn(context.TODO())
+		if err != nil {
+			slog.Info("failed to get connection", "error", err)
+			return
+		}
+		defer conn.Close()
+
+		rows, err := conn.QueryContext(context.TODO(), "SELECT * FROM "+tableName+" LIMIT 1")
+		if err != nil {
+			slog.Info("select failed", "error", err)
+			return
+		}
+		defer rows.Close()
+		if rows.Next() {
+			slog.Info("select succeeded")
+		}
+	}, func(db *sql.DB, tableName string) {
+		conn, err := db.Conn(context.TODO())
+		if err != nil {
+			slog.Info("failed to get connection", "error", err)
+			return
+		}
+		defer conn.Close()
+
+		_, err = conn.ExecContext(context.TODO(), "INSERT INTO "+tableName+" (id, name) VALUES (1, 'test')")
+		if err != nil {
+			slog.Info("insert failed", "error", err)
+			return
+		}
+		slog.Info("insert succeeded")
+	})
+}
+
+func TestStress_ContinuousSelectInsertWithFailoverAndMultiplePluginsDb(t *testing.T) {
+	props, env, _ := setupMultiplePluginsTest(t)
+	runFailoverTestWithSelectInsert(t, func(t *testing.T) (*sql.DB, *test_utils.AuroraTestUtility, string) {
+		return setupFailoverTestWithProps(t, props, env)
+	}, func(db *sql.DB, tableName string) {
+		rows, err := db.QueryContext(context.TODO(), "SELECT * FROM "+tableName+" LIMIT 1")
+		if err != nil {
+			slog.Info("select failed", "error", err)
+			return
+		}
+		defer rows.Close()
+		if rows.Next() {
+			slog.Info("select succeeded")
+		}
+	}, func(db *sql.DB, tableName string) {
+		_, err := db.ExecContext(context.TODO(), "INSERT INTO "+tableName+" (id, name) VALUES (1, 'test')")
+		if err != nil {
+			slog.Info("insert failed", "error", err)
+			return
+		}
+		slog.Info("insert succeeded")
+	})
+}
+
+func TestStress_ContinuousSelectInsertWithFailoverAndMultiplePluginsTx(t *testing.T) {
+	props, env, _ := setupMultiplePluginsTest(t)
+	runFailoverTestWithSelectInsert(t, func(t *testing.T) (*sql.DB, *test_utils.AuroraTestUtility, string) {
+		return setupFailoverTestWithProps(t, props, env)
+	}, func(db *sql.DB, tableName string) {
+		tx, err := db.BeginTx(context.TODO(), &sql.TxOptions{ReadOnly: true})
+		if err != nil {
+			slog.Info("failed to begin transaction", "error", err)
+			return
+		}
+
+		rows, err := tx.QueryContext(context.TODO(), "SELECT * FROM "+tableName+" LIMIT 1")
+		if err != nil {
+			slog.Info("select failed", "error", err)
+			return
+		}
+		defer rows.Close()
+		if rows.Next() {
+			slog.Info("select succeeded")
+		}
+
+		if err := tx.Commit(); err != nil {
+			slog.Info("failed to commit transaction", "error", err)
+			if err := tx.Rollback(); err != nil {
+				slog.Info("failed to rollback transaction", "error", err)
+			}
+			return
+		}
+	}, func(db *sql.DB, tableName string) {
+		tx, err := db.BeginTx(context.TODO(), &sql.TxOptions{ReadOnly: false})
+		if err != nil {
+			slog.Info("failed to begin transaction", "error", err)
+			return
+		}
+
+		_, err = tx.ExecContext(context.TODO(), "INSERT INTO "+tableName+" (id, name) VALUES (1, 'test')")
+		if err != nil {
+			slog.Info("insert failed", "error", err)
+			return
+		}
+
+		if err := tx.Commit(); err != nil {
+			slog.Info("failed to commit transaction", "error", err)
+			if err := tx.Rollback(); err != nil {
+				slog.Info("failed to rollback transaction", "error", err)
+			}
 			return
 		}
 	})
