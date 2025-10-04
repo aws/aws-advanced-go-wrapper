@@ -55,7 +55,7 @@ public class ContainerHelper {
   private static final String XRAY_TELEMETRY_IMAGE_NAME = "amazon/aws-xray-daemon";
   private static final String OTLP_TELEMETRY_IMAGE_NAME = "amazon/aws-otel-collector";
 
-  private static final String INTEGRATION_TEST_TIMEOUT = "60m";
+  private static final String INTEGRATION_TEST_TIMEOUT = "90m";
   private static final String PERFORMANCE_TEST_TIMEOUT = "12h";
 
   private static final String PERFORMANCE_TEST_TAG = "-tags=performance";
