@@ -36,7 +36,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func beforeAwsSecretsManagerConnectionPluginTests(props *utils.RWMap[string]) driver_infrastructure.PluginService {
+func beforeAwsSecretsManagerConnectionPluginTests(props *utils.RWMap[string, string]) driver_infrastructure.PluginService {
 	aws_secrets_manager.SecretsCache.Clear()
 	mockTargetDriver := &MockTargetDriver{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
@@ -49,8 +49,8 @@ func beforeAwsSecretsManagerConnectionPluginTests(props *utils.RWMap[string]) dr
 func TestAwsSecretsManagerConnectionPluginConnect(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -74,8 +74,8 @@ func TestAwsSecretsManagerConnectionPluginConnect(t *testing.T) {
 func TestAwsSecretsManagerConnectionPluginForceConnect(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -99,8 +99,8 @@ func TestAwsSecretsManagerConnectionPluginForceConnect(t *testing.T) {
 func TestAwsSecretsManagerConnectionPluginProps(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -179,8 +179,8 @@ func TestAwsSecretsManagerConnectionPluginValidIdDefaultRegion(t *testing.T) {
 func TestAwsSecretsManagerConnectionPluginValidRegionThroughArn(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -221,8 +221,8 @@ func TestAwsSecretsManagerConnectionPluginCacheSize1(t *testing.T) {
 
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -247,8 +247,8 @@ func TestAwsSecretsManagerConnectionPluginCacheSize1(t *testing.T) {
 func TestAwsSecretsManagerConnectionPluginUsingExpiredSecret(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -285,8 +285,8 @@ func TestAwsSecretsManagerConnectionPluginUsingExpiredSecret(t *testing.T) {
 func TestAwsSecretsManagerConnectionPluginConnectingUsingCache(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -323,11 +323,11 @@ func TestAwsSecretsManagerConnectionPluginConnectingUsingCache(t *testing.T) {
 func TestAwsSecretsManagerConnectionPluginMultipleConnectionsCache(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 	secretIds := [4]string{"id1", "id1", "id3", "id4"}
 	region := [4]string{"us-west-2", "us-west-1", "us-west-2", "us-west-2"}
 
-	var props [4]*utils.RWMap[string]
+	var props [4]*utils.RWMap[string, string]
 	var mockPluginServices [4]driver_infrastructure.PluginService
 
 	// setup props map and mock plugin services
@@ -354,8 +354,8 @@ func TestAwsSecretsManagerConnectionPluginLoginError(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
 	mockLoginError := &mysql.MySQLError{SQLState: [5]byte(([]byte(mysql_driver.SqlStateAccessError))[:5])}
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return nil, mockLoginError
 	}

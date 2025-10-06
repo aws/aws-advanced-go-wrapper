@@ -58,7 +58,7 @@ func (p *PgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 }
 
 func (p *PgDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	hostListProviderService HostListProviderService,
 	_ PluginService) HostListProvider {
 	return NewDsnHostListProvider(props, hostListProviderService)
@@ -218,7 +218,7 @@ func (m *PgTopologyAwareDatabaseDialect) GetWriterHostName(_ driver.Conn) (strin
 }
 
 func (m *PgTopologyAwareDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
 	return m.getTopologyAwareHostListProvider(m, props, hostListProviderService, pluginService)
@@ -226,7 +226,7 @@ func (m *PgTopologyAwareDatabaseDialect) GetHostListProvider(
 
 func (m *PgTopologyAwareDatabaseDialect) getTopologyAwareHostListProvider(
 	dialect TopologyAwareDialect,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
 	pluginsProp := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PLUGINS)
@@ -345,7 +345,7 @@ func (m *AuroraPgDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, e
 }
 
 func (m *AuroraPgDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
 	return m.getTopologyAwareHostListProvider(m, props, hostListProviderService, pluginService)
@@ -507,7 +507,7 @@ func (r *RdsMultiAzClusterPgDatabaseDialect) GetWriterHostName(conn driver.Conn)
 }
 
 func (r *RdsMultiAzClusterPgDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
 	return r.getTopologyAwareHostListProvider(r, props, hostListProviderService, pluginService)

@@ -153,7 +153,7 @@ func TestHostMonitoringPluginFactory(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func mockHostMonitoringPlugin(props *utils.RWMap[string]) (*efm.HostMonitorConnectionPlugin, error) {
+func mockHostMonitoringPlugin(props *utils.RWMap[string, string]) (*efm.HostMonitorConnectionPlugin, error) {
 	factory := efm.HostMonitoringPluginFactory{}
 	pluginService, _, _, _ := beforePluginServiceTests()
 	if props == nil {
@@ -192,7 +192,7 @@ func TestHostMonitoringPluginConnect(t *testing.T) {
 	assert.Nil(t, err)
 	rdsHostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("instance-a-1.xyz.us-east-2.rds.amazonaws.com").Build()
 	assert.Nil(t, err)
-	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	connectFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		return &MockDriverConnection{}, nil
 	}
 

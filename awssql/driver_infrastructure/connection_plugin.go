@@ -30,13 +30,13 @@ type ConnectionPlugin interface {
 		methodName string,
 		executeFunc ExecuteFunc,
 		methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error)
-	Connect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string], isInitialConnection bool, connectFunc ConnectFunc) (driver.Conn, error)
-	ForceConnect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string], isInitialConnection bool, connectFunc ConnectFunc) (driver.Conn, error)
+	Connect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string], isInitialConnection bool, connectFunc ConnectFunc) (driver.Conn, error)
+	ForceConnect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string], isInitialConnection bool, connectFunc ConnectFunc) (driver.Conn, error)
 	AcceptsStrategy(strategy string) bool
 	GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error)
 	GetHostSelectorStrategy(strategy string) (HostSelector, error)
 	NotifyConnectionChanged(changes map[HostChangeOptions]bool) OldConnectionSuggestedAction
 	NotifyHostListChanged(changes map[string]map[HostChangeOptions]bool)
-	InitHostProvider(props *utils.RWMap[string], hostListProviderService HostListProviderService, initHostProviderFunc func() error) error
+	InitHostProvider(props *utils.RWMap[string, string], hostListProviderService HostListProviderService, initHostProviderFunc func() error) error
 	GetPluginCode() string
 }

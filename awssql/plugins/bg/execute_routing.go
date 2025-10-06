@@ -32,7 +32,7 @@ type SuspendExecuteRouting struct {
 	BaseRouting
 }
 
-func (r *SuspendExecuteRouting) Apply(_ driver_infrastructure.ConnectionPlugin, props *utils.RWMap[string],
+func (r *SuspendExecuteRouting) Apply(_ driver_infrastructure.ConnectionPlugin, props *utils.RWMap[string, string],
 	pluginService driver_infrastructure.PluginService, methodName string, _ driver_infrastructure.ExecuteFunc,
 	_ ...any) driver_infrastructure.RoutingResultHolder {
 	slog.Debug(error_util.GetMessage("BlueGreenDeployment.inProgressSuspendMethod", methodName))

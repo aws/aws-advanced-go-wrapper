@@ -261,7 +261,7 @@ func CombineMaps[K comparable, V any](mapToCopy map[K]V, mapToAdd map[K]V) map[K
 	return mapToReturn
 }
 
-func CombineRWMaps[V any](mapToCopy *RWMap[V], mapToAdd *RWMap[V]) *RWMap[V] {
+func CombineRWMaps[K comparable, V any](mapToCopy *RWMap[K, V], mapToAdd *RWMap[K, V]) *RWMap[K, V] {
 	mapToReturn := NewRWMapFromCopy(mapToCopy)
 	for key, value := range mapToAdd.GetAllEntries() {
 		mapToReturn.Put(key, value)

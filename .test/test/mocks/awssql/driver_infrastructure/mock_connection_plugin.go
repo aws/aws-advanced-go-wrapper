@@ -68,7 +68,7 @@ func (mr *MockConnectionPluginMockRecorder) AcceptsStrategy(arg0 interface{}) *g
 }
 
 // Connect mocks base method.
-func (m *MockConnectionPlugin) Connect(arg0 *host_info_util.HostInfo, arg1 *utils.RWMap[string], arg2 bool, arg3 driver_infrastructure.ConnectFunc) (driver.Conn, error) {
+func (m *MockConnectionPlugin) Connect(arg0 *host_info_util.HostInfo, arg1 *utils.RWMap[string, string], arg2 bool, arg3 driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Connect", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(driver.Conn)
@@ -105,7 +105,7 @@ func (mr *MockConnectionPluginMockRecorder) Execute(arg0, arg1, arg2 interface{}
 }
 
 // ForceConnect mocks base method.
-func (m *MockConnectionPlugin) ForceConnect(arg0 *host_info_util.HostInfo, arg1 *utils.RWMap[string], arg2 bool, arg3 driver_infrastructure.ConnectFunc) (driver.Conn, error) {
+func (m *MockConnectionPlugin) ForceConnect(arg0 *host_info_util.HostInfo, arg1 *utils.RWMap[string, string], arg2 bool, arg3 driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ForceConnect", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(driver.Conn)
@@ -178,7 +178,7 @@ func (mr *MockConnectionPluginMockRecorder) GetSubscribedMethods() *gomock.Call 
 }
 
 // InitHostProvider mocks base method.
-func (m *MockConnectionPlugin) InitHostProvider(arg0 *utils.RWMap[string], arg1 driver_infrastructure.HostListProviderService, arg2 func() error) error {
+func (m *MockConnectionPlugin) InitHostProvider(arg0 *utils.RWMap[string, string], arg1 driver_infrastructure.HostListProviderService, arg2 func() error) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "InitHostProvider", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)

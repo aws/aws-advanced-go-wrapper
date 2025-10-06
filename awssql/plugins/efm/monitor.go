@@ -46,7 +46,7 @@ type Monitor interface {
 func NewMonitorImpl(
 	pluginService driver_infrastructure.PluginService,
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	failureDetectionTimeMillis int,
 	failureDetectionIntervalMillis int,
 	failureDetectionCount int,
@@ -67,7 +67,7 @@ func NewMonitorImpl(
 		failureDetectionTimeNanos:     time.Millisecond * time.Duration(failureDetectionTimeMillis),
 		failureDetectionIntervalNanos: time.Millisecond * time.Duration(failureDetectionIntervalMillis),
 		failureDetectionCount:         failureDetectionCount,
-		NewStates:                     utils.NewRWMap2[time.Time, []weak.Pointer[MonitorConnectionState]](),
+		NewStates:                     utils.NewRWMap[time.Time, []weak.Pointer[MonitorConnectionState]](),
 		ActiveStates:                  utils.NewRWQueue[weak.Pointer[MonitorConnectionState]](),
 		abortedConnectionsCounter:     abortedConnectionsCounter,
 	}
@@ -83,14 +83,14 @@ type MonitorImpl struct {
 	hostInfo                      *host_info_util.HostInfo
 	MonitoringConn                driver.Conn
 	pluginService                 driver_infrastructure.PluginService
-	monitoringProps               *utils.RWMap[string]
+	monitoringProps               *utils.RWMap[string, string]
 	failureDetectionTimeNanos     time.Duration
 	failureDetectionIntervalNanos time.Duration
 	FailureCount                  atomic.Int32
 	failureDetectionCount         int
 	InvalidHostStartTime          time.Time
 	ActiveStates                  *utils.RWQueue[weak.Pointer[MonitorConnectionState]]
-	NewStates                     *utils.RWMap2[time.Time, []weak.Pointer[MonitorConnectionState]]
+	NewStates                     *utils.RWMap[time.Time, []weak.Pointer[MonitorConnectionState]]
 	Stopped                       atomic.Bool
 	HostUnhealthy                 atomic.Bool
 	wg                            sync.WaitGroup

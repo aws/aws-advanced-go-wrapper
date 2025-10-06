@@ -80,7 +80,7 @@ type MockMonitoringRdsHostListProvider struct {
 func newTestMockMonitoringRdsHostListProvider(
 	hostListProviderService driver_infrastructure.HostListProviderService,
 	databaseDialect driver_infrastructure.TopologyAwareDialect,
-	properties *utils.RWMap[string],
+	properties *utils.RWMap[string, string],
 	pluginService driver_infrastructure.PluginService) *MockMonitoringRdsHostListProvider {
 	provider := &MockMonitoringRdsHostListProvider{
 		MonitoringRdsHostListProvider: driver_infrastructure.NewMonitoringRdsHostListProvider(
@@ -108,7 +108,7 @@ type MockPluginServiceImpl struct {
 func newMockPluginServiceImpl(
 	pluginManager driver_infrastructure.PluginManager,
 	driverDialect driver_infrastructure.DriverDialect,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	dsn string,
 	inTransactionResult bool,
 	isCurrentHostNil bool,
@@ -161,7 +161,7 @@ type mockAuroraMysqlDialect struct {
 }
 
 func (t *mockAuroraMysqlDialect) GetHostListProvider(
-	_ *utils.RWMap[string],
+	_ *utils.RWMap[string, string],
 	_ driver_infrastructure.HostListProviderService,
 	_ driver_infrastructure.PluginService) driver_infrastructure.HostListProvider {
 	return mockMonitoringRdsHostListProvider
@@ -190,7 +190,7 @@ type mockDefaultPlugin struct {
 
 func (t *mockDefaultPlugin) Connect(
 	_ *host_info_util.HostInfo,
-	_ *utils.RWMap[string],
+	_ *utils.RWMap[string, string],
 	_ bool,
 	_ driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	if t.connectFails {
@@ -201,7 +201,7 @@ func (t *mockDefaultPlugin) Connect(
 
 func (t *mockDefaultPlugin) ForceConnect(
 	_ *host_info_util.HostInfo,
-	_ *utils.RWMap[string],
+	_ *utils.RWMap[string, string],
 	_ bool,
 	_ driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	if t.connectFails {

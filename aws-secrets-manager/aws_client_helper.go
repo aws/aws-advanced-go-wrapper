@@ -20,7 +20,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/aws/aws-advanced-go-wrapper/auth-helpers"
+	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
@@ -34,12 +34,12 @@ type AwsSecretsManagerClient interface {
 }
 
 type NewAwsSecretsManagerClientProvider func(hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	endpoint string,
 	region string) (AwsSecretsManagerClient, error)
 
 func NewAwsSecretsManagerClient(hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	endpoint string,
 	region string) (AwsSecretsManagerClient, error) {
 	awsCredentialsProvider, err := auth_helpers.GetAwsCredentialsProvider(*hostInfo, props.GetAllEntries())

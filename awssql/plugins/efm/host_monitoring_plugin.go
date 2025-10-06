@@ -33,7 +33,7 @@ type HostMonitoringPluginFactory struct {
 }
 
 func (h HostMonitoringPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
-	properties *utils.RWMap[string]) (driver_infrastructure.ConnectionPlugin, error) {
+	properties *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
 	if pluginService == nil {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("HostMonitoringConnectionPlugin.illegalArgumentError", "pluginService"))
 	}
@@ -72,7 +72,7 @@ func NewHostMonitoringPluginFactory() driver_infrastructure.ConnectionPluginFact
 
 type HostMonitorConnectionPlugin struct {
 	pluginService              driver_infrastructure.PluginService
-	props                      *utils.RWMap[string]
+	props                      *utils.RWMap[string, string]
 	monitoringHostInfo         *host_info_util.HostInfo
 	monitorService             MonitorService
 	failureDetectionTimeMs     int
@@ -92,7 +92,7 @@ func (b *HostMonitorConnectionPlugin) GetSubscribedMethods() []string {
 
 func (b *HostMonitorConnectionPlugin) Connect(
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	conn, err := connectFunc(props)

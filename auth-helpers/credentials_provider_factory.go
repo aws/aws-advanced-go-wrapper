@@ -32,15 +32,15 @@ import (
 )
 
 type CredentialsProviderFactory interface {
-	GetAwsCredentialsProvider(host string, region region_util.Region, props *utils.RWMap[string]) (aws.CredentialsProvider, error)
+	GetAwsCredentialsProvider(host string, region region_util.Region, props *utils.RWMap[string, string]) (aws.CredentialsProvider, error)
 }
 
 type SamlCredentialsProviderFactory struct {
 	AwsStsClientProvider AwsStsClientProvider
-	GetSamlAssertionFunc func(props *utils.RWMap[string]) (string, error)
+	GetSamlAssertionFunc func(props *utils.RWMap[string, string]) (string, error)
 }
 
-func (s *SamlCredentialsProviderFactory) GetAwsCredentialsProvider(_ string, region region_util.Region, props *utils.RWMap[string]) (aws.CredentialsProvider, error) {
+func (s *SamlCredentialsProviderFactory) GetAwsCredentialsProvider(_ string, region region_util.Region, props *utils.RWMap[string, string]) (aws.CredentialsProvider, error) {
 	samlAssertion, err := s.GetSamlAssertionFunc(props)
 	if err != nil {
 		return nil, err

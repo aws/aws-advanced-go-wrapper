@@ -35,7 +35,7 @@ func NewConnectTimePluginFactory() driver_infrastructure.ConnectionPluginFactory
 }
 
 func (factory ConnectTimePluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 ) (driver_infrastructure.ConnectionPlugin, error) {
 	return NewConnectTimePlugin(pluginService, props)
 }
@@ -48,7 +48,7 @@ type ConnectTimePlugin struct {
 }
 
 func NewConnectTimePlugin(_ driver_infrastructure.PluginService,
-	_ *utils.RWMap[string]) (*ConnectTimePlugin, error) {
+	_ *utils.RWMap[string, string]) (*ConnectTimePlugin, error) {
 	return &ConnectTimePlugin{}, nil
 }
 
@@ -62,7 +62,7 @@ func (d *ConnectTimePlugin) GetSubscribedMethods() []string {
 
 func (d *ConnectTimePlugin) Connect(
 	_ *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	start := time.Now()
@@ -76,7 +76,7 @@ func (d *ConnectTimePlugin) Connect(
 
 func (d *ConnectTimePlugin) ForceConnect(
 	_ *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	_ bool,
 	forceConnectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	start := time.Now()

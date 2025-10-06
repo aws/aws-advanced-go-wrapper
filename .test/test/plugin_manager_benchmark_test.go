@@ -33,7 +33,7 @@ var BENCHMARK_DEFAULT_NUM_PLUGINS = 10
 var PLUGIN_COUNTS = []int{0, 1, 2, 5, 10}
 
 func initPluginManagerWithPlugins(numPlugins int,
-	props *utils.RWMap[string]) driver_infrastructure.PluginManager {
+	props *utils.RWMap[string, string]) driver_infrastructure.PluginManager {
 	property_util.PLUGINS.Set(props, "")
 	property_util.ENABLE_TELEMETRY.Set(props, "true")
 	property_util.TELEMETRY_TRACES_BACKEND.Set(props, "none")
@@ -60,7 +60,7 @@ func initPluginManagerWithPlugins(numPlugins int,
 }
 
 func BenchmarkConnectWithPlugins(b *testing.B) {
-	props := utils.NewRWMap[string]()
+	props := utils.NewRWMap[string, string]()
 	host, _ := host_info_util.NewHostInfoBuilder().SetHost("host").SetPort(1234).Build()
 
 	for _, count := range PLUGIN_COUNTS {
@@ -84,7 +84,7 @@ func BenchmarkConnectWithPlugins(b *testing.B) {
 }
 
 func BenchmarkExecute(b *testing.B) {
-	props := utils.NewRWMap[string]()
+	props := utils.NewRWMap[string, string]()
 
 	for _, count := range PLUGIN_COUNTS {
 		count := count // capture range variable
@@ -129,7 +129,7 @@ func BenchmarkInitHostProvider(b *testing.B) {
 }
 
 func BenchmarkNotifyConnectionChanged(b *testing.B) {
-	props := utils.NewRWMap[string]()
+	props := utils.NewRWMap[string, string]()
 	hostChanged := map[driver_infrastructure.HostChangeOptions]bool{
 		driver_infrastructure.HOST_CHANGED: true,
 	}
@@ -152,7 +152,7 @@ func BenchmarkNotifyConnectionChanged(b *testing.B) {
 }
 
 func BenchmarkReleaseResources(b *testing.B) {
-	props := utils.NewRWMap[string]()
+	props := utils.NewRWMap[string, string]()
 	for _, count := range PLUGIN_COUNTS {
 		count := count // capture range variable
 		b.Run(fmt.Sprintf("%d_Plugins", count), func(b *testing.B) {

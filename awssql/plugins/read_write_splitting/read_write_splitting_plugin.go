@@ -33,7 +33,7 @@ import (
 type ReadWriteSplittingPluginFactory struct{}
 
 func (factory ReadWriteSplittingPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
-	props *utils.RWMap[string]) (driver_infrastructure.ConnectionPlugin, error) {
+	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
 	return NewReadWriteSplittingPlugin(pluginService, props), nil
 }
 
@@ -47,7 +47,7 @@ func NewReadWriteSplittingPluginFactory() driver_infrastructure.ConnectionPlugin
 type ReadWriteSplittingPlugin struct {
 	plugins.BaseConnectionPlugin
 	pluginService           driver_infrastructure.PluginService
-	props                   *utils.RWMap[string]
+	props                   *utils.RWMap[string, string]
 	readerSelectorStrategy  string
 	hostListProviderService driver_infrastructure.HostListProviderService
 	inReadWriteSplit        bool
@@ -58,7 +58,7 @@ type ReadWriteSplittingPlugin struct {
 }
 
 func NewReadWriteSplittingPlugin(pluginService driver_infrastructure.PluginService,
-	props *utils.RWMap[string]) *ReadWriteSplittingPlugin {
+	props *utils.RWMap[string, string]) *ReadWriteSplittingPlugin {
 	return &ReadWriteSplittingPlugin{
 		pluginService: pluginService,
 		props:         props,
@@ -82,7 +82,7 @@ func (r *ReadWriteSplittingPlugin) GetSubscribedMethods() []string {
 
 func (r *ReadWriteSplittingPlugin) Connect(
 	_ *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	if !r.pluginService.AcceptsStrategy(r.readerSelectorStrategy) {
@@ -121,7 +121,7 @@ func (r *ReadWriteSplittingPlugin) Connect(
 }
 
 func (r *ReadWriteSplittingPlugin) InitHostProvider(
-	_ *utils.RWMap[string],
+	_ *utils.RWMap[string, string],
 	hostListProviderService driver_infrastructure.HostListProviderService,
 	initHostProviderFunc func() error) error {
 	r.hostListProviderService = hostListProviderService

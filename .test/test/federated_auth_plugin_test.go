@@ -47,7 +47,7 @@ var federatedAuthHostInfo2, _ = host_info_util.NewHostInfoBuilder().SetHost("loc
 var mockIamTokenUtility = &MockIamTokenUtility{}
 var credentialsProviderFactory = &MockCredentialsProviderFactory{}
 
-func setup(props *utils.RWMap[string]) *federated_auth.FederatedAuthPlugin {
+func setup(props *utils.RWMap[string, string]) *federated_auth.FederatedAuthPlugin {
 	mockIamTokenUtility.Reset()
 	credentialsProviderFactory.getAwsCredentialsProviderError = nil
 	federated_auth.TokenCache.Clear()
@@ -71,8 +71,8 @@ func TestFederatedAuthCachedToken(t *testing.T) {
 		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
 	)
 
-	var resultProps *utils.RWMap[string]
-	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	connectFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -101,8 +101,8 @@ func TestFederatedAuthConnectWithRetry(t *testing.T) {
 	plugin := setup(props)
 	federated_auth.TokenCache.Put(key, "cachedToken", time.Minute)
 	connAttempts := 0
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		connAttempts++
 		cachedToken, ok := federated_auth.TokenCache.Get(key)
@@ -138,8 +138,8 @@ func TestFederatedAuthDoesNotRetryConnect(t *testing.T) {
 	plugin := setup(props)
 	testErr := errors.New("test")
 	connAttempts := 0
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		connAttempts++
 		cachedPassword, ok := federated_auth.TokenCache.Get(key)
@@ -183,8 +183,8 @@ func TestFederatedAuthExpiredCachedToken(t *testing.T) {
 		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
 	)
 
-	var resultProps *utils.RWMap[string]
-	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	connectFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -210,8 +210,8 @@ func TestFederatedAuthNoCachedToken(t *testing.T) {
 		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
 	)
 
-	var resultProps *utils.RWMap[string]
-	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	connectFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -241,8 +241,8 @@ func TestFederatedAuthSpecifiedIamHostPortRegion(t *testing.T) {
 		property_util.IAM_REGION.Name, expectedRegion,
 	)
 
-	var resultProps *utils.RWMap[string]
-	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	connectFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -270,8 +270,8 @@ func TestFederatedAuthIdpCredentialsFallback(t *testing.T) {
 		property_util.PASSWORD.Name, expectedPassword,
 	)
 
-	var resultProps *utils.RWMap[string]
-	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	connectFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -300,8 +300,8 @@ func TestFederatedAuthUsingIamHost(t *testing.T) {
 		property_util.IAM_HOST.Name, federatedAuthIamHost,
 	)
 
-	var resultProps *utils.RWMap[string]
-	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	connectFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -327,7 +327,7 @@ func TestFederatedAuthInvalidRegionWithoutHost(t *testing.T) {
 		property_util.DB_USER.Name, federatedAuthDbUser,
 	)
 
-	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	connectFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		return &MockConn{throwError: true}, nil
 	}
 
@@ -364,7 +364,7 @@ func TestFederatedAuthGenerateTokenFailure(t *testing.T) {
 		property_util.DB_USER.Name, federatedAuthDbUser,
 	)
 
-	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	connectFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		return &MockConn{throwError: true}, nil
 	}
 
@@ -387,7 +387,7 @@ func TestFederatedAuthGetAwsCredentialsProviderError(t *testing.T) {
 		property_util.DB_USER.Name, federatedAuthDbUser,
 	)
 
-	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	connectFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		return &MockConn{throwError: true}, nil
 	}
 
@@ -409,7 +409,7 @@ func TestFederatedMissingParams(t *testing.T) {
 		property_util.IAM_IDP_ARN.Name, "iamIdpArn",
 	)
 
-	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	connectFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		return &MockConn{throwError: true}, nil
 	}
 

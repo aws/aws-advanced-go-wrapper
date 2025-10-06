@@ -63,7 +63,7 @@ func TestBaseConnectionPlugin_Connect_DelegatesToConnectFunc(t *testing.T) {
 	expectedConn := &mock_database_sql_driver.MockConn{}
 	expectedErr := error(nil)
 
-	connectFunc := func(p *utils.RWMap[string]) (driver.Conn, error) {
+	connectFunc := func(p *utils.RWMap[string, string]) (driver.Conn, error) {
 		assert.Equal(t, props, p)
 		return expectedConn, expectedErr
 	}
@@ -82,7 +82,7 @@ func TestBaseConnectionPlugin_ForceConnect_DelegatesToConnectFunc(t *testing.T) 
 	expectedConn := &mock_database_sql_driver.MockConn{}
 	expectedErr := error(nil)
 
-	connectFunc := func(p *utils.RWMap[string]) (driver.Conn, error) {
+	connectFunc := func(p *utils.RWMap[string, string]) (driver.Conn, error) {
 		assert.Equal(t, props, p)
 		return expectedConn, expectedErr
 	}

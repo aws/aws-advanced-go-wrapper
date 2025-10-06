@@ -48,7 +48,7 @@ func (s *StaleDnsHelper) GetVerifiedConnection(
 	host string,
 	isInitialConnection bool,
 	hostListProviderService driver_infrastructure.HostListProviderService,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	conn, err := connectFunc(props)
 

@@ -39,7 +39,7 @@ type LimitlessRouterMonitorImpl struct {
 	routerCacheKey string
 	intervalMs     int
 	pluginService  driver_infrastructure.PluginService
-	props          *utils.RWMap[string]
+	props          *utils.RWMap[string, string]
 	queryHelper    LimitlessQueryHelper
 	monitoringConn driver.Conn
 	stopped        atomic.Bool
@@ -52,7 +52,7 @@ func NewLimitlessRouterMonitorImpl(
 	routerCache *utils.SlidingExpirationCache[[]*host_info_util.HostInfo],
 	routerCacheKey string,
 	intervalMs int,
-	props *utils.RWMap[string]) *LimitlessRouterMonitorImpl {
+	props *utils.RWMap[string, string]) *LimitlessRouterMonitorImpl {
 	monitor := &LimitlessRouterMonitorImpl{
 		queryHelper:    queryHelper,
 		pluginService:  pluginService,

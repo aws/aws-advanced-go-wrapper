@@ -26,13 +26,13 @@ import (
 )
 
 func TestNewRWMap(t *testing.T) {
-	rwMap := utils.NewRWMap[int]()
+	rwMap := utils.NewRWMap[string, int]()
 	assert.NotNil(t, rwMap, "NewRWMap should return a non-nil map")
 	assert.Equal(t, 0, rwMap.Size(), "New map should be empty")
 }
 
 func TestRWMapPutAndGet(t *testing.T) {
-	rwMap := utils.NewRWMap[string]()
+	rwMap := utils.NewRWMap[string, string]()
 
 	rwMap.Put("key1", "value1")
 	value, ok := rwMap.Get("key1")
@@ -55,14 +55,14 @@ func TestRWMapPutAndGet(t *testing.T) {
 	assert.Equal(t, "empty-key-value", value, "Should store and retrieve empty key value")
 
 	// Test nil value (for pointer types)
-	ptrMap := utils.NewRWMap[*string]()
+	ptrMap := utils.NewRWMap[string, *string]()
 	ptrMap.Put("nil-value", nil)
 	ptrValue, ok := ptrMap.Get("nil-value")
 	assert.True(t, ok, "Should handle nil pointer value")
 	assert.Nil(t, ptrValue, "Should store and retrieve nil pointer")
 
 	// Test zero value
-	intMap := utils.NewRWMap[int]()
+	intMap := utils.NewRWMap[string, int]()
 	intMap.Put("zero", 0)
 	intValue, ok := intMap.Get("zero")
 	assert.True(t, ok, "Should handle zero value")
@@ -80,7 +80,7 @@ func TestRWMapPutAndGet(t *testing.T) {
 }
 
 func TestRWMapComputeIfAbsent(t *testing.T) {
-	rwMap := utils.NewRWMap[int]()
+	rwMap := utils.NewRWMap[string, int]()
 
 	computeCallCount := 0
 	computeFunc := func() int {
@@ -106,7 +106,7 @@ func TestRWMapComputeIfAbsent(t *testing.T) {
 }
 
 func TestRWMapPutIfAbsent(t *testing.T) {
-	rwMap := utils.NewRWMap[string]()
+	rwMap := utils.NewRWMap[string, string]()
 
 	rwMap.PutIfAbsent("key1", "value1")
 	value, ok := rwMap.Get("key1")
@@ -127,7 +127,7 @@ func TestRWMapPutIfAbsent(t *testing.T) {
 }
 
 func TestRWMapRemove(t *testing.T) {
-	rwMap := utils.NewRWMap[string]()
+	rwMap := utils.NewRWMap[string, string]()
 
 	rwMap.Put("key1", "value1")
 	rwMap.Put("key2", "value2")
@@ -153,7 +153,7 @@ func TestRWMapRemove(t *testing.T) {
 }
 
 func TestRWMapClear(t *testing.T) {
-	rwMap := utils.NewRWMap[int]()
+	rwMap := utils.NewRWMap[string, int]()
 
 	rwMap.Put("key1", 1)
 	rwMap.Put("key2", 2)
@@ -180,7 +180,7 @@ func TestRWMapClearWithDisposalFunc(t *testing.T) {
 		disposedValues = append(disposedValues, value)
 		return true
 	}
-	rwMap := utils.NewRWMapWithDisposalFunc[int](disposalFunc)
+	rwMap := utils.NewRWMapWithDisposalFunc[string, int](disposalFunc)
 
 	rwMap.Put("key1", 1)
 	rwMap.Put("key2", 2)
@@ -197,7 +197,7 @@ func TestRWMapClearWithDisposalFunc(t *testing.T) {
 }
 
 func TestRWMapGetAllEntries(t *testing.T) {
-	rwMap := utils.NewRWMap[string]()
+	rwMap := utils.NewRWMap[string, string]()
 
 	entries := rwMap.GetAllEntries()
 	assert.Empty(t, entries, "Empty map should return empty entries")
@@ -219,12 +219,12 @@ func TestRWMapGetAllEntries(t *testing.T) {
 }
 
 func TestRWMapReplaceCacheWithCopy(t *testing.T) {
-	sourceMap := utils.NewRWMap[int]()
+	sourceMap := utils.NewRWMap[string, int]()
 	sourceMap.Put("key1", 1)
 	sourceMap.Put("key2", 2)
 	sourceMap.Put("key3", 3)
 
-	targetMap := utils.NewRWMap[int]()
+	targetMap := utils.NewRWMap[string, int]()
 	targetMap.Put("oldkey1", 10)
 	targetMap.Put("oldkey2", 20)
 
@@ -253,7 +253,7 @@ func TestRWMapReplaceCacheWithCopy(t *testing.T) {
 }
 
 func TestRWMapSize(t *testing.T) {
-	rwMap := utils.NewRWMap[string]()
+	rwMap := utils.NewRWMap[string, string]()
 
 	assert.Equal(t, 0, rwMap.Size(), "Empty map should have size 0")
 
@@ -277,7 +277,7 @@ func TestRWMapSize(t *testing.T) {
 }
 
 func TestRWMapConcurrency(t *testing.T) {
-	rwMap := utils.NewRWMap[int]()
+	rwMap := utils.NewRWMap[string, int]()
 	numGoroutines := 100
 	numOperationsPerGoroutine := 100
 

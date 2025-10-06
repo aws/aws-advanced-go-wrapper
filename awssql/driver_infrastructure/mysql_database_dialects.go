@@ -66,7 +66,7 @@ func (m *MySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 }
 
 func (m *MySQLDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	hostListProviderService HostListProviderService,
 	_ PluginService) HostListProvider {
 	return NewDsnHostListProvider(props, hostListProviderService)
@@ -235,7 +235,7 @@ func (m *MySQLTopologyAwareDatabaseDialect) GetWriterHostName(_ driver.Conn) (st
 }
 
 func (m *MySQLTopologyAwareDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
 	return m.getTopologyAwareHostListProvider(m, props, hostListProviderService, pluginService)
@@ -243,7 +243,7 @@ func (m *MySQLTopologyAwareDatabaseDialect) GetHostListProvider(
 
 func (m *MySQLTopologyAwareDatabaseDialect) getTopologyAwareHostListProvider(
 	dialect TopologyAwareDialect,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
 	pluginsProp := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PLUGINS)
@@ -295,7 +295,7 @@ func (m *AuroraMySQLDatabaseDialect) GetWriterHostName(conn driver.Conn) (string
 }
 
 func (m *AuroraMySQLDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
 	return m.getTopologyAwareHostListProvider(m, props, hostListProviderService, pluginService)
@@ -552,7 +552,7 @@ func (r *RdsMultiAzClusterMySQLDatabaseDialect) getHostIdOfCurrentConnection(con
 }
 
 func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
 	return r.getTopologyAwareHostListProvider(r, props, hostListProviderService, pluginService)

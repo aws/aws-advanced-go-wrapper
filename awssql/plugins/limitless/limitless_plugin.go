@@ -33,7 +33,7 @@ type LimitlessPluginFactory struct {
 }
 
 func (factory LimitlessPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
-	props *utils.RWMap[string]) (driver_infrastructure.ConnectionPlugin, error) {
+	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
 	return NewLimitlessPlugin(pluginService, props)
 }
 
@@ -46,11 +46,11 @@ func NewLimitlessPluginFactory() driver_infrastructure.ConnectionPluginFactory {
 type LimitlessPlugin struct {
 	plugins.BaseConnectionPlugin
 	pluginService driver_infrastructure.PluginService
-	props         *utils.RWMap[string]
+	props         *utils.RWMap[string, string]
 	routerService LimitlessRouterService
 }
 
-func NewLimitlessPlugin(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string]) (*LimitlessPlugin, error) {
+func NewLimitlessPlugin(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string, string]) (*LimitlessPlugin, error) {
 	validateShardGroupUrl := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.LIMITLESS_USE_SHARD_GROUP_URL)
 	if validateShardGroupUrl {
 		host := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.HOST)
@@ -67,7 +67,7 @@ func NewLimitlessPlugin(pluginService driver_infrastructure.PluginService, props
 }
 
 // Note: This method is for testing purposes.
-func NewLimitlessPluginWithRouterService(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string],
+func NewLimitlessPluginWithRouterService(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string, string],
 	routerService LimitlessRouterService) *LimitlessPlugin {
 	return &LimitlessPlugin{
 		pluginService: pluginService,
@@ -86,7 +86,7 @@ func (plugin *LimitlessPlugin) GetSubscribedMethods() []string {
 
 func (plugin *LimitlessPlugin) Connect(
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	var conn driver.Conn = nil

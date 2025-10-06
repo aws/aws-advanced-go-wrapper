@@ -40,7 +40,7 @@ var DEFAULT_STATUS_CACHE_EXPIRE_NANO = 60 * time.Minute
 
 type PluginServiceImpl struct {
 	pluginManager             driver_infrastructure.PluginManager
-	props                     *utils.RWMap[string]
+	props                     *utils.RWMap[string, string]
 	currentConnection         *driver.Conn
 	hostListProvider          driver_infrastructure.HostListProvider
 	currentHostInfo           *host_info_util.HostInfo
@@ -59,7 +59,7 @@ type PluginServiceImpl struct {
 func NewPluginServiceImpl(
 	pluginManager driver_infrastructure.PluginManager,
 	driverDialect driver_infrastructure.DriverDialect,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	dsn string) (driver_infrastructure.PluginService, error) {
 	dialectProvider := driver_infrastructure.DialectManager{}
 	dialect, err := dialectProvider.GetDialect(dsn, props)
@@ -91,7 +91,7 @@ func (p *PluginServiceImpl) SetHostListProvider(hostListProvider driver_infrastr
 	p.hostListProvider = hostListProvider
 }
 
-func (p *PluginServiceImpl) CreateHostListProvider(props *utils.RWMap[string]) driver_infrastructure.HostListProvider {
+func (p *PluginServiceImpl) CreateHostListProvider(props *utils.RWMap[string, string]) driver_infrastructure.HostListProvider {
 	return p.GetDialect().GetHostListProvider(props, driver_infrastructure.HostListProviderService(p), p)
 }
 
@@ -418,11 +418,14 @@ func (p *PluginServiceImpl) updateHostAvailability(hosts []*host_info_util.HostI
 	}
 }
 
-func (p *PluginServiceImpl) Connect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string], pluginToSkip driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
+func (p *PluginServiceImpl) Connect(
+	hostInfo *host_info_util.HostInfo,
+	props *utils.RWMap[string, string],
+	pluginToSkip driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
 	return p.pluginManager.Connect(hostInfo, props, p.currentConnection == nil, pluginToSkip)
 }
 
-func (p *PluginServiceImpl) ForceConnect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string]) (driver.Conn, error) {
+func (p *PluginServiceImpl) ForceConnect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string]) (driver.Conn, error) {
 	return p.pluginManager.ForceConnect(hostInfo, props, p.currentConnection == nil)
 }
 
@@ -503,7 +506,7 @@ func (p *PluginServiceImpl) GetConnectionProvider() driver_infrastructure.Connec
 	return p.pluginManager.GetDefaultConnectionProvider()
 }
 
-func (p *PluginServiceImpl) GetProperties() *utils.RWMap[string] {
+func (p *PluginServiceImpl) GetProperties() *utils.RWMap[string, string] {
 	return p.props
 }
 

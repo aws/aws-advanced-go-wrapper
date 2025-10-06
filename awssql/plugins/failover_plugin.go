@@ -62,7 +62,9 @@ type ReaderFailoverResult struct {
 
 type FailoverPluginFactory struct{}
 
-func (f FailoverPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string]) (driver_infrastructure.ConnectionPlugin, error) {
+func (f FailoverPluginFactory) GetInstance(
+	pluginService driver_infrastructure.PluginService,
+	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
 	return NewFailoverPlugin(pluginService, props)
 }
 
@@ -75,7 +77,7 @@ func NewFailoverPluginFactory() driver_infrastructure.ConnectionPluginFactory {
 type FailoverPlugin struct {
 	pluginService                              driver_infrastructure.PluginService
 	hostListProviderService                    driver_infrastructure.HostListProviderService
-	props                                      *utils.RWMap[string]
+	props                                      *utils.RWMap[string, string]
 	failoverTimeoutMsSetting                   int
 	failoverReaderHostSelectorStrategySetting  string
 	FailoverMode                               FailoverMode
@@ -93,7 +95,7 @@ type FailoverPlugin struct {
 	BaseConnectionPlugin
 }
 
-func NewFailoverPlugin(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string]) (*FailoverPlugin, error) {
+func NewFailoverPlugin(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string, string]) (*FailoverPlugin, error) {
 	failoverTimeoutMsSetting, err := property_util.GetPositiveIntProperty(props, property_util.FAILOVER_TIMEOUT_MS)
 	if err != nil {
 		return nil, err
@@ -158,7 +160,7 @@ func (p *FailoverPlugin) GetSubscribedMethods() []string {
 }
 
 func (p *FailoverPlugin) InitHostProvider(
-	_ *utils.RWMap[string],
+	_ *utils.RWMap[string, string],
 	hostListProviderService driver_infrastructure.HostListProviderService,
 	initHostProviderFunc func() error) error {
 	p.hostListProviderService = hostListProviderService
@@ -167,7 +169,7 @@ func (p *FailoverPlugin) InitHostProvider(
 
 func (p *FailoverPlugin) Connect(
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	p.InitFailoverMode()

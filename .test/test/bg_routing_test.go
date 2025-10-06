@@ -348,7 +348,7 @@ func TestSuspendUntilCorrespondingHostFoundConnectRoutingApply(t *testing.T) {
 	})
 
 	t.Run("TimeoutWaitingForCorrespondingHost", func(t *testing.T) {
-		correspondingHosts := utils.NewRWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]()
+		correspondingHosts := utils.NewRWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]()
 		correspondingHosts.Put("test-host", utils.NewPair(hostInfo, &host_info_util.HostInfo{}))
 		bgCompletedStatus := driver_infrastructure.NewBgStatus(bgId, driver_infrastructure.POST, nil, nil, nil, correspondingHosts)
 
@@ -368,7 +368,7 @@ func TestSuspendUntilCorrespondingHostFoundConnectRoutingApply(t *testing.T) {
 		assert.True(t, elapsed >= 45*time.Millisecond, "Should sleep for at least the requested duration")
 	})
 	t.Run("FindCorrespondingHost", func(t *testing.T) {
-		correspondingHosts := utils.NewRWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]()
+		correspondingHosts := utils.NewRWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]()
 		correspondingHosts.Put("test-host", utils.NewPair(hostInfo, hostInfo))
 		bgCompletedStatus := driver_infrastructure.NewBgStatus(bgId, driver_infrastructure.POST, nil, nil, nil, correspondingHosts)
 

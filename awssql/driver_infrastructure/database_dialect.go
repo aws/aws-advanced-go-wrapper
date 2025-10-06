@@ -29,7 +29,7 @@ type DatabaseDialect interface {
 	GetServerVersionQuery() string
 	GetDialectUpdateCandidates() []string
 	IsDialect(conn driver.Conn) bool
-	GetHostListProvider(props *utils.RWMap[string], hostListProviderService HostListProviderService, pluginService PluginService) HostListProvider
+	GetHostListProvider(props *utils.RWMap[string, string], hostListProviderService HostListProviderService, pluginService PluginService) HostListProvider
 	DoesStatementSetAutoCommit(statement string) (bool, bool)
 	DoesStatementSetReadOnly(statement string) (bool, bool)
 	DoesStatementSetCatalog(statement string) (string, bool)

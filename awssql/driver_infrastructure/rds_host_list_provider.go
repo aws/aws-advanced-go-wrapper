@@ -36,7 +36,7 @@ import (
 func NewRdsHostListProvider(
 	hostListProviderService HostListProviderService,
 	databaseDialect TopologyAwareDialect,
-	properties *utils.RWMap[string],
+	properties *utils.RWMap[string, string],
 	queryForTopologyFunc func(conn driver.Conn) ([]*host_info_util.HostInfo, error),
 	clusterIdChangedFunc func(oldClusterId string)) *RdsHostListProvider {
 	r := &RdsHostListProvider{
@@ -62,7 +62,7 @@ var TopologyCache = utils.NewCache[[]*host_info_util.HostInfo]()
 type RdsHostListProvider struct {
 	hostListProviderService HostListProviderService
 	databaseDialect         TopologyAwareDialect
-	properties              *utils.RWMap[string]
+	properties              *utils.RWMap[string, string]
 	isInitialized           bool
 	// The following properties are initialized from the above in init().
 	initialHostList         []*host_info_util.HostInfo

@@ -23,7 +23,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
-func GetDatabaseEngine(props *utils.RWMap[string]) (driver_infrastructure.DatabaseEngine, error) {
+func GetDatabaseEngine(props *utils.RWMap[string, string]) (driver_infrastructure.DatabaseEngine, error) {
 	if property_util.DRIVER_PROTOCOL.Get(props) == property_util.MYSQL_DRIVER_PROTOCOL {
 		return driver_infrastructure.MYSQL, nil
 	} else if property_util.DRIVER_PROTOCOL.Get(props) == property_util.PGX_DRIVER_PROTOCOL {

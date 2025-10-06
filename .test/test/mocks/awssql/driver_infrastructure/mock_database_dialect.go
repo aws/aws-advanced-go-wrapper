@@ -171,7 +171,7 @@ func (mr *MockDatabaseDialectMockRecorder) GetHostAliasQuery() *gomock.Call {
 }
 
 // GetHostListProvider mocks base method.
-func (m *MockDatabaseDialect) GetHostListProvider(arg0 *utils.RWMap[string], arg1 driver_infrastructure.HostListProviderService, arg2 driver_infrastructure.PluginService) driver_infrastructure.HostListProvider {
+func (m *MockDatabaseDialect) GetHostListProvider(arg0 *utils.RWMap[string, string], arg1 driver_infrastructure.HostListProviderService, arg2 driver_infrastructure.PluginService) driver_infrastructure.HostListProvider {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetHostListProvider", arg0, arg1, arg2)
 	ret0, _ := ret[0].(driver_infrastructure.HostListProvider)
@@ -428,7 +428,7 @@ func (mr *MockTopologyAwareDialectMockRecorder) GetHostAliasQuery() *gomock.Call
 }
 
 // GetHostListProvider mocks base method.
-func (m *MockTopologyAwareDialect) GetHostListProvider(arg0 *utils.RWMap[string], arg1 driver_infrastructure.HostListProviderService, arg2 driver_infrastructure.PluginService) driver_infrastructure.HostListProvider {
+func (m *MockTopologyAwareDialect) GetHostListProvider(arg0 *utils.RWMap[string, string], arg1 driver_infrastructure.HostListProviderService, arg2 driver_infrastructure.PluginService) driver_infrastructure.HostListProvider {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetHostListProvider", arg0, arg1, arg2)
 	ret0, _ := ret[0].(driver_infrastructure.HostListProvider)
@@ -743,7 +743,7 @@ func (mr *MockAuroraLimitlessDialectMockRecorder) GetHostAliasQuery() *gomock.Ca
 }
 
 // GetHostListProvider mocks base method.
-func (m *MockAuroraLimitlessDialect) GetHostListProvider(arg0 *utils.RWMap[string], arg1 driver_infrastructure.HostListProviderService, arg2 driver_infrastructure.PluginService) driver_infrastructure.HostListProvider {
+func (m *MockAuroraLimitlessDialect) GetHostListProvider(arg0 *utils.RWMap[string, string], arg1 driver_infrastructure.HostListProviderService, arg2 driver_infrastructure.PluginService) driver_infrastructure.HostListProvider {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetHostListProvider", arg0, arg1, arg2)
 	ret0, _ := ret[0].(driver_infrastructure.HostListProvider)
@@ -1028,7 +1028,7 @@ func (mr *MockBlueGreenDialectMockRecorder) GetHostAliasQuery() *gomock.Call {
 }
 
 // GetHostListProvider mocks base method.
-func (m *MockBlueGreenDialect) GetHostListProvider(arg0 *utils.RWMap[string], arg1 driver_infrastructure.HostListProviderService, arg2 driver_infrastructure.PluginService) driver_infrastructure.HostListProvider {
+func (m *MockBlueGreenDialect) GetHostListProvider(arg0 *utils.RWMap[string, string], arg1 driver_infrastructure.HostListProviderService, arg2 driver_infrastructure.PluginService) driver_infrastructure.HostListProvider {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetHostListProvider", arg0, arg1, arg2)
 	ret0, _ := ret[0].(driver_infrastructure.HostListProvider)

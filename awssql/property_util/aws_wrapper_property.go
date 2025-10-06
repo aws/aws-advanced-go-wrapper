@@ -55,7 +55,7 @@ type AwsWrapperProperty struct {
 	wrapperPropertyType WrapperPropertyType
 }
 
-func (prop *AwsWrapperProperty) Get(props *utils.RWMap[string]) string {
+func (prop *AwsWrapperProperty) Get(props *utils.RWMap[string, string]) string {
 	if props == nil {
 		return prop.defaultValue
 	}
@@ -74,11 +74,11 @@ func (prop *AwsWrapperProperty) GetFromMap(props map[string]string) string {
 	return result
 }
 
-func (prop *AwsWrapperProperty) Set(props *utils.RWMap[string], val string) {
+func (prop *AwsWrapperProperty) Set(props *utils.RWMap[string, string], val string) {
 	props.Put(prop.Name, val)
 }
 
-func GetVerifiedWrapperPropertyValue[T any](props *utils.RWMap[string], property AwsWrapperProperty) T {
+func GetVerifiedWrapperPropertyValue[T any](props *utils.RWMap[string, string], property AwsWrapperProperty) T {
 	propValue := property.Get(props)
 	return convertValue[T](propValue, property)
 }
@@ -117,7 +117,7 @@ func convertValue[T any](propValue string, property AwsWrapperProperty) T {
 	return result
 }
 
-func GetPositiveIntProperty(props *utils.RWMap[string], property AwsWrapperProperty) (int, error) {
+func GetPositiveIntProperty(props *utils.RWMap[string, string], property AwsWrapperProperty) (int, error) {
 	val := GetVerifiedWrapperPropertyValue[int](props, property)
 	if val < 0 {
 		return 0, error_util.NewGenericAwsWrapperError(error_util.GetMessage("AwsWrapperProperty.requiresNonNegativeIntValue", property.Name))
@@ -125,7 +125,7 @@ func GetPositiveIntProperty(props *utils.RWMap[string], property AwsWrapperPrope
 	return val, nil
 }
 
-func GetHttpTimeoutValue(props *utils.RWMap[string]) int {
+func GetHttpTimeoutValue(props *utils.RWMap[string, string]) int {
 	val := GetVerifiedWrapperPropertyValue[int](props, HTTP_TIMEOUT_MS)
 	if val <= 0 {
 		slog.Error(error_util.GetMessage("AwsWrapperProperty.noTimeoutValue", HTTP_TIMEOUT_MS.Name, val))
@@ -133,7 +133,7 @@ func GetHttpTimeoutValue(props *utils.RWMap[string]) int {
 	return val
 }
 
-func GetExpirationValue(props *utils.RWMap[string], property AwsWrapperProperty) int {
+func GetExpirationValue(props *utils.RWMap[string, string], property AwsWrapperProperty) int {
 	val := GetVerifiedWrapperPropertyValue[int](props, property)
 	if val <= 0 {
 		slog.Error(error_util.GetMessage("AwsWrapperProperty.noExpirationValue", property.Name, val))
@@ -141,7 +141,7 @@ func GetExpirationValue(props *utils.RWMap[string], property AwsWrapperProperty)
 	return val
 }
 
-func GetRefreshRateValue(props *utils.RWMap[string], property AwsWrapperProperty) int {
+func GetRefreshRateValue(props *utils.RWMap[string, string], property AwsWrapperProperty) int {
 	val := GetVerifiedWrapperPropertyValue[int](props, property)
 	if val <= 0 {
 		slog.Error(error_util.GetMessage("AwsWrapperProperty.noRefreshRateValue", property.Name, val))

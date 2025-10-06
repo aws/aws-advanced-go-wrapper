@@ -36,11 +36,11 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
-type BlueGreenProviderSupplier = func(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string], bgdId string) *BlueGreenStatusProvider
+type BlueGreenProviderSupplier = func(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string, string], bgdId string) *BlueGreenStatusProvider
 
 type BlueGreenStatusProvider struct {
 	pluginService                           driver_infrastructure.PluginService
-	props                                   *utils.RWMap[string]
+	props                                   *utils.RWMap[string, string]
 	bgdId                                   string
 	statusCheckIntervalMap                  map[driver_infrastructure.BlueGreenIntervalRate]int
 	switchoverDuration                      time.Duration
@@ -53,12 +53,12 @@ type BlueGreenStatusProvider struct {
 	greenDnsRemoved                         bool
 	greenTopologyChanged                    bool
 	monitors                                []*BlueGreenStatusMonitor
-	correspondingHosts                      *utils.RWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]
-	roleByHost                              *utils.RWMap[driver_infrastructure.BlueGreenRole]
-	phaseTimeNano                           *utils.RWMap[PhaseTimeInfo]
-	iamHostSuccessfulConnects               *utils.RWMap[[]string]
-	hostIpAddresses                         *utils.RWMap[string]
-	greenHostChangeNameTimes                *utils.RWMap[time.Time]
+	correspondingHosts                      *utils.RWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]
+	roleByHost                              *utils.RWMap[string, driver_infrastructure.BlueGreenRole]
+	phaseTimeNano                           *utils.RWMap[string, PhaseTimeInfo]
+	iamHostSuccessfulConnects               *utils.RWMap[string, []string]
+	hostIpAddresses                         *utils.RWMap[string, string]
+	greenHostChangeNameTimes                *utils.RWMap[string, time.Time]
 	interimStatuses                         []BlueGreenInterimStatus
 	interimStatusHashes                     []uint64
 	lastContextHash                         uint64
@@ -66,7 +66,7 @@ type BlueGreenStatusProvider struct {
 	processStatusLock                       sync.Mutex
 }
 
-func NewBlueGreenStatusProvider(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string], bgId string) *BlueGreenStatusProvider {
+func NewBlueGreenStatusProvider(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string, string], bgId string) *BlueGreenStatusProvider {
 	statusCheckIntervalMap := map[driver_infrastructure.BlueGreenIntervalRate]int{
 		driver_infrastructure.BASELINE:  property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.BG_INTERVAL_BASELINE_MS),
 		driver_infrastructure.INCREASED: property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.BG_INTERVAL_INCREASED_MS),
@@ -83,12 +83,12 @@ func NewBlueGreenStatusProvider(pluginService driver_infrastructure.PluginServic
 		switchoverDuration:                      time.Millisecond * time.Duration(switchoverTimeMs),
 		latestStatusPhase:                       driver_infrastructure.NOT_CREATED,
 		monitors:                                []*BlueGreenStatusMonitor{nil, nil},
-		correspondingHosts:                      utils.NewRWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]](),
-		iamHostSuccessfulConnects:               utils.NewRWMap[[]string](),
-		hostIpAddresses:                         utils.NewRWMap[string](),
-		greenHostChangeNameTimes:                utils.NewRWMap[time.Time](),
-		roleByHost:                              utils.NewRWMap[driver_infrastructure.BlueGreenRole](),
-		phaseTimeNano:                           utils.NewRWMap[PhaseTimeInfo](),
+		correspondingHosts:                      utils.NewRWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]](),
+		iamHostSuccessfulConnects:               utils.NewRWMap[string, []string](),
+		hostIpAddresses:                         utils.NewRWMap[string, string](),
+		greenHostChangeNameTimes:                utils.NewRWMap[string, time.Time](),
+		roleByHost:                              utils.NewRWMap[string, driver_infrastructure.BlueGreenRole](),
+		phaseTimeNano:                           utils.NewRWMap[string, PhaseTimeInfo](),
 		interimStatuses:                         []BlueGreenInterimStatus{{}, {}},
 		interimStatusHashes:                     []uint64{0, 0},
 		lastContextHash:                         0,
@@ -136,7 +136,7 @@ func (b *BlueGreenStatusProvider) initMonitoring() {
 		b.PrepareStatus)
 }
 
-func (b *BlueGreenStatusProvider) GetMonitoringProperties() *utils.RWMap[string] {
+func (b *BlueGreenStatusProvider) GetMonitoringProperties() *utils.RWMap[string, string] {
 	monitoringConnectionProps := utils.NewRWMapFromCopy(b.props)
 	for propKey, propValue := range b.props.GetAllEntries() {
 		if strings.HasPrefix(propKey, property_util.BG_PROPERTY_PREFIX) {
@@ -706,7 +706,7 @@ func (b *BlueGreenStatusProvider) GetStatusOfCompleted() driver_infrastructure.B
 		[]driver_infrastructure.ConnectRouting{},
 		[]driver_infrastructure.ExecuteRouting{},
 		b.roleByHost,
-		utils.NewRWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]](),
+		utils.NewRWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]](),
 	)
 }
 

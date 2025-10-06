@@ -43,7 +43,7 @@ type OktaAuthPluginFactory struct{}
 
 func (o OktaAuthPluginFactory) GetInstance(
 	pluginService driver_infrastructure.PluginService,
-	_ *utils.RWMap[string],
+	_ *utils.RWMap[string, string],
 ) (driver_infrastructure.ConnectionPlugin, error) {
 	providerFactory := NewOktaCredentialsProviderFactory(auth_helpers.GetBasicHttpClient, auth_helpers.NewAwsStsClient, pluginService)
 
@@ -94,7 +94,7 @@ func (o *OktaAuthPlugin) GetSubscribedMethods() []string {
 
 func (o *OktaAuthPlugin) Connect(
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	return o.connectInternal(hostInfo, props, connectFunc)
@@ -102,7 +102,7 @@ func (o *OktaAuthPlugin) Connect(
 
 func (o *OktaAuthPlugin) ForceConnect(
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	return o.connectInternal(hostInfo, props, connectFunc)
@@ -110,7 +110,7 @@ func (o *OktaAuthPlugin) ForceConnect(
 
 func (o *OktaAuthPlugin) connectInternal(
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	property_util.CheckIdpCredentialsWithFallback(property_util.IDP_USERNAME, property_util.IDP_PASSWORD, props)
 
@@ -173,7 +173,7 @@ func (o *OktaAuthPlugin) connectInternal(
 }
 
 func (o *OktaAuthPlugin) updateAuthenticationToken(
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	region region_util.Region,
 	cacheKey string,
 	host string,

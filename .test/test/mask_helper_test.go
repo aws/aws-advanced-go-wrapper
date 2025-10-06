@@ -45,7 +45,7 @@ func TestMaskProperties_WithNoSensitiveProps(t *testing.T) {
 }
 
 func TestMaskProperties_WithEmptyProps(t *testing.T) {
-	props := utils.NewRWMap[string]()
+	props := utils.NewRWMap[string, string]()
 	maskedProps := property_util.MaskProperties(props)
 	assert.Equal(t, 0, len(maskedProps))
 }

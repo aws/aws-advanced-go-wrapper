@@ -38,7 +38,7 @@ import (
 var pgLimitlessTestDsn = "user=someUser password=somePassword host=mydb-1-db-shard-group-1.shardgrp-xyz.us-east-2.rds.amazonaws.com port=5432 database=postgres_limitless " +
 	"plugins=limitless"
 
-func beforeLimitlessPluginConnectTest(props *utils.RWMap[string]) *plugin_helpers.PluginServiceImpl {
+func beforeLimitlessPluginConnectTest(props *utils.RWMap[string, string]) *plugin_helpers.PluginServiceImpl {
 	mockTargetDriver := &MockTargetDriver{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	mockPluginManager := plugin_helpers.NewPluginManagerImpl(
@@ -150,7 +150,7 @@ func TestLimitlessPluginConnectGivenDialectRecoverySuccess(t *testing.T) {
 	mockConn := &MockConn{}
 	mockLimitlessRouterService := &MockLimitlessRouterService{}
 
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		pluginServiceImpl.SetDialect(&driver_infrastructure.AuroraPgDatabaseDialect{})
 		return mockConn, nil
 	}
@@ -184,7 +184,7 @@ func TestLimitlessPluginConnectGivenDialectRecoveryFailure(t *testing.T) {
 	mockConn := &MockConn{}
 	mockLimitlessRouterService := &MockLimitlessRouterService{}
 
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		return mockConn, nil
 	}
 
@@ -244,7 +244,7 @@ func TestLimitlessPluginConnectGivenStartMonitoringThrows(t *testing.T) {
 
 	startMonitoringErrorString := "StartMonitoringError"
 	mockLimitlessRouterService := &MockLimitlessRouterService{}
-	mockLimitlessRouterService.SetStartMonitoringFunc(func(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string], intervalMs int) error {
+	mockLimitlessRouterService.SetStartMonitoringFunc(func(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string], intervalMs int) error {
 		return errors.New(startMonitoringErrorString)
 	})
 
@@ -302,7 +302,7 @@ func TestLimitlessPluginConnectGivenEstablishConnectionThrows(t *testing.T) {
 }
 
 type establishConnectionFuncType func(context *limitless.LimitlessConnectionContext) error
-type startMonitoringFuncType func(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string], intervalMs int) error
+type startMonitoringFuncType func(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string], intervalMs int) error
 type MockLimitlessRouterService struct {
 	establishConnectionFunc      establishConnectionFuncType
 	startMonitoringFunc          startMonitoringFuncType
@@ -326,7 +326,7 @@ func (m *MockLimitlessRouterService) SetStartMonitoringFunc(fn startMonitoringFu
 	m.startMonitoringFunc = fn
 }
 
-func (m *MockLimitlessRouterService) StartMonitoring(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string], intervalMs int) error {
+func (m *MockLimitlessRouterService) StartMonitoring(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string], intervalMs int) error {
 	m.startMonitoringCallCount++
 	if m.startMonitoringFunc == nil {
 		return nil
@@ -364,7 +364,7 @@ func TestLimitlessMonitorServiceEstablishConnection(t *testing.T) {
 
 	host, _ := host_info_util.NewHostInfoBuilder().SetHost("host1").SetWeight(9).Build()
 	mockConn := &MockConn{}
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		return mockConn, nil
 	}
 	context := limitless.NewConnectionContext(*host, props, nil, mockConnFunc, nil, nil)
@@ -402,7 +402,7 @@ func TestLimitlessMonitorServiceEstablishConnect_GivenEmptyCacheAndNoWaitForRout
 
 	host, _ := host_info_util.NewHostInfoBuilder().SetHost("host1").SetWeight(9).Build()
 	mockConn := &MockConn{}
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		return mockConn, nil
 	}
 	context := limitless.NewConnectionContext(*host, props, nil, mockConnFunc, nil, nil)
@@ -443,7 +443,7 @@ func TestLimitlessMonitorServiceEstablishConnect_MaxRetries(t *testing.T) {
 
 	host, _ := host_info_util.NewHostInfoBuilder().SetHost("host1").SetWeight(9).Build()
 	mockConn := &MockConn{}
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		return mockConn, nil
 	}
 	context := limitless.NewConnectionContext(*host, props, nil, mockConnFunc, nil, nil)
@@ -466,7 +466,7 @@ type QueryForLimitlessRoutersFuncType func() (hostInfoList []*host_info_util.Hos
 func (queryHelper *MockLimitlessQueryHelper) QueryForLimitlessRouters(
 	_ driver.Conn,
 	_ int,
-	_ *utils.RWMap[string]) (hostInfoList []*host_info_util.HostInfo, err error) {
+	_ *utils.RWMap[string, string]) (hostInfoList []*host_info_util.HostInfo, err error) {
 	queryHelper.queryForLimitlessRoutersCallCount++
 	if queryHelper.queryForLimitlessRoutersFunc == nil {
 		return nil, errors.New("someError")

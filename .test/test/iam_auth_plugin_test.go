@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/auth-helpers"
+	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
 	awssql "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -30,13 +30,13 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/iam"
-	"github.com/aws/aws-advanced-go-wrapper/mysql-driver"
+	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 )
 
-func beforeIamAuthPluginTests(props *utils.RWMap[string]) (driver_infrastructure.PluginService, auth_helpers.IamTokenUtility) {
+func beforeIamAuthPluginTests(props *utils.RWMap[string, string]) (driver_infrastructure.PluginService, auth_helpers.IamTokenUtility) {
 	awssql.ClearCaches()
 	return CreateMockPluginService(props), &MockIamTokenUtility{}
 }
@@ -44,8 +44,8 @@ func beforeIamAuthPluginTests(props *utils.RWMap[string]) (driver_infrastructure
 func TestIamAuthPluginConnect(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -73,8 +73,8 @@ func TestIamAuthPluginConnect(t *testing.T) {
 func TestIamAuthPluginConnectWithIamProps(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -105,7 +105,7 @@ func TestIamAuthPluginConnectWithIamProps(t *testing.T) {
 func TestIamAuthPluginConnectInvalidRegionError(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("mydatabasewithnoregion.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 
 	props := MakeMapFromKeysAndVals(
 		property_util.USER.Name, "someUser",
@@ -125,7 +125,7 @@ func TestIamAuthPluginConnectInvalidRegionError(t *testing.T) {
 func TestIamAuthPluginConnectPopulatesEmptyTokenCache(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 
 	props := MakeMapFromKeysAndVals(
 		property_util.USER.Name, "someUser",
@@ -146,7 +146,7 @@ func TestIamAuthPluginConnectPopulatesEmptyTokenCache(t *testing.T) {
 func TestIamAuthPluginConnectUsesCachedToken(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 
 	props := MakeMapFromKeysAndVals(
 		property_util.USER.Name, "someUser",
@@ -180,8 +180,8 @@ func TestIamAuthPluginConnectUsesCachedToken(t *testing.T) {
 func TestIamAuthPluginConnectCacheExpiredToken(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -227,8 +227,8 @@ func TestIamAuthPluginConnectTtlExpiredCachedToken(t *testing.T) {
 	assert.Nil(t, err)
 	mockLoginError := &mysql.MySQLError{SQLState: [5]byte(([]byte(mysql_driver.SqlStateAccessError))[:5])}
 	mockConnFuncCallCounter := 0
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		if mockConnFuncCallCounter == 0 {
 			mockConnFuncCallCounter++
@@ -279,8 +279,8 @@ func TestIamAuthPluginConnectLoginError(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.Nil(t, err)
 	mockLoginError := &mysql.MySQLError{SQLState: [5]byte(([]byte(mysql_driver.SqlStateAccessError))[:5])}
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return nil, mockLoginError
 	}

@@ -25,14 +25,17 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 )
 
-type ConnectFunc func(props *utils.RWMap[string]) (driver.Conn, error)
+type ConnectFunc func(props *utils.RWMap[string, string]) (driver.Conn, error)
 type ExecuteFunc func() (any, any, bool, error)
 type PluginExecFunc func(plugin ConnectionPlugin, targetFunc func() (any, any, bool, error)) (any, any, bool, error)
-type PluginConnectFunc func(plugin ConnectionPlugin, props *utils.RWMap[string], targetFunc func(props *utils.RWMap[string]) (driver.Conn, error)) (driver.Conn, error)
+type PluginConnectFunc func(
+	plugin ConnectionPlugin,
+	props *utils.RWMap[string, string],
+	targetFunc func(props *utils.RWMap[string, string]) (driver.Conn, error)) (driver.Conn, error)
 
 type HostListProviderService interface {
 	IsStaticHostListProvider() bool
-	CreateHostListProvider(props *utils.RWMap[string]) HostListProvider
+	CreateHostListProvider(props *utils.RWMap[string, string]) HostListProvider
 	GetHostListProvider() HostListProvider
 	SetHostListProvider(hostListProvider HostListProvider)
 	SetInitialConnectionHostInfo(info *host_info_util.HostInfo)
@@ -56,7 +59,7 @@ type PluginService interface {
 	SetInTransaction(inTransaction bool)
 	GetCurrentTx() driver.Tx
 	SetCurrentTx(driver.Tx)
-	CreateHostListProvider(props *utils.RWMap[string]) HostListProvider
+	CreateHostListProvider(props *utils.RWMap[string, string]) HostListProvider
 	SetHostListProvider(hostListProvider HostListProvider)
 	SetInitialConnectionHostInfo(info *host_info_util.HostInfo)
 	IsStaticHostListProvider() bool
@@ -65,8 +68,8 @@ type PluginService interface {
 	ForceRefreshHostList(conn driver.Conn) error
 	ForceRefreshHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) (bool, error)
 	GetUpdatedHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) ([]*host_info_util.HostInfo, error)
-	Connect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string], pluginToSkip ConnectionPlugin) (driver.Conn, error)
-	ForceConnect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string]) (driver.Conn, error)
+	Connect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string], pluginToSkip ConnectionPlugin) (driver.Conn, error)
+	ForceConnect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string]) (driver.Conn, error)
 	GetDialect() DatabaseDialect
 	SetDialect(dialect DatabaseDialect)
 	UpdateDialect(conn driver.Conn)
@@ -74,7 +77,7 @@ type PluginService interface {
 	IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error)
 	FillAliases(conn driver.Conn, hostInfo *host_info_util.HostInfo)
 	GetConnectionProvider() ConnectionProvider
-	GetProperties() *utils.RWMap[string]
+	GetProperties() *utils.RWMap[string, string]
 	IsNetworkError(err error) bool
 	IsLoginError(err error) bool
 	GetTelemetryContext() context.Context
@@ -90,14 +93,14 @@ type PluginService interface {
 type PluginServiceProvider func(
 	pluginManager PluginManager,
 	driverDialect DriverDialect,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	dsn string) (PluginService, error)
 
 type PluginManager interface {
 	Init(pluginService PluginService, plugins []ConnectionPlugin) error
-	InitHostProvider(props *utils.RWMap[string], hostListProviderService HostListProviderService) error
-	Connect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string], isInitialConnection bool, pluginToSkip ConnectionPlugin) (driver.Conn, error)
-	ForceConnect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string], isInitialConnection bool) (driver.Conn, error)
+	InitHostProvider(props *utils.RWMap[string, string], hostListProviderService HostListProviderService) error
+	Connect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string], isInitialConnection bool, pluginToSkip ConnectionPlugin) (driver.Conn, error)
+	ForceConnect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string], isInitialConnection bool) (driver.Conn, error)
 	Execute(connInvokedOn driver.Conn, name string, methodFunc ExecuteFunc, methodArgs ...any) (
 		wrappedReturnValue any,
 		wrappedReturnValue2 any,
@@ -123,7 +126,7 @@ type PluginManager interface {
 
 type PluginManagerProvider func(
 	targetDriver driver.Driver,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	connProviderManager ConnectionProviderManager,
 	telemetryFactory telemetry.TelemetryFactory) PluginManager
 

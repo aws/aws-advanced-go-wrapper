@@ -384,8 +384,8 @@ func TestNewBgStatus(t *testing.T) {
 	phase := driver_infrastructure.CREATED
 	var connectRoutings []driver_infrastructure.ConnectRouting
 	var executeRoutings []driver_infrastructure.ExecuteRouting
-	roleByHost := utils.NewRWMap[driver_infrastructure.BlueGreenRole]()
-	correspondingHosts := utils.NewRWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]()
+	roleByHost := utils.NewRWMap[string, driver_infrastructure.BlueGreenRole]()
+	correspondingHosts := utils.NewRWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]()
 
 	status := driver_infrastructure.NewBgStatus(id, phase, connectRoutings, executeRoutings, roleByHost, correspondingHosts)
 	assert.Equal(t, phase, status.GetCurrentPhase())
@@ -395,7 +395,7 @@ func TestNewBgStatus(t *testing.T) {
 }
 
 func TestBlueGreenStatus_GetRole(t *testing.T) {
-	roleByHost := utils.NewRWMap[driver_infrastructure.BlueGreenRole]()
+	roleByHost := utils.NewRWMap[string, driver_infrastructure.BlueGreenRole]()
 
 	host := &host_info_util.HostInfo{Host: "test.example.com", Port: 5432}
 	roleByHost.Put("test.example.com", driver_infrastructure.SOURCE)
@@ -406,7 +406,7 @@ func TestBlueGreenStatus_GetRole(t *testing.T) {
 		[]driver_infrastructure.ConnectRouting{},
 		[]driver_infrastructure.ExecuteRouting{},
 		roleByHost,
-		utils.NewRWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]](),
+		utils.NewRWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]](),
 	)
 
 	tests := []struct {
@@ -509,8 +509,8 @@ func TestBlueGreenStatus_MatchIdPhaseAndLen(t *testing.T) {
 		driver_infrastructure.CREATED,
 		[]driver_infrastructure.ConnectRouting{},
 		[]driver_infrastructure.ExecuteRouting{},
-		utils.NewRWMap[driver_infrastructure.BlueGreenRole](),
-		utils.NewRWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]](),
+		utils.NewRWMap[string, driver_infrastructure.BlueGreenRole](),
+		utils.NewRWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]](),
 	)
 
 	tests := []struct {
@@ -525,8 +525,8 @@ func TestBlueGreenStatus_MatchIdPhaseAndLen(t *testing.T) {
 				driver_infrastructure.CREATED,
 				[]driver_infrastructure.ConnectRouting{},
 				[]driver_infrastructure.ExecuteRouting{},
-				utils.NewRWMap[driver_infrastructure.BlueGreenRole](),
-				utils.NewRWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]](),
+				utils.NewRWMap[string, driver_infrastructure.BlueGreenRole](),
+				utils.NewRWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]](),
 			),
 			expected: true,
 		},
@@ -537,8 +537,8 @@ func TestBlueGreenStatus_MatchIdPhaseAndLen(t *testing.T) {
 				driver_infrastructure.CREATED,
 				[]driver_infrastructure.ConnectRouting{},
 				[]driver_infrastructure.ExecuteRouting{},
-				utils.NewRWMap[driver_infrastructure.BlueGreenRole](),
-				utils.NewRWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]](),
+				utils.NewRWMap[string, driver_infrastructure.BlueGreenRole](),
+				utils.NewRWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]](),
 			),
 			expected: false,
 		},
@@ -549,8 +549,8 @@ func TestBlueGreenStatus_MatchIdPhaseAndLen(t *testing.T) {
 				driver_infrastructure.PREPARATION,
 				[]driver_infrastructure.ConnectRouting{},
 				[]driver_infrastructure.ExecuteRouting{},
-				utils.NewRWMap[driver_infrastructure.BlueGreenRole](),
-				utils.NewRWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]](),
+				utils.NewRWMap[string, driver_infrastructure.BlueGreenRole](),
+				utils.NewRWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]](),
 			),
 			expected: false,
 		},
@@ -570,8 +570,8 @@ func TestBlueGreenStatus_String(t *testing.T) {
 		driver_infrastructure.CREATED,
 		[]driver_infrastructure.ConnectRouting{},
 		[]driver_infrastructure.ExecuteRouting{},
-		utils.NewRWMap[driver_infrastructure.BlueGreenRole](),
-		utils.NewRWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]](),
+		utils.NewRWMap[string, driver_infrastructure.BlueGreenRole](),
+		utils.NewRWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]](),
 	)
 
 	result := status.String()
