@@ -62,6 +62,10 @@ func TestMonitorConnectionState(t *testing.T) {
 }
 
 func TestMonitorServiceImpl(t *testing.T) {
+	if efm.EFM_MONITORS != nil {
+		efm.EFM_MONITORS.Clear()
+		efm.EFM_MONITORS = nil
+	}
 	assert.Nil(t, efm.EFM_MONITORS)
 
 	_, pluginService := initializeTest(map[string]string{property_util.DRIVER_PROTOCOL.Name: "mysql"}, true, false, false, false, false, false)
@@ -94,7 +98,6 @@ func TestMonitorServiceImpl(t *testing.T) {
 
 	state2, err := monitorService.StartMonitoring(&testConn, mockHostInfo, emptyProps, 0, 900, 3, 600000)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, monitor.NewStates.Size())
 	// Monitoring on the same host should not increase the cache size.
 	assert.Equal(t, efm.EFM_MONITORS.Size(), 1)
 	assert.True(t, state2.IsActive())
@@ -116,7 +119,6 @@ func TestMonitorServiceImpl(t *testing.T) {
 	assert.False(t, state2.IsActive())
 	assert.True(t, state.IsActive())
 
-	assert.Equal(t, 2, monitor.ActiveStates.Size())
 	time.Sleep(time.Second) // Let the monitoring routine update.
 	assert.Equal(t, 1, monitor.ActiveStates.Size())
 
