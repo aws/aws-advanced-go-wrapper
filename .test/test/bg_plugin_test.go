@@ -86,13 +86,13 @@ func TestBlueGreenPlugin_Connect(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
-	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	connectFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		return mockConn, nil
 	}
 	emptyStatus := driver_infrastructure.BlueGreenStatus{}
 	hostInfo := &host_info_util.HostInfo{Host: "test-host"}
-	roleByHost := utils.NewRWMap[driver_infrastructure.BlueGreenRole]()
-	correspondingHosts := utils.NewRWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]()
+	roleByHost := utils.NewRWMap[string, driver_infrastructure.BlueGreenRole]()
+	correspondingHosts := utils.NewRWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]()
 	connectRouting := bg.NewSubstituteConnectRouting(hostInfo.GetHostAndPort(), driver_infrastructure.SOURCE, hostInfo, nil, nil)
 	bgStatus := driver_infrastructure.NewBgStatus("test-bg-id", driver_infrastructure.CREATED, []driver_infrastructure.ConnectRouting{connectRouting},
 		nil, roleByHost, correspondingHosts)
@@ -195,8 +195,8 @@ func TestBlueGreenPlugin_Execute(t *testing.T) {
 	executeFunc := func() (any, any, bool, error) {
 		return "result", nil, true, nil
 	}
-	roleByHost := utils.NewRWMap[driver_infrastructure.BlueGreenRole]()
-	correspondingHosts := utils.NewRWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]()
+	roleByHost := utils.NewRWMap[string, driver_infrastructure.BlueGreenRole]()
+	correspondingHosts := utils.NewRWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]()
 	hostInfo := &host_info_util.HostInfo{Host: "test-host"}
 	executeRouting := bg.NewSuspendExecuteRouting(hostInfo.GetHostAndPort(), driver_infrastructure.SOURCE, "test-bg-id")
 	bgStatus := driver_infrastructure.NewBgStatus("test-bg-id", driver_infrastructure.COMPLETED, []driver_infrastructure.ConnectRouting{},

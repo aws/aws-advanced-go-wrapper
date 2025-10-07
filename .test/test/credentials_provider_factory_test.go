@@ -19,7 +19,7 @@ package test
 import (
 	"errors"
 
-	"github.com/aws/aws-advanced-go-wrapper/auth-helpers"
+	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 
 	"testing"
@@ -28,7 +28,7 @@ import (
 )
 
 func TestGetAwsCredentialsProviderGetSamlAssertionError(t *testing.T) {
-	getSamlAssertionFunc := func(props *utils.RWMap[string]) (string, error) {
+	getSamlAssertionFunc := func(props *utils.RWMap[string, string]) (string, error) {
 		return "", errors.New("something went wrong")
 	}
 	factory := &auth_helpers.SamlCredentialsProviderFactory{AwsStsClientProvider: NewMockAwsStsClient, GetSamlAssertionFunc: getSamlAssertionFunc}
@@ -37,7 +37,7 @@ func TestGetAwsCredentialsProviderGetSamlAssertionError(t *testing.T) {
 }
 
 func TestGetAwsCredentialsProviderAssumeRoleError(t *testing.T) {
-	getSamlAssertionFunc := func(props *utils.RWMap[string]) (string, error) {
+	getSamlAssertionFunc := func(props *utils.RWMap[string, string]) (string, error) {
 		return "saml", nil
 	}
 	getStsClientFunc := func(region string) auth_helpers.AwsStsClient {

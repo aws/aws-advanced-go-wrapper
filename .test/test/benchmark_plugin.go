@@ -28,7 +28,9 @@ import (
 
 type BenchmarkPluginFactory struct{}
 
-func (b BenchmarkPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string]) (driver_infrastructure.ConnectionPlugin, error) {
+func (b BenchmarkPluginFactory) GetInstance(
+	pluginService driver_infrastructure.PluginService,
+	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
 	return NewBenchmarkPlugin(pluginService, props), nil
 }
 
@@ -36,10 +38,10 @@ type BenchmarkPlugin struct {
 	plugins.BaseConnectionPlugin
 	resources     []string
 	pluginService driver_infrastructure.PluginService
-	props         *utils.RWMap[string]
+	props         *utils.RWMap[string, string]
 }
 
-func NewBenchmarkPlugin(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string]) *BenchmarkPlugin {
+func NewBenchmarkPlugin(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string, string]) *BenchmarkPlugin {
 	return &BenchmarkPlugin{
 		pluginService: pluginService,
 		props:         props,
@@ -52,7 +54,7 @@ func (b *BenchmarkPlugin) GetSubscribedMethods() []string {
 
 func (b *BenchmarkPlugin) Connect(
 	_ *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	b.resources = append(b.resources, "connect")
@@ -61,7 +63,7 @@ func (b *BenchmarkPlugin) Connect(
 
 func (b *BenchmarkPlugin) ForceConnect(
 	_ *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	b.resources = append(b.resources, "forceConnect")
@@ -94,7 +96,7 @@ func (b *BenchmarkPlugin) NotifyHostListChanged(_ map[string]map[driver_infrastr
 }
 
 func (b *BenchmarkPlugin) InitHostProvider(
-	_ *utils.RWMap[string],
+	_ *utils.RWMap[string, string],
 	_ driver_infrastructure.HostListProviderService,
 	_ func() error) error {
 	b.resources = append(b.resources, "initHostProvider")

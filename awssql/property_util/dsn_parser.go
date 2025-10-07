@@ -54,7 +54,7 @@ func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []*host_i
 	return GetHostsFromProps(properties, isSingleWriterDsn)
 }
 
-func GetHostsFromProps(properties *utils.RWMap[string], isSingleWriterDsn bool) (hostInfoList []*host_info_util.HostInfo, err error) {
+func GetHostsFromProps(properties *utils.RWMap[string, string], isSingleWriterDsn bool) (hostInfoList []*host_info_util.HostInfo, err error) {
 	hostVal, _ := properties.Get(HOST.Name)
 	portVal, _ := properties.Get(PORT.Name)
 	hostStringList := strings.Split(hostVal, ",")
@@ -168,8 +168,8 @@ func GetProtocol(dsn string) (string, error) {
 		error_util.GetMessage("DsnParser.unableToDetermineProtocol", MaskSensitiveInfoFromDsn(dsn)))
 }
 
-func ParseDsn(dsn string) (*utils.RWMap[string], error) {
-	connStringSettings := utils.NewRWMap[string]()
+func ParseDsn(dsn string) (*utils.RWMap[string, string], error) {
+	connStringSettings := utils.NewRWMap[string, string]()
 	var err error
 	if isDsnPgxUrl(dsn) {
 		connStringSettings, err = parsePgxURLSettings(dsn)
@@ -210,8 +210,8 @@ func isDsnMySql(dsn string) bool {
 	return !spaceBetweenWordsPattern.MatchString(dsn) && mySqlDsnPattern.MatchString(dsn)
 }
 
-func parsePgxURLSettings(connString string) (*utils.RWMap[string], error) {
-	properties := utils.NewRWMap[string]()
+func parsePgxURLSettings(connString string) (*utils.RWMap[string, string], error) {
+	properties := utils.NewRWMap[string, string]()
 	connString = strings.TrimSpace(connString)
 
 	parsedURL, err := url.Parse(connString)
@@ -285,8 +285,8 @@ func isIPOnly(host string) bool {
 
 var asciiSpace = [256]uint8{'\t': 1, '\n': 1, '\v': 1, '\f': 1, '\r': 1, ' ': 1}
 
-func parsePgxKeywordValueSettings(dsn string) (*utils.RWMap[string], error) {
-	properties := utils.NewRWMap[string]()
+func parsePgxKeywordValueSettings(dsn string) (*utils.RWMap[string, string], error) {
+	properties := utils.NewRWMap[string, string]()
 
 	nameMap := map[string]string{
 		"dbname": "database",
@@ -364,8 +364,8 @@ func parsePgxKeywordValueSettings(dsn string) (*utils.RWMap[string], error) {
 	return properties, nil
 }
 
-func parseMySqlDsn(dsn string) (*utils.RWMap[string], error) {
-	properties := utils.NewRWMap[string]()
+func parseMySqlDsn(dsn string) (*utils.RWMap[string, string], error) {
+	properties := utils.NewRWMap[string, string]()
 	dsn = strings.TrimSpace(dsn)
 
 	matches := mySqlDsnPattern.FindStringSubmatch(dsn)
@@ -422,7 +422,7 @@ func parseMySqlDsn(dsn string) (*utils.RWMap[string], error) {
 	return properties, nil
 }
 
-func parseDSNParams(properties *utils.RWMap[string], params string) error {
+func parseDSNParams(properties *utils.RWMap[string, string], params string) error {
 	for _, v := range strings.Split(params, "&") {
 		key, value, ok := strings.Cut(v, "=")
 		if !ok {

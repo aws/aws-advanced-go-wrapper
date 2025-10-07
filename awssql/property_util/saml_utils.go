@@ -28,7 +28,7 @@ var httpsUrlPattern = regexp.MustCompile(`^(https)://[-a-zA-Z0-9+&@#/%?=~_!:,.']
 func CheckIdpCredentialsWithFallback(
 	idpUserNameProperty AwsWrapperProperty,
 	idpPasswordProperty AwsWrapperProperty,
-	props *utils.RWMap[string]) {
+	props *utils.RWMap[string, string]) {
 	_, ok := props.Get(idpUserNameProperty.Name)
 	if !ok {
 		idpUserNameProperty.Set(props, GetVerifiedWrapperPropertyValue[string](props, USER))

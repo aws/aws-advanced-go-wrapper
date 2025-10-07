@@ -32,12 +32,13 @@ import (
 )
 
 var bgSubscribedMethods = append(utils.NETWORK_BOUND_METHODS, plugin_helpers.CONNECT_METHOD)
-var providers = utils.NewRWMapWithDisposalFunc(func(provider *BlueGreenStatusProvider) bool {
-	if provider != nil {
-		provider.ClearMonitors()
-	}
-	return true
-})
+var providers = utils.NewRWMapWithDisposalFunc[string, *BlueGreenStatusProvider](
+	func(provider *BlueGreenStatusProvider) bool {
+		if provider != nil {
+			provider.ClearMonitors()
+		}
+		return true
+	})
 
 type BlueGreenPluginFactory struct{}
 
@@ -45,7 +46,9 @@ func (b *BlueGreenPluginFactory) ClearCaches() {
 	providers.Clear()
 }
 
-func (b *BlueGreenPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string]) (driver_infrastructure.ConnectionPlugin, error) {
+func (b *BlueGreenPluginFactory) GetInstance(
+	pluginService driver_infrastructure.PluginService,
+	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
 	return NewBlueGreenPlugin(pluginService, props)
 }
 
@@ -59,14 +62,14 @@ type BlueGreenPlugin struct {
 	bgProviderSupplier BlueGreenProviderSupplier
 	isIamInUse         bool
 	pluginService      driver_infrastructure.PluginService
-	props              *utils.RWMap[string]
+	props              *utils.RWMap[string, string]
 	startTime          atomic.Int64
 	endTime            atomic.Int64
 	plugins.BaseConnectionPlugin
 }
 
 func NewBlueGreenPlugin(pluginService driver_infrastructure.PluginService,
-	props *utils.RWMap[string]) (driver_infrastructure.ConnectionPlugin, error) {
+	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
 	bgId := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.BGD_ID)
 	if bgId == "" {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("BlueGreenDeployment.bgIdRequired"))
@@ -89,7 +92,7 @@ func (b *BlueGreenPlugin) GetSubscribedMethods() []string {
 
 func (b *BlueGreenPlugin) Connect(
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (conn driver.Conn, err error) {
 	b.resetRoutingTimeNano()

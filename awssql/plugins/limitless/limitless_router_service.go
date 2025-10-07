@@ -36,23 +36,23 @@ var limitlessRouterServiceInitializationMutex sync.Mutex
 
 type LimitlessRouterService interface {
 	EstablishConnection(context *LimitlessConnectionContext) error
-	StartMonitoring(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string], intervalMs int) error
+	StartMonitoring(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string], intervalMs int) error
 }
 
 type LimitlessRouterServiceImpl struct {
 	pluginService driver_infrastructure.PluginService
 	queryHelper   LimitlessQueryHelper
-	props         *utils.RWMap[string]
+	props         *utils.RWMap[string, string]
 }
 
-func NewLimitlessRouterServiceImpl(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string]) *LimitlessRouterServiceImpl {
+func NewLimitlessRouterServiceImpl(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string, string]) *LimitlessRouterServiceImpl {
 	return NewLimitlessRouterServiceImplInternal(pluginService, NewLimitlessQueryHelperImpl(pluginService), props)
 }
 
 func NewLimitlessRouterServiceImplInternal(
 	pluginService driver_infrastructure.PluginService,
 	queryHelper LimitlessQueryHelper,
-	props *utils.RWMap[string]) *LimitlessRouterServiceImpl {
+	props *utils.RWMap[string, string]) *LimitlessRouterServiceImpl {
 	limitlessRouterServiceInitializationMutex.Lock()
 	defer limitlessRouterServiceInitializationMutex.Unlock()
 
@@ -172,7 +172,7 @@ func (routerService *LimitlessRouterServiceImpl) EstablishConnection(context *Li
 	return nil
 }
 
-func (routerService *LimitlessRouterServiceImpl) getLimitlessRouters(routerCacheKey string, props *utils.RWMap[string]) []*host_info_util.HostInfo {
+func (routerService *LimitlessRouterServiceImpl) getLimitlessRouters(routerCacheKey string, props *utils.RWMap[string, string]) []*host_info_util.HostInfo {
 	cacheExpirationNano := time.Millisecond * time.Duration(property_util.GetExpirationValue(props, property_util.LIMITLESS_ROUTER_CACHE_EXPIRATION_TIME_MS))
 	routers, ok := LIMITLESS_ROUTER_CACHE.Get(routerCacheKey, cacheExpirationNano)
 	if ok {
@@ -332,7 +332,7 @@ func (routerService *LimitlessRouterServiceImpl) retryConnectWithLeastLoadedRout
 	return errors.New(error_util.GetMessage("LimitlessRouterServiceImpl.maxConnectRetriesExceeded"))
 }
 
-func (routerService *LimitlessRouterServiceImpl) StartMonitoring(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string], intervalMs int) error {
+func (routerService *LimitlessRouterServiceImpl) StartMonitoring(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string], intervalMs int) error {
 	cacheKey, err := routerService.pluginService.GetHostListProvider().GetClusterId()
 
 	if err == nil {

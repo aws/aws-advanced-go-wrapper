@@ -373,8 +373,8 @@ func TestGetSetStatus(t *testing.T) {
 		driver_infrastructure.IN_PROGRESS,
 		[]driver_infrastructure.ConnectRouting{},
 		[]driver_infrastructure.ExecuteRouting{},
-		utils.NewRWMap[driver_infrastructure.BlueGreenRole](),
-		utils.NewRWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]](),
+		utils.NewRWMap[string, driver_infrastructure.BlueGreenRole](),
+		utils.NewRWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]](),
 	), "test-bg")
 
 	// Try to retrieve with different formats
@@ -407,8 +407,8 @@ func TestSetStatusUpdateExistingStatus(t *testing.T) {
 	testId := "deployment-update-test"
 	connectRoutings := []driver_infrastructure.ConnectRouting{}
 	executeRoutings := []driver_infrastructure.ExecuteRouting{}
-	roleByHost := utils.NewRWMap[driver_infrastructure.BlueGreenRole]()
-	correspondingHosts := utils.NewRWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]()
+	roleByHost := utils.NewRWMap[string, driver_infrastructure.BlueGreenRole]()
+	correspondingHosts := utils.NewRWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]()
 
 	initialStatus := driver_infrastructure.NewBgStatus(testId, driver_infrastructure.CREATED, connectRoutings, executeRoutings, roleByHost, correspondingHosts)
 	target.SetBgStatus(initialStatus, testId)

@@ -65,7 +65,7 @@ type ClusterTopologyMonitorImpl struct {
 	refreshRateNano                         time.Duration
 	topologyCacheExpirationNano             time.Duration
 	topologyMap                             *utils.CacheMap[topologyMapEntry]
-	monitoringProps                         *utils.RWMap[string]
+	monitoringProps                         *utils.RWMap[string, string]
 	initialHostInfo                         *host_info_util.HostInfo
 	clusterInstanceTemplate                 *host_info_util.HostInfo
 	pluginService                           PluginService
@@ -92,7 +92,7 @@ func NewClusterTopologyMonitorImpl(
 	highRefreshRateNano time.Duration,
 	refreshRateNano time.Duration,
 	topologyCacheExpirationNano time.Duration,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	initialHostInfo *host_info_util.HostInfo,
 	clusterInstanceTemplate *host_info_util.HostInfo,
 	pluginService PluginService) *ClusterTopologyMonitorImpl {

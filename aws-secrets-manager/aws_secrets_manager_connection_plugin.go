@@ -44,7 +44,7 @@ var fetchCredentialsCounterName = "secretsManager.fetchCredentials.count"
 type AwsSecretsManagerPluginFactory struct{}
 
 func (factory AwsSecretsManagerPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 ) (driver_infrastructure.ConnectionPlugin, error) {
 	return NewAwsSecretsManagerPlugin(pluginService, props, NewAwsSecretsManagerClient)
 }
@@ -62,7 +62,7 @@ var SecretsCache = utils.NewCache[AwsRdsSecrets]()
 type AwsSecretsManagerPlugin struct {
 	plugins.BaseConnectionPlugin
 	pluginService                   driver_infrastructure.PluginService
-	props                           *utils.RWMap[string]
+	props                           *utils.RWMap[string, string]
 	secret                          AwsRdsSecrets
 	SecretsCacheKey                 string
 	region                          region_util.Region
@@ -73,7 +73,7 @@ type AwsSecretsManagerPlugin struct {
 }
 
 func NewAwsSecretsManagerPlugin(pluginService driver_infrastructure.PluginService,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	awsSecretsManagerClientProvider NewAwsSecretsManagerClientProvider,
 ) (*AwsSecretsManagerPlugin, error) {
 	// Validate Secret ID
@@ -131,7 +131,7 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) GetSubscribedMethods() [
 
 func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) Connect(
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	return awsSecretsManagerPlugin.connectInternal(hostInfo, props, connectFunc)
@@ -139,7 +139,7 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) Connect(
 
 func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) ForceConnect(
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	return awsSecretsManagerPlugin.connectInternal(hostInfo, props, connectFunc)
@@ -147,7 +147,7 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) ForceConnect(
 
 func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectInternal(
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	secretsWasFetched, _ := awsSecretsManagerPlugin.updateSecrets(hostInfo, props, false)
 
@@ -178,14 +178,14 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectInternal(
 	return nil, err
 }
 
-func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) applySecretToProperties(props *utils.RWMap[string]) {
+func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) applySecretToProperties(props *utils.RWMap[string, string]) {
 	property_util.USER.Set(props, awsSecretsManagerPlugin.secret.Username)
 	property_util.PASSWORD.Set(props, awsSecretsManagerPlugin.secret.Password)
 }
 
 func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) updateSecrets(
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	forceReFetch bool) (bool, error) {
 	parentCtx := awsSecretsManagerPlugin.pluginService.GetTelemetryContext()
 	telemetryCtx, ctx := awsSecretsManagerPlugin.pluginService.GetTelemetryFactory().OpenTelemetryContext(telemetry.TELEMETRY_UPDATE_SECRETS, telemetry.NESTED, parentCtx)
@@ -224,7 +224,7 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) updateSecrets(
 
 func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) fetchLatestCredentials(
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string]) (AwsRdsSecrets, error) {
+	props *utils.RWMap[string, string]) (AwsRdsSecrets, error) {
 	slog.Debug("AwsSecretsManagerConnectionPlugin: Fetching latest credentials")
 
 	secret, err := getRdsSecretFromAwsSecretsManager(

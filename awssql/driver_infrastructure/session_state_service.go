@@ -63,10 +63,10 @@ type SessionStateServiceImpl struct {
 	SessionState     *SessionState
 	copySessionState *SessionState
 	pluginService    PluginService
-	props            *utils.RWMap[string]
+	props            *utils.RWMap[string, string]
 }
 
-func NewSessionStateServiceImpl(pluginService PluginService, props *utils.RWMap[string]) *SessionStateServiceImpl {
+func NewSessionStateServiceImpl(pluginService PluginService, props *utils.RWMap[string, string]) *SessionStateServiceImpl {
 	return &SessionStateServiceImpl{
 		SessionState:     &SessionState{},
 		copySessionState: nil,

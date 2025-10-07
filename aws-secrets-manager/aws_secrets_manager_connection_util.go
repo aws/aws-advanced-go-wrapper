@@ -45,7 +45,7 @@ func getCacheKey(
 
 func getRdsSecretFromAwsSecretsManager(
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	endpoint string,
 	region string,
 	clientProvider NewAwsSecretsManagerClientProvider,

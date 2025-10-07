@@ -38,10 +38,10 @@ import (
 	sdkTrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
-var emptyProps = utils.NewRWMap[string]()
+var emptyProps = utils.NewRWMap[string, string]()
 
-func MakeMapFromKeysAndVals(keysAndVals ...string) *utils.RWMap[string] {
-	result := utils.NewRWMap[string]()
+func MakeMapFromKeysAndVals(keysAndVals ...string) *utils.RWMap[string, string] {
+	result := utils.NewRWMap[string, string]()
 
 	// If there's an odd number of elements, we'll skip the last one.
 	for i := 0; i < len(keysAndVals)-1; i += 2 {
@@ -53,7 +53,7 @@ func MakeMapFromKeysAndVals(keysAndVals ...string) *utils.RWMap[string] {
 	return result
 }
 
-func GetValueOrEmptyString(rwMap *utils.RWMap[string], key string) string {
+func GetValueOrEmptyString(rwMap *utils.RWMap[string, string], key string) string {
 	val, _ := rwMap.Get(key)
 	return val
 }
@@ -115,7 +115,7 @@ func SetupTelemetry() error {
 	return nil
 }
 
-func CreateMockPluginService(props *utils.RWMap[string]) driver_infrastructure.PluginService {
+func CreateMockPluginService(props *utils.RWMap[string, string]) driver_infrastructure.PluginService {
 	mockTargetDriver := &MockTargetDriver{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 	mockPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)

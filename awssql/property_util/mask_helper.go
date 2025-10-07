@@ -29,7 +29,7 @@ var SENSITIVE_PROPERTIES = map[string]struct{}{
 	IDP_PASSWORD.Name: {},
 }
 
-func MaskProperties(props *utils.RWMap[string]) map[string]string {
+func MaskProperties(props *utils.RWMap[string, string]) map[string]string {
 	maskedProps := props.GetAllEntries()
 
 	for key, property := range maskedProps {

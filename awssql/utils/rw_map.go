@@ -16,43 +16,41 @@
 
 package utils
 
-import (
-	"sync"
-)
+import "sync"
 
-type RWMap[T any] struct {
-	cache        map[string]T
-	disposalFunc DisposalFunc[T]
+type RWMap[K comparable, V any] struct {
+	cache        map[K]V
+	disposalFunc DisposalFunc[V]
 	lock         sync.RWMutex
 }
 
-func NewRWMap[T any]() *RWMap[T] {
-	return &RWMap[T]{
-		cache: make(map[string]T),
+func NewRWMap[K comparable, V any]() *RWMap[K, V] {
+	return &RWMap[K, V]{
+		cache: make(map[K]V),
 	}
 }
 
-func NewRWMapWithDisposalFunc[T any](disposalFunc DisposalFunc[T]) *RWMap[T] {
-	return &RWMap[T]{
-		cache:        make(map[string]T),
+func NewRWMapWithDisposalFunc[K comparable, V any](disposalFunc DisposalFunc[V]) *RWMap[K, V] {
+	return &RWMap[K, V]{
+		cache:        make(map[K]V),
 		disposalFunc: disposalFunc,
 	}
 }
 
-func NewRWMapFromCopy[T any](rwMap *RWMap[T]) *RWMap[T] {
+func NewRWMapFromCopy[K comparable, V any](rwMap *RWMap[K, V]) *RWMap[K, V] {
 	if rwMap == nil {
-		return NewRWMap[T]()
+		return NewRWMap[K, V]()
 	}
 	return NewRWMapFromMap(rwMap.GetAllEntries())
 }
 
-func NewRWMapFromMap[T any](mapForCache map[string]T) *RWMap[T] {
-	return &RWMap[T]{
+func NewRWMapFromMap[K comparable, V any](mapForCache map[K]V) *RWMap[K, V] {
+	return &RWMap[K, V]{
 		cache: mapForCache,
 	}
 }
 
-func (c *RWMap[T]) Put(key string, value T) {
+func (c *RWMap[K, V]) Put(key K, value V) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	val, ok := c.cache[key]
@@ -62,7 +60,7 @@ func (c *RWMap[T]) Put(key string, value T) {
 	c.cache[key] = value
 }
 
-func (c *RWMap[T]) Get(key string) (T, bool) {
+func (c *RWMap[K, V]) Get(key K) (V, bool) {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -70,7 +68,7 @@ func (c *RWMap[T]) Get(key string) (T, bool) {
 	return val, ok
 }
 
-func (c *RWMap[T]) ComputeIfAbsent(key string, computeFunc func() T) T {
+func (c *RWMap[K, V]) ComputeIfAbsent(key K, computeFunc func() V) V {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -83,7 +81,7 @@ func (c *RWMap[T]) ComputeIfAbsent(key string, computeFunc func() T) T {
 	return c.cache[key]
 }
 
-func (c *RWMap[T]) PutIfAbsent(key string, value T) {
+func (c *RWMap[K, V]) PutIfAbsent(key K, value V) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	_, ok := c.cache[key]
@@ -93,7 +91,7 @@ func (c *RWMap[T]) PutIfAbsent(key string, value T) {
 	}
 }
 
-func (c *RWMap[T]) Remove(key string) {
+func (c *RWMap[K, V]) Remove(key K) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	val, ok := c.cache[key]
@@ -105,7 +103,7 @@ func (c *RWMap[T]) Remove(key string) {
 	}
 }
 
-func (c *RWMap[T]) Clear() {
+func (c *RWMap[K, V]) Clear() {
 	if c.disposalFunc != nil {
 		c.clearWithDisposalFunc()
 		return
@@ -118,7 +116,7 @@ func (c *RWMap[T]) Clear() {
 	}
 }
 
-func (c *RWMap[T]) clearWithDisposalFunc() {
+func (c *RWMap[K, V]) clearWithDisposalFunc() {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -128,25 +126,23 @@ func (c *RWMap[T]) clearWithDisposalFunc() {
 	}
 }
 
-// Returns a map copy of all entries in the cache.
-func (c *RWMap[T]) GetAllEntries() map[string]T {
+func (c *RWMap[K, V]) GetAllEntries() map[K]V {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
-	entryMap := make(map[string]T)
+	entryMap := make(map[K]V)
 	for key, value := range c.cache {
 		entryMap[key] = value
 	}
 	return entryMap
 }
 
-func (c *RWMap[T]) ReplaceCacheWithCopy(mapToCopy *RWMap[T]) {
+func (c *RWMap[K, V]) ReplaceCacheWithCopy(mapToCopy *RWMap[K, V]) {
 	entryMap := mapToCopy.GetAllEntries()
-
 	c.ReplaceCacheWithMap(entryMap)
 }
 
-func (c *RWMap[T]) ReplaceCacheWithMap(entryMap map[string]T) {
+func (c *RWMap[K, V]) ReplaceCacheWithMap(entryMap map[K]V) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	if c.disposalFunc != nil {
@@ -157,7 +153,7 @@ func (c *RWMap[T]) ReplaceCacheWithMap(entryMap map[string]T) {
 	c.cache = entryMap
 }
 
-func (c *RWMap[T]) Size() int {
+func (c *RWMap[K, V]) Size() int {
 	if c == nil {
 		return 0
 	}
@@ -165,4 +161,21 @@ func (c *RWMap[T]) Size() int {
 	defer c.lock.RUnlock()
 
 	return len(c.cache)
+}
+
+// ProcessAndRemoveIf executes the provided function on each key-value pair
+// where the key satisfies the condition function. Matching entries are removed after processing.
+func (c *RWMap[K, V]) ProcessAndRemoveIf(condition func(K) bool, processor func(K, V)) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	for key, value := range c.cache {
+		if condition(key) {
+			processor(key, value)
+			if c.disposalFunc != nil {
+				c.disposalFunc(value)
+			}
+			delete(c.cache, key)
+		}
+	}
 }

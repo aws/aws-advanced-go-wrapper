@@ -38,7 +38,7 @@ type DefaultTelemetryFactory struct {
 	metricsTelemetryFactory TelemetryFactory
 }
 
-func NewDefaultTelemetryFactory(props *utils.RWMap[string]) (*DefaultTelemetryFactory, error) {
+func NewDefaultTelemetryFactory(props *utils.RWMap[string, string]) (*DefaultTelemetryFactory, error) {
 	enableTelemetry := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.ENABLE_TELEMETRY)
 	tracesTelemetryBackend := strings.ToLower(property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.TELEMETRY_TRACES_BACKEND))
 	metricsTelemetryBackend := strings.ToLower(property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.TELEMETRY_METRICS_BACKEND))

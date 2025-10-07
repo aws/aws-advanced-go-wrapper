@@ -33,7 +33,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 )
 
-func getDefaultProps() *utils.RWMap[string] {
+func getDefaultProps() *utils.RWMap[string, string] {
 	props := emptyProps
 	property_util.USER.Set(props, "test")
 	property_util.PASSWORD.Set(props, "mypassword")
@@ -48,7 +48,7 @@ func getDefaultProps() *utils.RWMap[string] {
 	return props
 }
 
-func getPropsExecute() *utils.RWMap[string] {
+func getPropsExecute() *utils.RWMap[string, string] {
 	props := getDefaultProps()
 	property_util.PLUGINS.Set(props, "executionTime")
 	return props
@@ -61,7 +61,7 @@ var pluginFactoryByCode = map[string]driver_infrastructure.ConnectionPluginFacto
 	"executionTime": plugins.NewExecutionTimePluginFactory(),
 }
 
-func initResources(props *utils.RWMap[string]) (
+func initResources(props *utils.RWMap[string, string]) (
 	pluginManager driver_infrastructure.PluginManager,
 	pluginService driver_infrastructure.PluginService,
 ) {

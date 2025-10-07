@@ -28,7 +28,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setUpProps(enableTelemetry string, tracesBackend, metricsBackend string, submitTopLevel string) *utils.RWMap[string] {
+func setUpProps(enableTelemetry string, tracesBackend, metricsBackend string, submitTopLevel string) *utils.RWMap[string, string] {
 	return MakeMapFromKeysAndVals(
 		property_util.ENABLE_TELEMETRY.Name, enableTelemetry,
 		property_util.TELEMETRY_TRACES_BACKEND.Name, tracesBackend,

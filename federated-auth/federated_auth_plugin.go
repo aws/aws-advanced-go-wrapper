@@ -43,7 +43,9 @@ var TokenCache = utils.NewCache[string]()
 
 type FederatedAuthPluginFactory struct{}
 
-func (f FederatedAuthPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService, _ *utils.RWMap[string]) (driver_infrastructure.ConnectionPlugin, error) {
+func (f FederatedAuthPluginFactory) GetInstance(
+	pluginService driver_infrastructure.PluginService,
+	_ *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
 	providerFactory := NewAdfsCredentialsProviderFactory(auth_helpers.GetBasicHttpClient, auth_helpers.NewAwsStsClient, pluginService)
 	return NewFederatedAuthPlugin(pluginService, providerFactory, &auth_helpers.RegularIamTokenUtility{})
 }
@@ -90,7 +92,7 @@ func (f *FederatedAuthPlugin) GetSubscribedMethods() []string {
 
 func (f *FederatedAuthPlugin) Connect(
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	return f.connectInternal(hostInfo, props, connectFunc)
@@ -98,7 +100,7 @@ func (f *FederatedAuthPlugin) Connect(
 
 func (f *FederatedAuthPlugin) ForceConnect(
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	return f.connectInternal(hostInfo, props, connectFunc)
@@ -106,7 +108,7 @@ func (f *FederatedAuthPlugin) ForceConnect(
 
 func (f *FederatedAuthPlugin) connectInternal(
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	property_util.CheckIdpCredentialsWithFallback(property_util.IDP_USERNAME, property_util.IDP_PASSWORD, props)
 
@@ -167,7 +169,7 @@ func (f *FederatedAuthPlugin) connectInternal(
 }
 
 func (f *FederatedAuthPlugin) updateAuthenticationToken(
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	region region_util.Region,
 	cacheKey string,
 	host string,

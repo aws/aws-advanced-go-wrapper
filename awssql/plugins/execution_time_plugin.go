@@ -34,7 +34,7 @@ func NewExecutionTimePluginFactory() driver_infrastructure.ConnectionPluginFacto
 }
 
 func (factory ExecutionTimePluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 ) (driver_infrastructure.ConnectionPlugin, error) {
 	return NewExecutionTimePlugin(pluginService, props)
 }
@@ -47,7 +47,7 @@ type ExecutionTimePlugin struct {
 }
 
 func NewExecutionTimePlugin(_ driver_infrastructure.PluginService,
-	_ *utils.RWMap[string]) (*ExecutionTimePlugin, error) {
+	_ *utils.RWMap[string, string]) (*ExecutionTimePlugin, error) {
 	return &ExecutionTimePlugin{}, nil
 }
 

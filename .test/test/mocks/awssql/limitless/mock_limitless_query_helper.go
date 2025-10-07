@@ -53,7 +53,7 @@ func (m *MockLimitlessQueryHelper) EXPECT() *MockLimitlessQueryHelperMockRecorde
 }
 
 // QueryForLimitlessRouters mocks base method.
-func (m *MockLimitlessQueryHelper) QueryForLimitlessRouters(arg0 driver.Conn, arg1 int, arg2 *utils.RWMap[string]) ([]*host_info_util.HostInfo, error) {
+func (m *MockLimitlessQueryHelper) QueryForLimitlessRouters(arg0 driver.Conn, arg1 int, arg2 *utils.RWMap[string, string]) ([]*host_info_util.HostInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryForLimitlessRouters", arg0, arg1, arg2)
 	ret0, _ := ret[0].([]*host_info_util.HostInfo)

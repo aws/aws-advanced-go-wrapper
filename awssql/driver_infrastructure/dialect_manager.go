@@ -43,7 +43,7 @@ var knownEndpointDialectsCache = utils.NewCache[string]()
 var ENDPOINT_CACHE_EXPIRATION = time.Hour * 24
 
 type DialectProvider interface {
-	GetDialect(dsn string, props *utils.RWMap[string]) (DatabaseDialect, error)
+	GetDialect(dsn string, props *utils.RWMap[string, string]) (DatabaseDialect, error)
 	GetDialectForUpdate(conn driver.Conn, originalHost string, newHost string) DatabaseDialect
 }
 
@@ -54,7 +54,7 @@ type DialectManager struct {
 	FindRegisteredDriver func(dialectCode string) bool
 }
 
-func (d *DialectManager) GetDialect(dsn string, props *utils.RWMap[string]) (DatabaseDialect, error) {
+func (d *DialectManager) GetDialect(dsn string, props *utils.RWMap[string, string]) (DatabaseDialect, error) {
 	if d.FindRegisteredDriver == nil {
 		d.FindRegisteredDriver = utils.FindRegisteredDriver
 	}

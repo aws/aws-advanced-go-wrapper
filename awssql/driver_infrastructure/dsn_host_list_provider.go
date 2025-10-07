@@ -31,14 +31,14 @@ import (
 
 type DsnHostListProvider struct {
 	isSingleWriterConnectionString bool
-	props                          *utils.RWMap[string]
+	props                          *utils.RWMap[string, string]
 	hostListProviderService        HostListProviderService
 	isInitialized                  bool
 	hostList                       []*host_info_util.HostInfo
 	initialHost                    string
 }
 
-func NewDsnHostListProvider(props *utils.RWMap[string], hostListProviderService HostListProviderService) *DsnHostListProvider {
+func NewDsnHostListProvider(props *utils.RWMap[string, string], hostListProviderService HostListProviderService) *DsnHostListProvider {
 	isSingleWriterConnectionString := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.SINGLE_WRITER_DSN)
 	initialHost := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.HOST)
 	return &DsnHostListProvider{

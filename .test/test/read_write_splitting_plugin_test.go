@@ -141,7 +141,7 @@ func TestReadWriteSplittingPlugin_Connect_StaticProvider(t *testing.T) {
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 	resultConn := mockConn
 
-	conn, err := plugin.Connect(nil, nil, true, func(_ *utils.RWMap[string]) (driver.Conn, error) {
+	conn, err := plugin.Connect(nil, nil, true, func(_ *utils.RWMap[string, string]) (driver.Conn, error) {
 		return resultConn, nil
 	})
 
@@ -165,7 +165,7 @@ func TestReadWriteSplittingPlugin_Connect_UnknownHostRole(t *testing.T) {
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 	resultConn := mockConn
 
-	conn, err := plugin.Connect(nil, nil, true, func(_ *utils.RWMap[string]) (driver.Conn, error) {
+	conn, err := plugin.Connect(nil, nil, true, func(_ *utils.RWMap[string, string]) (driver.Conn, error) {
 		return resultConn, nil
 	})
 
@@ -193,7 +193,7 @@ func TestReadWriteSplittingPlugin_Connect_NilHostRole(t *testing.T) {
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 	resultConn := mockConn
 
-	conn, err := plugin.Connect(nil, nil, true, func(_ *utils.RWMap[string]) (driver.Conn, error) {
+	conn, err := plugin.Connect(nil, nil, true, func(_ *utils.RWMap[string, string]) (driver.Conn, error) {
 		return resultConn, nil
 	})
 
@@ -219,7 +219,7 @@ func TestReadWriteSplittingPlugin_Connect_SameHostRole(t *testing.T) {
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 	resultConn := mockConn
 
-	conn, err := plugin.Connect(nil, nil, true, func(_ *utils.RWMap[string]) (driver.Conn, error) {
+	conn, err := plugin.Connect(nil, nil, true, func(_ *utils.RWMap[string, string]) (driver.Conn, error) {
 		return resultConn, nil
 	})
 
@@ -246,7 +246,7 @@ func TestReadWriteSplittingPlugin_Connect_DifferentHostRole(t *testing.T) {
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 	resultConn := mockConn
 
-	conn, err := plugin.Connect(nil, nil, true, func(_ *utils.RWMap[string]) (driver.Conn, error) {
+	conn, err := plugin.Connect(nil, nil, true, func(_ *utils.RWMap[string, string]) (driver.Conn, error) {
 		return resultConn, nil
 	})
 

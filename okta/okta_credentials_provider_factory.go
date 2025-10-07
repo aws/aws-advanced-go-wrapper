@@ -56,7 +56,7 @@ func NewOktaCredentialsProviderFactory(
 	return providerFactory
 }
 
-func (o *OktaCredentialsProviderFactory) GetSamlAssertion(props *utils.RWMap[string]) (string, error) {
+func (o *OktaCredentialsProviderFactory) GetSamlAssertion(props *utils.RWMap[string, string]) (string, error) {
 	parentCtx := o.pluginService.GetTelemetryContext()
 	telemetryCtx, ctx := o.pluginService.GetTelemetryFactory().OpenTelemetryContext(telemetry.TELEMETRY_FETCH_SAML_OKTA, telemetry.NESTED, parentCtx)
 	o.pluginService.SetTelemetryContext(ctx)
@@ -134,7 +134,7 @@ func (o *OktaCredentialsProviderFactory) GetSamlAssertion(props *utils.RWMap[str
 	return samlResponse, nil
 }
 
-func (o *OktaCredentialsProviderFactory) GetSessionToken(props *utils.RWMap[string]) (string, error) {
+func (o *OktaCredentialsProviderFactory) GetSessionToken(props *utils.RWMap[string, string]) (string, error) {
 	idpHost := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IDP_ENDPOINT)
 	idpUser := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IDP_USERNAME)
 	idpPassword := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IDP_PASSWORD)
@@ -196,7 +196,7 @@ func (o *OktaCredentialsProviderFactory) GetSessionToken(props *utils.RWMap[stri
 	return result.SessionToken, nil
 }
 
-func getSamlUrl(props *utils.RWMap[string]) (*url.URL, error) {
+func getSamlUrl(props *utils.RWMap[string, string]) (*url.URL, error) {
 	idpHost := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.IDP_ENDPOINT)
 	appId := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.APP_ID)
 

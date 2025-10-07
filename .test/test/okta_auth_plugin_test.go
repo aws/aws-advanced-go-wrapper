@@ -40,7 +40,7 @@ import (
 )
 
 func newOktaAuthPluginTest(
-	props *utils.RWMap[string]) (
+	props *utils.RWMap[string, string]) (
 	*MockCredentialsProviderFactory,
 	*MockIamTokenUtility,
 	*okta.OktaAuthPlugin,
@@ -68,8 +68,8 @@ func TestGetOktaAuthPlugin(t *testing.T) {
 func TestOktaAuthPluginConnect(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -95,8 +95,8 @@ func TestOktaAuthPluginConnect(t *testing.T) {
 func TestOktaAuthPluginForceConnect(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -122,7 +122,7 @@ func TestOktaAuthPluginForceConnect(t *testing.T) {
 func TestOktaAuthPluginInvalidRegion(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.invalid-region.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 
 	props := MakeMapFromKeysAndVals(
 		property_util.DRIVER_PROTOCOL.Name, "postgresql",
@@ -143,8 +143,8 @@ func TestOktaAuthPluginInvalidRegion(t *testing.T) {
 func TestOktaAuthPluginValidRegionThroughIam(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.invalid-region.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -173,8 +173,8 @@ func TestOktaAuthPluginCachedToken(t *testing.T) {
 	port := 1234
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost(host).SetPort(port).Build()
 	assert.NoError(t, err)
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -229,8 +229,8 @@ func TestOktaAuthPluginConnectWithRetry(t *testing.T) {
 		"us-east-2")
 	okta.OktaTokenCache.Put(cacheKey, "cachedToken", time.Minute)
 	connAttempts := 0
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		connAttempts++
 		cachedToken, ok := okta.OktaTokenCache.Get(cacheKey)
 		if ok && cachedToken == "cachedToken" {
@@ -275,8 +275,8 @@ func TestOktaAuthPluginDoesNotRetryConnect(t *testing.T) {
 		"us-east-2")
 	testErr := errors.New("test")
 	connAttempts := 0
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		connAttempts++
 		cachedPassword, ok := okta.OktaTokenCache.Get(cacheKey)
@@ -314,8 +314,8 @@ func TestOktaAuthPluginCachedIamHostToken(t *testing.T) {
 	port := 1234
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost(host).SetPort(port).Build()
 	assert.NoError(t, err)
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -357,8 +357,8 @@ func TestOktaAuthPluginExpiredTokenWithIamHost(t *testing.T) {
 	port := 1234
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost(host).SetPort(port).Build()
 	assert.NoError(t, err)
-	var resultProps *utils.RWMap[string]
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		resultProps = props
 		return &MockConn{throwError: true}, nil
 	}
@@ -400,7 +400,7 @@ func TestOktaAuthGenerateTokenFailure(t *testing.T) {
 	port := 1234
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost(host).SetPort(port).Build()
 	assert.NoError(t, err)
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) { return &MockConn{throwError: true}, nil }
 
 	props := MakeMapFromKeysAndVals(
 		property_util.DRIVER_PROTOCOL.Name, "postgresql",
@@ -433,7 +433,7 @@ func TestOktaAuthPluginGetAwsCredentialsProviderError(t *testing.T) {
 		property_util.APP_ID.Name, "appId",
 	)
 
-	connectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	connectFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		return &MockConn{throwError: true}, nil
 	}
 
@@ -448,7 +448,7 @@ func TestOktaAuthPluginGetAwsCredentialsProviderError(t *testing.T) {
 func TestOktaAuthPluginMissingParams(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
-	mockConnFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		return &MockConn{throwError: true}, nil
 	}
 

@@ -24,7 +24,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
-func GetRegion(host string, props *utils.RWMap[string], prop property_util.AwsWrapperProperty) Region {
+func GetRegion(host string, props *utils.RWMap[string, string], prop property_util.AwsWrapperProperty) Region {
 	region := GetRegionFromProps(props, prop)
 	if region != "" {
 		return region
@@ -33,7 +33,7 @@ func GetRegion(host string, props *utils.RWMap[string], prop property_util.AwsWr
 	}
 }
 
-func GetRegionFromProps(props *utils.RWMap[string], prop property_util.AwsWrapperProperty) Region {
+func GetRegionFromProps(props *utils.RWMap[string, string], prop property_util.AwsWrapperProperty) Region {
 	regionString := property_util.GetVerifiedWrapperPropertyValue[string](props, prop)
 	if regionString == "" {
 		return ""

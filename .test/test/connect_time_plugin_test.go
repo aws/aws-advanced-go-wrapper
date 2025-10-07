@@ -47,7 +47,7 @@ func TestConnectTimePlugin_ConnectTracksTime(t *testing.T) {
 	plugin := &plugins.ConnectTimePlugin{}
 
 	connected := false
-	mockConnectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	mockConnectFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		time.Sleep(10 * time.Millisecond)
 		connected = true
 		return nil, nil
@@ -67,7 +67,7 @@ func TestConnectTimePlugin_ForceConnectTracksTime(t *testing.T) {
 	plugin := &plugins.ConnectTimePlugin{}
 
 	connected := false
-	mockForceConnectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	mockForceConnectFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		time.Sleep(10 * time.Millisecond)
 		connected = true
 		return nil, nil
@@ -85,7 +85,7 @@ func TestConnectTimePlugin_ForceConnectTracksTime(t *testing.T) {
 
 func TestConnectTimePlugin_ResetConnectTime(t *testing.T) {
 	plugin := &plugins.ConnectTimePlugin{}
-	mockConnectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	mockConnectFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		time.Sleep(5 * time.Millisecond)
 		return nil, nil
 	}
@@ -108,7 +108,7 @@ func TestConnectTimePlugin_GetSubscribedMethods(t *testing.T) {
 
 func TestConnectTimePlugin_AccumulatesTime(t *testing.T) {
 	plugin := &plugins.ConnectTimePlugin{}
-	mockConnectFunc := func(props *utils.RWMap[string]) (driver.Conn, error) {
+	mockConnectFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		time.Sleep(5 * time.Millisecond)
 		return nil, nil
 	}

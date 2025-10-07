@@ -36,7 +36,7 @@ type RejectConnectRouting struct {
 	BaseRouting
 }
 
-func (r *RejectConnectRouting) Apply(_ driver_infrastructure.ConnectionPlugin, _ *host_info_util.HostInfo, _ *utils.RWMap[string],
+func (r *RejectConnectRouting) Apply(_ driver_infrastructure.ConnectionPlugin, _ *host_info_util.HostInfo, _ *utils.RWMap[string, string],
 	_ bool, _ driver_infrastructure.PluginService) (driver.Conn, error) {
 	message := error_util.GetMessage("BlueGreenDeployment.inProgressCantConnect")
 	slog.Debug(message)
@@ -56,7 +56,7 @@ type SubstituteConnectRouting struct {
 	BaseRouting
 }
 
-func (r *SubstituteConnectRouting) Apply(plugin driver_infrastructure.ConnectionPlugin, _ *host_info_util.HostInfo, props *utils.RWMap[string],
+func (r *SubstituteConnectRouting) Apply(plugin driver_infrastructure.ConnectionPlugin, _ *host_info_util.HostInfo, props *utils.RWMap[string, string],
 	_ bool, pluginService driver_infrastructure.PluginService) (driver.Conn, error) {
 	if utils.IsIP(r.substituteHostInfo.GetHost()) {
 		return pluginService.Connect(r.substituteHostInfo, props, plugin)
@@ -144,7 +144,7 @@ type SuspendConnectRouting struct {
 	BaseRouting
 }
 
-func (r *SuspendConnectRouting) Apply(_ driver_infrastructure.ConnectionPlugin, _ *host_info_util.HostInfo, props *utils.RWMap[string],
+func (r *SuspendConnectRouting) Apply(_ driver_infrastructure.ConnectionPlugin, _ *host_info_util.HostInfo, props *utils.RWMap[string, string],
 	_ bool, pluginService driver_infrastructure.PluginService) (driver.Conn, error) {
 	slog.Debug(error_util.GetMessage("BlueGreenDeployment.inProgressSuspendConnect"))
 	parentCtx := pluginService.GetTelemetryContext()
@@ -187,8 +187,12 @@ type SuspendUntilCorrespondingHostFoundConnectRouting struct {
 	BaseRouting
 }
 
-func (r *SuspendUntilCorrespondingHostFoundConnectRouting) Apply(_ driver_infrastructure.ConnectionPlugin, hostInfo *host_info_util.HostInfo, props *utils.RWMap[string],
-	_ bool, pluginService driver_infrastructure.PluginService) (driver.Conn, error) {
+func (r *SuspendUntilCorrespondingHostFoundConnectRouting) Apply(
+	_ driver_infrastructure.ConnectionPlugin,
+	hostInfo *host_info_util.HostInfo,
+	props *utils.RWMap[string, string],
+	_ bool,
+	pluginService driver_infrastructure.PluginService) (driver.Conn, error) {
 	slog.Debug(error_util.GetMessage("BlueGreenDeployment.waitConnectUntilCorrespondingHostFound", hostInfo.GetHost()))
 	parentCtx := pluginService.GetTelemetryContext()
 	telemetryFactory := pluginService.GetTelemetryFactory()

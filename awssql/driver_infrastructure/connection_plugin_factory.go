@@ -21,6 +21,6 @@ import (
 )
 
 type ConnectionPluginFactory interface {
-	GetInstance(pluginService PluginService, props *utils.RWMap[string]) (ConnectionPlugin, error)
+	GetInstance(pluginService PluginService, props *utils.RWMap[string, string]) (ConnectionPlugin, error)
 	ClearCaches()
 }

@@ -26,7 +26,7 @@ import (
 
 type LimitlessConnectionContext struct {
 	Host             host_info_util.HostInfo
-	Props            *utils.RWMap[string]
+	Props            *utils.RWMap[string, string]
 	connection       driver.Conn
 	ConnectFunc      driver_infrastructure.ConnectFunc
 	LimitlessRouters []*host_info_util.HostInfo
@@ -35,7 +35,7 @@ type LimitlessConnectionContext struct {
 
 func NewConnectionContext(
 	hostInfo host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	conn driver.Conn,
 	connectFunc driver_infrastructure.ConnectFunc,
 	limitlessRouters []*host_info_util.HostInfo,

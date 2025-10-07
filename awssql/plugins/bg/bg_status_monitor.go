@@ -48,7 +48,7 @@ type BlueGreenStatusMonitor struct {
 	hostListProvider                 driver_infrastructure.HostListProvider
 	pluginService                    driver_infrastructure.PluginService
 	blueGreenDialect                 driver_infrastructure.BlueGreenDialect
-	props                            *utils.RWMap[string]
+	props                            *utils.RWMap[string, string]
 	statusCheckIntervalMap           map[driver_infrastructure.BlueGreenIntervalRate]int
 	onBlueGreenStatusChangeFunc      func(role driver_infrastructure.BlueGreenRole, interimStatus BlueGreenInterimStatus)
 	currentPhase                     driver_infrastructure.BlueGreenPhase
@@ -57,9 +57,9 @@ type BlueGreenStatusMonitor struct {
 	allStartTopologyIpChanged        bool
 	allStartTopologyEndpointsRemoved bool
 	allTopologyChanged               bool
-	startIpAddressesByHostMap        *utils.RWMap[string]
-	currentIpAddressesByHostMap      *utils.RWMap[string]
-	hostNames                        *utils.RWMap[bool]
+	startIpAddressesByHostMap        *utils.RWMap[string, string]
+	currentIpAddressesByHostMap      *utils.RWMap[string, string]
+	hostNames                        *utils.RWMap[string, bool]
 	startTopology                    []*host_info_util.HostInfo
 	currentTopology                  atomic.Pointer[[]*host_info_util.HostInfo]
 	connection                       atomic.Pointer[driver.Conn]
@@ -76,7 +76,7 @@ type BlueGreenStatusMonitor struct {
 }
 
 func NewBlueGreenStatusMonitor(blueGreenRole driver_infrastructure.BlueGreenRole, bgdId string, hostInfo *host_info_util.HostInfo,
-	pluginService driver_infrastructure.PluginService, monitoringProps *utils.RWMap[string], statusCheckIntervalMap map[driver_infrastructure.BlueGreenIntervalRate]int,
+	pluginService driver_infrastructure.PluginService, monitoringProps *utils.RWMap[string, string], statusCheckIntervalMap map[driver_infrastructure.BlueGreenIntervalRate]int,
 	onBlueGreenStatusChangeFunc func(role driver_infrastructure.BlueGreenRole, interimStatus BlueGreenInterimStatus)) *BlueGreenStatusMonitor {
 	dialect, _ := pluginService.GetDialect().(driver_infrastructure.BlueGreenDialect)
 	monitor := BlueGreenStatusMonitor{
@@ -91,9 +91,9 @@ func NewBlueGreenStatusMonitor(blueGreenRole driver_infrastructure.BlueGreenRole
 		currentPhase:                driver_infrastructure.NOT_CREATED,
 		version:                     "1.0",
 		port:                        -1,
-		startIpAddressesByHostMap:   utils.NewRWMap[string](),
-		currentIpAddressesByHostMap: utils.NewRWMap[string](),
-		hostNames:                   utils.NewRWMap[bool](),
+		startIpAddressesByHostMap:   utils.NewRWMap[string, string](),
+		currentIpAddressesByHostMap: utils.NewRWMap[string, string](),
+		hostNames:                   utils.NewRWMap[string, bool](),
 		startTopology:               []*host_info_util.HostInfo{},
 	}
 	monitor.stop.Store(false)

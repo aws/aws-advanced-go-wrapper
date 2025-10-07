@@ -56,7 +56,7 @@ func (m *MockHostListProviderService) EXPECT() *MockHostListProviderServiceMockR
 }
 
 // CreateHostListProvider mocks base method.
-func (m *MockHostListProviderService) CreateHostListProvider(arg0 *utils.RWMap[string]) driver_infrastructure.HostListProvider {
+func (m *MockHostListProviderService) CreateHostListProvider(arg0 *utils.RWMap[string, string]) driver_infrastructure.HostListProvider {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateHostListProvider", arg0)
 	ret0, _ := ret[0].(driver_infrastructure.HostListProvider)
@@ -187,7 +187,7 @@ func (mr *MockPluginServiceMockRecorder) AcceptsStrategy(arg0 interface{}) *gomo
 }
 
 // Connect mocks base method.
-func (m *MockPluginService) Connect(arg0 *host_info_util.HostInfo, arg1 *utils.RWMap[string], arg2 driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
+func (m *MockPluginService) Connect(arg0 *host_info_util.HostInfo, arg1 *utils.RWMap[string, string], arg2 driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Connect", arg0, arg1, arg2)
 	ret0, _ := ret[0].(driver.Conn)
@@ -202,7 +202,7 @@ func (mr *MockPluginServiceMockRecorder) Connect(arg0, arg1, arg2 interface{}) *
 }
 
 // CreateHostListProvider mocks base method.
-func (m *MockPluginService) CreateHostListProvider(arg0 *utils.RWMap[string]) driver_infrastructure.HostListProvider {
+func (m *MockPluginService) CreateHostListProvider(arg0 *utils.RWMap[string, string]) driver_infrastructure.HostListProvider {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateHostListProvider", arg0)
 	ret0, _ := ret[0].(driver_infrastructure.HostListProvider)
@@ -228,7 +228,7 @@ func (mr *MockPluginServiceMockRecorder) FillAliases(arg0, arg1 interface{}) *go
 }
 
 // ForceConnect mocks base method.
-func (m *MockPluginService) ForceConnect(arg0 *host_info_util.HostInfo, arg1 *utils.RWMap[string]) (driver.Conn, error) {
+func (m *MockPluginService) ForceConnect(arg0 *host_info_util.HostInfo, arg1 *utils.RWMap[string, string]) (driver.Conn, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ForceConnect", arg0, arg1)
 	ret0, _ := ret[0].(driver.Conn)
@@ -458,10 +458,10 @@ func (mr *MockPluginServiceMockRecorder) GetInitialConnectionHostInfo() *gomock.
 }
 
 // GetProperties mocks base method.
-func (m *MockPluginService) GetProperties() *utils.RWMap[string] {
+func (m *MockPluginService) GetProperties() *utils.RWMap[string, string] {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetProperties")
-	ret0, _ := ret[0].(*utils.RWMap[string])
+	ret0, _ := ret[0].(*utils.RWMap[string, string])
 	return ret0
 }
 
@@ -816,7 +816,7 @@ func (mr *MockPluginManagerMockRecorder) AcceptsStrategy(arg0 interface{}) *gomo
 }
 
 // Connect mocks base method.
-func (m *MockPluginManager) Connect(arg0 *host_info_util.HostInfo, arg1 *utils.RWMap[string], arg2 bool, arg3 driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
+func (m *MockPluginManager) Connect(arg0 *host_info_util.HostInfo, arg1 *utils.RWMap[string, string], arg2 bool, arg3 driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Connect", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(driver.Conn)
@@ -853,7 +853,7 @@ func (mr *MockPluginManagerMockRecorder) Execute(arg0, arg1, arg2 interface{}, a
 }
 
 // ForceConnect mocks base method.
-func (m *MockPluginManager) ForceConnect(arg0 *host_info_util.HostInfo, arg1 *utils.RWMap[string], arg2 bool) (driver.Conn, error) {
+func (m *MockPluginManager) ForceConnect(arg0 *host_info_util.HostInfo, arg1 *utils.RWMap[string, string], arg2 bool) (driver.Conn, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ForceConnect", arg0, arg1, arg2)
 	ret0, _ := ret[0].(driver.Conn)
@@ -982,7 +982,7 @@ func (mr *MockPluginManagerMockRecorder) Init(arg0, arg1 interface{}) *gomock.Ca
 }
 
 // InitHostProvider mocks base method.
-func (m *MockPluginManager) InitHostProvider(arg0 *utils.RWMap[string], arg1 driver_infrastructure.HostListProviderService) error {
+func (m *MockPluginManager) InitHostProvider(arg0 *utils.RWMap[string, string], arg1 driver_infrastructure.HostListProviderService) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "InitHostProvider", arg0, arg1)
 	ret0, _ := ret[0].(error)

@@ -94,7 +94,7 @@ func (t TestPlugin) Execute(_ driver.Conn, _ string, executeFunc driver_infrastr
 
 func (t TestPlugin) Connect(
 	_ *host_info_util.HostInfo,
-	properties *utils.RWMap[string],
+	properties *utils.RWMap[string, string],
 	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:before connect", reflect.TypeOf(t), t.id))
@@ -115,7 +115,7 @@ func (t TestPlugin) Connect(
 
 func (t TestPlugin) ForceConnect(
 	_ *host_info_util.HostInfo,
-	properties *utils.RWMap[string],
+	properties *utils.RWMap[string, string],
 	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:before forceConnect", reflect.TypeOf(t), t.id))
@@ -154,7 +154,7 @@ func (t TestPlugin) NotifyHostListChanged(_ map[string]map[driver_infrastructure
 }
 
 func (t TestPlugin) InitHostProvider(
-	_ *utils.RWMap[string],
+	_ *utils.RWMap[string, string],
 	_ driver_infrastructure.HostListProviderService,
 	_ func() error) error {
 	// Do nothing
@@ -237,7 +237,7 @@ func (m *MockHostListProvider) Refresh(_ driver.Conn) ([]*host_info_util.HostInf
 type MockPluginManager struct {
 	driver_infrastructure.PluginManager
 	Changes           map[string]map[driver_infrastructure.HostChangeOptions]bool
-	ForceConnectProps *utils.RWMap[string]
+	ForceConnectProps *utils.RWMap[string, string]
 }
 
 func (pluginManager *MockPluginManager) NotifyHostListChanged(changes map[string]map[driver_infrastructure.HostChangeOptions]bool) {
@@ -246,7 +246,7 @@ func (pluginManager *MockPluginManager) NotifyHostListChanged(changes map[string
 
 func (pluginManager *MockPluginManager) ForceConnect(
 	_ *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	_ bool) (driver.Conn, error) {
 	pluginManager.ForceConnectProps = props
 	return &MockDriverConnection{}, nil
@@ -430,7 +430,7 @@ func (p *MockPluginService) GetCurrentTx() driver.Tx {
 
 func (p *MockPluginService) SetCurrentTx(_ driver.Tx) {}
 
-func (p *MockPluginService) CreateHostListProvider(_ *utils.RWMap[string]) driver_infrastructure.HostListProvider {
+func (p *MockPluginService) CreateHostListProvider(_ *utils.RWMap[string, string]) driver_infrastructure.HostListProvider {
 	return nil
 }
 
@@ -463,11 +463,11 @@ func (p *MockPluginService) GetUpdatedHostListWithTimeout(_ bool, _ int) ([]*hos
 	return nil, nil
 }
 
-func (p *MockPluginService) Connect(_ *host_info_util.HostInfo, _ *utils.RWMap[string], _ driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
+func (p *MockPluginService) Connect(_ *host_info_util.HostInfo, _ *utils.RWMap[string, string], _ driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
 	return nil, nil
 }
 
-func (p *MockPluginService) ForceConnect(_ *host_info_util.HostInfo, _ *utils.RWMap[string]) (driver.Conn, error) {
+func (p *MockPluginService) ForceConnect(_ *host_info_util.HostInfo, _ *utils.RWMap[string, string]) (driver.Conn, error) {
 	return nil, nil
 }
 
@@ -493,7 +493,7 @@ func (p *MockPluginService) GetConnectionProvider() driver_infrastructure.Connec
 	return nil
 }
 
-func (p *MockPluginService) GetProperties() *utils.RWMap[string] {
+func (p *MockPluginService) GetProperties() *utils.RWMap[string, string] {
 	return nil
 }
 
@@ -574,7 +574,7 @@ func (m *MockRdsHostListProviderService) IsStaticHostListProvider() bool {
 	return false
 }
 
-func (m *MockRdsHostListProviderService) CreateHostListProvider(_ *utils.RWMap[string]) driver_infrastructure.HostListProvider {
+func (m *MockRdsHostListProviderService) CreateHostListProvider(_ *utils.RWMap[string, string]) driver_infrastructure.HostListProvider {
 	return nil
 }
 
@@ -678,7 +678,7 @@ type MockCredentialsProviderFactory struct {
 	getAwsCredentialsProviderError error
 }
 
-func (m MockCredentialsProviderFactory) GetAwsCredentialsProvider(_ string, _ region_util.Region, _ *utils.RWMap[string]) (aws.CredentialsProvider, error) {
+func (m MockCredentialsProviderFactory) GetAwsCredentialsProvider(_ string, _ region_util.Region, _ *utils.RWMap[string, string]) (aws.CredentialsProvider, error) {
 	if m.getAwsCredentialsProviderError != nil {
 		return nil, m.getAwsCredentialsProviderError
 	}
@@ -724,7 +724,7 @@ func (m *MockAwsSecretsManagerClient) GetSecretValue(_ context.Context,
 }
 
 func NewMockAwsSecretsManagerClient(_ *host_info_util.HostInfo,
-	_ *utils.RWMap[string],
+	_ *utils.RWMap[string, string],
 	_ string,
 	_ string) (aws_secrets_manager.AwsSecretsManagerClient, error) {
 	return &MockAwsSecretsManagerClient{}, nil

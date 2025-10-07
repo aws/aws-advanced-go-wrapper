@@ -39,7 +39,7 @@ func (d *DefaultPlugin) GetPluginCode() string {
 }
 
 func (d *DefaultPlugin) InitHostProvider(
-	_ *utils.RWMap[string],
+	_ *utils.RWMap[string, string],
 	_ driver_infrastructure.HostListProviderService,
 	_ func() error) error {
 	// Do nothing.
@@ -78,7 +78,7 @@ func (d *DefaultPlugin) Execute(
 
 func (d *DefaultPlugin) Connect(
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	isInitialConnection bool,
 	_ driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	// It's guaranteed that this plugin is always the last in plugin chain so connectFunc can be ignored.
@@ -88,7 +88,7 @@ func (d *DefaultPlugin) Connect(
 
 func (d *DefaultPlugin) ForceConnect(
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	isInitialConnection bool,
 	_ driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	// It's guaranteed that this plugin is always the last in plugin chain so connectFunc can be ignored.
@@ -97,7 +97,7 @@ func (d *DefaultPlugin) ForceConnect(
 
 func (d *DefaultPlugin) connectInternal(
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	connProvider driver_infrastructure.ConnectionProvider,
 	isInitialConnection bool) (driver.Conn, error) {
 	parentCtx := d.PluginService.GetTelemetryContext()

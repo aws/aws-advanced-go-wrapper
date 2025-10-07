@@ -23,6 +23,7 @@ import (
 	"math"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"weak"
 
@@ -45,7 +46,7 @@ type Monitor interface {
 func NewMonitorImpl(
 	pluginService driver_infrastructure.PluginService,
 	hostInfo *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	failureDetectionTimeMillis int,
 	failureDetectionIntervalMillis int,
 	failureDetectionCount int,
@@ -66,7 +67,8 @@ func NewMonitorImpl(
 		failureDetectionTimeNanos:     time.Millisecond * time.Duration(failureDetectionTimeMillis),
 		failureDetectionIntervalNanos: time.Millisecond * time.Duration(failureDetectionIntervalMillis),
 		failureDetectionCount:         failureDetectionCount,
-		NewStates:                     map[time.Time][]weak.Pointer[MonitorConnectionState]{},
+		NewStates:                     utils.NewRWMap[time.Time, []weak.Pointer[MonitorConnectionState]](),
+		ActiveStates:                  utils.NewRWQueue[weak.Pointer[MonitorConnectionState]](),
 		abortedConnectionsCounter:     abortedConnectionsCounter,
 	}
 
@@ -81,29 +83,26 @@ type MonitorImpl struct {
 	hostInfo                      *host_info_util.HostInfo
 	MonitoringConn                driver.Conn
 	pluginService                 driver_infrastructure.PluginService
-	monitoringProps               *utils.RWMap[string]
+	monitoringProps               *utils.RWMap[string, string]
 	failureDetectionTimeNanos     time.Duration
 	failureDetectionIntervalNanos time.Duration
-	FailureCount                  int
+	FailureCount                  atomic.Int32
 	failureDetectionCount         int
 	InvalidHostStartTime          time.Time
-	ActiveStates                  []weak.Pointer[MonitorConnectionState]
-	NewStates                     map[time.Time][]weak.Pointer[MonitorConnectionState]
-	Stopped                       bool
-	HostUnhealthy                 bool
-	lock                          sync.RWMutex
+	ActiveStates                  *utils.RWQueue[weak.Pointer[MonitorConnectionState]]
+	NewStates                     *utils.RWMap[time.Time, []weak.Pointer[MonitorConnectionState]]
+	Stopped                       atomic.Bool
+	HostUnhealthy                 atomic.Bool
 	wg                            sync.WaitGroup
 	abortedConnectionsCounter     telemetry.TelemetryCounter
 }
 
 func (m *MonitorImpl) CanDispose() bool {
-	return len(m.ActiveStates) == 0 && len(m.NewStates) == 0
+	return m.ActiveStates.IsEmpty() && m.NewStates.Size() == 0
 }
 
 func (m *MonitorImpl) Close() {
-	m.lock.Lock()
-	m.Stopped = true
-	m.lock.Unlock()
+	m.Stopped.Store(true)
 
 	m.wg.Wait()
 
@@ -116,9 +115,7 @@ func (m *MonitorImpl) StartMonitoring(state *MonitorConnectionState) {
 	}
 
 	startMonitoringTimeNano := time.Now().Add(m.failureDetectionTimeNanos)
-	m.lock.Lock()
-	m.NewStates[startMonitoringTimeNano] = []weak.Pointer[MonitorConnectionState]{weak.Make(state)}
-	m.lock.Unlock()
+	m.NewStates.Put(startMonitoringTimeNano, []weak.Pointer[MonitorConnectionState]{weak.Make(state)})
 }
 
 func (m *MonitorImpl) newStateRun() {
@@ -127,23 +124,19 @@ func (m *MonitorImpl) newStateRun() {
 
 	for !m.isStopped() {
 		currentTime := time.Now()
-		for startMonitoringTime, queuedStates := range m.NewStates {
-			// Get entries with a starting time less than or equal to the current time.
-			if startMonitoringTime.Before(currentTime) {
-				// The value of an entry is the queued monitoring states awaiting active monitoring.
-				// Add the states to an active monitoring states queue. Ignore disposed states.
+		m.NewStates.ProcessAndRemoveIf(
+			func(startMonitoringTime time.Time) bool {
+				return startMonitoringTime.Before(currentTime)
+			},
+			func(_ time.Time, queuedStates []weak.Pointer[MonitorConnectionState]) {
 				for _, stateWeakRef := range queuedStates {
 					state := stateWeakRef.Value()
 					if state != nil && state.IsActive() {
-						m.ActiveStates = append(m.ActiveStates, stateWeakRef)
+						m.ActiveStates.Enqueue(stateWeakRef)
 					}
 				}
-				// Remove the processed entry from new states.
-				m.lock.Lock()
-				delete(m.NewStates, startMonitoringTime)
-				m.lock.Unlock()
-			}
-		}
+			},
+		)
 		time.Sleep(time.Second)
 	}
 
@@ -155,7 +148,9 @@ func (m *MonitorImpl) run() {
 	defer m.wg.Done()
 
 	for !m.isStopped() {
-		if len(m.ActiveStates) == 0 && !m.HostUnhealthy {
+		activeStatesEmpty := m.ActiveStates.IsEmpty()
+
+		if activeStatesEmpty && !m.HostUnhealthy.Load() {
 			time.Sleep(EFM_ROUTINE_SLEEP_DURATION)
 			continue
 		}
@@ -165,12 +160,16 @@ func (m *MonitorImpl) run() {
 		statusCheckEndTime := time.Now()
 		m.UpdateHostHealthStatus(connIsValid, statusCheckStartTime, statusCheckEndTime)
 
-		if m.HostUnhealthy {
+		if m.HostUnhealthy.Load() {
 			m.pluginService.SetAvailability(m.hostInfo.AllAliases, host_info_util.UNAVAILABLE)
 		}
 
-		tmpActiveStates := []weak.Pointer[MonitorConnectionState]{}
-		for _, monitorStateWeakRef := range m.ActiveStates {
+		tmpActiveStates := utils.NewRWQueue[weak.Pointer[MonitorConnectionState]]()
+		for {
+			monitorStateWeakRef, ok := m.ActiveStates.Dequeue()
+			if !ok {
+				break
+			}
 			if m.isStopped() {
 				break
 			}
@@ -180,7 +179,7 @@ func (m *MonitorImpl) run() {
 				continue
 			}
 
-			if m.HostUnhealthy {
+			if m.HostUnhealthy.Load() {
 				// Kill connection.
 				monitorState.SetHostUnhealthy(true)
 				connToAbort := monitorState.GetConn()
@@ -190,12 +189,14 @@ func (m *MonitorImpl) run() {
 					m.abortedConnectionsCounter.Inc(m.pluginService.GetTelemetryContext())
 				}
 			} else if monitorState.IsActive() {
-				tmpActiveStates = append(tmpActiveStates, monitorStateWeakRef)
+				tmpActiveStates.Enqueue(monitorStateWeakRef)
 			}
 		}
 		// Update activeStates to those that are still active.
-		if len(m.ActiveStates) != 0 || len(tmpActiveStates) != 0 {
-			slog.Debug(error_util.GetMessage("MonitorImpl.updatingActiveStates", m.hostInfo.Host, len(m.ActiveStates), len(tmpActiveStates)))
+		activeStatesSize := m.ActiveStates.Size()
+		tmpActiveStatesSize := tmpActiveStates.Size()
+		if activeStatesSize != 0 || tmpActiveStatesSize != 0 {
+			slog.Debug(error_util.GetMessage("MonitorImpl.updatingActiveStates", m.hostInfo.Host, activeStatesSize, tmpActiveStatesSize))
 		}
 		m.ActiveStates = tmpActiveStates
 		delayDurationNanos := m.failureDetectionIntervalNanos - (statusCheckEndTime.Sub(statusCheckStartTime))
@@ -212,7 +213,7 @@ func (m *MonitorImpl) run() {
 
 func (m *MonitorImpl) UpdateHostHealthStatus(connIsValid bool, statusCheckStartTime time.Time, statusCheckEndTime time.Time) {
 	if !connIsValid {
-		m.FailureCount++
+		m.FailureCount.Add(1)
 
 		if m.InvalidHostStartTime.IsZero() {
 			m.InvalidHostStartTime = statusCheckStartTime
@@ -223,7 +224,7 @@ func (m *MonitorImpl) UpdateHostHealthStatus(connIsValid bool, statusCheckStartT
 
 		if invalidHostDurationTimeNanos >= maxInvalidDurationTimeNanos {
 			slog.Debug(error_util.GetMessage("MonitorImpl.hostDead", m.hostInfo.Host))
-			m.HostUnhealthy = true
+			m.HostUnhealthy.Store(true)
 			return
 		}
 
@@ -231,14 +232,14 @@ func (m *MonitorImpl) UpdateHostHealthStatus(connIsValid bool, statusCheckStartT
 		return
 	}
 
-	if m.FailureCount > 0 {
+	if m.FailureCount.Load() > 0 {
 		// Host is back alive.
 		slog.Debug(error_util.GetMessage("MonitorImpl.hostAlive", m.hostInfo.Host))
 	}
 
-	m.FailureCount = 0
+	m.FailureCount.Store(0)
 	m.InvalidHostStartTime = time.Time{}
-	m.HostUnhealthy = false
+	m.HostUnhealthy.Store(false)
 }
 
 func (m *MonitorImpl) CheckConnectionStatus() bool {
@@ -276,7 +277,5 @@ func (m *MonitorImpl) CheckConnectionStatus() bool {
 }
 
 func (m *MonitorImpl) isStopped() bool {
-	m.lock.RLock()
-	defer m.lock.RUnlock()
-	return m.Stopped
+	return m.Stopped.Load()
 }

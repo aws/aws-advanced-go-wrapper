@@ -148,12 +148,12 @@ type BlueGreenStatus struct {
 	currentPhase       BlueGreenPhase
 	connectRoutings    []ConnectRouting
 	executeRoutings    []ExecuteRouting
-	roleByHost         *utils.RWMap[BlueGreenRole]
-	correspondingHosts *utils.RWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]
+	roleByHost         *utils.RWMap[string, BlueGreenRole]
+	correspondingHosts *utils.RWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]
 }
 
 func NewBgStatus(id string, phase BlueGreenPhase, connectRoutings []ConnectRouting, executeRoutings []ExecuteRouting,
-	roleByHost *utils.RWMap[BlueGreenRole], correspondingHosts *utils.RWMap[utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]) BlueGreenStatus {
+	roleByHost *utils.RWMap[string, BlueGreenRole], correspondingHosts *utils.RWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]) BlueGreenStatus {
 	return BlueGreenStatus{
 		bgId:               id,
 		currentPhase:       phase,
@@ -233,7 +233,7 @@ type ConnectRouting interface {
 	Apply(
 		plugin ConnectionPlugin,
 		hostInfo *host_info_util.HostInfo,
-		properties *utils.RWMap[string],
+		properties *utils.RWMap[string, string],
 		isInitialConnection bool,
 		pluginService PluginService,
 	) (driver.Conn, error)
@@ -243,7 +243,7 @@ type ExecuteRouting interface {
 	IsMatch(hostInfo *host_info_util.HostInfo, hostRole BlueGreenRole) bool
 	Apply(
 		plugin ConnectionPlugin,
-		properties *utils.RWMap[string],
+		properties *utils.RWMap[string, string],
 		pluginService PluginService,
 		methodName string,
 		methodFunc ExecuteFunc,

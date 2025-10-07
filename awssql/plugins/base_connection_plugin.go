@@ -47,7 +47,7 @@ func (b BaseConnectionPlugin) Execute(
 
 func (b BaseConnectionPlugin) Connect(
 	_ *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	return connectFunc(props)
@@ -55,7 +55,7 @@ func (b BaseConnectionPlugin) Connect(
 
 func (b BaseConnectionPlugin) ForceConnect(
 	_ *host_info_util.HostInfo,
-	props *utils.RWMap[string],
+	props *utils.RWMap[string, string],
 	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	return connectFunc(props)
@@ -82,7 +82,7 @@ func (b BaseConnectionPlugin) NotifyHostListChanged(_ map[string]map[driver_infr
 }
 
 func (b BaseConnectionPlugin) InitHostProvider(
-	_ *utils.RWMap[string],
+	_ *utils.RWMap[string, string],
 	_ driver_infrastructure.HostListProviderService,
 	initHostProviderFunc func() error) error {
 	return initHostProviderFunc()
