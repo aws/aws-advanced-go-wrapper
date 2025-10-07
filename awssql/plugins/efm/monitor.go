@@ -275,7 +275,5 @@ func (m *MonitorImpl) CheckConnectionStatus() bool {
 }
 
 func (m *MonitorImpl) isStopped() bool {
-	// m.lock.RLock()
-	// defer m.lock.RUnlock()
 	return m.Stopped.Load()
 }
