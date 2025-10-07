@@ -79,6 +79,26 @@ func TestRWMapPutAndGet(t *testing.T) {
 	assert.Equal(t, "long-key-value", value, "Should store and retrieve long key value")
 }
 
+func TestRWMapPutAndGetWithIntKey(t *testing.T) {
+	rwMap := utils.NewRWMap[int, string]()
+
+	key1 := -1
+	nonExistentKey := -100
+	rwMap.Put(key1, "value1")
+	value, ok := rwMap.Get(key1)
+	assert.True(t, ok, "Should find the key that was put")
+	assert.Equal(t, "value1", value, "Should return the correct value")
+
+	value, ok = rwMap.Get(nonExistentKey)
+	assert.False(t, ok, "Should not find non-existent key")
+	assert.Equal(t, "", value, "Should return zero value for non-existent key")
+
+	rwMap.Put(key1, "newvalue1")
+	value, ok = rwMap.Get(key1)
+	assert.True(t, ok, "Should find the key after overwrite")
+	assert.Equal(t, "newvalue1", value, "Should return the new value")
+}
+
 func TestRWMapComputeIfAbsent(t *testing.T) {
 	rwMap := utils.NewRWMap[string, int]()
 

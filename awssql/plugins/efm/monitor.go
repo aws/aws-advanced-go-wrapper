@@ -98,7 +98,7 @@ type MonitorImpl struct {
 }
 
 func (m *MonitorImpl) CanDispose() bool {
-	return m.ActiveStates.Size() == 0 && m.NewStates.Size() == 0
+	return m.ActiveStates.IsEmpty() && m.NewStates.Size() == 0
 }
 
 func (m *MonitorImpl) Close() {
@@ -148,7 +148,7 @@ func (m *MonitorImpl) run() {
 	defer m.wg.Done()
 
 	for !m.isStopped() {
-		activeStatesEmpty := m.ActiveStates.Size() == 0
+		activeStatesEmpty := m.ActiveStates.IsEmpty()
 
 		if activeStatesEmpty && !m.HostUnhealthy.Load() {
 			time.Sleep(EFM_ROUTINE_SLEEP_DURATION)
@@ -193,8 +193,10 @@ func (m *MonitorImpl) run() {
 			}
 		}
 		// Update activeStates to those that are still active.
-		if m.ActiveStates.Size() != 0 || tmpActiveStates.Size() != 0 {
-			slog.Debug(error_util.GetMessage("MonitorImpl.updatingActiveStates", m.hostInfo.Host, m.ActiveStates.Size(), tmpActiveStates.Size()))
+		activeStatesSize := m.ActiveStates.Size()
+		tmpActiveStatesSize := tmpActiveStates.Size()
+		if activeStatesSize != 0 || tmpActiveStatesSize != 0 {
+			slog.Debug(error_util.GetMessage("MonitorImpl.updatingActiveStates", m.hostInfo.Host, activeStatesSize, tmpActiveStatesSize))
 		}
 		m.ActiveStates = tmpActiveStates
 		delayDurationNanos := m.failureDetectionIntervalNanos - (statusCheckEndTime.Sub(statusCheckStartTime))
