@@ -1,8 +1,9 @@
 # Release Schedule
 
-| Release Date | Release                                                                                              |
-|--------------|------------------------------------------------------------------------------------------------------|
-| Jul 31 2025  | [Release 2025-07-31](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2025-07-31) |
+| Release Date   | Release                                                                                              |
+|----------------|------------------------------------------------------------------------------------------------------|
+| Jul 31 2025    | [Release 2025-07-31](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2025-07-31) |
+| October 8 2025 | [Release 2025-10-08](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2025-10-08) |
 
 `aws-advanced-go-wrapper` follows [semver](https://semver.org/#semantic-versioning-200) which means we will only
 release breaking changes in major versions. Generally speaking, patches will be released to fix existing problems without
@@ -52,6 +53,6 @@ That said, PRs with said back-ports are welcome and will follow the project's re
 No new releases will result from these changes, but interested parties can create their own distribution
 from the updated source after the PRs are merged.
 
-| Major Version | Latest Minor Version | Status      | Initial Release | Maintenance Window Start | Maintenance Window End |
-| ------------- |----------------------| ----------- |-----------------|--------------------------| ---------------------- |
-| 1             | 1.0.0                | Maintenance | Jul 31, 2025    | Jul 31, 2025             |                        |
+| Major Version | Latest Minor Version | Status  | Initial Release | Maintenance Window Start | Maintenance Window End |
+| ------------- |----------------------|---------|-----------------|--------------------------| ---------------------- |
+| 1             | 1.1.0                | Current | Jul 31, 2025    | Jul 31, 2025             |                        |
