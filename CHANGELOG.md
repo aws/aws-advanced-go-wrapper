@@ -18,7 +18,7 @@ The Amazon Web Services (AWS) Advanced Go Wrapper allows an application to take 
 * `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.0.0](pgx-driver/CHANGELOG.md#100---2025-07-31)
 * `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.0](xray/CHANGELOG.md#100---2025-07-31)
 
-# Release (2025-10-02)
+# Release (2025-10-08)
 
 ## General Highlights
 ### :magic_wand: Added
@@ -33,13 +33,13 @@ The Amazon Web Services (AWS) Advanced Go Wrapper allows an application to take 
 * If failover is unsuccessful, the underlying error is returned ([PR #252](https://github.com/aws/aws-advanced-go-wrapper/pull/252)).
 
 ## Module Highlights
-* `https://github.com/aws/aws-advanced-go-wrapper/auth-helpers`: [v1.0.1](auth-helpers/CHANGELOG.md#101---2025-10-02)
-* `https://github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager`: [v1.0.1](aws-secrets-manager/CHANGELOG.md#101---2025-10-02)
-* `https://github.com/aws/aws-advanced-go-wrapper/awssql`: [v1.1.0](awssql/CHANGELOG.md#110---2025-10-02)
-* `https://github.com/aws/aws-advanced-go-wrapper/federated-auth`: [v1.0.1](federated-auth/CHANGELOG.md#101---2025-10-02)
-* `https://github.com/aws/aws-advanced-go-wrapper/iam`: [v1.0.1](iam/CHANGELOG.md#101---2025-10-02)
-* `https://github.com/aws/aws-advanced-go-wrapper/mysql-driver`: [v1.0.1](mysql-driver/CHANGELOG.md#101---2025-10-02)
-* `https://github.com/aws/aws-advanced-go-wrapper/okta`: [v1.0.1](okta/CHANGELOG.md#101---2025-10-02)
-* `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.1](otlp/CHANGELOG.md#101---2025-10-02)
-* `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.0.1](pgx-driver/CHANGELOG.md#101---2025-10-02)
-* `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.1](xray/CHANGELOG.md#101---2025-10-02)
+* `https://github.com/aws/aws-advanced-go-wrapper/auth-helpers`: [v1.0.1](auth-helpers/CHANGELOG.md#101---2025-10-08)
+* `https://github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager`: [v1.0.1](aws-secrets-manager/CHANGELOG.md#101---2025-10-08)
+* `https://github.com/aws/aws-advanced-go-wrapper/awssql`: [v1.1.0](awssql/CHANGELOG.md#110---2025-10-08)
+* `https://github.com/aws/aws-advanced-go-wrapper/federated-auth`: [v1.0.1](federated-auth/CHANGELOG.md#101---2025-10-08)
+* `https://github.com/aws/aws-advanced-go-wrapper/iam`: [v1.0.1](iam/CHANGELOG.md#101---2025-10-08)
+* `https://github.com/aws/aws-advanced-go-wrapper/mysql-driver`: [v1.0.1](mysql-driver/CHANGELOG.md#101---2025-10-08)
+* `https://github.com/aws/aws-advanced-go-wrapper/okta`: [v1.0.1](okta/CHANGELOG.md#101---2025-10-08)
+* `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.1](otlp/CHANGELOG.md#101---2025-10-08)
+* `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.0.1](pgx-driver/CHANGELOG.md#101---2025-10-08)
+* `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.1](xray/CHANGELOG.md#101---2025-10-08)

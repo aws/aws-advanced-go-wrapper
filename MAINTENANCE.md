@@ -1,9 +1,9 @@
 # Release Schedule
 
-| Release Date    | Release                                                                                              |
-|-----------------|------------------------------------------------------------------------------------------------------|
-| Jul 31 2025     | [Release 2025-07-31](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2025-07-31) |
-| October ?? 2025 | [Release 2025-10-??](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2025-10-xx) |
+| Release Date   | Release                                                                                              |
+|----------------|------------------------------------------------------------------------------------------------------|
+| Jul 31 2025    | [Release 2025-07-31](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2025-07-31) |
+| October 8 2025 | [Release 2025-10-02](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2025-10-02) |
 
 `aws-advanced-go-wrapper` follows [semver](https://semver.org/#semantic-versioning-200) which means we will only
 release breaking changes in major versions. Generally speaking, patches will be released to fix existing problems without
