@@ -14,7 +14,7 @@ require (
 	github.com/aws/aws-advanced-go-wrapper/otlp v1.0.1
 	github.com/aws/aws-advanced-go-wrapper/pgx-driver v1.0.1
 	github.com/aws/aws-advanced-go-wrapper/xray v1.0.1
-	github.com/aws/aws-sdk-go-v2 v1.39.0
+	github.com/aws/aws-sdk-go-v2 v1.39.2
 	github.com/aws/aws-sdk-go-v2/config v1.31.8
 	github.com/aws/aws-sdk-go-v2/service/rds v1.107.0
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.39.4
