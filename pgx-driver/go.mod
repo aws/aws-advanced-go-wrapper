@@ -15,7 +15,7 @@ require (
 	github.com/nicksnyder/go-i18n/v2 v2.6.0 // indirect
 	golang.org/x/crypto v0.37.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
-	golang.org/x/text v0.29.0 // indirect
+	golang.org/x/text v0.30.0 // indirect
 )
 
 replace github.com/aws/aws-advanced-go-wrapper/awssql => ../awssql
