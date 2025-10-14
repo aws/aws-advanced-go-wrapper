@@ -115,7 +115,6 @@ func NewClusterTopologyMonitorImpl(
 }
 
 func (c *ClusterTopologyMonitorImpl) Start(wg *sync.WaitGroup) {
-	slog.Debug("ClusterTopologyMonitorImpl.Start()")
 	c.monitoringConn.Store(emptyContainer)
 	c.hostRoutinesWriterConn.Store(emptyContainer)
 	c.hostRoutinesReaderConn.Store(emptyContainer)

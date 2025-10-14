@@ -619,7 +619,7 @@ func (a AuroraTestUtility) SwitchoverBlueGreenDeployment(ctx context.Context, bl
 	return nil
 }
 
-// NOTE: This is for skipping flakey MultiAZ MySQL tests. These tests should be fixed. ItemId=130960814
+// NOTE: This is for skipping flakey MultiAZ MySQL tests. These tests should be fixed. ItemId=130960814.
 func SkipForMultiAzMySql(t *testing.T, deployment DatabaseEngineDeployment, engine DatabaseEngine) {
 	if RDS_MULTI_AZ_CLUSTER == deployment && MYSQL == engine {
 		t.Skipf("Skipping test for RDS Multi-AZ MySQL b/c they are flakey.")

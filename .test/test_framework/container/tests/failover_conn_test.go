@@ -78,7 +78,7 @@ func TestFailoverWriter(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, newInstanceId)
 
-	// Skip for multi-AZ b/c it simulates failover which reconnects to the original instance.
+	// Different behaviour for multi-AZ b/c it simulates failover which reconnects to the original instance.
 	if environment.Info().Request.Deployment == test_utils.RDS_MULTI_AZ_CLUSTER {
 		assert.Equal(t, instanceId, newInstanceId)
 	} else {
@@ -172,7 +172,7 @@ func TestFailoverWriterWithTelemetryXray(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, newInstanceId)
 
-	// Skip for multi-AZ b/c it simulates failover which reconnects to the original instance.
+	// Different behaviour for multi-AZ b/c it simulates failover which reconnects to the original instance.
 	if environment.Info().Request.Deployment == test_utils.RDS_MULTI_AZ_CLUSTER {
 		assert.Equal(t, instanceId, newInstanceId)
 	} else {
@@ -215,7 +215,7 @@ func TestFailoverWriterEndpoint(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, newInstanceId)
 
-	// Skip for multi-AZ b/c it simulates failover which reconnects to the original instance.
+	// Different behaviour for multi-AZ b/c it simulates failover which reconnects to the original instance.
 	if environment.Info().Request.Deployment == test_utils.RDS_MULTI_AZ_CLUSTER {
 		assert.Equal(t, instanceId, newInstanceId)
 	} else {
@@ -438,7 +438,7 @@ func TestFailoverWriterMaintainSessionState(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, newInstanceId)
 
-	// Skip for multi-AZ b/c it simulates failover which reconnects to the original instance.
+	// Different behaviour for multi-AZ b/c it simulates failover which reconnects to the original instance.
 	if environment.Info().Request.Deployment == test_utils.RDS_MULTI_AZ_CLUSTER {
 		assert.Equal(t, instanceId, newInstanceId)
 	} else {
