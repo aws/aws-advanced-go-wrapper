@@ -112,7 +112,7 @@ func main() {
 	db.Ping()
 
 	var id string
-	row := db.QueryRow("SELECT aurora_db_instance_identifier() as id")
+	row := db.QueryRow("SELECT pg_catalog.aurora_db_instance_identifier() as id")
 	err = row.Scan(&id)
 	if err != nil {
 		log.Fatal(err)

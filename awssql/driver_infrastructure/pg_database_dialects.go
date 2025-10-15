@@ -44,15 +44,15 @@ func (p *PgDatabaseDialect) GetDefaultPort() int {
 }
 
 func (p *PgDatabaseDialect) GetHostAliasQuery() string {
-	return "SELECT CONCAT(inet_server_addr(), ':', inet_server_port())"
+	return "SELECT pg_catalog.CONCAT(pg_catalog.inet_server_addr(), ':', pg_catalog.inet_server_port())"
 }
 
 func (p *PgDatabaseDialect) GetServerVersionQuery() string {
-	return "SELECT 'version', VERSION()"
+	return "SELECT 'version', pg_catalog.VERSION()"
 }
 
 func (p *PgDatabaseDialect) IsDialect(conn driver.Conn) bool {
-	row := utils.GetFirstRowFromQuery(conn, "SELECT 1 FROM pg_proc LIMIT 1")
+	row := utils.GetFirstRowFromQuery(conn, "SELECT 1 FROM pg_catalog.pg_proc LIMIT 1")
 	// If the pg_proc table exists then it's a PostgreSQL cluster.
 	return row != nil
 }
@@ -170,8 +170,8 @@ func (m *RdsPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	}
 	hasExtensions := utils.GetFirstRowFromQuery(
 		conn,
-		"SELECT (setting LIKE '%rds_tools%') AS rds_tools, (setting LIKE '%aurora_stat_utils%') AS aurora_stat_utils FROM pg_settings "+
-			"WHERE name='rds.extensions'")
+		"SELECT (setting LIKE '%rds_tools%') AS rds_tools, (setting LIKE '%aurora_stat_utils%') AS aurora_stat_utils FROM pg_catalog.pg_settings "+
+			"WHERE name OPERATOR(pg_catalog.=) 'rds.extensions'")
 	return hasExtensions != nil && hasExtensions[0] == true && // If a variables with such name is present then it is an RDS cluster.
 		hasExtensions[1] == false // If aurora_stat_utils is present then it should be treated as an Aurora cluster, not an RDS cluster.
 }
@@ -196,7 +196,7 @@ func (m *PgTopologyAwareDatabaseDialect) GetTopology(
 }
 
 func (m *PgTopologyAwareDatabaseDialect) GetHostRole(conn driver.Conn) host_info_util.HostRole {
-	isReaderQuery := "SELECT pg_is_in_recovery()"
+	isReaderQuery := "SELECT pg_catalog.pg_is_in_recovery()"
 	res := utils.GetFirstRowFromQuery(conn, isReaderQuery)
 	if len(res) > 0 {
 		b, ok := (res[0]).(bool)
@@ -254,19 +254,19 @@ func (m *AuroraPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	}
 	hasExtensions := utils.GetFirstRowFromQuery(
 		conn,
-		"SELECT (setting LIKE '%aurora_stat_utils%') AS aurora_stat_utils FROM pg_settings WHERE name='rds.extensions'")
-	hasTopology := utils.GetFirstRowFromQuery(conn, "SELECT 1 FROM aurora_replica_status() LIMIT 1")
+		"SELECT (setting LIKE '%aurora_stat_utils%') AS aurora_stat_utils FROM pg_catalog.pg_settings WHERE name OPERATOR(pg_catalog.=) 'rds.extensions'")
+	hasTopology := utils.GetFirstRowFromQuery(conn, "SELECT 1 FROM pg_catalog.aurora_replica_status() LIMIT 1")
 	// If both variables with such name are presented then it means it's an Aurora cluster.
 	return hasExtensions != nil && hasExtensions[0] == true && hasTopology != nil
 }
 
 func (m *AuroraPgDatabaseDialect) GetTopology(conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
-	topologyQuery := "SELECT server_id, CASE WHEN SESSION_ID = 'MASTER_SESSION_ID' THEN TRUE ELSE FALSE END AS is_writer, " +
+	topologyQuery := "SELECT server_id, CASE WHEN SESSION_ID OPERATOR(pg_catalog.=) 'MASTER_SESSION_ID' THEN TRUE ELSE FALSE END AS is_writer, " +
 		"CPU, COALESCE(REPLICA_LAG_IN_MSEC, 0) AS lag, LAST_UPDATE_TIMESTAMP " +
-		"FROM aurora_replica_status() " +
+		"FROM pg_catalog.aurora_replica_status() " +
 		// Filter out hosts that haven't been updated in the last 5 minutes.
-		"WHERE EXTRACT(EPOCH FROM(NOW() - LAST_UPDATE_TIMESTAMP)) <= 300 OR SESSION_ID = 'MASTER_SESSION_ID' " +
-		"OR LAST_UPDATE_TIMESTAMP IS NULL"
+		"WHERE EXTRACT(EPOCH FROM(pg_catalog.NOW() OPERATOR(pg_catalog.-) LAST_UPDATE_TIMESTAMP)) OPERATOR(pg_catalog.<=) 300 OR SESSION_ID OPERATOR(pg_catalog.=) " +
+		"'MASTER_SESSION_ID' OR LAST_UPDATE_TIMESTAMP IS NULL"
 
 	queryerCtx, ok := conn.(driver.QueryerContext)
 	if !ok {
@@ -317,7 +317,7 @@ func (m *AuroraPgDatabaseDialect) GetTopology(conn driver.Conn, provider HostLis
 }
 
 func (m *AuroraPgDatabaseDialect) GetHostName(conn driver.Conn) string {
-	hostIdQuery := "SELECT aurora_db_instance_identifier()"
+	hostIdQuery := "SELECT pg_catalog.aurora_db_instance_identifier()"
 	res := utils.GetFirstRowFromQuery(conn, hostIdQuery)
 	if len(res) > 0 {
 		instanceId, ok := (res[0]).(string)
@@ -329,7 +329,8 @@ func (m *AuroraPgDatabaseDialect) GetHostName(conn driver.Conn) string {
 }
 
 func (m *AuroraPgDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, error) {
-	hostIdQuery := "SELECT server_id FROM aurora_replica_status() WHERE SESSION_ID = 'MASTER_SESSION_ID' AND SERVER_ID = aurora_db_instance_identifier()"
+	hostIdQuery := "SELECT server_id FROM pg_catalog.aurora_replica_status() WHERE SESSION_ID OPERATOR(pg_catalog.=) 'MASTER_SESSION_ID' AND SERVER_ID OPERATOR(pg_catalog.=)" +
+		" pg_catalog.aurora_db_instance_identifier()"
 	res := utils.GetFirstRowFromQuery(conn, hostIdQuery)
 	if res == nil {
 		return "", error_util.NewGenericAwsWrapperError("Could not determine writer host name.")
@@ -352,17 +353,17 @@ func (m *AuroraPgDatabaseDialect) GetHostListProvider(
 }
 
 func (m *AuroraPgDatabaseDialect) GetLimitlessRouterEndpointQuery() string {
-	return "select router_endpoint, load from aurora_limitless_router_endpoints()"
+	return "select router_endpoint, load from pg_catalog.aurora_limitless_router_endpoints()"
 }
 
 func (m *AuroraPgDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) []BlueGreenResult {
-	bgStatusQuery := "SELECT version, endpoint, port, role, status FROM get_blue_green_fast_switchover_metadata(" +
+	bgStatusQuery := "SELECT version, endpoint, port, role, status FROM pg_catalog.get_blue_green_fast_switchover_metadata(" +
 		"'aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
 	return pgGetBlueGreenStatus(conn, bgStatusQuery)
 }
 
 func (m *AuroraPgDatabaseDialect) IsBlueGreenStatusAvailable(conn driver.Conn) bool {
-	topologyTableExistQuery := "SELECT 'get_blue_green_fast_switchover_metadata'::regproc"
+	topologyTableExistQuery := "SELECT 'pg_catalog.get_blue_green_fast_switchover_metadata'::regproc"
 	return utils.GetFirstRowFromQuery(conn, topologyTableExistQuery) != nil
 }
 
@@ -371,8 +372,8 @@ type RdsMultiAzClusterPgDatabaseDialect struct {
 }
 
 func (r *RdsMultiAzClusterPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
-	writerHostFuncExistQuery := "SELECT 1 AS tmp FROM information_schema.routines WHERE routine_schema='rds_tools' " +
-		"AND routine_name='multi_az_db_cluster_source_dbi_resource_id'"
+	writerHostFuncExistQuery := "SELECT 1 AS tmp FROM information_schema.routines WHERE routine_schema OPERATOR(pg_catalog.=) 'rds_tools' " +
+		"AND routine_name OPERATOR(pg_catalog.=) 'multi_az_db_cluster_source_dbi_resource_id'"
 	fetchWriterHostQuery := "SELECT multi_az_db_cluster_source_dbi_resource_id FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()"
 
 	if utils.GetFirstRowFromQueryAsString(conn, writerHostFuncExistQuery) == nil {
@@ -484,8 +485,8 @@ func (r *RdsMultiAzClusterPgDatabaseDialect) getWriterHostId(conn driver.Conn) s
 
 func (r *RdsMultiAzClusterPgDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, error) {
 	fetchWriterHostNameQuery := "SELECT endpoint FROM rds_tools.show_topology('aws-advanced-go-wrapper') as topology " +
-		"WHERE topology.id = (SELECT multi_az_db_cluster_source_dbi_resource_id FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()) " +
-		"AND topology.id = (SELECT dbi_resource_id FROM rds_tools.dbi_resource_id())"
+		"WHERE topology.id OPERATOR(pg_catalog.=) (SELECT multi_az_db_cluster_source_dbi_resource_id FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()) " +
+		"AND topology.id OPERATOR(pg_catalog.=) (SELECT dbi_resource_id FROM rds_tools.dbi_resource_id())"
 
 	res := utils.GetFirstRowFromQuery(conn, fetchWriterHostNameQuery)
 	if res == nil {

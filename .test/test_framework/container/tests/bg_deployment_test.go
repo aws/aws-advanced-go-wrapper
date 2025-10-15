@@ -52,7 +52,7 @@ const (
 	includeWriterAndReaderOnly = false
 	testClusterId              = "test-cluster-id"
 	mysqlBgStatusQuery         = "SELECT role, status FROM mysql.rds_topology"
-	pgAuroraBgStatusQuery      = "SELECT role, status FROM get_blue_green_fast_switchover_metadata('aws_advanced_go_wrapper')"
+	pgAuroraBgStatusQuery      = "SELECT role, status FROM pg_catalog.get_blue_green_fast_switchover_metadata('aws_advanced_go_wrapper')"
 	pgRdsBgStatusQuery         = "SELECT role, status FROM rds_tools.show_topology('aws_advanced_go_wrapper-1.0.0')"
 )
 
@@ -728,7 +728,7 @@ func (suite *BlueGreenTestSuite) wrapperBlueExecutingConnectivityMonitor(hostId,
 	case test_utils.MYSQL:
 		sleepQuery = "SELECT SLEEP(5)"
 	case test_utils.PG:
-		sleepQuery = "SELECT pg_sleep(5)"
+		sleepQuery = "SELECT pg_catalog.pg_sleep(5)"
 	default:
 		suite.addUnhandledException(fmt.Errorf("unsupported database engine: %v", environment.Info().Request.Engine))
 		return
