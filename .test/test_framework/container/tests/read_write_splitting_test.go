@@ -612,7 +612,8 @@ func TestReadWriteSplitting_WriterFailover(t *testing.T) {
 
 	// Perform failover
 	test_utils.EnableAllConnectivity(true)
-	err = setup.auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(originalWriterId, "", "")
+	//err = setup.auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(originalWriterId, "", "")
+	err = setup.auroraTestUtility.TriggerFailover(originalWriterId, "", "")
 	require.NoError(t, err)
 
 	// Expect failover error
@@ -683,7 +684,7 @@ func TestReadWriteSplitting_FailoverToNewReader(t *testing.T) {
 	awsWrapperError, ok := err.(*error_util.AwsWrapperError)
 	assert.True(t, ok)
 	assert.True(t, awsWrapperError.IsFailoverErrorType())
-	assert.Equal(t, awsWrapperError, error_util.FailoverSuccessError)
+	assert.Equal(t, error_util.FailoverSuccessError, awsWrapperError)
 
 	currentReaderId, err := executeInstanceQuery(setup.env, conn, context.TODO(), 20)
 	require.NoError(t, err)
@@ -843,7 +844,8 @@ func TestPooledConnection_FailoverInTransaction(t *testing.T) {
 	_, err = executeInstanceQueryReadOnly(setup.env, conn, 5)
 	require.NoError(t, err)
 
-	err = setup.auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(originalWriterId, "", "")
+	//err = setup.auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(originalWriterId, "", "")
+	err = setup.auroraTestUtility.TriggerFailover(originalWriterId, "", "")
 	require.NoError(t, err)
 
 	_, err = executeInstanceQuery(setup.env, conn, context.TODO(), 60)
