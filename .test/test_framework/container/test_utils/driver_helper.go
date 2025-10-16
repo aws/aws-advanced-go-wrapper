@@ -55,7 +55,7 @@ func NewWrapperDriver(engine DatabaseEngine) driver.Driver {
 func GetSleepSql(engine DatabaseEngine, seconds int) string {
 	switch engine {
 	case PG:
-		return fmt.Sprintf("select pg_sleep(%d)", seconds)
+		return fmt.Sprintf("select pg_catalog.pg_sleep(%d)", seconds)
 	case MYSQL:
 		return fmt.Sprintf("select sleep(%d)", seconds)
 	}
@@ -67,7 +67,7 @@ func GetInstanceIdSql(engine DatabaseEngine, deployment DatabaseEngineDeployment
 	case AURORA, AURORA_LIMITLESS:
 		switch engine {
 		case PG:
-			return "SELECT aurora_db_instance_identifier() as id", nil
+			return "SELECT pg_catalog.aurora_db_instance_identifier() as id", nil
 		case MYSQL:
 			return "SELECT @@aurora_server_id as id", nil
 		default:

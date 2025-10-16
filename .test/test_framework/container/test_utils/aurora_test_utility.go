@@ -494,7 +494,8 @@ func (a AuroraTestUtility) GetRdsInstanceIds(engine DatabaseEngine, deployment D
 		case MYSQL:
 			retrieveTopologySQL = "SELECT SERVER_ID, SESSION_ID FROM information_schema.replica_host_status ORDER BY IF(SESSION_ID = 'MASTER_SESSION_ID', 0, 1)"
 		case PG:
-			retrieveTopologySQL = "SELECT SERVER_ID, SESSION_ID FROM aurora_replica_status() ORDER BY CASE WHEN SESSION_ID = 'MASTER_SESSION_ID' THEN 0 ELSE 1 END"
+			retrieveTopologySQL = "SELECT SERVER_ID, SESSION_ID FROM pg_catalog.aurora_replica_status() ORDER BY CASE WHEN SESSION_ID OPERATOR(pg_catalog.=) " +
+				"'MASTER_SESSION_ID' THEN 0 ELSE 1 END"
 		default:
 			return nil, fmt.Errorf("unsupported database engine: %v", engine)
 		}

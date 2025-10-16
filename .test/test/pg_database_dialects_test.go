@@ -52,13 +52,13 @@ func TestPgDatabaseDialect_GetDefaultPort(t *testing.T) {
 
 func TestPgDatabaseDialect_GetHostAlias(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.PgDatabaseDialect{}
-	expectedHostAliasQuery := "SELECT CONCAT(inet_server_addr(), ':', inet_server_port())"
+	expectedHostAliasQuery := "SELECT pg_catalog.CONCAT(pg_catalog.inet_server_addr(), ':', pg_catalog.inet_server_port())"
 	assert.Equal(t, expectedHostAliasQuery, testDatabaseDialect.GetHostAliasQuery())
 }
 
 func TestPgDatabaseDialect_GetServerVersion(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.PgDatabaseDialect{}
-	expectedGetServerVersionQuery := "SELECT 'version', VERSION()"
+	expectedGetServerVersionQuery := "SELECT 'version', pg_catalog.VERSION()"
 	assert.Equal(t, expectedGetServerVersionQuery, testDatabaseDialect.GetServerVersionQuery())
 }
 
@@ -79,7 +79,7 @@ func TestPgDatabaseDialect(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedIsDialectQuery := "SELECT 1 FROM pg_proc LIMIT 1"
+	expectedIsDialectQuery := "SELECT 1 FROM pg_catalog.pg_proc LIMIT 1"
 
 	// IsDialect - true
 	mockQueryer.EXPECT().
@@ -138,13 +138,13 @@ func TestRdsPgDatabaseDialect_GetDefaultPort(t *testing.T) {
 
 func TestRdsPgDatabaseDialect_GetHostAliasQuery(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.RdsPgDatabaseDialect{}
-	expectedHostAliasQuery := "SELECT CONCAT(inet_server_addr(), ':', inet_server_port())"
+	expectedHostAliasQuery := "SELECT pg_catalog.CONCAT(pg_catalog.inet_server_addr(), ':', pg_catalog.inet_server_port())"
 
 	assert.Equal(t, expectedHostAliasQuery, testDatabaseDialect.GetHostAliasQuery())
 }
 func TestRdsPgDatabaseDialect_GetServerVersion(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.RdsPgDatabaseDialect{}
-	expectedGetServerVersionQuery := "SELECT 'version', VERSION()"
+	expectedGetServerVersionQuery := "SELECT 'version', pg_catalog.VERSION()"
 
 	assert.Equal(t, expectedGetServerVersionQuery, testDatabaseDialect.GetServerVersionQuery())
 }
@@ -164,10 +164,9 @@ func TestRdsPgDatabaseDialect_IsDialect(t *testing.T) {
 		Conn:           mockConn,
 		QueryerContext: mockQueryer,
 	}
-	expectedPgIsDialectQuery := "SELECT 1 FROM pg_proc LIMIT 1"
+	expectedPgIsDialectQuery := "SELECT 1 FROM pg_catalog.pg_proc LIMIT 1"
 	expectedRdsPgIsDialectQuery := "SELECT (setting LIKE '%rds_tools%') AS rds_tools, (setting LIKE '%aurora_stat_utils%') " +
-		"AS aurora_stat_utils FROM pg_settings " +
-		"WHERE name='rds.extensions'"
+		"AS aurora_stat_utils FROM pg_catalog.pg_settings WHERE name OPERATOR(pg_catalog.=) 'rds.extensions'"
 
 	// Call to GetFirstRowFromQuery within embedded structure PgDialect.IsDialect.
 	mockQueryer.EXPECT().
@@ -263,14 +262,14 @@ func TestAuroraRdsPgDatabaseDialect_GetDefaultPort(t *testing.T) {
 
 func TestAuroraRdsPgDatabaseDialect_GetHostAliasQuery(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
-	expectedHostAliasQuery := "SELECT CONCAT(inet_server_addr(), ':', inet_server_port())"
+	expectedHostAliasQuery := "SELECT pg_catalog.CONCAT(pg_catalog.inet_server_addr(), ':', pg_catalog.inet_server_port())"
 
 	assert.Equal(t, expectedHostAliasQuery, testDatabaseDialect.GetHostAliasQuery())
 }
 
 func TestAuroraRdsPgDatabaseDialect_GetServerVersion(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
-	expectedGetServerVersionQuery := "SELECT 'version', VERSION()"
+	expectedGetServerVersionQuery := "SELECT 'version', pg_catalog.VERSION()"
 
 	assert.Equal(t, expectedGetServerVersionQuery, testDatabaseDialect.GetServerVersionQuery())
 }
@@ -290,11 +289,11 @@ func TestAuroraRdsPgDatabaseDialect_IsDialect(t *testing.T) {
 		Conn:           mockConn,
 		QueryerContext: mockQueryer,
 	}
-	expectedPgIsDialectQuery := "SELECT 1 FROM pg_proc LIMIT 1"
+	expectedPgIsDialectQuery := "SELECT 1 FROM pg_catalog.pg_proc LIMIT 1"
 	expectedRdsPgIsDialectQuery := "SELECT (setting LIKE '%aurora_stat_utils%') " +
-		"AS aurora_stat_utils FROM pg_settings WHERE name='rds.extensions'"
+		"AS aurora_stat_utils FROM pg_catalog.pg_settings WHERE name OPERATOR(pg_catalog.=) 'rds.extensions'"
 
-	expectedTopologyQuery := "SELECT 1 FROM aurora_replica_status() LIMIT 1"
+	expectedTopologyQuery := "SELECT 1 FROM pg_catalog.aurora_replica_status() LIMIT 1"
 
 	// Call to GetFirstRowFromQuery within embedded structure PgDialect.IsDialect.
 	mockQueryer.EXPECT().
@@ -451,7 +450,7 @@ func TestAuroraRdsPgDatabaseDialect_GetHostListProvider(t *testing.T) {
 }
 
 func TestAuroraRdsPgDatabaseDialect_GetHostRole(t *testing.T) {
-	isReaderQuery := "SELECT pg_is_in_recovery()"
+	isReaderQuery := "SELECT pg_catalog.pg_is_in_recovery()"
 	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -508,12 +507,12 @@ func TestAuroraRdsPgDatabaseDialect_GetHostRole(t *testing.T) {
 }
 
 func TestAuroraRdsPgDatabaseDialect_GetTopology(t *testing.T) {
-	topologyQuery := "SELECT server_id, CASE WHEN SESSION_ID = 'MASTER_SESSION_ID' THEN TRUE ELSE FALSE END AS is_writer, " +
+	topologyQuery := "SELECT server_id, CASE WHEN SESSION_ID OPERATOR(pg_catalog.=) 'MASTER_SESSION_ID' THEN TRUE ELSE FALSE END AS is_writer, " +
 		"CPU, COALESCE(REPLICA_LAG_IN_MSEC, 0) AS lag, LAST_UPDATE_TIMESTAMP " +
-		"FROM aurora_replica_status() " +
+		"FROM pg_catalog.aurora_replica_status() " +
 		// Filter out hosts that haven't been updated in the last 5 minutes.
-		"WHERE EXTRACT(EPOCH FROM(NOW() - LAST_UPDATE_TIMESTAMP)) <= 300 OR SESSION_ID = 'MASTER_SESSION_ID' " +
-		"OR LAST_UPDATE_TIMESTAMP IS NULL"
+		"WHERE EXTRACT(EPOCH FROM(pg_catalog.NOW() OPERATOR(pg_catalog.-) LAST_UPDATE_TIMESTAMP)) OPERATOR(pg_catalog.<=) 300 OR SESSION_ID OPERATOR(pg_catalog.=) " +
+		"'MASTER_SESSION_ID' OR LAST_UPDATE_TIMESTAMP IS NULL"
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -595,7 +594,7 @@ func TestAuroraRdsPgDatabaseDialect_GetTopology(t *testing.T) {
 
 func TestAuroraRdsPgDatabaseDialect_GetHostName(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
-	hostIdQuery := "SELECT aurora_db_instance_identifier()"
+	hostIdQuery := "SELECT pg_catalog.aurora_db_instance_identifier()"
 	instanceId := "myinstance"
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -639,8 +638,8 @@ func TestAuroraRdsPgDatabaseDialect_GetHostName(t *testing.T) {
 
 func TestAuroraRdsPgDatabaseDialect_GetWriterHostName(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
-	hostIdQuery := "SELECT server_id FROM aurora_replica_status() " +
-		"WHERE SESSION_ID = 'MASTER_SESSION_ID' AND SERVER_ID = aurora_db_instance_identifier()"
+	hostIdQuery := "SELECT server_id FROM pg_catalog.aurora_replica_status() " +
+		"WHERE SESSION_ID OPERATOR(pg_catalog.=) 'MASTER_SESSION_ID' AND SERVER_ID OPERATOR(pg_catalog.=) pg_catalog.aurora_db_instance_identifier()"
 	instanceId := "myinstance"
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -688,7 +687,7 @@ func TestAuroraRdsPgDatabaseDialect_GetWriterHostName(t *testing.T) {
 
 func TestAuroraRdsPgDatabaseDialect_GetLimitlessRouterEndpointQuery(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
-	expectedLimitlessQuery := "select router_endpoint, load from aurora_limitless_router_endpoints()"
+	expectedLimitlessQuery := "select router_endpoint, load from pg_catalog.aurora_limitless_router_endpoints()"
 	assert.Equal(t, expectedLimitlessQuery, testDatabaseDialect.GetLimitlessRouterEndpointQuery())
 }
 
@@ -708,14 +707,14 @@ func TestRdsMultiAzDbClusterPgDialect_GetDefaultPort(t *testing.T) {
 
 func TestRdsMultiAzDbClusterPgDialect_GetHostAliasQuery(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.RdsMultiAzClusterPgDatabaseDialect{}
-	expectedHostAliasQuery := "SELECT CONCAT(inet_server_addr(), ':', inet_server_port())"
+	expectedHostAliasQuery := "SELECT pg_catalog.CONCAT(pg_catalog.inet_server_addr(), ':', pg_catalog.inet_server_port())"
 
 	assert.Equal(t, expectedHostAliasQuery, testDatabaseDialect.GetHostAliasQuery())
 }
 
 func TestRdsMultiAzDbClusterPgDialect_GetServerVersion(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.RdsMultiAzClusterPgDatabaseDialect{}
-	expectedGetServerVersionQuery := "SELECT 'version', VERSION()"
+	expectedGetServerVersionQuery := "SELECT 'version', pg_catalog.VERSION()"
 
 	assert.Equal(t, expectedGetServerVersionQuery, testDatabaseDialect.GetServerVersionQuery())
 }
@@ -747,7 +746,7 @@ func TestRdsMultiAzDbClusterPgDialect_GetHostListProvider(t *testing.T) {
 }
 
 func TestRdsMultiAzDbClusterPgDialect_GetHostRole(t *testing.T) {
-	isReaderQuery := "SELECT pg_is_in_recovery()"
+	isReaderQuery := "SELECT pg_catalog.pg_is_in_recovery()"
 	testDatabaseDialect := &driver_infrastructure.RdsMultiAzClusterPgDatabaseDialect{}
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -850,8 +849,8 @@ func TestRdsMultiAzDbClusterPgDialect_GetHostName(t *testing.T) {
 func TestRdsMultiAzDbClusterPgDialect_GetWriterHostName(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.RdsMultiAzClusterPgDatabaseDialect{}
 	hostIdQuery := "SELECT endpoint FROM rds_tools.show_topology('aws-advanced-go-wrapper') as topology " +
-		"WHERE topology.id = (SELECT multi_az_db_cluster_source_dbi_resource_id FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()) " +
-		"AND topology.id = (SELECT dbi_resource_id FROM rds_tools.dbi_resource_id())"
+		"WHERE topology.id OPERATOR(pg_catalog.=) (SELECT multi_az_db_cluster_source_dbi_resource_id FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()) " +
+		"AND topology.id OPERATOR(pg_catalog.=) (SELECT dbi_resource_id FROM rds_tools.dbi_resource_id())"
 
 	instanceId := "myinstance"
 	instanceEndpoint := instanceId + ".com"
@@ -1242,7 +1241,7 @@ func TestAuroraPgDatabaseDialect_GetBlueGreenStatus(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT version, endpoint, port, role, status FROM get_blue_green_fast_switchover_metadata(" +
+	expectedQuery := "SELECT version, endpoint, port, role, status FROM pg_catalog.get_blue_green_fast_switchover_metadata(" +
 		"'aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
 
 	mockQueryer.EXPECT().
@@ -1305,7 +1304,7 @@ func TestAuroraPgDatabaseDialect_GetBlueGreenStatus_QueryError(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT version, endpoint, port, role, status FROM get_blue_green_fast_switchover_metadata(" +
+	expectedQuery := "SELECT version, endpoint, port, role, status FROM pg_catalog.get_blue_green_fast_switchover_metadata(" +
 		"'aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
 
 	mockQueryer.EXPECT().
@@ -1344,7 +1343,7 @@ func TestAuroraPgDatabaseDialect_IsBlueGreenStatusAvailable(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT 'get_blue_green_fast_switchover_metadata'::regproc"
+	expectedQuery := "SELECT 'pg_catalog.get_blue_green_fast_switchover_metadata'::regproc"
 
 	// Test when function exists (returns true)
 	mockQueryer.EXPECT().
@@ -1353,7 +1352,7 @@ func TestAuroraPgDatabaseDialect_IsBlueGreenStatusAvailable(t *testing.T) {
 
 	mockRows.EXPECT().Columns().Return([]string{"regproc"})
 	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
-		dest[0] = "get_blue_green_fast_switchover_metadata"
+		dest[0] = "pg_catalog.get_blue_green_fast_switchover_metadata"
 		return nil
 	})
 	mockRows.EXPECT().Close().Return(nil)
@@ -1513,7 +1512,7 @@ func TestPgGetBlueGreenStatus_InvalidRowData(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT version, endpoint, port, role, status FROM get_blue_green_fast_switchover_metadata(" +
+	expectedQuery := "SELECT version, endpoint, port, role, status FROM pg_catalog.get_blue_green_fast_switchover_metadata(" +
 		"'aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
 
 	mockQueryer.EXPECT().
