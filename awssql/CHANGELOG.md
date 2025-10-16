@@ -19,5 +19,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 * Safe concurrent access to properties across different go-routines and monitors ([Issue #242](https://github.com/aws/aws-advanced-go-wrapper/issues/242)).
 * If failover is unsuccessful, the underlying error is returned ([PR #252](https://github.com/aws/aws-advanced-go-wrapper/pull/252)).
 
-[1.0.0]: https://github.com/awslabs/aws-advanced-go-wrapper/releases/tag/awssql/1.0.0
-[1.1.0]: https://github.com/awslabs/aws-advanced-go-wrapper/releases/tag/awssql/1.1.0
+## [1.1.1] - 2025-10-17
+### :crab: Changed
+* Refactored PostgresQL statements used by the driver to be fully qualified ([PR #270](https://github.com/aws/aws-advanced-go-wrapper/pull/270)).  
+
+[1.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql/1.0.0
+[1.1.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql/1.1.0
+[1.1.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql/1.1.1

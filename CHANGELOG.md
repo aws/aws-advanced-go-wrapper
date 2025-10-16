@@ -43,3 +43,19 @@ The Amazon Web Services (AWS) Advanced Go Wrapper allows an application to take 
 * `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.1](otlp/CHANGELOG.md#101---2025-10-08)
 * `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.0.1](pgx-driver/CHANGELOG.md#101---2025-10-08)
 * `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.1](xray/CHANGELOG.md#101---2025-10-08)
+
+# Release (2025-10-17)
+## General Highlights
+* Refactored PostgresQL statements used by the driver to be fully qualified ([PR #270](https://github.com/aws/aws-advanced-go-wrapper/pull/270)).
+
+## Module Highlights
+* `https://github.com/aws/aws-advanced-go-wrapper/auth-helpers`: [v1.0.2](auth-helpers/CHANGELOG.md#102---2025-10-17)
+* `https://github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager`: [v1.0.2](aws-secrets-manager/CHANGELOG.md#102---2025-10-17)
+* `https://github.com/aws/aws-advanced-go-wrapper/awssql`: [v1.1.1](awssql/CHANGELOG.md#111---2025-10-17)
+* `https://github.com/aws/aws-advanced-go-wrapper/federated-auth`: [v1.0.2](federated-auth/CHANGELOG.md#102---2025-10-17)
+* `https://github.com/aws/aws-advanced-go-wrapper/iam`: [v1.0.2](iam/CHANGELOG.md#102---2025-10-17)
+* `https://github.com/aws/aws-advanced-go-wrapper/mysql-driver`: [v1.0.2](mysql-driver/CHANGELOG.md#102---2025-10-17)
+* `https://github.com/aws/aws-advanced-go-wrapper/okta`: [v1.0.2](okta/CHANGELOG.md#102---2025-10-17)
+* `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.2](otlp/CHANGELOG.md#102---2025-10-17)
+* `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.0.2](pgx-driver/CHANGELOG.md#102---2025-10-17)
+* `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.2](xray/CHANGELOG.md#102---2025-10-17)
