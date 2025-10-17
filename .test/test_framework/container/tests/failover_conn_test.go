@@ -18,14 +18,12 @@ package test
 
 import (
 	"context"
-	"log/slog"
 	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
 
 	"database/sql/driver"
 	"log"
-	"strconv"
 	"testing"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -50,9 +48,7 @@ func TestFailoverWriter(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
-	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":    environment.Info().DatabaseInfo.ClusterEndpoint,
-		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
+	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
 		"plugins": "failover",
 	})
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
@@ -69,7 +65,7 @@ func TestFailoverWriter(t *testing.T) {
 	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(instanceId, "", "")
+	triggerFailoverError := auroraTestUtility.TriggerFailover(instanceId, "", "")
 	assert.Nil(t, triggerFailoverError)
 	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -81,27 +77,31 @@ func TestFailoverWriter(t *testing.T) {
 	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, newInstanceId)
-	assert.NotEqual(t, instanceId, newInstanceId)
 
-	test_utils.BasicCleanup(t.Name())
+	// Different behaviour for multi-AZ b/c it simulates failover which reconnects to the original instance.
+	if environment.Info().Request.Deployment == test_utils.RDS_MULTI_AZ_CLUSTER {
+		assert.Equal(t, instanceId, newInstanceId)
+	} else {
+		assert.NotEqual(t, instanceId, newInstanceId)
+	}
 }
 
 func TestFailoverWriterWithTelemetryOtel(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	bsp, err := test_utils.SetupTelemetry(environment)
 	assert.Nil(t, err)
 	assert.NotNil(t, bsp)
 	defer func() { _ = bsp.Shutdown(context.TODO()) }()
-
-	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":                    environment.Info().DatabaseInfo.ClusterEndpoint,
-		"port":                    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
+	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
+		"host":                    environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(),
 		"plugins":                 "failover",
 		"enableTelemetry":         "true",
 		"telemetryTracesBackend":  "OTLP",
 		"telemetryMetricsBackend": "OTLP",
 	})
+
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
@@ -116,32 +116,30 @@ func TestFailoverWriterWithTelemetryOtel(t *testing.T) {
 	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(instanceId, "", "")
+	triggerFailoverError := auroraTestUtility.TriggerFailover(instanceId, "", "")
 	assert.Nil(t, triggerFailoverError)
-	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
-	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
-	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryError.Error())
+	_, queryErr := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
+	require.Error(t, queryErr, "Failover plugin did not complete failover successfully.")
+	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryErr.Error())
 
 	// Assert that we are connected to the new writer after failover.
 	newInstanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
-	require.True(t, auroraTestUtility.IsDbInstanceWriter(newInstanceId, ""))
 	assert.Nil(t, err, "After failover new connections should not throw errors.")
 	assert.NotZero(t, newInstanceId)
-
-	test_utils.BasicCleanup(t.Name())
+	require.True(t, auroraTestUtility.IsDbInstanceWriter(newInstanceId, ""))
 }
 
 func TestFailoverWriterWithTelemetryXray(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
+	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	bsp, err := test_utils.SetupTelemetry(environment)
 	assert.Nil(t, err)
 	assert.NotNil(t, bsp)
 	defer func() { _ = bsp.Shutdown(context.TODO()) }()
 
-	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":                    environment.Info().DatabaseInfo.ClusterEndpoint,
-		"port":                    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
+	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
+		"host":                    environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(),
 		"plugins":                 "failover",
 		"enableTelemetry":         "true",
 		"telemetryTracesBackend":  "XRAY",
@@ -161,7 +159,7 @@ func TestFailoverWriterWithTelemetryXray(t *testing.T) {
 	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(instanceId, "", "")
+	triggerFailoverError := auroraTestUtility.TriggerFailover(instanceId, "", "")
 	assert.Nil(t, triggerFailoverError)
 	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -173,18 +171,21 @@ func TestFailoverWriterWithTelemetryXray(t *testing.T) {
 	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, newInstanceId)
-	assert.NotEqual(t, instanceId, newInstanceId)
 
-	test_utils.BasicCleanup(t.Name())
+	// Different behaviour for multi-AZ b/c it simulates failover which reconnects to the original instance.
+	if environment.Info().Request.Deployment == test_utils.RDS_MULTI_AZ_CLUSTER {
+		assert.Equal(t, instanceId, newInstanceId)
+	} else {
+		assert.NotEqual(t, instanceId, newInstanceId)
+	}
 }
 
 func TestFailoverWriterEndpoint(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
-	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":    environment.Info().DatabaseInfo.WriterInstanceEndpoint(),
-		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
+	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
+		"host":    environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(),
 		"plugins": "failover",
 	})
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
@@ -201,7 +202,7 @@ func TestFailoverWriterEndpoint(t *testing.T) {
 	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(instanceId, "", "")
+	triggerFailoverError := auroraTestUtility.TriggerFailover(instanceId, "", "")
 	assert.Nil(t, triggerFailoverError)
 	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -213,16 +214,21 @@ func TestFailoverWriterEndpoint(t *testing.T) {
 	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, newInstanceId)
-	assert.NotEqual(t, instanceId, newInstanceId)
+
+	// Different behaviour for multi-AZ b/c it simulates failover which reconnects to the original instance.
+	if environment.Info().Request.Deployment == test_utils.RDS_MULTI_AZ_CLUSTER {
+		assert.Equal(t, instanceId, newInstanceId)
+	} else {
+		assert.NotEqual(t, instanceId, newInstanceId)
+	}
 }
 
 func TestFailoverReaderOrWriter(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
-	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":         environment.Info().DatabaseInfo.WriterInstanceEndpoint(),
-		"port":         strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
+	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
+		"host":         environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(),
 		"plugins":      "failover",
 		"failoverMode": "reader-or-writer",
 	})
@@ -240,7 +246,7 @@ func TestFailoverReaderOrWriter(t *testing.T) {
 	assert.NotZero(t, instanceId)
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
+	triggerFailoverError := auroraTestUtility.TriggerFailover("", "", "")
 	assert.Nil(t, triggerFailoverError)
 	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -256,9 +262,10 @@ func TestFailoverStrictReader(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
-	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":              environment.Info().DatabaseInfo.WriterInstanceEndpoint(),
-		"port":              strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
+	test_utils.SkipForMultiAzMySql(t, environment.Info().Request.Deployment, environment.Info().Request.Engine)
+
+	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
+		"host":              environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(),
 		"plugins":           "failover",
 		"failoverMode":      "strict-reader",
 		"failoverTimeoutMs": "30000",
@@ -277,7 +284,7 @@ func TestFailoverStrictReader(t *testing.T) {
 	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
+	triggerFailoverError := auroraTestUtility.TriggerFailover("", "", "")
 	assert.Nil(t, triggerFailoverError)
 	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -293,9 +300,10 @@ func TestFailoverWriterInTransactionWithSQL(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
-	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":    environment.Info().DatabaseInfo.WriterInstanceEndpoint(),
-		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
+	test_utils.SkipForMultiAzMySql(t, environment.Info().Request.Deployment, environment.Info().Request.Engine)
+
+	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
+		"host":    environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(),
 		"plugins": "failover",
 	})
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
@@ -327,7 +335,7 @@ func TestFailoverWriterInTransactionWithSQL(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
+	triggerFailoverError := auroraTestUtility.TriggerFailover("", "", "")
 	assert.Nil(t, triggerFailoverError)
 	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -381,7 +389,6 @@ func TestFailoverEfmDisableInstance(t *testing.T) {
 
 	// Disable connectivity while the sleep query is running
 	proxyInfo := environment.GetProxy(instanceId)
-	slog.Debug("Disabling proxy connectivity.")
 	test_utils.DisableProxyConnectivity(proxyInfo)
 
 	// Wait for the query to complete and check the error
@@ -391,7 +398,6 @@ func TestFailoverEfmDisableInstance(t *testing.T) {
 	assert.Equal(t, error_util.GetMessage("Failover.unableToRefreshHostList"), queryErr.Error())
 
 	// Re-enable connectivity
-	slog.Debug("Re-enabling proxy connectivity.")
 	test_utils.EnableProxyConnectivity(proxyInfo, true)
 }
 
@@ -399,9 +405,8 @@ func TestFailoverWriterMaintainSessionState(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
-	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":    environment.Info().DatabaseInfo.ClusterEndpoint,
-		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
+	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
+		"host":    environment.Info().ProxyDatabaseInfo.ClusterEndpoint,
 		"plugins": "failover",
 	})
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
@@ -420,7 +425,7 @@ func TestFailoverWriterMaintainSessionState(t *testing.T) {
 	SetupSessionState(t, environment.Info().Request.Engine, conn)
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(instanceId, "", "")
+	triggerFailoverError := auroraTestUtility.TriggerFailover(instanceId, "", "")
 	assert.Nil(t, triggerFailoverError)
 	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -432,7 +437,13 @@ func TestFailoverWriterMaintainSessionState(t *testing.T) {
 	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, newInstanceId)
-	assert.NotEqual(t, instanceId, newInstanceId)
+
+	// Different behaviour for multi-AZ b/c it simulates failover which reconnects to the original instance.
+	if environment.Info().Request.Deployment == test_utils.RDS_MULTI_AZ_CLUSTER {
+		assert.Equal(t, instanceId, newInstanceId)
+	} else {
+		assert.NotEqual(t, instanceId, newInstanceId)
+	}
 
 	VerifySessionStateMaintained(t, environment.Info().Request.Engine, conn)
 

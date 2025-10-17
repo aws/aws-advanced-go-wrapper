@@ -120,7 +120,7 @@ func setupFailoverTestWithProps(t *testing.T, props map[string]string, env *test
 	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info())
 	tableName := "test_stress_table"
 
-	_, err = db.ExecContext(context.TODO(), "DROP TABLE IF EXISTS " + tableName)
+	_, err = db.ExecContext(context.TODO(), "DROP TABLE IF EXISTS "+tableName)
 	assert.NoError(t, err)
 	_, err = db.ExecContext(context.TODO(), "CREATE TABLE "+tableName+" (id INT, name VARCHAR(255))")
 	assert.NoError(t, err)
@@ -196,10 +196,10 @@ func runFailoverTest(
 	}
 
 	time.Sleep(10 * time.Second)
-	err := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
+	err := auroraTestUtility.TriggerFailover("", "", "")
 	assert.NoError(t, err)
 	time.Sleep(10 * time.Second)
-	err = auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
+	err = auroraTestUtility.TriggerFailover("", "", "")
 	assert.NoError(t, err)
 	time.Sleep(10 * time.Second)
 
