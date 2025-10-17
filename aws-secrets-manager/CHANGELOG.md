@@ -11,5 +11,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### :bug: Fixed
 * Safe concurrent access to properties across different go-routines and monitors ([Issue #242](https://github.com/aws/aws-advanced-go-wrapper/issues/242)).
 
-[1.0.0]: https://github.com/awslabs/aws-advanced-go-wrapper/releases/tag/aws-secrets-manager/1.0.0
-[1.0.1]: https://github.com/awslabs/aws-advanced-go-wrapper/releases/tag/aws-secrets-manager/1.0.1
+## [1.0.2] - 2025-10-17
+### :crab: Changed
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v1.1.1
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/auth-helpers` to v1.0.2
+
+[1.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/aws-secrets-manager/1.0.0
+[1.0.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/aws-secrets-manager/1.0.1
+[1.0.2]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/aws-secrets-manager/1.0.2
