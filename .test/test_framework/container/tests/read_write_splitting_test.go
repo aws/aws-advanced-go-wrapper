@@ -844,7 +844,6 @@ func TestPooledConnection_FailoverInTransaction(t *testing.T) {
 	_, err = executeInstanceQueryReadOnly(setup.env, conn, 5)
 	require.NoError(t, err)
 
-	//err = setup.auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(originalWriterId, "", "")
 	err = setup.auroraTestUtility.TriggerFailover(originalWriterId, "", "")
 	require.NoError(t, err)
 
@@ -856,7 +855,12 @@ func TestPooledConnection_FailoverInTransaction(t *testing.T) {
 
 	newWriter, err := executeInstanceQuery(setup.env, conn, context.TODO(), 5)
 	assert.NoError(t, err)
-	assert.NotEqual(t, originalWriterId, newWriter)
+	// Different behaviour for multi-AZ b/c it simulates failover which reconnects to the original instance.
+	if setup.env.Info().Request.Deployment == test_utils.RDS_MULTI_AZ_CLUSTER {
+		assert.Equal(t, originalWriterId, newWriter)
+	} else {
+		assert.NotEqual(t, originalWriterId, newWriter)
+	}
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(newWriter, ""))
 
 	_, err = conn.ExecContext(context.TODO(), "COMMIT")
