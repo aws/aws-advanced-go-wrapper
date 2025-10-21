@@ -260,15 +260,17 @@ func TestIamWithFailover(t *testing.T) {
 	assert.Nil(t, err)
 	test_utils.SkipForMultiAzMySql(t, environment.Info().Request.Deployment, environment.Info().Request.Engine)
 
-	props := initIamProps(
+	proxyTestProps := test_utils.GetPropsForProxy(environment, "", "failover,iam", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	iamProps := initIamProps(
 		environment.Info().IamUsername,
 		"anypassword",
 		environment,
 	)
-	props[property_util.PLUGINS.Name] = "failover,iam"
+	props := utils.CombineMaps(iamProps, proxyTestProps)
 	props[property_util.IAM_HOST.Name] = environment.Info().DatabaseInfo.ClusterEndpoint
 	props[property_util.IAM_DEFAULT_PORT.Name] = strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort)
-	dsn := test_utils.GetDsnForTestsWithProxy(environment, props)
+
+	dsn := test_utils.GetDsn(environment, props)
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
@@ -310,7 +312,7 @@ func TestIamWithEfm(t *testing.T) {
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 
-	proxyTestProps := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.ClusterEndpoint, "efm,iam", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	proxyTestProps := test_utils.GetPropsForProxy(environment, "", "efm,iam", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
 	iamProps := initIamProps(
 		environment.Info().IamUsername,
 		"anypassword",
@@ -370,7 +372,7 @@ func TestIamWithFailoverEfm(t *testing.T) {
 	assert.Nil(t, err)
 	test_utils.SkipForMultiAzMySql(t, environment.Info().Request.Deployment, environment.Info().Request.Engine)
 
-	proxyTestProps := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.ClusterEndpoint, "failover,efm,iam", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	proxyTestProps := test_utils.GetPropsForProxy(environment, "", "failover,efm,iam", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
 	iamProps := initIamProps(
 		environment.Info().IamUsername,
 		"anypassword",

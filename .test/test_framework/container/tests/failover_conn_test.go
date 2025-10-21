@@ -48,9 +48,10 @@ func TestFailoverWriter(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
-	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
-		"plugins": "failover",
-	})
+
+	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+
+	dsn := test_utils.GetDsn(environment, props)
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
@@ -94,13 +95,13 @@ func TestFailoverWriterWithTelemetryOtel(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, bsp)
 	defer func() { _ = bsp.Shutdown(context.TODO()) }()
-	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
-		"host":                    environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(),
-		"plugins":                 "failover",
-		"enableTelemetry":         "true",
-		"telemetryTracesBackend":  "OTLP",
-		"telemetryMetricsBackend": "OTLP",
-	})
+
+	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	props["enableTelemetry"] = "true"
+	props["telemetryTracesBackend"] = "OTLP"
+	props["telemetryMetricsBackend"] = "OTLP"
+
+	dsn := test_utils.GetDsn(environment, props)
 
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
@@ -138,13 +139,12 @@ func TestFailoverWriterWithTelemetryXray(t *testing.T) {
 	assert.NotNil(t, bsp)
 	defer func() { _ = bsp.Shutdown(context.TODO()) }()
 
-	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
-		"host":                    environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(),
-		"plugins":                 "failover",
-		"enableTelemetry":         "true",
-		"telemetryTracesBackend":  "XRAY",
-		"telemetryMetricsBackend": "OTLP",
-	})
+	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	props["enableTelemetry"] = "true"
+	props["telemetryTracesBackend"] = "XRAY"
+	props["telemetryMetricsBackend"] = "OTLP"
+
+	dsn := test_utils.GetDsn(environment, props)
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
@@ -184,10 +184,10 @@ func TestFailoverWriterEndpoint(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
-	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
-		"host":    environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(),
-		"plugins": "failover",
-	})
+
+	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+
+	dsn := test_utils.GetDsn(environment, props)
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
@@ -227,11 +227,11 @@ func TestFailoverReaderOrWriter(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
-	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
-		"host":         environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(),
-		"plugins":      "failover",
-		"failoverMode": "reader-or-writer",
-	})
+
+	props := test_utils.GetPropsForProxy(environment, "", "failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	props["failoverMode"] = "reader-or-writer"
+
+	dsn := test_utils.GetDsn(environment, props)
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
@@ -264,12 +264,11 @@ func TestFailoverStrictReader(t *testing.T) {
 	assert.Nil(t, err)
 	test_utils.SkipForMultiAzMySql(t, environment.Info().Request.Deployment, environment.Info().Request.Engine)
 
-	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
-		"host":              environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(),
-		"plugins":           "failover",
-		"failoverMode":      "strict-reader",
-		"failoverTimeoutMs": "30000",
-	})
+	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	props["failoverMode"] = "strict-reader"
+	props["failoverTimeoutMs"] = "30000"
+
+	dsn := test_utils.GetDsn(environment, props)
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
@@ -302,10 +301,9 @@ func TestFailoverWriterInTransactionWithSQL(t *testing.T) {
 	assert.Nil(t, err)
 	test_utils.SkipForMultiAzMySql(t, environment.Info().Request.Deployment, environment.Info().Request.Engine)
 
-	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
-		"host":    environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(),
-		"plugins": "failover",
-	})
+	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+
+	dsn := test_utils.GetDsn(environment, props)
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
@@ -405,10 +403,9 @@ func TestFailoverWriterMaintainSessionState(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
-	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
-		"host":    environment.Info().ProxyDatabaseInfo.ClusterEndpoint,
-		"plugins": "failover",
-	})
+
+	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	dsn := test_utils.GetDsn(environment, props)
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)

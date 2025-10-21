@@ -350,13 +350,15 @@ func failoverTest(t *testing.T, env *test_utils.TestEnvironment, secretName stri
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 
-	dsn := test_utils.GetDsnForTestsWithProxy(env, map[string]string{
-		"plugins":                "awsSecretsManager,failover",
-		"user":                   "incorrectUser",
-		"password":               "incorrectPassword",
-		"secretsManagerSecretId": secretName,
-		"secretsManagerRegion":   env.Info().Region,
-	})
+	props := test_utils.GetPropsForProxy(environment, "", "awsSecretsManager,failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	props[property_util.USER.Name] = "incorrectUser"
+	props[property_util.PASSWORD.Name] = "incorrectPassword"
+	props[property_util.SECRETS_MANAGER_REGION.Name] = env.Info().Region
+	props[property_util.SECRETS_MANAGER_SECRET_ID.Name] = secretName
+	props[property_util.FAILOVER_TIMEOUT_MS.Name] = strconv.Itoa(4 * TEST_MONITORING_TIMEOUT_SECONDS * 1000)
+
+	dsn := test_utils.GetDsn(environment, props)
+
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
@@ -396,12 +398,11 @@ func efmTest(t *testing.T, env *test_utils.TestEnvironment, secretName string) {
 	_, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
-	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.ClusterEndpoint, "awsSecretsManager,efm", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	props := test_utils.GetPropsForProxy(environment, "", "awsSecretsManager,efm", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
 	props[property_util.USER.Name] = "incorrectUser"
 	props[property_util.PASSWORD.Name] = "incorrectPassword"
 	props[property_util.SECRETS_MANAGER_REGION.Name] = env.Info().Region
 	props[property_util.SECRETS_MANAGER_SECRET_ID.Name] = secretName
-	props[property_util.FAILOVER_TIMEOUT_MS.Name] = strconv.Itoa(4 * TEST_MONITORING_TIMEOUT_SECONDS * 1000)
 
 	dsn := test_utils.GetDsn(environment, props)
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
@@ -452,7 +453,7 @@ func failoverEfmTest(t *testing.T, env *test_utils.TestEnvironment, secretName s
 	assert.Nil(t, err)
 	props := test_utils.GetPropsForProxy(
 		environment,
-		environment.Info().ProxyDatabaseInfo.ClusterEndpoint,
+		"",
 		"awsSecretsManager,failover,efm",
 		TEST_FAILURE_DETECTION_INTERVAL_SECONDS,
 	)

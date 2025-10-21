@@ -38,10 +38,8 @@ func TestFailoverWriterDB(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
-	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
-		"host":    environment.Info().ProxyDatabaseInfo.ClusterEndpoint,
-		"plugins": "failover",
-	})
+	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	dsn := test_utils.GetDsn(environment, props)
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
@@ -81,13 +79,13 @@ func TestFailoverWriterDBWithTelemetryOtel(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, bsp)
 	defer func() { _ = bsp.Shutdown(context.TODO()) }()
-	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
-		"host":                    environment.Info().ProxyDatabaseInfo.ClusterEndpoint,
-		"plugins":                 "failover",
-		"enableTelemetry":         "true",
-		"telemetryTracesBackend":  "OTLP",
-		"telemetryMetricsBackend": "OTLP",
-	})
+
+	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	props["enableTelemetry"] = "true"
+	props["telemetryTracesBackend"] = "OTLP"
+	props["telemetryMetricsBackend"] = "OTLP"
+
+	dsn := test_utils.GetDsn(environment, props)
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
@@ -127,13 +125,13 @@ func TestFailoverWriterDBWithTelemetryXray(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, bsp)
 	defer func() { _ = bsp.Shutdown(context.TODO()) }()
-	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
-		"host":                    environment.Info().ProxyDatabaseInfo.ClusterEndpoint,
-		"plugins":                 "failover",
-		"enableTelemetry":         "true",
-		"telemetryTracesBackend":  "XRAY",
-		"telemetryMetricsBackend": "OTLP",
-	})
+
+	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	props["enableTelemetry"] = "true"
+	props["telemetryTracesBackend"] = "XRAY"
+	props["telemetryMetricsBackend"] = "OTLP"
+
+	dsn := test_utils.GetDsn(environment, props)
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
@@ -171,10 +169,9 @@ func TestFailoverWriterInTransactionWithBegin(t *testing.T) {
 	assert.Nil(t, err)
 	test_utils.SkipForMultiAzMySql(t, environment.Info().Request.Deployment, environment.Info().Request.Engine)
 
-	dsn := test_utils.GetDsnForTestsWithProxy(environment, map[string]string{
-		"host":    environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(),
-		"plugins": "failover",
-	})
+	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+
+	dsn := test_utils.GetDsn(environment, props)
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)

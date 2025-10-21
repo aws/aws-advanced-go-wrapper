@@ -249,23 +249,6 @@ func GetDsn(environment *TestEnvironment, props map[string]string) string {
 	return ConstructDsn(environment.Info().Request.Engine, ConfigureProps(environment, props))
 }
 
-func GetDsnForTestsWithProxy(environment *TestEnvironment, origProps map[string]string) string {
-	return GetDsn(environment, GetPropsForTestsWithProxy(environment, origProps))
-}
-
-func GetPropsForTestsWithProxy(environment *TestEnvironment, props map[string]string) map[string]string {
-	if _, ok := props["host"]; !ok {
-		props["host"] = environment.Info().ProxyDatabaseInfo.ClusterEndpoint
-	}
-	if _, ok := props["port"]; !ok {
-		props["port"] = strconv.Itoa(environment.Info().ProxyDatabaseInfo.InstanceEndpointPort)
-	}
-	if _, ok := props["clusterInstanceHostPattern"]; !ok {
-		props["clusterInstanceHostPattern"] = "?." + environment.Info().ProxyDatabaseInfo.InstanceEndpointSuffix
-	}
-	return props
-}
-
 func ConfigureProps(environment *TestEnvironment, props map[string]string) map[string]string {
 	if props["failureDetectionTimeMs"] == "" {
 		props["failureDetectionTimeMs"] = "1000"
