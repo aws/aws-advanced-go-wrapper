@@ -625,3 +625,9 @@ func SkipForMultiAzMySql(t *testing.T, deployment DatabaseEngineDeployment, engi
 		t.Skipf("Skipping test for RDS Multi-AZ MySQL b/c they are flakey.")
 	}
 }
+
+func SkipForDeployment(t *testing.T, deploymentToSkip DatabaseEngineDeployment, actualDeployment DatabaseEngineDeployment) {
+	if deploymentToSkip == actualDeployment {
+		t.Skipf("Skipping test for deployment: %s", string(deploymentToSkip))
+	}
+}

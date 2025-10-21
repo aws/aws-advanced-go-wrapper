@@ -638,6 +638,8 @@ func TestReadWriteSplitting_FailoverToNewReader(t *testing.T) {
 	setup := setupProxiedTest(t, 3)
 	defer setup.cleanup(t)
 
+	test_utils.SkipForMultiAzMySql(t, setup.env.Info().Request.Deployment, setup.env.Info().Request.Engine)
+
 	props := test_utils.GetPropsForProxyWithConnectTimeout(
 		setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint,
 		"readWriteSplitting,efm,failover",
@@ -707,6 +709,8 @@ func TestReadWriteSplitting_FailoverToNewReader(t *testing.T) {
 func TestReadWriteSplitting_FailoverReaderToWriter(t *testing.T) {
 	setup := setupProxiedTest(t, 3)
 	defer setup.cleanup(t)
+
+	test_utils.SkipForDeployment(t, test_utils.RDS_MULTI_AZ_CLUSTER, setup.env.Info().Request.Deployment)
 
 	props := test_utils.GetPropsForProxyWithConnectTimeout(
 		setup.env,
