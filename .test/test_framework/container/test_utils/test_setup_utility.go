@@ -24,6 +24,12 @@ import (
 )
 
 func GetPropsForProxy(env *TestEnvironment, host, plugins string, timeout int) map[string]string {
+	//var hostValue string
+	//if host == "" {
+	//	hostValue = env.Info().ProxyDatabaseInfo.ClusterEndpoint
+	//} else {
+	//	hostValue = host
+	//}
 	timeoutStr := strconv.Itoa(timeout - 1)
 	monitoringParam := property_util.MONITORING_PROPERTY_PREFIX
 	var driverProtocol, timeoutParam string

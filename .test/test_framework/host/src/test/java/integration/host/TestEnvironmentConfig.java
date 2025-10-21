@@ -829,6 +829,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
       case AURORA_LIMITLESS:
         return getAuroraDbEngineVersion(env);
       case RDS:
+      case RDS_MULTI_AZ_INSTANCE:
       case RDS_MULTI_AZ_CLUSTER:
         return getRdsEngineVersion(env);
       default:
