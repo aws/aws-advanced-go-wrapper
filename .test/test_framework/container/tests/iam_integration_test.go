@@ -307,7 +307,6 @@ func TestIamWithFailover(t *testing.T) {
 }
 
 func TestIamWithEfm(t *testing.T) {
-	awsDriver.ClearCaches()
 	_, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
@@ -366,7 +365,6 @@ func TestIamWithEfm(t *testing.T) {
 }
 
 func TestIamWithFailoverEfm(t *testing.T) {
-	awsDriver.ClearCaches()
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
