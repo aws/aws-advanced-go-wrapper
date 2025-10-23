@@ -690,6 +690,8 @@ public class TestEnvironmentConfig implements AutoCloseable {
       }
     }
 
+    env.info.setRdsDbName(env.rdsDbName);
+
     int port = getPort(env.info.getRequest());
     env.info.getDatabaseInfo().setInstanceEndpointSuffix(env.rdsDbDomain, port);
 
