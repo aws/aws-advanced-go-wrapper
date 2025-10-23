@@ -189,6 +189,7 @@ tasks.register<Test>("test-multi-az-postgres") {
         systemProperty("exclude-mysql-driver", "true")
         systemProperty("exclude-mysql-engine", "true")
         systemProperty("exclude-aurora", "true")
+        systemProperty("exclude-multi-az-instance", "true")
         systemProperty("exclude-limitless", "true")
         systemProperty("exclude-bg", "true")
     }
@@ -203,6 +204,7 @@ tasks.register<Test>("test-multi-az-mysql") {
         systemProperty("exclude-pg-driver", "true")
         systemProperty("exclude-pg-engine", "true")
         systemProperty("exclude-aurora", "true")
+        systemProperty("exclude-multi-az-instance", "true")
         systemProperty("exclude-limitless", "true")
         systemProperty("exclude-bg", "true")
     }
