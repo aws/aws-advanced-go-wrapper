@@ -20,7 +20,7 @@ jobs:
     strategy: 
       fail-fast: false
       matrix: 
-        dbEngine: ["mysql", "postgres", "limitless-postgres"]
+        dbEngine: ["aurora-mysql", "aurora-postgres", "aurora-limitless-postgres", "multi-az-mysql", "multi-az-postgres"]
     steps:
       - name: 'Clone repository'
         uses: actions/checkout@v4
@@ -43,11 +43,13 @@ jobs:
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
       - name: Run Integration Tests
         run: |
-          cd .test/test_framework/host && ./gradlew --no-parallel --no-daemon test-aurora-${{ matrix.dbEngine }} --info
+          cd .test/test_framework/host && ./gradlew --no-parallel --no-daemon test-${{ matrix.dbEngine }} --info
         env:
           RDS_DB_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
           AURORA_MYSQL_DB_ENGINE_VERSION: "default"
           AURORA_PG_DB_ENGINE_VERSION: "default"
+          RDS_MYSQL_DB_ENGINE_VERSION: "default"
+          RDS_PG_DB_ENGINE_VERSION: "default"
           AWS_RDS_MONITORING_ROLE_ARN: ${{ secrets.AWS_RDS_MONITORING_ROLE_ARN }}
       - name: "Get Github Action IP"
         if: always()

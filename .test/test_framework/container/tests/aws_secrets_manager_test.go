@@ -350,13 +350,15 @@ func failoverTest(t *testing.T, env *test_utils.TestEnvironment, secretName stri
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 
-	dsn := test_utils.GetDsn(env, map[string]string{
-		"plugins":                "awsSecretsManager,failover",
-		"user":                   "incorrectUser",
-		"password":               "incorrectPassword",
-		"secretsManagerSecretId": secretName,
-		"secretsManagerRegion":   env.Info().Region,
-	})
+	props := test_utils.GetPropsForProxy(environment, "", "awsSecretsManager,failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	props[property_util.USER.Name] = "incorrectUser"
+	props[property_util.PASSWORD.Name] = "incorrectPassword"
+	props[property_util.SECRETS_MANAGER_REGION.Name] = env.Info().Region
+	props[property_util.SECRETS_MANAGER_SECRET_ID.Name] = secretName
+	props[property_util.FAILOVER_TIMEOUT_MS.Name] = strconv.Itoa(4 * TEST_MONITORING_TIMEOUT_SECONDS * 1000)
+
+	dsn := test_utils.GetDsn(environment, props)
+
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
@@ -371,7 +373,7 @@ func failoverTest(t *testing.T, env *test_utils.TestEnvironment, secretName stri
 	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(instanceId, "", "")
+	triggerFailoverError := auroraTestUtility.TriggerFailover(instanceId, "", "")
 	assert.Nil(t, triggerFailoverError)
 	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -383,21 +385,24 @@ func failoverTest(t *testing.T, env *test_utils.TestEnvironment, secretName stri
 	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, newInstanceId)
-	assert.NotEqual(t, instanceId, newInstanceId)
 
-	test_utils.BasicCleanup(t.Name())
+	// Different behaviour for multi-AZ b/c it simulates failover which reconnects to the original instance.
+	if environment.Info().Request.Deployment == test_utils.RDS_MULTI_AZ_CLUSTER {
+		assert.Equal(t, instanceId, newInstanceId)
+	} else {
+		assert.NotEqual(t, instanceId, newInstanceId)
+	}
 }
 
 func efmTest(t *testing.T, env *test_utils.TestEnvironment, secretName string) {
 	_, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
-	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.ClusterEndpoint, "awsSecretsManager,efm", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	props := test_utils.GetPropsForProxy(environment, "", "awsSecretsManager,efm", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
 	props[property_util.USER.Name] = "incorrectUser"
 	props[property_util.PASSWORD.Name] = "incorrectPassword"
 	props[property_util.SECRETS_MANAGER_REGION.Name] = env.Info().Region
 	props[property_util.SECRETS_MANAGER_SECRET_ID.Name] = secretName
-	props[property_util.FAILOVER_TIMEOUT_MS.Name] = strconv.Itoa(4 * TEST_MONITORING_TIMEOUT_SECONDS * 1000)
 
 	dsn := test_utils.GetDsn(environment, props)
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
@@ -448,7 +453,7 @@ func failoverEfmTest(t *testing.T, env *test_utils.TestEnvironment, secretName s
 	assert.Nil(t, err)
 	props := test_utils.GetPropsForProxy(
 		environment,
-		environment.Info().ProxyDatabaseInfo.ClusterEndpoint,
+		"",
 		"awsSecretsManager,failover,efm",
 		TEST_FAILURE_DETECTION_INTERVAL_SECONDS,
 	)

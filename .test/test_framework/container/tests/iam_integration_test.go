@@ -258,13 +258,18 @@ func TestIamWithFailover(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
+	test_utils.SkipForMultiAzMySql(t, environment.Info().Request.Deployment, environment.Info().Request.Engine)
 
-	props := initIamProps(
+	proxyTestProps := test_utils.GetPropsForProxy(environment, "", "failover,iam", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	iamProps := initIamProps(
 		environment.Info().IamUsername,
 		"anypassword",
 		environment,
 	)
-	props["plugins"] = "iam,failover"
+	props := utils.CombineMaps(iamProps, proxyTestProps)
+	props[property_util.IAM_HOST.Name] = environment.Info().DatabaseInfo.ClusterEndpoint
+	props[property_util.IAM_DEFAULT_PORT.Name] = strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort)
+
 	dsn := test_utils.GetDsn(environment, props)
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
@@ -280,7 +285,7 @@ func TestIamWithFailover(t *testing.T) {
 	assert.True(t, auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(instanceId, "", "")
+	triggerFailoverError := auroraTestUtility.TriggerFailover(instanceId, "", "")
 	assert.Nil(t, triggerFailoverError)
 	_, queryError := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -292,9 +297,13 @@ func TestIamWithFailover(t *testing.T) {
 	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
 	assert.Nil(t, err)
 	assert.Equal(t, currWriterId, newInstanceId)
-	assert.NotEqual(t, instanceId, newInstanceId)
 
-	test_utils.BasicCleanup(t.Name())
+	// Different behaviour for multi-AZ b/c it simulates failover which reconnects to the original instance.
+	if environment.Info().Request.Deployment == test_utils.RDS_MULTI_AZ_CLUSTER {
+		assert.Equal(t, instanceId, newInstanceId)
+	} else {
+		assert.NotEqual(t, instanceId, newInstanceId)
+	}
 }
 
 func TestIamWithEfm(t *testing.T) {
@@ -302,7 +311,7 @@ func TestIamWithEfm(t *testing.T) {
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 
-	proxyTestProps := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.ClusterEndpoint, "efm,iam", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	proxyTestProps := test_utils.GetPropsForProxy(environment, "", "efm,iam", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
 	iamProps := initIamProps(
 		environment.Info().IamUsername,
 		"anypassword",
@@ -359,8 +368,9 @@ func TestIamWithFailoverEfm(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
+	test_utils.SkipForMultiAzMySql(t, environment.Info().Request.Deployment, environment.Info().Request.Engine)
 
-	proxyTestProps := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.ClusterEndpoint, "failover,efm,iam", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	proxyTestProps := test_utils.GetPropsForProxy(environment, "", "failover,efm,iam", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
 	iamProps := initIamProps(
 		environment.Info().IamUsername,
 		"anypassword",

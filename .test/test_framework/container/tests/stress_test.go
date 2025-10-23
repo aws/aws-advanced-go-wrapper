@@ -120,7 +120,7 @@ func setupFailoverTestWithProps(t *testing.T, props map[string]string, env *test
 	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info())
 	tableName := "test_stress_table"
 
-	_, err = db.ExecContext(context.TODO(), "DROP TABLE IF EXISTS " + tableName)
+	_, err = db.ExecContext(context.TODO(), "DROP TABLE IF EXISTS "+tableName)
 	assert.NoError(t, err)
 	_, err = db.ExecContext(context.TODO(), "CREATE TABLE "+tableName+" (id INT, name VARCHAR(255))")
 	assert.NoError(t, err)
@@ -196,10 +196,10 @@ func runFailoverTest(
 	}
 
 	time.Sleep(10 * time.Second)
-	err := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
+	err := auroraTestUtility.TriggerFailover("", "", "")
 	assert.NoError(t, err)
 	time.Sleep(10 * time.Second)
-	err = auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
+	err = auroraTestUtility.TriggerFailover("", "", "")
 	assert.NoError(t, err)
 	time.Sleep(10 * time.Second)
 
@@ -208,6 +208,9 @@ func runFailoverTest(
 }
 
 func runFailoverTestWithInsert(t *testing.T, setupFunc func(*testing.T) (*sql.DB, *test_utils.AuroraTestUtility, string), insertFunc func(*sql.DB, string)) {
+	env, err := test_utils.GetCurrentTestEnvironment()
+	assert.NoError(t, err)
+	test_utils.SkipForMultiAzMySql(t, env.Info().Request.Deployment, env.Info().Request.Engine)
 	assert.NotPanics(t, func() {
 		db, auroraTestUtility, tableName := setupFunc(t)
 		defer test_utils.BasicCleanup(t.Name())
@@ -222,6 +225,9 @@ func runFailoverTestWithSelectInsert(
 	t *testing.T,
 	setupFunc func(*testing.T) (*sql.DB, *test_utils.AuroraTestUtility, string),
 	selectFunc func(*sql.DB, string), insertFunc func(*sql.DB, string)) {
+	env, err := test_utils.GetCurrentTestEnvironment()
+	assert.NoError(t, err)
+	test_utils.SkipForMultiAzMySql(t, env.Info().Request.Deployment, env.Info().Request.Engine)
 	assert.NotPanics(t, func() {
 		db, auroraTestUtility, tableName := setupFunc(t)
 		defer test_utils.BasicCleanup(t.Name())

@@ -690,6 +690,8 @@ public class TestEnvironmentConfig implements AutoCloseable {
       }
     }
 
+    env.info.setRdsDbName(env.rdsDbName);
+
     int port = getPort(env.info.getRequest());
     env.info.getDatabaseInfo().setInstanceEndpointSuffix(env.rdsDbDomain, port);
 
@@ -829,6 +831,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
       case AURORA_LIMITLESS:
         return getAuroraDbEngineVersion(env);
       case RDS:
+      case RDS_MULTI_AZ_INSTANCE:
       case RDS_MULTI_AZ_CLUSTER:
         return getRdsEngineVersion(env);
       default:
@@ -1225,6 +1228,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
             && env.info.getRequest().getDatabaseEngineDeployment() == DatabaseEngineDeployment.RDS_MULTI_AZ_INSTANCE;
         env.auroraUtil.addAuroraAwsIamUser(
             env.info.getRequest().getDatabaseEngine(),
+            env.info.getRequest().getDatabaseEngineDeployment(),
             url,
             env.info.getDatabaseInfo().getUsername(),
             env.info.getDatabaseInfo().getPassword(),

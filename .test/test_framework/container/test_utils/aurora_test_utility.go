@@ -168,6 +168,7 @@ func doesStatusMatch(currentStatus *string, desiredStatus string) bool {
 }
 
 func (a AuroraTestUtility) IsDbInstanceWriter(instanceId string, clusterId string) bool {
+	slog.Debug("IsDbInstanceWriter() - instanceId:" + instanceId)
 	writerId, err := a.GetClusterWriterInstanceId(clusterId)
 	if err == nil && writerId == instanceId {
 		return true
@@ -186,7 +187,6 @@ func (a AuroraTestUtility) GetClusterWriterInstanceId(clusterId string) (string,
 		}
 		clusterId = env.info.RdsDbName()
 	}
-
 	clusterInfo, err := a.getDbCluster(clusterId)
 	if err != nil || clusterInfo.DBClusterMembers == nil {
 		return "", fmt.Errorf("invalid cluster %s", clusterId)
@@ -211,6 +211,29 @@ func (a AuroraTestUtility) getDbCluster(clusterId string) (cluster types.DBClust
 		return
 	}
 	return resp.DBClusters[0], nil
+}
+
+func (a AuroraTestUtility) TriggerFailover(initialWriter string, clusterId string, targetWriterId string) (err error) {
+	env, err := GetCurrentTestEnvironment()
+	if err != nil {
+		return err
+	}
+	deployment := env.Info().Request.Deployment
+
+	if RDS_MULTI_AZ_CLUSTER == deployment {
+		slog.Debug("TriggerFailover() - RDS_MULTI_AZ_CLUSTER deployment detected. Simulating temporary failure")
+		a.SimulateTemporaryFailure()
+		return nil
+	} else {
+		slog.Debug(fmt.Sprintf("TriggerFailover() - dbengine deployment %v detected. FailoverClusterAndWaitTillWriterChanged", deployment))
+		return a.FailoverClusterAndWaitTillWriterChanged(initialWriter, clusterId, targetWriterId)
+	}
+}
+
+func (a AuroraTestUtility) SimulateTemporaryFailure() {
+	DisableAllProxies()
+	time.Sleep(5 * time.Second)
+	EnableAllProxies()
 }
 
 func (a AuroraTestUtility) FailoverClusterAndWaitTillWriterChanged(initialWriter string, clusterId string, targetWriterId string) (err error) {
@@ -595,4 +618,17 @@ func (a AuroraTestUtility) SwitchoverBlueGreenDeployment(ctx context.Context, bl
 	}
 
 	return nil
+}
+
+// NOTE: This is for skipping flakey MultiAZ MySQL tests. These tests should be fixed. ItemId=130960814.
+func SkipForMultiAzMySql(t *testing.T, deployment DatabaseEngineDeployment, engine DatabaseEngine) {
+	if RDS_MULTI_AZ_CLUSTER == deployment && MYSQL == engine {
+		t.Skipf("Skipping test for RDS Multi-AZ MySQL b/c they are flakey.")
+	}
+}
+
+func SkipForDeployment(t *testing.T, deploymentToSkip DatabaseEngineDeployment, actualDeployment DatabaseEngineDeployment) {
+	if deploymentToSkip == actualDeployment {
+		t.Skipf("Skipping test for deployment: %s", string(deploymentToSkip))
+	}
 }

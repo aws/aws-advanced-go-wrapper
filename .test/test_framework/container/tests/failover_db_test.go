@@ -18,15 +18,17 @@ package test
 
 import (
 	"context"
-	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
 	"log/slog"
+
+	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
+
+	"strconv"
+	"testing"
+	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	_ "github.com/aws/aws-advanced-go-wrapper/otlp"
 	_ "github.com/aws/aws-advanced-go-wrapper/xray"
-	"strconv"
-	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,11 +38,8 @@ func TestFailoverWriterDB(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
-	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":    environment.Info().DatabaseInfo.ClusterEndpoint,
-		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
-		"plugins": "failover",
-	})
+	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	dsn := test_utils.GetDsn(environment, props)
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
@@ -55,7 +54,7 @@ func TestFailoverWriterDB(t *testing.T) {
 	var triggerFailoverError error
 	go func() {
 		time.Sleep(5 * time.Second) // Give the query time to reach the database.
-		triggerFailoverError = auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
+		triggerFailoverError = auroraTestUtility.TriggerFailover("", "", "")
 		close(failoverComplete)
 	}()
 	_, queryError := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, test_utils.GetSleepSql(environment.Info().Request.Engine, 60), 61)
@@ -80,14 +79,13 @@ func TestFailoverWriterDBWithTelemetryOtel(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, bsp)
 	defer func() { _ = bsp.Shutdown(context.TODO()) }()
-	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":                    environment.Info().DatabaseInfo.ClusterEndpoint,
-		"port":                    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
-		"plugins":                 "failover",
-		"enableTelemetry":         "true",
-		"telemetryTracesBackend":  "OTLP",
-		"telemetryMetricsBackend": "OTLP",
-	})
+
+	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	props["enableTelemetry"] = "true"
+	props["telemetryTracesBackend"] = "OTLP"
+	props["telemetryMetricsBackend"] = "OTLP"
+
+	dsn := test_utils.GetDsn(environment, props)
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
@@ -102,7 +100,7 @@ func TestFailoverWriterDBWithTelemetryOtel(t *testing.T) {
 	var triggerFailoverError error
 	go func() {
 		time.Sleep(5 * time.Second) // Give the query time to reach the database.
-		triggerFailoverError = auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
+		triggerFailoverError = auroraTestUtility.TriggerFailover("", "", "")
 		close(failoverComplete)
 	}()
 	_, queryError := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, test_utils.GetSleepSql(environment.Info().Request.Engine, 60), 61)
@@ -127,14 +125,13 @@ func TestFailoverWriterDBWithTelemetryXray(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, bsp)
 	defer func() { _ = bsp.Shutdown(context.TODO()) }()
-	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":                    environment.Info().DatabaseInfo.ClusterEndpoint,
-		"port":                    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
-		"plugins":                 "failover",
-		"enableTelemetry":         "true",
-		"telemetryTracesBackend":  "XRAY",
-		"telemetryMetricsBackend": "OTLP",
-	})
+
+	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	props["enableTelemetry"] = "true"
+	props["telemetryTracesBackend"] = "XRAY"
+	props["telemetryMetricsBackend"] = "OTLP"
+
+	dsn := test_utils.GetDsn(environment, props)
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
@@ -149,7 +146,7 @@ func TestFailoverWriterDBWithTelemetryXray(t *testing.T) {
 	var triggerFailoverError error
 	go func() {
 		time.Sleep(5 * time.Second) // Give the query time to reach the database.
-		triggerFailoverError = auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
+		triggerFailoverError = auroraTestUtility.TriggerFailover("", "", "")
 		close(failoverComplete)
 	}()
 	_, queryError := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, test_utils.GetSleepSql(environment.Info().Request.Engine, 60), 61)
@@ -170,11 +167,11 @@ func TestFailoverWriterInTransactionWithBegin(t *testing.T) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
-	dsn := test_utils.GetDsn(environment, map[string]string{
-		"host":    environment.Info().DatabaseInfo.WriterInstanceEndpoint(),
-		"port":    strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
-		"plugins": "failover",
-	})
+	test_utils.SkipForMultiAzMySql(t, environment.Info().Request.Deployment, environment.Info().Request.Engine)
+
+	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+
+	dsn := test_utils.GetDsn(environment, props)
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
@@ -200,7 +197,7 @@ func TestFailoverWriterInTransactionWithBegin(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Failover and check that it has failed over.
-	triggerFailoverError := auroraTestUtility.FailoverClusterAndWaitTillWriterChanged("", "", "")
+	triggerFailoverError := auroraTestUtility.TriggerFailover("", "", "")
 	assert.Nil(t, triggerFailoverError)
 
 	_, txErr := tx.Exec("INSERT INTO test_failover_tx_rollback VALUES (2, 'should fail to execute')")
