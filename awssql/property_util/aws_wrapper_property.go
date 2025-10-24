@@ -26,7 +26,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
-const DEFAULT_PLUGINS = "failover,efm"
+const DEFAULT_PLUGINS = "auroraConnectionTracker,failover,efm"
 const MONITORING_PROPERTY_PREFIX = "monitoring-"
 const LIMITLESS_PROPERTY_PREFIX = "limitless"
 const INTERNAL_CONNECT_PROPERTY_NAME = "76c06979-49c4-4c86-9600-a63605b83f50"

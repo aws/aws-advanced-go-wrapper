@@ -17,17 +17,18 @@
 package driver_infrastructure
 
 const (
-	BLUE_GREEN_PLUGIN_CODE           string = "bg"
-	READ_WRITE_SPLITTING_PLUGIN_CODE string = "readWriteSplitting"
-	FAILOVER_PLUGIN_CODE             string = "failover"
-	EFM_PLUGIN_CODE                  string = "efm"
-	LIMITLESS_PLUGIN_CODE            string = "limitless"
-	IAM_PLUGIN_CODE                  string = "iam"
-	SECRETS_MANAGER_PLUGIN_CODE      string = "awsSecretsManager"
-	ADFS_PLUGIN_CODE                 string = "federatedAuth"
-	OKTA_PLUGIN_CODE                 string = "okta"
-	EXECUTION_TIME_PLUGIN_CODE       string = "executionTime"
-	CONNECT_TIME_PLUGIN_CODE         string = "connectTime"
+	BLUE_GREEN_PLUGIN_CODE                string = "bg"
+	READ_WRITE_SPLITTING_PLUGIN_CODE      string = "readWriteSplitting"
+	FAILOVER_PLUGIN_CODE                  string = "failover"
+	EFM_PLUGIN_CODE                       string = "efm"
+	LIMITLESS_PLUGIN_CODE                 string = "limitless"
+	IAM_PLUGIN_CODE                       string = "iam"
+	SECRETS_MANAGER_PLUGIN_CODE           string = "awsSecretsManager"
+	ADFS_PLUGIN_CODE                      string = "federatedAuth"
+	OKTA_PLUGIN_CODE                      string = "okta"
+	EXECUTION_TIME_PLUGIN_CODE            string = "executionTime"
+	CONNECT_TIME_PLUGIN_CODE              string = "connectTime"
+	AURORA_CONNECTION_TRACKER_PLUGIN_CODE string = "auroraConnectionTracker"
 )
 
 type HostChangeOptions int

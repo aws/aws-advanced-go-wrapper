@@ -203,6 +203,8 @@
   "OktaAuthPlugin.httpNon200StatusCode": "Did not get a 200 response from http request to '%v'. Received the following status code: '%v'.",
   "OktaAuthPlugin.unableToDetermineRegion": "Unable to determine the region. Please set the '%v' parameter.",
   "OktaAuthPlugin.unableToRetrieveSessionToken": "Could not retrieve session token from endpoint.",
+  "OpenedConnectionTracker.invalidatingConnections": "Invalidating opened connections to host: '%s'",
+  "OpenedConnectionTracker.unableToPopulateOpenedConnectionQueue": "The driver is unable to track this opened connection because the instance endpoint is unknown: '%s'",
   "PluginManager.pipelineNone": "A pipeline was requested but the created pipeline evaluated to nil.",
   "PluginManager.unknownPluginCode": "Unknown plugin code: '%v'.",
   "PluginManagerImpl.invokedAgainstOldConnection": "The internal connection has changed since %v was created, skip executing method %v. This is likely due to failover. To ensure you are using the updated connection, please re-create Statement, Tx, Result and Row objects after failover.",

@@ -179,3 +179,26 @@ func (c *RWMap[K, V]) ProcessAndRemoveIf(condition func(K) bool, processor func(
 		}
 	}
 }
+
+// Filter removes entries from the map that don't match the filter condition.
+func (c *RWMap[K, V]) Filter(condition func(K, V) bool) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	for key, value := range c.cache {
+		if !condition(key, value) {
+			if c.disposalFunc != nil {
+				c.disposalFunc(value)
+			}
+			delete(c.cache, key)
+		}
+	}
+}
+
+func (c *RWMap[K, V]) ForEach(fn func(K, V)) {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	for key, value := range c.cache {
+		fn(key, value)
+	}
+}
