@@ -19,6 +19,7 @@ package plugins
 import (
 	"database/sql/driver"
 	"errors"
+	"fmt"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -135,6 +136,7 @@ func (a *AuroraConnectionTrackerPlugin) rememberWriter() {
 }
 
 func (a *AuroraConnectionTrackerPlugin) checkWriterChanged() {
+	fmt.Println("Check if writer changed!!")
 	hostInfoAfterFailover := host_info_util.GetWriter(a.pluginService.GetHosts())
 	if hostInfoAfterFailover == nil {
 		return

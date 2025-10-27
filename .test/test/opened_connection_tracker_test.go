@@ -111,6 +111,7 @@ func TestOpenedConnectionTracker_InvalidateAllConnections(t *testing.T) {
 
 	tracker := connection_tracker.NewOpenedConnectionTracker(mockPluginService)
 	tracker.ClearCache()
+	mockConn.EXPECT().Close().Times(2)
 
 	hostInfo := &host_info_util.HostInfo{
 		Host: "test-instance-1.xyz.us-east-1.rds.amazonaws.com",
@@ -140,6 +141,7 @@ func TestOpenedConnectionTracker_InvalidateAllConnectionsMultipleHosts(t *testin
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockConn.EXPECT().Close().Times(2)
 
 	tracker := connection_tracker.NewOpenedConnectionTracker(mockPluginService)
 	tracker.ClearCache()

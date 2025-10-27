@@ -18,6 +18,7 @@ package connection_tracker
 
 import (
 	"database/sql/driver"
+	"fmt"
 	"log/slog"
 	"strings"
 	"sync"
@@ -84,7 +85,7 @@ func (o *OpenedConnectionTracker) InvalidateAllConnectionsMultipleHosts(hosts ..
 	for _, host := range hosts {
 		cleanHost := utils.RemovePort(host)
 		if utils.IsRdsInstance(cleanHost) {
-			instanceEndpoint = cleanHost
+			instanceEndpoint = host
 			break // Exit loop after finding first match
 		}
 	}
@@ -127,12 +128,11 @@ func (o *OpenedConnectionTracker) logConnectionQueue(host string, queue *utils.R
 		return
 	}
 
-	debugMsg := ""
+	debugMsg := host
 	queue.ForEach(func(wp weak.Pointer[driver.Conn]) {
-		if wp.Value() != nil {
-			debugMsg += host + " "
-		}
+		debugMsg += "\n\t" + fmt.Sprintf("%v", wp)
 	})
+
 	slog.Debug(error_util.GetMessage("OpenedConnectionTracker.invalidatingConnections", debugMsg))
 }
 
