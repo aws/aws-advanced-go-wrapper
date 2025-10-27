@@ -6,7 +6,7 @@
 | October 8 2025  | [Release 2025-10-08](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2025-10-08) |
 | October 17 2025 | [Release 2025-10-17](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2025-10-17) |
 
-`aws-advanced-go-wrapper` follows [semver](https://semver.org/#semantic-versioning-200) which means we will only
+`aws-advanced-go-wrapper` and its modules follows [semver](https://semver.org/#semantic-versioning-200) which means we will only
 release breaking changes in major versions. Generally speaking, patches will be released to fix existing problems without
 adding new features. Minor version releases will include new features as well as fixes to existing features. We will do
 our best to deprecate existing features before removing them completely.
@@ -26,13 +26,13 @@ and log all changes in the [changelog](./CHANGELOG.md) with further detail for e
 
 # Maintenance Policy
 
-For `aws-advanced-go-wrapper` new features and active development always takes place against the newest version.
-The `aws-advanced-go-wrapper` project follows the semantic versioning specification for assigning version numbers
+For the `aws-advanced-go-wrapper`, new features and active development always takes place against the newest version of affected modules.
+Modules in the `aws-advanced-go-wrapper` project follow the semantic versioning specification for assigning version numbers
 to releases, so you should be able to upgrade to the latest minor version of that same major version of the
 software without encountering incompatible changes (e.g., 1.1.0 → 1.3.x).
 
 Sometimes an incompatible change is unavoidable. When this happens, the software’s maintainers will increment
-the major version number (e.g., increment from `aws-advanced-go-wrapper` 1.1.1 to `aws-advanced-go-wrapper` 2.0.0).
+the major version number (e.g., increment from `awssql` 1.1.1 to `awssql` 2.0.0) of affected modules.
 The last minor version of the previous major version of the software will then enter a maintenance window
 (e.g., 1.3.x). During the maintenance window, the software will continue to receive bug fixes and security patches,
 but no new features.
@@ -54,6 +54,6 @@ That said, PRs with said back-ports are welcome and will follow the project's re
 No new releases will result from these changes, but interested parties can create their own distribution
 from the updated source after the PRs are merged.
 
-| Major Version | Latest Minor Version | Status  | Initial Release | Maintenance Window Start | Maintenance Window End |
-| ------------- |----------------------|---------|-----------------|--------------------------| ---------------------- |
-| 1             | 1.1.1                | Current | Jul 31, 2025    | Jul 31, 2025             |                        |
+| Release                                                                                              | Status  | Initial Release | Maintenance Window Start | Maintenance Window End |
+|------------------------------------------------------------------------------------------------------|---------|-----------------|--------------------------|------------------------|
+| [Release 2025-10-17](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2025-10-17) | Current | Jul 31, 2025    | Jul 31, 2025             |                        |
