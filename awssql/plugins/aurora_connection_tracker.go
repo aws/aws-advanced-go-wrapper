@@ -62,15 +62,15 @@ func NewAuroraConnectionTrackerPlugin(
 }
 
 func (a AuroraConnectionTrackerPlugin) GetPluginCode() string {
-	return "auroraConnectionTracker"
+	return driver_infrastructure.AURORA_CONNECTION_TRACKER_PLUGIN_CODE
 }
 
 func (a AuroraConnectionTrackerPlugin) GetSubscribedMethods() []string {
-	return []string{plugin_helpers.CONNECT_METHOD,
+	return append([]string{plugin_helpers.CONNECT_METHOD,
 		utils.CONN_CLOSE,
 		plugin_helpers.NOTIFY_HOST_LIST_CHANGED_METHOD,
-		plugin_helpers.NOTIFY_CONNECTION_CHANGED_METHOD,
-	}
+		plugin_helpers.NOTIFY_CONNECTION_CHANGED_METHOD},
+		utils.NETWORK_BOUND_METHODS...)
 }
 
 func (a *AuroraConnectionTrackerPlugin) Execute(
