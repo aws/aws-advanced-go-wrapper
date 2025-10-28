@@ -70,6 +70,20 @@ func (hostInfo *HostInfo) ResetAliases() {
 	hostInfo.AllAliases[hostInfo.GetHostAndPort()] = true
 }
 
+func (hostInfo *HostInfo) GetAliases() map[string]bool {
+	if hostInfo == nil {
+		return nil
+	}
+	return hostInfo.Aliases
+}
+
+func (hostInfo *HostInfo) GetAllAliases() map[string]bool {
+	if hostInfo == nil {
+		return nil
+	}
+	return hostInfo.AllAliases
+}
+
 func (hostInfo *HostInfo) GetUrl() string {
 	return hostInfo.GetHostAndPort() + "/"
 }

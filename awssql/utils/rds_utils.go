@@ -362,3 +362,13 @@ func GetRdsClusterHostUrl(host string) string {
 
 	return ""
 }
+
+func RemovePort(hostAndPort string) string {
+	if hostAndPort == "" {
+		return ""
+	}
+	if strings.Contains(hostAndPort, ":") {
+		return hostAndPort[:strings.Index(hostAndPort, ":")]
+	}
+	return hostAndPort
+}
