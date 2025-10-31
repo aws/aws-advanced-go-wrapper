@@ -45,6 +45,7 @@ var pluginFactoryByCode = map[string]driver_infrastructure.ConnectionPluginFacto
 	driver_infrastructure.BLUE_GREEN_PLUGIN_CODE:                bg.NewBlueGreenPluginFactory(),
 	driver_infrastructure.CONNECT_TIME_PLUGIN_CODE:              plugins.NewConnectTimePluginFactory(),
 	driver_infrastructure.AURORA_CONNECTION_TRACKER_PLUGIN_CODE: plugins.NewAuroraConnectionTrackerPluginFactory(),
+	driver_infrastructure.DEVELOPER_PLUGIN_CODE:                 plugins.NewDeveloperConnectionPluginFactory(),
 }
 
 var underlyingDriverList = map[string]driver.Driver{}
