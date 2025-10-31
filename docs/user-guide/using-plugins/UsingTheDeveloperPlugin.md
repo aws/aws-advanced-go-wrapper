@@ -68,15 +68,11 @@ errSim.RaiseErrorOnNextCall(customError, "Conn.QueryContext")
 
 err = conn.QueryRowContext(context.TODO(), "SELECT 1").Scan(&result) // will return customError
 err = conn.QueryRowContext(context.TODO(), "SELECT 1").Scan(&result) // will be nil
-
-params = {
-  plugins: "dev"
-};
 ```
 
 It's possible to use a callback function to check call parameters and decide whether to return an error or not. Check `ErrorSimulatorManager.SetCallback` and `ErrorSimulator.SetCallback` for more details.
 
 #### Sample Code
 
-[PostgreSQL Developer Plugin Sample Code](TODO)<br>
-[MySQL Developer Plugin Sample Code](TODO)<br>
+[PostgreSQL Developer Plugin Sample Code](../../../examples/dev_plugin_postgres_example.go)<br>
+[MySQL Developer Plugin Sample Code](../../../examples/dev_plugin_mysql_example.go)<br>
