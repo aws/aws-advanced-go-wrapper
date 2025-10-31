@@ -29,6 +29,7 @@ const (
 	EXECUTION_TIME_PLUGIN_CODE            string = "executionTime"
 	CONNECT_TIME_PLUGIN_CODE              string = "connectTime"
 	AURORA_CONNECTION_TRACKER_PLUGIN_CODE string = "auroraConnectionTracker"
+	DEVELOPER_PLUGIN_CODE                 string = "dev"
 )
 
 type HostChangeOptions int
