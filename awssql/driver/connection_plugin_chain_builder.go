@@ -47,6 +47,7 @@ var pluginWeightByCode = map[string]int{
 	driver_infrastructure.SECRETS_MANAGER_PLUGIN_CODE:           1100,
 	driver_infrastructure.ADFS_PLUGIN_CODE:                      1200,
 	driver_infrastructure.OKTA_PLUGIN_CODE:                      1300,
+	driver_infrastructure.DEVELOPER_PLUGIN_CODE:                 1400,
 	driver_infrastructure.EXECUTION_TIME_PLUGIN_CODE:            WEIGHT_RELATIVE_TO_PRIOR_PLUGIN,
 	driver_infrastructure.CONNECT_TIME_PLUGIN_CODE:              WEIGHT_RELATIVE_TO_PRIOR_PLUGIN,
 }
