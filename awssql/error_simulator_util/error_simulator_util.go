@@ -21,6 +21,7 @@ import (
 	"database/sql/driver"
 
 	awsdriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/error_simulator"
 )
@@ -41,7 +42,7 @@ func GetErrorSimulatorFromSqlConn(conn *sql.Conn) (error_simulator.ErrorSimulato
 		}
 
 		// get plugin instance
-		plugin := driverConnWrapper.UnwrapPlugin("dev")
+		plugin := driverConnWrapper.UnwrapPlugin(driver_infrastructure.DEVELOPER_PLUGIN_CODE)
 		if plugin == nil {
 			return error_util.NewGenericAwsWrapperError("ErrorSimulatorHelper.cannotGetPluginInstance")
 		}

@@ -25,7 +25,7 @@ import (
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_simulator_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/error_simulator"
-	_ "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
+	_ "github.com/aws/aws-advanced-go-wrapper/pgx-driver" // awssql pgx driver
 )
 
 type TestErrorCallbackOnSelect1 struct {

@@ -59,11 +59,11 @@ func NewDeveloperConnectionPlugin(pluginService driver_infrastructure.PluginServ
 	}
 }
 
-func (d DeveloperConnectionPlugin) GetPluginCode() string {
+func (d *DeveloperConnectionPlugin) GetPluginCode() string {
 	return driver_infrastructure.DEVELOPER_PLUGIN_CODE
 }
 
-func (d DeveloperConnectionPlugin) GetSubscribedMethods() []string {
+func (d *DeveloperConnectionPlugin) GetSubscribedMethods() []string {
 	return []string{plugin_helpers.ALL_METHODS}
 }
 
