@@ -52,7 +52,6 @@ type getRdsClientFunc func(*host_info_util.HostInfo, *utils.RWMap[string, string
 func (factory CustomEndpointPluginFactory) GetInstance(
 	pluginService driver_infrastructure.PluginService,
 	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-
 	return NewCustomEndpointPlugin(pluginService, getRdsClientFuncImpl, props)
 }
 
@@ -76,18 +75,15 @@ func getRdsClientFuncImpl(hostInfo *host_info_util.HostInfo, props *utils.RWMap[
 	return rdsClient, nil
 }
 
-func (factory CustomEndpointPluginFactory) ClearCaches() {}
+func (factory CustomEndpointPluginFactory) ClearCaches() {
+	CUSTOM_ENDPOINT_MONITORS.CleanUp()
+}
 
 func NewCustomEndpointPluginFactory() driver_infrastructure.ConnectionPluginFactory {
 	return CustomEndpointPluginFactory{}
 }
 
-var monitorDisposalFunc utils.DisposalFunc[CustomEndpointMonitor] = func(item CustomEndpointMonitor) bool {
-	item.Close()
-	return true
-}
-var monitors = utils.NewSlidingExpirationCache[CustomEndpointMonitor](
-	"custom-endpoint-monitor", monitorDisposalFunc)
+var CUSTOM_ENDPOINT_MONITORS *utils.SlidingExpirationCache[CustomEndpointMonitor]
 
 type CustomEndpointPlugin struct {
 	plugins.BaseConnectionPlugin
@@ -107,10 +103,18 @@ func NewCustomEndpointPlugin(
 	pluginService driver_infrastructure.PluginService,
 	rdsClientFunc getRdsClientFunc,
 	props *utils.RWMap[string, string]) (*CustomEndpointPlugin, error) {
-
 	waitForInfoCounter, err := pluginService.GetTelemetryFactory().CreateCounter(TELEMETRY_WAIT_FOR_INFO_COUNTER)
 	if err != nil {
 		return nil, err
+	}
+
+	if CUSTOM_ENDPOINT_MONITORS == nil {
+		CUSTOM_ENDPOINT_MONITORS = utils.NewSlidingExpirationCache(
+			"custom-endpoint-monitor",
+			func(item CustomEndpointMonitor) bool {
+				item.Close()
+				return true
+			})
 	}
 
 	return &CustomEndpointPlugin{
@@ -124,6 +128,17 @@ func NewCustomEndpointPlugin(
 	}, nil
 }
 
+// NOTE: This method is for testing purposes.
+func NewCustomEndpointPluginWithHostInfo(
+	pluginService driver_infrastructure.PluginService,
+	rdsClientFunc getRdsClientFunc,
+	props *utils.RWMap[string, string],
+	customEndpointHostInfo *host_info_util.HostInfo) (*CustomEndpointPlugin, error) {
+	plugin, err := NewCustomEndpointPlugin(pluginService, rdsClientFunc, props)
+	plugin.customEndpointHostInfo = customEndpointHostInfo
+	return plugin, err
+}
+
 func (plugin *CustomEndpointPlugin) GetSubscribedMethods() []string {
 	return append([]string{
 		plugin_helpers.CONNECT_METHOD,
@@ -135,6 +150,9 @@ func (plugin *CustomEndpointPlugin) Connect(
 	props *utils.RWMap[string, string],
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
+	if !utils.IsRdsCustomClusterDns(hostInfo.GetHost()) {
+		return connectFunc(props)
+	}
 
 	plugin.customEndpointHostInfo = hostInfo
 	plugin.customEndpointId = utils.GetRdsClusterId(hostInfo.GetHost())
@@ -188,7 +206,7 @@ func (plugin *CustomEndpointPlugin) Execute(
 func (plugin *CustomEndpointPlugin) createMonitorIfAbsent(
 	props *utils.RWMap[string, string]) (CustomEndpointMonitor, error) {
 	refreshRateMs := time.Millisecond * time.Duration(property_util.GetRefreshRateValue(props, property_util.CUSTOM_ENDPOINT_INFO_REFRESH_RATE_MS))
-	return monitors.ComputeIfAbsentWithError(
+	return CUSTOM_ENDPOINT_MONITORS.ComputeIfAbsentWithError(
 		plugin.customEndpointHostInfo.Host,
 		func() (CustomEndpointMonitor, error) {
 			rdsClient, err := plugin.rdsClientFunc(plugin.customEndpointHostInfo, plugin.props)
@@ -203,7 +221,7 @@ func (plugin *CustomEndpointPlugin) createMonitorIfAbsent(
 				refreshRateMs,
 				rdsClient,
 			), nil
-		}, 1)
+		}, time.Duration(plugin.idleMonitorExpirationMs)*time.Millisecond)
 }
 
 func (plugin *CustomEndpointPlugin) waitForCustomEndpointInfo(monitor CustomEndpointMonitor) error {

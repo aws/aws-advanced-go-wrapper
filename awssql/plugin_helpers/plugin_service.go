@@ -250,17 +250,12 @@ func (p *PluginServiceImpl) GetCurrentHostInfo() (*host_info_util.HostInfo, erro
 
 			p.currentHostInfo = host_info_util.GetWriter(p.AllHosts)
 			allowedHosts := p.GetHosts()
-			if !host_info_util.IsHostInList(p.currentHostInfo, allowedHosts) {
-				if p.currentHostInfo == nil {
-					return nil, error_util.NewGenericAwsWrapperError(
-						error_util.GetMessage("PluginServiceImpl.currentHostNotAllowed", p.currentHostInfo.GetHostAndPort(), utils.LogTopology(allowedHosts, "")))
-				} else {
-					return nil, error_util.NewGenericAwsWrapperError(
-						error_util.GetMessage("PluginServiceImpl.currentHostNotAllowed", "<nil>", utils.LogTopology(allowedHosts, "")))
-				}
+			if p.currentHostInfo != nil && !host_info_util.IsHostInList(p.currentHostInfo, allowedHosts) {
+				return nil, error_util.NewGenericAwsWrapperError(
+					error_util.GetMessage("PluginServiceImpl.currentHostNotAllowed", p.currentHostInfo.GetHostAndPort(), utils.LogTopology(allowedHosts, "")))
 			}
 
-			if p.currentHostInfo.IsNil() {
+			if p.currentHostInfo == nil || p.currentHostInfo.IsNil() {
 				p.currentHostInfo = p.AllHosts[0]
 			}
 		}
@@ -287,14 +282,14 @@ func (p *PluginServiceImpl) GetHosts() []*host_info_util.HostInfo {
 	allowedHosts := p.allowedAndBlockedHosts.Load().GetAllowedHostIds()
 	blockedHosts := p.allowedAndBlockedHosts.Load().GetBlockedHostIds()
 
-	if allowedHosts != nil && len(allowedHosts) > 0 {
+	if len(allowedHosts) > 0 {
 		hosts = utils.FilterSlice(hosts, func(item *host_info_util.HostInfo) bool {
 			value, ok := allowedHosts[item.HostId]
 			return ok && value
 		})
 	}
 
-	if blockedHosts != nil && len(blockedHosts) > 0 {
+	if len(blockedHosts) > 0 {
 		hosts = utils.FilterSlice(hosts, func(item *host_info_util.HostInfo) bool {
 			value, ok := blockedHosts[item.HostId]
 			return !ok || !value

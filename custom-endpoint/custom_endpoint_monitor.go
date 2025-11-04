@@ -61,7 +61,6 @@ func NewCustomEndpointMonitorImpl(
 	region region_util.Region,
 	refreshRateMs time.Duration,
 	rdsClient *rds.Client) *CustomEndpointMonitorImpl {
-
 	monitor := &CustomEndpointMonitorImpl{
 		pluginService:          pluginService,
 		customEndpointHostInfo: customEndpointHostInfo,
@@ -125,7 +124,7 @@ func (monitor *CustomEndpointMonitorImpl) run() {
 		cachedEndpointInfo, ok := customEndpointInfoCache.Get(monitor.getCustomEndpointInfoCacheKey())
 
 		if ok && endpointInfo.Equals(cachedEndpointInfo) {
-			elapsedTime := time.Now().Sub(start)
+			elapsedTime := time.Since(start)
 			sleepDuration := monitor.refreshRateMs - elapsedTime
 			if sleepDuration < 0 {
 				sleepDuration = 0
@@ -149,7 +148,7 @@ func (monitor *CustomEndpointMonitorImpl) run() {
 
 		customEndpointInfoCache.Put(monitor.customEndpointHostInfo.GetHost(), endpointInfo, CUSTOM_ENDPOINT_INFO_EXPIRATION_NANO)
 
-		elapsedTime := time.Now().Sub(start)
+		elapsedTime := time.Since(start)
 		sleepDuration := monitor.refreshRateMs - elapsedTime
 		if sleepDuration < 0 {
 			sleepDuration = 0

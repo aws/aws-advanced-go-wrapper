@@ -403,6 +403,10 @@ func (p *MockPluginService) GetHosts() []*host_info_util.HostInfo {
 	return nil
 }
 
+func (p *MockPluginService) GetAllHosts() []*host_info_util.HostInfo {
+	return nil
+}
+
 func (p *MockPluginService) AcceptsStrategy(_ string) bool {
 	return false
 }
@@ -438,6 +442,9 @@ func (p *MockPluginService) SetHostListProvider(_ driver_infrastructure.HostList
 }
 
 func (p *MockPluginService) SetInitialConnectionHostInfo(_ *host_info_util.HostInfo) {}
+
+func (p *MockPluginService) SetAllowedAndBlockedHosts(allowedAndBlockedHosts *driver_infrastructure.AllowedAndBlockedHosts) {
+}
 
 func (p *MockPluginService) IsStaticHostListProvider() bool {
 	return false

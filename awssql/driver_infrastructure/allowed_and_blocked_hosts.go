@@ -27,10 +27,10 @@ func NewAllowedAndBlockedHosts(
 	var allowedHostIdsToSet map[string]bool
 	var blockedHostIdsToSet map[string]bool
 
-	if allowedHostIds != nil && len(allowedHostIds) > 0 {
+	if len(allowedHostIds) > 0 {
 		allowedHostIdsToSet = allowedHostIds
 	}
-	if blockedHostIds != nil && len(blockedHostIds) > 0 {
+	if len(blockedHostIds) > 0 {
 		blockedHostIdsToSet = blockedHostIds
 	}
 	return &AllowedAndBlockedHosts{
