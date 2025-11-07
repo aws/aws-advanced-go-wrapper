@@ -35,13 +35,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func createMocks(ctrl *gomock.Controller) (
+	mockPluginService *mock_driver_infrastructure.MockPluginService,
+	mockTelemetryFactory *mock_telemetry.MockTelemetryFactory,
+	mockTelemetryCounter *mock_telemetry.MockTelemetryCounter,
+	mockMonitor *mock_custom_endpoint.MockCustomEndpointMonitor) {
+	mockPluginService = mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockTelemetryFactory = mock_telemetry.NewMockTelemetryFactory(ctrl)
+	mockTelemetryCounter = mock_telemetry.NewMockTelemetryCounter(ctrl)
+	mockMonitor = mock_custom_endpoint.NewMockCustomEndpointMonitor(ctrl)
+	return
+}
+
 func TestCustomEndpointPluginConnect_InvalidUrl(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	mockTelemetryFactory := mock_telemetry.NewMockTelemetryFactory(ctrl)
-	mockTelemetryCounter := mock_telemetry.NewMockTelemetryCounter(ctrl)
+	mockPluginService, mockTelemetryFactory, mockTelemetryCounter, _ := createMocks(ctrl)
 
 	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory)
 	mockTelemetryFactory.EXPECT().CreateCounter(custom_endpoint.TELEMETRY_WAIT_FOR_INFO_COUNTER).Return(mockTelemetryCounter, nil)
@@ -69,9 +79,7 @@ func TestCustomEndpointPluginConnect_InvalidRegion(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	mockTelemetryFactory := mock_telemetry.NewMockTelemetryFactory(ctrl)
-	mockTelemetryCounter := mock_telemetry.NewMockTelemetryCounter(ctrl)
+	mockPluginService, mockTelemetryFactory, mockTelemetryCounter, _ := createMocks(ctrl)
 
 	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory)
 	mockTelemetryFactory.EXPECT().CreateCounter(custom_endpoint.TELEMETRY_WAIT_FOR_INFO_COUNTER).Return(mockTelemetryCounter, nil)
@@ -101,14 +109,11 @@ func TestCustomEndpointPluginConnect_DontWaitForCustomEndpointInfo(t *testing.T)
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	mockTelemetryFactory := mock_telemetry.NewMockTelemetryFactory(ctrl)
-	mockTelemetryCounter := mock_telemetry.NewMockTelemetryCounter(ctrl)
+	mockPluginService, mockTelemetryFactory, mockTelemetryCounter, mockMonitor := createMocks(ctrl)
 
 	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory)
 	mockTelemetryFactory.EXPECT().CreateCounter(custom_endpoint.TELEMETRY_WAIT_FOR_INFO_COUNTER).Return(mockTelemetryCounter, nil)
 
-	mockMonitor := mock_custom_endpoint.NewMockCustomEndpointMonitor(ctrl)
 	mockMonitor.EXPECT().HasCustomEndpointInfo().Return(true).Times(0)
 	mockMonitor.EXPECT().Close()
 
@@ -140,16 +145,13 @@ func TestCustomEndpointPluginConnect_WaitForCustomEndpointInfo(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	mockTelemetryFactory := mock_telemetry.NewMockTelemetryFactory(ctrl)
-	mockTelemetryCounter := mock_telemetry.NewMockTelemetryCounter(ctrl)
+	mockPluginService, mockTelemetryFactory, mockTelemetryCounter, mockMonitor := createMocks(ctrl)
 
 	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory)
 	mockPluginService.EXPECT().GetTelemetryContext().Return(nil)
 	mockTelemetryFactory.EXPECT().CreateCounter(custom_endpoint.TELEMETRY_WAIT_FOR_INFO_COUNTER).Return(mockTelemetryCounter, nil)
 	mockTelemetryCounter.EXPECT().Inc(gomock.Any())
 
-	mockMonitor := mock_custom_endpoint.NewMockCustomEndpointMonitor(ctrl)
 	mockMonitor.EXPECT().Close()
 	mockedHasCustomEndpointInfoCalls0 := mockMonitor.EXPECT().HasCustomEndpointInfo().Return(false).Times(5)
 	mockedHasCustomEndpointInfoCalls1 := mockMonitor.EXPECT().HasCustomEndpointInfo().Return(true).Times(1)
@@ -183,9 +185,7 @@ func TestCustomEndpointPluginExecute_CustomEndpointHostNotSet(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	mockTelemetryFactory := mock_telemetry.NewMockTelemetryFactory(ctrl)
-	mockTelemetryCounter := mock_telemetry.NewMockTelemetryCounter(ctrl)
+	mockPluginService, mockTelemetryFactory, mockTelemetryCounter, _ := createMocks(ctrl)
 
 	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory)
 	mockTelemetryFactory.EXPECT().CreateCounter(custom_endpoint.TELEMETRY_WAIT_FOR_INFO_COUNTER).Return(mockTelemetryCounter, nil)
@@ -216,14 +216,11 @@ func TestCustomEndpointPluginExecute_DontWaitForCustomEndpointInfo(t *testing.T)
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	mockTelemetryFactory := mock_telemetry.NewMockTelemetryFactory(ctrl)
-	mockTelemetryCounter := mock_telemetry.NewMockTelemetryCounter(ctrl)
+	mockPluginService, mockTelemetryFactory, mockTelemetryCounter, mockMonitor := createMocks(ctrl)
 
 	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory)
 	mockTelemetryFactory.EXPECT().CreateCounter(custom_endpoint.TELEMETRY_WAIT_FOR_INFO_COUNTER).Return(mockTelemetryCounter, nil)
 
-	mockMonitor := mock_custom_endpoint.NewMockCustomEndpointMonitor(ctrl)
 	mockMonitor.EXPECT().Close()
 	mockMonitor.EXPECT().HasCustomEndpointInfo().Return(true).Times(0)
 
@@ -259,16 +256,13 @@ func TestCustomEndpointPluginExecute_WaitForCustomEndpointInfo(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	mockTelemetryFactory := mock_telemetry.NewMockTelemetryFactory(ctrl)
-	mockTelemetryCounter := mock_telemetry.NewMockTelemetryCounter(ctrl)
+	mockPluginService, mockTelemetryFactory, mockTelemetryCounter, mockMonitor := createMocks(ctrl)
 
 	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory)
 	mockPluginService.EXPECT().GetTelemetryContext().Return(nil)
 	mockTelemetryFactory.EXPECT().CreateCounter(custom_endpoint.TELEMETRY_WAIT_FOR_INFO_COUNTER).Return(mockTelemetryCounter, nil)
 	mockTelemetryCounter.EXPECT().Inc(gomock.Any())
 
-	mockMonitor := mock_custom_endpoint.NewMockCustomEndpointMonitor(ctrl)
 	mockMonitor.EXPECT().Close()
 	mockedHasCustomEndpointInfoCalls0 := mockMonitor.EXPECT().HasCustomEndpointInfo().Return(false).Times(5)
 	mockedHasCustomEndpointInfoCalls1 := mockMonitor.EXPECT().HasCustomEndpointInfo().Return(true).Times(1)

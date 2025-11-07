@@ -60,6 +60,7 @@ func NewCustomEndpointMonitorImpl(
 	endpointIdentifier string,
 	region region_util.Region,
 	refreshRateMs time.Duration,
+	infoChangedCounter telemetry.TelemetryCounter,
 	rdsClient *rds.Client) *CustomEndpointMonitorImpl {
 	monitor := &CustomEndpointMonitorImpl{
 		pluginService:          pluginService,
@@ -67,6 +68,7 @@ func NewCustomEndpointMonitorImpl(
 		endpointIdentifier:     endpointIdentifier,
 		region:                 region,
 		refreshRateMs:          refreshRateMs,
+		infoChangedCounter:     infoChangedCounter,
 		rdsClient:              rdsClient,
 	}
 
@@ -146,7 +148,8 @@ func (monitor *CustomEndpointMonitorImpl) run() {
 
 		monitor.pluginService.SetAllowedAndBlockedHosts(allowedAndBlockedHosts)
 
-		customEndpointInfoCache.Put(monitor.customEndpointHostInfo.GetHost(), endpointInfo, CUSTOM_ENDPOINT_INFO_EXPIRATION_NANO)
+		customEndpointInfoCache.Put(monitor.getCustomEndpointInfoCacheKey(), endpointInfo, CUSTOM_ENDPOINT_INFO_EXPIRATION_NANO)
+		monitor.infoChangedCounter.Inc(monitor.pluginService.GetTelemetryContext())
 
 		elapsedTime := time.Since(start)
 		sleepDuration := monitor.refreshRateMs - elapsedTime

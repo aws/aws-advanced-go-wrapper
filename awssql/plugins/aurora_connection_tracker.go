@@ -130,14 +130,14 @@ func (a *AuroraConnectionTrackerPlugin) NotifyHostListChanged(changes map[string
 
 func (a *AuroraConnectionTrackerPlugin) rememberWriter() {
 	if a.currentWriter == nil || a.needUpdateCurrentWriter {
-		a.currentWriter = host_info_util.GetWriter(a.pluginService.GetHosts())
+		a.currentWriter = host_info_util.GetWriter(a.pluginService.GetAllHosts())
 		a.needUpdateCurrentWriter = false
 	}
 }
 
 func (a *AuroraConnectionTrackerPlugin) checkWriterChanged() {
 	fmt.Println("Check if writer changed!!")
-	hostInfoAfterFailover := host_info_util.GetWriter(a.pluginService.GetHosts())
+	hostInfoAfterFailover := host_info_util.GetWriter(a.pluginService.GetAllHosts())
 	if hostInfoAfterFailover == nil {
 		return
 	}

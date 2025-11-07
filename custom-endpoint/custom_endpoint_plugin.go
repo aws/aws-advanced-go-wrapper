@@ -44,6 +44,7 @@ func init() {
 }
 
 const TELEMETRY_WAIT_FOR_INFO_COUNTER = "customEndpoint.waitForInfo.counter"
+const TELEMETRY_ENDPOINT_INFO_CHANGED = "customEndpoint.infoChanged.counter"
 
 type CustomEndpointPluginFactory struct{}
 
@@ -148,7 +149,7 @@ func (plugin *CustomEndpointPlugin) GetSubscribedMethods() []string {
 func (plugin *CustomEndpointPlugin) Connect(
 	hostInfo *host_info_util.HostInfo,
 	props *utils.RWMap[string, string],
-	isInitialConnection bool,
+	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	if !utils.IsRdsCustomClusterDns(hostInfo.GetHost()) {
 		return connectFunc(props)
@@ -213,32 +214,38 @@ func (plugin *CustomEndpointPlugin) createMonitorIfAbsent(
 			if err != nil {
 				return nil, err
 			}
+			infoChangedCounter, err := plugin.pluginService.GetTelemetryFactory().CreateCounter(TELEMETRY_ENDPOINT_INFO_CHANGED)
+			if err != nil {
+				return nil, err
+			}
+
 			return NewCustomEndpointMonitorImpl(
 				plugin.pluginService,
 				plugin.customEndpointHostInfo,
 				plugin.customEndpointId,
 				plugin.region,
 				refreshRateMs,
+				infoChangedCounter,
 				rdsClient,
 			), nil
 		}, time.Duration(plugin.idleMonitorExpirationMs)*time.Millisecond)
 }
 
 func (plugin *CustomEndpointPlugin) waitForCustomEndpointInfo(monitor CustomEndpointMonitor) error {
-	hasCustomEdnpointInfo := monitor.HasCustomEndpointInfo()
+	hasCustomEndpointInfo := monitor.HasCustomEndpointInfo()
 
-	if !hasCustomEdnpointInfo {
+	if !hasCustomEndpointInfo {
 		if plugin.waitForInfoCounter != nil {
 			plugin.waitForInfoCounter.Inc(plugin.pluginService.GetTelemetryContext())
 		}
 
 		waitForEndpointInfoTimeout := time.Now().Add(time.Millisecond * time.Duration(plugin.waitOnCachedInfoDurationMs))
-		for !hasCustomEdnpointInfo && time.Now().Before(waitForEndpointInfoTimeout) {
+		for !hasCustomEndpointInfo && time.Now().Before(waitForEndpointInfoTimeout) {
 			time.Sleep(time.Millisecond * time.Duration(100))
-			hasCustomEdnpointInfo = monitor.HasCustomEndpointInfo()
+			hasCustomEndpointInfo = monitor.HasCustomEndpointInfo()
 		}
 
-		if !hasCustomEdnpointInfo {
+		if !hasCustomEndpointInfo {
 			return errors.New(error_util.GetMessage("CustomEndpointPlugin.timedOutWaitingForCustomEndpointInfo"))
 		}
 	}

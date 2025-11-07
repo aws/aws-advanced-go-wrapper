@@ -255,7 +255,7 @@ func (p *PluginServiceImpl) GetCurrentHostInfo() (*host_info_util.HostInfo, erro
 					error_util.GetMessage("PluginServiceImpl.currentHostNotAllowed", p.currentHostInfo.GetHostAndPort(), utils.LogTopology(allowedHosts, "")))
 			}
 
-			if p.currentHostInfo == nil || p.currentHostInfo.IsNil() {
+			if p.currentHostInfo.IsNil() {
 				p.currentHostInfo = p.AllHosts[0]
 			}
 		}
@@ -267,7 +267,6 @@ func (p *PluginServiceImpl) GetCurrentHostInfo() (*host_info_util.HostInfo, erro
 	return p.currentHostInfo, nil
 }
 
-// TODO: transfer some uses of #GetHost to #GetAllHosts
 func (p *PluginServiceImpl) GetAllHosts() []*host_info_util.HostInfo {
 	return p.AllHosts
 }
