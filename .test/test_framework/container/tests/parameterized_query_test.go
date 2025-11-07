@@ -48,7 +48,7 @@ func setupParamTest(t *testing.T, testName string) (*test_utils.TestEnvironment,
 	require.NoError(t, err)
 	plugins := property_util.DEFAULT_PLUGINS
 	if slices.Contains(env.Info().Request.Features, test_utils.LIMITLESS_DEPLOYMENT) {
-		plugins += "," + driver_infrastructure.LIMITLESS_PLUGIN_CODE
+		plugins = driver_infrastructure.LIMITLESS_PLUGIN_CODE
 	}
 
 	props := map[string]string{"plugins": plugins}
@@ -137,6 +137,7 @@ func verifyInsertedData(t *testing.T, env *test_utils.TestEnvironment, db *sql.D
 func TestParameterizedQuery(t *testing.T) {
 	t.Run("Parameterized Query With Named/Positional Args Query", func(t *testing.T) {
 		env, db := setupParamTest(t, t.Name())
+		defer db.Close()
 		row, err := runPositionalArgsQuery(env, db)
 		require.NoError(t, err)
 
@@ -148,10 +149,12 @@ func TestParameterizedQuery(t *testing.T) {
 		queryValueInt, _ := strconv.Atoi(queryValue)
 		assert.Equal(t, queryValueInt, value)
 		assert.Equal(t, queryStatus, status)
+		test_utils.BasicCleanup(t.Name())
 	})
 
 	t.Run("Parameterized Query With Named/Positional Args Exec", func(t *testing.T) {
 		env, db := setupParamTest(t, t.Name())
+		defer db.Close()
 
 		err := createParamTestTable(env, db)
 		require.NoError(t, err)
@@ -165,10 +168,12 @@ func TestParameterizedQuery(t *testing.T) {
 
 		queryValueInt, _ := strconv.Atoi(queryValue)
 		verifyInsertedData(t, env, db, queryValueInt, queryStatus)
+		test_utils.BasicCleanup(t.Name())
 	})
 
 	t.Run("Parameterized Query With Prepared Statements Stmt", func(t *testing.T) {
 		env, db := setupParamTest(t, t.Name())
+		defer db.Close()
 
 		preparedStatement := getPreparedStatement(env)
 		stmt, err := db.PrepareContext(context.TODO(), preparedStatement)
@@ -182,10 +187,12 @@ func TestParameterizedQuery(t *testing.T) {
 		testValueInt, _ := strconv.Atoi(testValue)
 		assert.Equal(t, testValueInt, returnedValue)
 		assert.Equal(t, testName, returnedName)
+		test_utils.BasicCleanup(t.Name())
 	})
 
 	t.Run("Parameterized Query With Prepared Statements Conn", func(t *testing.T) {
 		env, db := setupParamTest(t, t.Name())
+		defer db.Close()
 
 		conn, err := db.Conn(context.TODO())
 		require.NoError(t, err)
@@ -203,10 +210,12 @@ func TestParameterizedQuery(t *testing.T) {
 		testValueInt, _ := strconv.Atoi(testValue)
 		assert.Equal(t, testValueInt, returnedValue)
 		assert.Equal(t, testName, returnedName)
+		test_utils.BasicCleanup(t.Name())
 	})
 
 	t.Run("Parameterized Query With Prepared Statements Tx", func(t *testing.T) {
 		env, db := setupParamTest(t, t.Name())
+		defer db.Close()
 
 		tx, err := db.BeginTx(context.TODO(), nil)
 		require.NoError(t, err)
@@ -229,10 +238,12 @@ func TestParameterizedQuery(t *testing.T) {
 
 		err = tx.Commit()
 		require.NoError(t, err)
+		test_utils.BasicCleanup(t.Name())
 	})
 
 	t.Run("Parameterized Query With Prepared Statements Stmt Exec", func(t *testing.T) {
 		env, db := setupParamTest(t, t.Name())
+		defer db.Close()
 
 		err := createParamTestTable(env, db)
 		require.NoError(t, err)
@@ -251,10 +262,12 @@ func TestParameterizedQuery(t *testing.T) {
 
 		testValueInt, _ := strconv.Atoi(testValue)
 		verifyInsertedData(t, env, db, testValueInt, testName)
+		test_utils.BasicCleanup(t.Name())
 	})
 
 	t.Run("Parameterized Query With Prepared Statements Conn Exec", func(t *testing.T) {
 		env, db := setupParamTest(t, t.Name())
+		defer db.Close()
 
 		err := createParamTestTable(env, db)
 		require.NoError(t, err)
@@ -277,10 +290,12 @@ func TestParameterizedQuery(t *testing.T) {
 
 		testValueInt, _ := strconv.Atoi(testValue)
 		verifyInsertedData(t, env, db, testValueInt, testName)
+		test_utils.BasicCleanup(t.Name())
 	})
 
 	t.Run("Parameterized Query With Prepared Statements Tx Exec", func(t *testing.T) {
 		env, db := setupParamTest(t, t.Name())
+		defer db.Close()
 
 		err := createParamTestTable(env, db)
 		require.NoError(t, err)
@@ -308,5 +323,6 @@ func TestParameterizedQuery(t *testing.T) {
 
 		testValueInt, _ := strconv.Atoi(testValue)
 		verifyInsertedData(t, env, db, testValueInt, testName)
+		test_utils.BasicCleanup(t.Name())
 	})
 }
