@@ -325,4 +325,22 @@ func TestParameterizedQuery(t *testing.T) {
 		verifyInsertedData(t, env, db, testValueInt, testName)
 		test_utils.BasicCleanup(t.Name())
 	})
+
+	t.Run("Parameterized Query With Wrong Parameter Count", func(t *testing.T) {
+		env, db := setupParamTest(t, t.Name())
+		defer db.Close()
+
+		// Try to execute a query with wrong number of parameters
+		var wrongQuery string
+		if env.Info().Request.Engine == test_utils.PG {
+			wrongQuery = "SELECT $1::int as value, $2::text as name, $3::text as extra"
+		} else {
+			wrongQuery = "SELECT ? as value, ? as name, ? as extra"
+		}
+
+		// This should fail because we're only providing 2 parameters but query expects 3
+		_, err := db.Query(wrongQuery, testValue, testName)
+		assert.Error(t, err)
+		test_utils.BasicCleanup(t.Name())
+	})
 }
