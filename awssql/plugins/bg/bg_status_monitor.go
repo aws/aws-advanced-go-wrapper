@@ -166,7 +166,8 @@ func (b *BlueGreenStatusMonitor) Delay() {
 	minDelay := min(delayMs, 50)
 
 	for b.GetIntervalRate() == currentBgIntervalRate && time.Now().Before(endTime) && !b.stop.Load() && b.panicMode.Load() == currentPanic {
-		time.Sleep(time.Duration(minDelay))
+		slog.Warn(fmt.Sprintf("BlueGreenStatusMonitor.Delay - SLEEP - %v", minDelay)) // TODO: remove me
+		time.Sleep(time.Duration(minDelay) * time.Millisecond)
 	}
 }
 
