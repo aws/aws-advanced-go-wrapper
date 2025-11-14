@@ -69,7 +69,7 @@ func TestAuroraConnectionTracker_InvalidateOpenedConnectionsWhenWriterHostNotCha
 
 	originalHost := &host_info_util.HostInfo{Role: host_info_util.WRITER, Host: "originalHost"}
 
-	mockPluginService.EXPECT().GetHosts().Return([]*host_info_util.HostInfo{originalHost}).Times(2)
+	mockPluginService.EXPECT().GetAllHosts().Return([]*host_info_util.HostInfo{originalHost}).Times(2)
 
 	auroraConnectionTracker := plugins.NewAuroraConnectionTrackerPlugin(mockPluginService, nil, mockTracker)
 	_, _, _, err := auroraConnectionTracker.Execute(mockDriverConn, "", execFunc, "")
@@ -92,8 +92,8 @@ func TestAuroraConnectionTracker_InvalidateOpenedConnectionsWhenWriterHostChange
 	originalHost := &host_info_util.HostInfo{Role: host_info_util.WRITER, Host: "originalHost"}
 	newHost := &host_info_util.HostInfo{Role: host_info_util.WRITER, Host: "newHost"}
 
-	mockPluginService.EXPECT().GetHosts().Return([]*host_info_util.HostInfo{originalHost})
-	mockPluginService.EXPECT().GetHosts().Return([]*host_info_util.HostInfo{newHost})
+	mockPluginService.EXPECT().GetAllHosts().Return([]*host_info_util.HostInfo{originalHost})
+	mockPluginService.EXPECT().GetAllHosts().Return([]*host_info_util.HostInfo{newHost})
 	mockTracker.EXPECT().InvalidateAllConnections(originalHost)
 	mockTracker.EXPECT().LogOpenedConnections()
 

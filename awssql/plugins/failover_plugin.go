@@ -295,7 +295,7 @@ func (p *FailoverPlugin) DealWithError(err error) error {
 }
 
 func (p *FailoverPlugin) isFailoverEnabled() bool {
-	return p.rdsUrlType != utils.RDS_PROXY && len(p.pluginService.GetHosts()) != 0
+	return p.rdsUrlType != utils.RDS_PROXY && len(p.pluginService.GetAllHosts()) != 0
 }
 
 func (p *FailoverPlugin) canDirectExecute(methodName string) bool {
@@ -356,7 +356,7 @@ func (p *FailoverPlugin) FailoverWriter() error {
 		return err
 	}
 
-	updatedHosts := p.pluginService.GetHosts()
+	updatedHosts := p.pluginService.GetAllHosts()
 
 	writerCandidate := host_info_util.GetWriter(updatedHosts)
 	if writerCandidate.IsNil() {

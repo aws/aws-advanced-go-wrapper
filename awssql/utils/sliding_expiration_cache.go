@@ -105,6 +105,27 @@ func (c *SlidingExpirationCache[T]) ComputeIfAbsent(key string, computeFunc func
 	return c.cache[key].item
 }
 
+func (c *SlidingExpirationCache[T]) ComputeIfAbsentWithError(key string, computeFunc func() (T, error), itemExpiration time.Duration) (T, error) {
+	item, ok := c.Get(key, itemExpiration)
+
+	if ok {
+		return item, nil
+	}
+
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	item, err := computeFunc()
+	if err != nil {
+		var zeroValue T
+		return zeroValue, err
+	}
+	c.cache[key] = &cacheItem[T]{cacheValue[T]{
+		item:           item,
+		expirationTime: time.Now().Add(itemExpiration),
+	}}
+	return c.cache[key].item, nil
+}
+
 func (c *SlidingExpirationCache[T]) PutIfAbsent(key string, value T, expiration time.Duration) {
 	c.cleanupIfExpired(key)
 	c.lock.Lock()
