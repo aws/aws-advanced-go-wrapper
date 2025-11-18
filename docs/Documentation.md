@@ -12,6 +12,7 @@
     - [Limitless Connection Plugin](user-guide/using-plugins/UsingTheLimitlessConnectionPlugin.md)
     - [Read Write Splitting Plugin](./user-guide/using-plugins/UsingTheReadWriteSplittingPlugin.md)
     - [Blue/Green Deployment Plugin](./user-guide/using-plugins/UsingTheBlueGreenPlugin.md)
+    - [Custom Endpoint Plugin](./user-guide/using-plugins/UsingTheCustomEndpointPlugin.md)
 - [Contributor Guide](contributor-guide/ContributorGuide.md)
   - [Setup](contributor-guide/ContributorGuide.md#setup)
   - [Testing Overview](contributor-guide/ContributorGuide.md#testing-overview)

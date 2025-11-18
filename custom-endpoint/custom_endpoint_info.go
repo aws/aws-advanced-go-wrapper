@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-sdk-go-v2/service/rds/types"
 )
 
@@ -47,11 +48,18 @@ const (
 	EXCLUSION_LIST MemberListType = "EXCLUSION_LIST"
 )
 
-func NewCustomEndpointInfo(endpoint types.DBClusterEndpoint) *CustomEndpointInfo {
+func NewCustomEndpointInfo(endpoint types.DBClusterEndpoint) (*CustomEndpointInfo, error) {
+	if endpoint.DBClusterEndpointIdentifier == nil {
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("CustomEndpointInfo.nilDBClusterEndpointIdentifier"))
+	} else if endpoint.DBClusterIdentifier == nil {
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("CustomEndpointInfo.nilDBClusterIdentifier"))
+	} else if endpoint.Endpoint == nil {
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("CustomEndpointInfo.nilEndpoint"))
+	}
+
 	var members []string
 	var memberListType MemberListType
-
-	if len(endpoint.StaticMembers) > 1 {
+	if len(endpoint.StaticMembers) > 0 {
 		members = endpoint.StaticMembers
 		memberListType = STATIC_LIST
 	} else {
@@ -66,7 +74,7 @@ func NewCustomEndpointInfo(endpoint types.DBClusterEndpoint) *CustomEndpointInfo
 		roleType:           RoleType(strings.ToUpper(*endpoint.CustomEndpointType)),
 		memberListType:     memberListType,
 		members:            stringSliceToSetMap(members),
-	}
+	}, nil
 }
 
 func (a *CustomEndpointInfo) Equals(b *CustomEndpointInfo) bool {

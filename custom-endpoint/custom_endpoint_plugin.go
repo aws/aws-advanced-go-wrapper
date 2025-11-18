@@ -20,7 +20,6 @@ import (
 	"context"
 	"database/sql/driver"
 	"errors"
-	"log/slog"
 	"time"
 
 	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
@@ -69,7 +68,7 @@ func getRdsClientFuncImpl(hostInfo *host_info_util.HostInfo, props *utils.RWMap[
 		config.WithRegion(region),
 		config.WithCredentialsProvider(awsCredentialsProvider))
 	if err != nil {
-		slog.Error("Failed to load AWS configuration", "error", err)
+		return nil, err
 	}
 
 	rdsClient := rds.NewFromConfig(cfg)
@@ -137,7 +136,11 @@ func NewCustomEndpointPluginWithHostInfo(
 	customEndpointHostInfo *host_info_util.HostInfo) (*CustomEndpointPlugin, error) {
 	plugin, err := NewCustomEndpointPlugin(pluginService, rdsClientFunc, props)
 	plugin.customEndpointHostInfo = customEndpointHostInfo
-	return plugin, err
+
+	if err != nil {
+		return nil, err
+	}
+	return plugin, nil
 }
 
 func (plugin *CustomEndpointPlugin) GetSubscribedMethods() []string {

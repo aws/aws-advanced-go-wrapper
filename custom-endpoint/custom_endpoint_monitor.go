@@ -108,10 +108,12 @@ func (monitor *CustomEndpointMonitorImpl) run() {
 		} else if len(resp.DBClusterEndpoints) != 1 {
 			var endpointsString string
 			for i, endpoint := range resp.DBClusterEndpoints {
-				if i > 0 {
-					endpointsString = endpointsString + ","
+				if endpoint.Endpoint != nil && *endpoint.Endpoint != "" {
+					if i > 0 {
+						endpointsString = endpointsString + ","
+					}
+					endpointsString = endpointsString + *endpoint.Endpoint
 				}
-				endpointsString = endpointsString + *endpoint.Endpoint
 			}
 			slog.Warn(error_util.GetMessage("CustomEndpointMonitorImpl.unexpectedNumberOfEndpoints",
 				monitor.endpointIdentifier,
@@ -122,7 +124,11 @@ func (monitor *CustomEndpointMonitorImpl) run() {
 			continue
 		}
 
-		endpointInfo := NewCustomEndpointInfo(resp.DBClusterEndpoints[0])
+		endpointInfo, err := NewCustomEndpointInfo(resp.DBClusterEndpoints[0])
+		if err != nil {
+			slog.Error(err.Error())
+			continue
+		}
 		cachedEndpointInfo, ok := customEndpointInfoCache.Get(monitor.getCustomEndpointInfoCacheKey())
 
 		if ok && endpointInfo.Equals(cachedEndpointInfo) {
