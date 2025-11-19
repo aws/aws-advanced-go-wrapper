@@ -163,10 +163,10 @@ func (b *BlueGreenStatusMonitor) Delay() {
 	}
 
 	endTime := time.Now().Add(time.Millisecond * time.Duration(delayMs))
-	minDelay := min(delayMs, 50)
+	minDelayMs := min(delayMs, 50)
 
 	for b.GetIntervalRate() == currentBgIntervalRate && time.Now().Before(endTime) && !b.stop.Load() && b.panicMode.Load() == currentPanic {
-		time.Sleep(time.Duration(minDelay))
+		time.Sleep(time.Duration(minDelayMs) * time.Millisecond)
 	}
 }
 
