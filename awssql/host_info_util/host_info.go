@@ -131,8 +131,8 @@ func (hostInfo *HostInfo) IsNil() bool {
 }
 
 func (hostInfo *HostInfo) String() string {
-	return fmt.Sprintf("HostInfo[host=%s, port=%d, %s, %s, weight=%d, %s]",
-		hostInfo.Host, hostInfo.Port, hostInfo.Role, hostInfo.Availability, hostInfo.Weight, hostInfo.LastUpdateTime)
+	return fmt.Sprintf("HostInfo[hostId=%s,host=%s, port=%d, %s, %s, weight=%d, %s]",
+		hostInfo.HostId, hostInfo.Host, hostInfo.Port, hostInfo.Role, hostInfo.Availability, hostInfo.Weight, hostInfo.LastUpdateTime)
 }
 
 func (hostInfo *HostInfo) MakeCopyWithRole(role HostRole) *HostInfo {

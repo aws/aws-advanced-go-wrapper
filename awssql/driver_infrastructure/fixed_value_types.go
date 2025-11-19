@@ -17,6 +17,7 @@
 package driver_infrastructure
 
 const (
+	CUSTOM_ENDPOINT_PLUGIN_CODE           string = "customEndpoint"
 	BLUE_GREEN_PLUGIN_CODE                string = "bg"
 	READ_WRITE_SPLITTING_PLUGIN_CODE      string = "readWriteSplitting"
 	FAILOVER_PLUGIN_CODE                  string = "failover"
