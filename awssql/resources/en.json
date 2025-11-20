@@ -5,6 +5,8 @@
   "AdfsCredentialsProviderFactory.signOnPagePostActionUrl": "ADFS SignOn Action URL: '%s'.",
   "AdfsCredentialsProviderFactory.signOnPageRequestFailed": "ADFS SignOn Page Request Failed with HTTP status '%s'.",
   "AdfsCredentialsProviderFactory.signOnPageUrl": "ADFS SignOn URL: '%s'.",
+  "AuroraInitialConnectionStrategyPlugin.requireDynamicProvider": "AuroraInitialConnectionStrategyPlugin.requireDynamicProvider=",
+  "AuroraInitialConnectionStrategyPlugin.unsupportedStrategy": "Unsupported host selection strategy %s.",
   "AuthHelpers.missingRequiredParameters": "Missing required parameter(s) for plugin '%s': '%v'.",
   "AuthenticationToken.generatedNewToken": "Generated new authentication token.",
   "AuthenticationToken.useCachedToken": "Use cached authentication token.",

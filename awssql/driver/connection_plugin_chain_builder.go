@@ -37,20 +37,21 @@ type PluginFactoryWeight struct {
 }
 
 var pluginWeightByCode = map[string]int{
-	driver_infrastructure.CUSTOM_ENDPOINT_PLUGIN_CODE:           380,
-	driver_infrastructure.AURORA_CONNECTION_TRACKER_PLUGIN_CODE: 400,
-	driver_infrastructure.BLUE_GREEN_PLUGIN_CODE:                550,
-	driver_infrastructure.READ_WRITE_SPLITTING_PLUGIN_CODE:      600,
-	driver_infrastructure.FAILOVER_PLUGIN_CODE:                  700,
-	driver_infrastructure.EFM_PLUGIN_CODE:                       800,
-	driver_infrastructure.LIMITLESS_PLUGIN_CODE:                 950,
-	driver_infrastructure.IAM_PLUGIN_CODE:                       1000,
-	driver_infrastructure.SECRETS_MANAGER_PLUGIN_CODE:           1100,
-	driver_infrastructure.ADFS_PLUGIN_CODE:                      1200,
-	driver_infrastructure.OKTA_PLUGIN_CODE:                      1300,
-	driver_infrastructure.DEVELOPER_PLUGIN_CODE:                 1400,
-	driver_infrastructure.EXECUTION_TIME_PLUGIN_CODE:            WEIGHT_RELATIVE_TO_PRIOR_PLUGIN,
-	driver_infrastructure.CONNECT_TIME_PLUGIN_CODE:              WEIGHT_RELATIVE_TO_PRIOR_PLUGIN,
+	driver_infrastructure.CUSTOM_ENDPOINT_PLUGIN_CODE:                    380,
+	driver_infrastructure.AURORA_INITIAL_CONNECTION_STRATEGY_PLUGIN_CODE: 390,
+	driver_infrastructure.AURORA_CONNECTION_TRACKER_PLUGIN_CODE:          400,
+	driver_infrastructure.BLUE_GREEN_PLUGIN_CODE:                         550,
+	driver_infrastructure.READ_WRITE_SPLITTING_PLUGIN_CODE:               600,
+	driver_infrastructure.FAILOVER_PLUGIN_CODE:                           700,
+	driver_infrastructure.EFM_PLUGIN_CODE:                                800,
+	driver_infrastructure.LIMITLESS_PLUGIN_CODE:                          950,
+	driver_infrastructure.IAM_PLUGIN_CODE:                                1000,
+	driver_infrastructure.SECRETS_MANAGER_PLUGIN_CODE:                    1100,
+	driver_infrastructure.ADFS_PLUGIN_CODE:                               1200,
+	driver_infrastructure.OKTA_PLUGIN_CODE:                               1300,
+	driver_infrastructure.DEVELOPER_PLUGIN_CODE:                          1400,
+	driver_infrastructure.EXECUTION_TIME_PLUGIN_CODE:                     WEIGHT_RELATIVE_TO_PRIOR_PLUGIN,
+	driver_infrastructure.CONNECT_TIME_PLUGIN_CODE:                       WEIGHT_RELATIVE_TO_PRIOR_PLUGIN,
 }
 
 type ConnectionPluginChainBuilder struct {

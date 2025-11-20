@@ -786,6 +786,34 @@ var CUSTOM_ENDPOINT_REGION_PROPERTY = AwsWrapperProperty{
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
+var READER_INITIAL_CONN_HOST_SELECTOR_STRATEGY = AwsWrapperProperty{
+	Name:                "readerInitialConnectionHostSelectorStrategy",
+	description:         "The strategy that should be used to select a new reader host while opening a new connection.",
+	defaultValue:        "random",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var OPEN_CONNECTION_RETRY_TIMEOUT_MS = AwsWrapperProperty{
+	Name:                "openConnectionRetryTimeoutMs",
+	description:         "Maximum allowed time for the retries opening a connection.",
+	defaultValue:        "30000",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var OPEN_CONNECTION_RETRY_INTERVAL_MS = AwsWrapperProperty{
+	Name:                "openConnectionRetryIntervalMs",
+	description:         "Time between each retry of opening a connection.",
+	defaultValue:        "1000",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var VERIFY_OPENED_CONNECTION_TYPE = AwsWrapperProperty{
+	Name:                "verifyOpenedConnectionType",
+	description:         "Force to verify an opened connection to be either a writer or a reader.",
+	defaultValue:        "",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
 func RemoveInternalAwsWrapperProperties(props map[string]string) map[string]string {
 	copyProps := map[string]string{}
 
