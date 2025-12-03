@@ -36,7 +36,6 @@ func TestAuroraInitialConnectionStrategyPlugin_InitHostProvider(t *testing.T) {
 	defer ctrl.Finish()
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 	mockHostListProviderService := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
-	mockHostListProviderService.EXPECT().IsStaticHostListProvider().Return(false).Times(1)
 
 	initHostProviderFuncCalled := false
 	mockInitHostProviderFunc := func() error {
@@ -45,34 +44,13 @@ func TestAuroraInitialConnectionStrategyPlugin_InitHostProvider(t *testing.T) {
 	}
 	props := utils.NewRWMap[string, string]()
 
-	plugin := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err0 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	assert.NoError(t, err0)
 
-	err := plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
+	err1 := plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 
-	assert.NoError(t, err)
+	assert.NoError(t, err1)
 	assert.True(t, initHostProviderFuncCalled)
-}
-
-func TestAuroraInitialConnectionStrategyPlugin_InitHostProvider_WithStaticHostListProvider(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	mockHostListProviderService := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
-	mockHostListProviderService.EXPECT().IsStaticHostListProvider().Return(true).Times(1)
-
-	initHostProviderFuncCalled := false
-	mockInitHostProviderFunc := func() error {
-		initHostProviderFuncCalled = true
-		return nil
-	}
-	props := utils.NewRWMap[string, string]()
-
-	plugin := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
-
-	err := plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
-
-	assert.Error(t, err)
-	assert.False(t, initHostProviderFuncCalled)
 }
 
 func TestAuroraInitialConnectionStrategyPlugin_Connect_WithNonRdsClusterUrl(t *testing.T) {
@@ -80,7 +58,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithNonRdsClusterUrl(t *t
 	defer ctrl.Finish()
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 	props := utils.NewRWMap[string, string]()
-	hostInfo, err0 := host_info_util.NewHostInfoBuilder().
+	hostInfo, err1 := host_info_util.NewHostInfoBuilder().
 		SetHost("someNonRdsClusterUrl.someClusterId.amazon.com").
 		Build()
 
@@ -90,12 +68,13 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithNonRdsClusterUrl(t *t
 		return nil, nil
 	}
 
-	plugin := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err0 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
 
-	_, err1 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
+	_, err2 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
 
 	assert.NoError(t, err0)
 	assert.NoError(t, err1)
+	assert.NoError(t, err2)
 	assert.True(t, mockConnectFuncCalled)
 }
 
@@ -104,7 +83,6 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster(t *t
 	defer ctrl.Finish()
 
 	mockHostListProviderService := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
-	mockHostListProviderService.EXPECT().IsStaticHostListProvider().Return(false).Times(1)
 	mockInitHostProviderFunc := func() error {
 		return nil
 	}
@@ -117,7 +95,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster(t *t
 	mockPluginService.EXPECT().GetAllHosts().Return(hosts)
 	mockHostListProviderService.EXPECT().SetInitialConnectionHostInfo(hostWriter1)
 
-	props := MakeMapFromKeysAndVals(property_util.VERIFY_OPENED_CONNECTION_TYPE.Name, "writer")
+	props := MakeMapFromKeysAndVals(property_util.VERIFY_INITIAL_CONNECTION_TYPE.Name, "writer")
 	hostInfo, err0 := host_info_util.NewHostInfoBuilder().
 		SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").
 		Build()
@@ -126,7 +104,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster(t *t
 		return nil, nil
 	}
 
-	plugin := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
 
 	_ = plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 
@@ -134,10 +112,11 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster(t *t
 	mockPluginService.EXPECT().Connect(hostWriter1, props, plugin).Return(mockDriverConn, nil)
 	mockPluginService.EXPECT().GetHostRole(mockDriverConn).Return(host_info_util.WRITER)
 
-	actualConn, err1 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
+	actualConn, err2 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
 
 	assert.NoError(t, err0)
 	assert.NoError(t, err1)
+	assert.NoError(t, err2)
 	assert.Equal(t, mockDriverConn, actualConn)
 }
 
@@ -146,7 +125,6 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndO
 	defer ctrl.Finish()
 
 	mockHostListProviderService := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
-	mockHostListProviderService.EXPECT().IsStaticHostListProvider().Return(false).Times(1)
 	mockInitHostProviderFunc := func() error {
 		return nil
 	}
@@ -156,7 +134,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndO
 	hosts := []*host_info_util.HostInfo{}
 	mockPluginService.EXPECT().GetAllHosts().Return(hosts)
 
-	props := MakeMapFromKeysAndVals(property_util.VERIFY_OPENED_CONNECTION_TYPE.Name, "writer")
+	props := MakeMapFromKeysAndVals(property_util.VERIFY_INITIAL_CONNECTION_TYPE.Name, "writer")
 
 	mockDriverConn := mock_database_sql_driver.NewMockConn(ctrl)
 	mockConnectFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
@@ -166,17 +144,18 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndO
 	mockPluginService.EXPECT().IdentifyConnection(mockDriverConn).Return(hostWriter1, nil)
 	mockHostListProviderService.EXPECT().SetInitialConnectionHostInfo(hostWriter1)
 
-	plugin := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err0 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
 
 	_ = plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 
-	hostInfo, err0 := host_info_util.NewHostInfoBuilder().
+	hostInfo, err1 := host_info_util.NewHostInfoBuilder().
 		SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").
 		Build()
-	actualConn, err1 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
+	actualConn, err2 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
 
 	assert.NoError(t, err0)
 	assert.NoError(t, err1)
+	assert.NoError(t, err2)
 	assert.Equal(t, mockDriverConn, actualConn)
 }
 
@@ -185,7 +164,6 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndR
 	defer ctrl.Finish()
 
 	mockHostListProviderService := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
-	mockHostListProviderService.EXPECT().IsStaticHostListProvider().Return(false).Times(1)
 	mockInitHostProviderFunc := func() error {
 		return nil
 	}
@@ -198,9 +176,9 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndR
 	mockPluginService.EXPECT().GetAllHosts().Return(hosts).MinTimes(5)
 
 	props := MakeMapFromKeysAndVals(
-		property_util.VERIFY_OPENED_CONNECTION_TYPE.Name, "writer",
-		property_util.OPEN_CONNECTION_RETRY_INTERVAL_MS.Name, "10",
-		property_util.OPEN_CONNECTION_RETRY_TIMEOUT_MS.Name, "100")
+		property_util.VERIFY_INITIAL_CONNECTION_TYPE.Name, "writer",
+		property_util.INITIAL_CONNECTION_RETRY_INTERVAL_MS.Name, "10",
+		property_util.INITIAL_CONNECTION_RETRY_TIMEOUT_MS.Name, "100")
 	hostInfo, err0 := host_info_util.NewHostInfoBuilder().
 		SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").
 		Build()
@@ -210,7 +188,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndR
 		return nil, mockError
 	}
 
-	plugin := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
 
 	_ = plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 
@@ -221,10 +199,11 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndR
 	mockPluginService.EXPECT().SetAvailability(gomock.Any(), host_info_util.UNAVAILABLE).MinTimes(5)
 	mockDriverConn.EXPECT().Close().MinTimes(2)
 
-	actualConn, err1 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
+	actualConn, err2 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
 
 	assert.NoError(t, err0)
-	assert.Error(t, mockError, err1)
+	assert.NoError(t, err1)
+	assert.Error(t, mockError, err2)
 	assert.Equal(t, nil, actualConn)
 }
 
@@ -233,7 +212,6 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndR
 	defer ctrl.Finish()
 
 	mockHostListProviderService := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
-	mockHostListProviderService.EXPECT().IsStaticHostListProvider().Return(false).Times(1)
 	mockInitHostProviderFunc := func() error {
 		return nil
 	}
@@ -246,9 +224,9 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndR
 	mockPluginService.EXPECT().GetAllHosts().Return(hosts).MinTimes(5)
 
 	props := MakeMapFromKeysAndVals(
-		property_util.VERIFY_OPENED_CONNECTION_TYPE.Name, "writer",
-		property_util.OPEN_CONNECTION_RETRY_INTERVAL_MS.Name, "10",
-		property_util.OPEN_CONNECTION_RETRY_TIMEOUT_MS.Name, "100")
+		property_util.VERIFY_INITIAL_CONNECTION_TYPE.Name, "writer",
+		property_util.INITIAL_CONNECTION_RETRY_INTERVAL_MS.Name, "10",
+		property_util.INITIAL_CONNECTION_RETRY_TIMEOUT_MS.Name, "100")
 
 	hostInfo, err0 := host_info_util.NewHostInfoBuilder().
 		SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").
@@ -258,7 +236,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndR
 		return nil, nil
 	}
 
-	plugin := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
 
 	_ = plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 
@@ -268,10 +246,11 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndR
 	mockPluginService.EXPECT().ForceRefreshHostList(mockDriverConn).Return(nil).MinTimes(5)
 	mockDriverConn.EXPECT().Close().MinTimes(5)
 
-	actualConn, err1 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
+	actualConn, err2 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
 
 	assert.NoError(t, err0)
 	assert.NoError(t, err1)
+	assert.NoError(t, err2)
 	assert.Equal(t, nil, actualConn)
 }
 
@@ -280,7 +259,6 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndL
 	defer ctrl.Finish()
 
 	mockHostListProviderService := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
-	mockHostListProviderService.EXPECT().IsStaticHostListProvider().Return(false).Times(1)
 	mockInitHostProviderFunc := func() error {
 		return nil
 	}
@@ -292,7 +270,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndL
 	hosts := []*host_info_util.HostInfo{hostReader1, hostReader2, hostWriter1}
 	mockPluginService.EXPECT().GetAllHosts().Return(hosts)
 
-	props := MakeMapFromKeysAndVals(property_util.VERIFY_OPENED_CONNECTION_TYPE.Name, "writer")
+	props := MakeMapFromKeysAndVals(property_util.VERIFY_INITIAL_CONNECTION_TYPE.Name, "writer")
 	hostInfo, err0 := host_info_util.NewHostInfoBuilder().
 		SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").
 		Build()
@@ -301,7 +279,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndL
 		return nil, nil
 	}
 
-	plugin := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
 
 	_ = plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 
@@ -311,10 +289,11 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndL
 	mockPluginService.EXPECT().IsLoginError(mockErr).Return(true)
 	mockDriverConn.EXPECT().Close()
 
-	actualConn, err1 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
+	actualConn, err2 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
 
 	assert.NoError(t, err0)
-	assert.Error(t, err1)
+	assert.NoError(t, err1)
+	assert.Error(t, err2)
 	assert.Equal(t, nil, actualConn)
 }
 
@@ -323,7 +302,6 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster(t *t
 	defer ctrl.Finish()
 
 	mockHostListProviderService := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
-	mockHostListProviderService.EXPECT().IsStaticHostListProvider().Return(false).Times(1)
 	mockInitHostProviderFunc := func() error {
 		return nil
 	}
@@ -339,7 +317,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster(t *t
 	mockPluginService.EXPECT().AcceptsStrategy(gomock.Any()).Return(true)
 	mockPluginService.EXPECT().GetHostInfoByStrategy(host_info_util.READER, gomock.Any(), gomock.Any()).Return(hostReader2, nil)
 
-	props := MakeMapFromKeysAndVals(property_util.VERIFY_OPENED_CONNECTION_TYPE.Name, "reader")
+	props := MakeMapFromKeysAndVals(property_util.VERIFY_INITIAL_CONNECTION_TYPE.Name, "reader")
 	hostInfo, err0 := host_info_util.NewHostInfoBuilder().
 		SetHost("database-test-name.cluster-ro-XYZ.us-east-2.rds.amazonaws.com").
 		Build()
@@ -348,7 +326,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster(t *t
 		return nil, nil
 	}
 
-	plugin := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
 
 	_ = plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 
@@ -356,10 +334,11 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster(t *t
 	mockPluginService.EXPECT().Connect(hostReader2, props, plugin).Return(mockDriverConn, nil)
 	mockPluginService.EXPECT().GetHostRole(mockDriverConn).Return(host_info_util.READER)
 
-	actualConn, err1 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
+	actualConn, err2 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
 
 	assert.NoError(t, err0)
 	assert.NoError(t, err1)
+	assert.NoError(t, err2)
 	assert.Equal(t, mockDriverConn, actualConn)
 }
 
@@ -368,7 +347,6 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndN
 	defer ctrl.Finish()
 
 	mockHostListProviderService := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
-	mockHostListProviderService.EXPECT().IsStaticHostListProvider().Return(false).Times(1)
 	mockInitHostProviderFunc := func() error {
 		return nil
 	}
@@ -384,7 +362,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndN
 	mockPluginService.EXPECT().AcceptsStrategy(gomock.Any()).Return(true)
 	mockPluginService.EXPECT().GetHostInfoByStrategy(host_info_util.READER, gomock.Any(), gomock.Any()).Return(nil, nil)
 
-	props := MakeMapFromKeysAndVals(property_util.VERIFY_OPENED_CONNECTION_TYPE.Name, "reader")
+	props := MakeMapFromKeysAndVals(property_util.VERIFY_INITIAL_CONNECTION_TYPE.Name, "reader")
 	hostInfo, err0 := host_info_util.NewHostInfoBuilder().
 		SetHost("database-test-name.cluster-ro-XYZ.us-east-2.rds.amazonaws.com").
 		Build()
@@ -394,17 +372,18 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndN
 		return mockDriverConn, nil
 	}
 
-	plugin := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
 
 	_ = plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 
 	mockPluginService.EXPECT().ForceRefreshHostList(mockDriverConn).Return(nil)
 	mockPluginService.EXPECT().IdentifyConnection(mockDriverConn).Return(hostReader2, nil)
 
-	actualConn, err1 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
+	actualConn, err2 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
 
 	assert.NoError(t, err0)
 	assert.NoError(t, err1)
+	assert.NoError(t, err2)
 	assert.Equal(t, mockDriverConn, actualConn)
 }
 
@@ -413,7 +392,6 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndO
 	defer ctrl.Finish()
 
 	mockHostListProviderService := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
-	mockHostListProviderService.EXPECT().IsStaticHostListProvider().Return(false).Times(1)
 	mockInitHostProviderFunc := func() error {
 		return nil
 	}
@@ -426,7 +404,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndO
 	mockPluginService.EXPECT().AcceptsStrategy(gomock.Any()).Return(true)
 	mockPluginService.EXPECT().GetHostInfoByStrategy(host_info_util.READER, gomock.Any(), gomock.Any()).Return(nil, nil)
 
-	props := MakeMapFromKeysAndVals(property_util.VERIFY_OPENED_CONNECTION_TYPE.Name, "reader")
+	props := MakeMapFromKeysAndVals(property_util.VERIFY_INITIAL_CONNECTION_TYPE.Name, "reader")
 	hostInfo, err0 := host_info_util.NewHostInfoBuilder().
 		SetHost("database-test-name.cluster-ro-XYZ.us-east-2.rds.amazonaws.com").
 		Build()
@@ -440,14 +418,15 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndO
 	mockPluginService.EXPECT().IdentifyConnection(mockDriverConn).Return(hostReader2, nil)
 	mockHostListProviderService.EXPECT().SetInitialConnectionHostInfo(hostReader2)
 
-	plugin := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
 
 	_ = plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 
-	actualConn, err1 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
+	actualConn, err2 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
 
 	assert.NoError(t, err0)
 	assert.NoError(t, err1)
+	assert.NoError(t, err2)
 	assert.Equal(t, mockDriverConn, actualConn)
 }
 
@@ -456,7 +435,6 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndN
 	defer ctrl.Finish()
 
 	mockHostListProviderService := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
-	mockHostListProviderService.EXPECT().IsStaticHostListProvider().Return(false).Times(1)
 	mockInitHostProviderFunc := func() error {
 		return nil
 	}
@@ -470,7 +448,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndN
 	mockPluginService.EXPECT().AcceptsStrategy(gomock.Any()).Return(true)
 	mockPluginService.EXPECT().GetHostInfoByStrategy(host_info_util.READER, gomock.Any(), gomock.Any()).Return(hostWriter1, nil)
 
-	props := MakeMapFromKeysAndVals(property_util.VERIFY_OPENED_CONNECTION_TYPE.Name, "reader")
+	props := MakeMapFromKeysAndVals(property_util.VERIFY_INITIAL_CONNECTION_TYPE.Name, "reader")
 	hostInfo, err0 := host_info_util.NewHostInfoBuilder().
 		SetHost("database-test-name.cluster-ro-XYZ.us-east-2.rds.amazonaws.com").
 		Build()
@@ -479,7 +457,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndN
 		return nil, nil
 	}
 
-	plugin := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
 
 	_ = plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 
@@ -489,10 +467,11 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndN
 	mockPluginService.EXPECT().ForceRefreshHostList(mockDriverConn).Return(nil)
 	mockPluginService.EXPECT().GetAllHosts().Return(hosts).Times(2)
 
-	actualConn, err1 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
+	actualConn, err2 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
 
 	assert.NoError(t, err0)
 	assert.NoError(t, err1)
+	assert.NoError(t, err2)
 	assert.Equal(t, mockDriverConn, actualConn)
 }
 
@@ -501,7 +480,6 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndL
 	defer ctrl.Finish()
 
 	mockHostListProviderService := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
-	mockHostListProviderService.EXPECT().IsStaticHostListProvider().Return(false).Times(1)
 	mockInitHostProviderFunc := func() error {
 		return nil
 	}
@@ -513,7 +491,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndL
 	hosts := []*host_info_util.HostInfo{hostReader1, hostReader2, hostWriter1}
 	mockPluginService.EXPECT().GetHosts().Return(hosts)
 
-	props := MakeMapFromKeysAndVals(property_util.VERIFY_OPENED_CONNECTION_TYPE.Name, "reader")
+	props := MakeMapFromKeysAndVals(property_util.VERIFY_INITIAL_CONNECTION_TYPE.Name, "reader")
 	hostInfo, err0 := host_info_util.NewHostInfoBuilder().
 		SetHost("database-test-name.cluster-ro-XYZ.us-east-2.rds.amazonaws.com").
 		Build()
@@ -522,7 +500,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndL
 		return nil, nil
 	}
 
-	plugin := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
 
 	_ = plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 
@@ -534,9 +512,10 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndL
 	mockPluginService.EXPECT().IsLoginError(mockErr).Return(true)
 	mockDriverConn.EXPECT().Close()
 
-	actualConn, err1 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
+	actualConn, err2 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
 
 	assert.NoError(t, err0)
-	assert.Error(t, err1)
+	assert.NoError(t, err1)
+	assert.Error(t, err2)
 	assert.Equal(t, nil, actualConn)
 }

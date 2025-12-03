@@ -226,6 +226,10 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	WAIT_FOR_CUSTOM_ENDPOINT_INFO_TIMEOUT_MS.Name:   true,
 	CUSTOM_ENDPOINT_MONITOR_IDLE_EXPIRATION_MS.Name: true,
 	CUSTOM_ENDPOINT_REGION_PROPERTY.Name:            true,
+	READER_INITIAL_CONN_HOST_SELECTOR_STRATEGY.Name: true,
+	INITIAL_CONNECTION_RETRY_TIMEOUT_MS.Name:        true,
+	INITIAL_CONNECTION_RETRY_INTERVAL_MS.Name:       true,
+	VERIFY_INITIAL_CONNECTION_TYPE.Name:             true,
 }
 
 var USER = AwsWrapperProperty{
@@ -793,22 +797,22 @@ var READER_INITIAL_CONN_HOST_SELECTOR_STRATEGY = AwsWrapperProperty{
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
-var OPEN_CONNECTION_RETRY_TIMEOUT_MS = AwsWrapperProperty{
-	Name:                "openConnectionRetryTimeoutMs",
+var INITIAL_CONNECTION_RETRY_TIMEOUT_MS = AwsWrapperProperty{
+	Name:                "initialConnectionRetryTimeoutMs",
 	description:         "Maximum allowed time for the retries opening a connection.",
 	defaultValue:        "30000",
 	wrapperPropertyType: WRAPPER_TYPE_INT,
 }
 
-var OPEN_CONNECTION_RETRY_INTERVAL_MS = AwsWrapperProperty{
-	Name:                "openConnectionRetryIntervalMs",
+var INITIAL_CONNECTION_RETRY_INTERVAL_MS = AwsWrapperProperty{
+	Name:                "initialConnectionRetryIntervalMs",
 	description:         "Time between each retry of opening a connection.",
 	defaultValue:        "1000",
 	wrapperPropertyType: WRAPPER_TYPE_INT,
 }
 
-var VERIFY_OPENED_CONNECTION_TYPE = AwsWrapperProperty{
-	Name:                "verifyOpenedConnectionType",
+var VERIFY_INITIAL_CONNECTION_TYPE = AwsWrapperProperty{
+	Name:                "verifyInitialConnectionType",
 	description:         "Force to verify an opened connection to be either a writer or a reader.",
 	defaultValue:        "",
 	wrapperPropertyType: WRAPPER_TYPE_STRING,

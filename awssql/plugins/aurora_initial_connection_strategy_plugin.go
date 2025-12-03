@@ -18,6 +18,7 @@ package plugins
 
 import (
 	"database/sql/driver"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -41,24 +42,16 @@ func (factory AuroraInitialConnectionStrategyPluginFactory) ClearCaches() {
 func (factory AuroraInitialConnectionStrategyPluginFactory) GetInstance(
 	pluginService driver_infrastructure.PluginService,
 	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewAuroraInitialConnectionStrategyPlugin(pluginService, props), nil
+	return NewAuroraInitialConnectionStrategyPlugin(pluginService, props)
 }
 
-type VerifiedOpenedConnectionType string
-
-const (
-	WRITER  VerifiedOpenedConnectionType = "writer"
-	READER  VerifiedOpenedConnectionType = "reader"
-	UNKNOWN VerifiedOpenedConnectionType = "unknown"
-)
-
-func verifiedOpenedConnectionTypeFromString(value string) VerifiedOpenedConnectionType {
-	if strings.ToLower(strings.TrimSpace(value)) == string(WRITER) {
-		return WRITER
-	} else if strings.ToLower(strings.TrimSpace(value)) == string(READER) {
-		return READER
+func verifiedOpenedConnectionTypeFromString(value string) host_info_util.HostRole {
+	if strings.ToLower(strings.TrimSpace(value)) == string(host_info_util.WRITER) {
+		return host_info_util.WRITER
+	} else if strings.ToLower(strings.TrimSpace(value)) == string(host_info_util.READER) {
+		return host_info_util.READER
 	} else {
-		return UNKNOWN
+		return host_info_util.UNKNOWN
 	}
 }
 
@@ -67,18 +60,31 @@ type AuroraInitialConnectionStrategyPlugin struct {
 	pluginService            driver_infrastructure.PluginService
 	hostListProviderService  driver_infrastructure.HostListProviderService
 	props                    *utils.RWMap[string, string]
-	verifyOpenConnectionType VerifiedOpenedConnectionType
+	verifyOpenConnectionType host_info_util.HostRole
+	retryDelayMs             int
+	retryTimeoutMs           int
 }
 
 func NewAuroraInitialConnectionStrategyPlugin(
 	pluginService driver_infrastructure.PluginService,
-	props *utils.RWMap[string, string]) *AuroraInitialConnectionStrategyPlugin {
+	props *utils.RWMap[string, string]) (*AuroraInitialConnectionStrategyPlugin, error) {
+	retryDelayMs, err := property_util.GetPositiveIntProperty(props, property_util.INITIAL_CONNECTION_RETRY_INTERVAL_MS)
+	if err != nil {
+		return nil, err
+	}
+	retryTimeoutMs, err := property_util.GetPositiveIntProperty(props, property_util.INITIAL_CONNECTION_RETRY_TIMEOUT_MS)
+	if err != nil {
+		return nil, err
+	}
+
 	return &AuroraInitialConnectionStrategyPlugin{
 		pluginService: pluginService,
 		props:         props,
 		verifyOpenConnectionType: verifiedOpenedConnectionTypeFromString(
-			property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.VERIFY_OPENED_CONNECTION_TYPE)),
-	}
+			property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.VERIFY_INITIAL_CONNECTION_TYPE)),
+		retryDelayMs:   retryDelayMs,
+		retryTimeoutMs: retryTimeoutMs,
+	}, nil
 }
 
 func (plugin *AuroraInitialConnectionStrategyPlugin) GetPluginCode() string {
@@ -97,9 +103,6 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) InitHostProvider(
 	hostListProviderService driver_infrastructure.HostListProviderService,
 	initHostProviderFunc func() error) error {
 	plugin.hostListProviderService = hostListProviderService
-	if hostListProviderService.IsStaticHostListProvider() {
-		return error_util.NewGenericAwsWrapperError(error_util.GetMessage("AuroraInitialConnectionStrategyPlugin.requireDynamicProvider"))
-	}
 	return initHostProviderFunc()
 }
 
@@ -110,11 +113,12 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) Connect(
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	urlType := utils.IdentifyRdsUrlType(hostInfo.GetHost())
 	if !urlType.IsRdsCluster {
+		// It's not a cluster endpoint. Continue with a normal workflow.
 		return connectFunc(props)
 	}
 
 	if urlType == utils.RDS_WRITER_CLUSTER ||
-		isInitialConnection && plugin.verifyOpenConnectionType == WRITER {
+		isInitialConnection && plugin.verifyOpenConnectionType == host_info_util.WRITER {
 		writerCandidateConn, err := plugin.getVerifiedWriterConnection(props, isInitialConnection, connectFunc)
 		if err != nil {
 			return nil, err
@@ -127,7 +131,7 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) Connect(
 	}
 
 	if urlType == utils.RDS_READER_CLUSTER ||
-		isInitialConnection && plugin.verifyOpenConnectionType == READER {
+		isInitialConnection && plugin.verifyOpenConnectionType == host_info_util.READER {
 		readerCandidateConn, err := plugin.getVerifiedReaderConnection(urlType, hostInfo, props, isInitialConnection, connectFunc)
 		if err != nil {
 			return nil, err
@@ -139,17 +143,14 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) Connect(
 		return readerCandidateConn, nil
 	}
 
-	return nil, nil
+	return connectFunc(props)
 }
 
 func (plugin *AuroraInitialConnectionStrategyPlugin) getVerifiedWriterConnection(
 	props *utils.RWMap[string, string],
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-	retryDelayMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.OPEN_CONNECTION_RETRY_INTERVAL_MS)
-
-	retryTimeoutMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.OPEN_CONNECTION_RETRY_TIMEOUT_MS)
-	endTime := time.Now().Add(time.Millisecond * time.Duration(retryTimeoutMs))
+	endTime := time.Now().Add(time.Millisecond * time.Duration(plugin.retryTimeoutMs))
 
 	var writerCandidateConn driver.Conn
 	var writerCandidate *host_info_util.HostInfo
@@ -161,16 +162,14 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) getVerifiedWriterConnection
 			// Writer is not found. It seems that topology is outdated.
 			writerCandidateConn, err = connectFunc(props)
 			if err != nil {
-				if plugin.handleGetVerifiedRoleConnectionError(writerCandidateConn, writerCandidate, err) {
-					time.Sleep(time.Millisecond * time.Duration(retryDelayMs))
+				if plugin.handleErrorAndShouldRetry(writerCandidateConn, writerCandidate, err) {
 					continue
 				}
 				return nil, err
 			}
 			err = plugin.pluginService.ForceRefreshHostList(writerCandidateConn)
 			if err != nil {
-				if plugin.handleGetVerifiedRoleConnectionError(writerCandidateConn, writerCandidate, err) {
-					time.Sleep(time.Millisecond * time.Duration(retryDelayMs))
+				if plugin.handleErrorAndShouldRetry(writerCandidateConn, writerCandidate, err) {
 					continue
 				}
 				return nil, err
@@ -178,8 +177,7 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) getVerifiedWriterConnection
 
 			writerCandidate, err = plugin.pluginService.IdentifyConnection(writerCandidateConn)
 			if err != nil {
-				if plugin.handleGetVerifiedRoleConnectionError(writerCandidateConn, writerCandidate, err) {
-					time.Sleep(time.Millisecond * time.Duration(retryDelayMs))
+				if plugin.handleErrorAndShouldRetry(writerCandidateConn, writerCandidate, err) {
 					continue
 				}
 				return nil, err
@@ -188,7 +186,7 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) getVerifiedWriterConnection
 			if writerCandidate == nil || writerCandidate.Role != host_info_util.WRITER {
 				// Shouldn't be here. But let's try again.
 				_ = writerCandidateConn.Close()
-				time.Sleep(time.Millisecond * time.Duration(retryDelayMs))
+				plugin.delayMs()
 				continue
 			}
 
@@ -199,8 +197,7 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) getVerifiedWriterConnection
 		}
 		writerCandidateConn, err := plugin.pluginService.Connect(writerCandidate, props, plugin)
 		if err != nil {
-			if plugin.handleGetVerifiedRoleConnectionError(writerCandidateConn, writerCandidate, err) {
-				time.Sleep(time.Millisecond * time.Duration(retryDelayMs))
+			if plugin.handleErrorAndShouldRetry(writerCandidateConn, writerCandidate, err) {
 				continue
 			}
 			return nil, err
@@ -210,14 +207,13 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) getVerifiedWriterConnection
 			// Force refresh to update the topology.
 			err = plugin.pluginService.ForceRefreshHostList(writerCandidateConn)
 			if err != nil {
-				if plugin.handleGetVerifiedRoleConnectionError(writerCandidateConn, writerCandidate, err) {
-					time.Sleep(time.Millisecond * time.Duration(retryDelayMs))
+				if plugin.handleErrorAndShouldRetry(writerCandidateConn, writerCandidate, err) {
 					continue
 				}
 				return nil, err
 			}
 			_ = writerCandidateConn.Close()
-			time.Sleep(time.Millisecond * time.Duration(retryDelayMs))
+			plugin.delayMs()
 			continue
 		}
 		if isInitialConnection {
@@ -234,13 +230,10 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) getVerifiedReaderConnection
 	props *utils.RWMap[string, string],
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-	retryDelayMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.OPEN_CONNECTION_RETRY_INTERVAL_MS)
-
-	retryTimeoutMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.OPEN_CONNECTION_RETRY_TIMEOUT_MS)
-	endTime := time.Now().Add(time.Millisecond * time.Duration(retryTimeoutMs))
+	endTime := time.Now().Add(time.Millisecond * time.Duration(plugin.retryTimeoutMs))
 
 	var readerCandidateConn driver.Conn
-	var readerCandidate *host_info_util.HostInfo
+	var readerCandidateHost *host_info_util.HostInfo
 	var err error
 	var awsRegion = ""
 	if urlType == utils.RDS_READER_CLUSTER {
@@ -249,21 +242,19 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) getVerifiedReaderConnection
 
 	for time.Now().Before(endTime) {
 		readerCandidateConn = nil
-		readerCandidate, err = plugin.getReader(props, awsRegion)
+		readerCandidateHost, err = plugin.getReader(props, awsRegion)
 		if err != nil {
-			if plugin.handleGetVerifiedRoleConnectionError(readerCandidateConn, readerCandidate, err) {
-				time.Sleep(time.Millisecond * time.Duration(retryDelayMs))
+			if plugin.handleErrorAndShouldRetry(readerCandidateConn, readerCandidateHost, err) {
 				continue
 			}
 			return nil, err
 		}
 
-		if readerCandidate == nil || utils.IsRdsClusterDns(readerCandidate.GetHost()) {
+		if readerCandidateHost == nil || utils.IsRdsClusterDns(readerCandidateHost.GetHost()) {
 			// Reader is not found. It seems that topology is outdated.
 			readerCandidateConn, err = connectFunc(props)
 			if err != nil {
-				if plugin.handleGetVerifiedRoleConnectionError(readerCandidateConn, readerCandidate, err) {
-					time.Sleep(time.Millisecond * time.Duration(retryDelayMs))
+				if plugin.handleErrorAndShouldRetry(readerCandidateConn, readerCandidateHost, err) {
 					continue
 				}
 				return nil, err
@@ -271,55 +262,52 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) getVerifiedReaderConnection
 
 			err = plugin.pluginService.ForceRefreshHostList(readerCandidateConn)
 			if err != nil {
-				if plugin.handleGetVerifiedRoleConnectionError(readerCandidateConn, readerCandidate, err) {
-					time.Sleep(time.Millisecond * time.Duration(retryDelayMs))
+				if plugin.handleErrorAndShouldRetry(readerCandidateConn, readerCandidateHost, err) {
 					continue
 				}
 				return nil, err
 			}
-			readerCandidate, err = plugin.pluginService.IdentifyConnection(readerCandidateConn)
+			readerCandidateHost, err = plugin.pluginService.IdentifyConnection(readerCandidateConn)
 			if err != nil {
-				if plugin.handleGetVerifiedRoleConnectionError(readerCandidateConn, readerCandidate, err) {
-					time.Sleep(time.Millisecond * time.Duration(retryDelayMs))
+				if plugin.handleErrorAndShouldRetry(readerCandidateConn, readerCandidateHost, err) {
 					continue
 				}
 				return nil, err
 			}
 
-			if readerCandidate == nil {
+			if readerCandidateHost == nil {
 				if readerCandidateConn != nil {
 					_ = readerCandidateConn.Close()
 				}
-				time.Sleep(time.Millisecond * time.Duration(retryDelayMs))
+				plugin.delayMs()
 				continue
 			}
 
-			if readerCandidate.Role != host_info_util.READER {
+			if readerCandidateHost.Role != host_info_util.READER {
 				if plugin.hasNoReaders() {
 					// It seems that cluster has no readers. Simulate Aurora reader cluster endpoint logic
 					// and return the current (writer) connection.
 					if isInitialConnection {
-						plugin.hostListProviderService.SetInitialConnectionHostInfo(readerCandidate)
+						plugin.hostListProviderService.SetInitialConnectionHostInfo(readerCandidateHost)
 					}
 					return readerCandidateConn, nil
 				}
 				if readerCandidateConn != nil {
 					_ = readerCandidateConn.Close()
 				}
-				time.Sleep(time.Millisecond * time.Duration(retryDelayMs))
+				plugin.delayMs()
 				continue
 			}
 
 			if isInitialConnection {
-				plugin.hostListProviderService.SetInitialConnectionHostInfo(readerCandidate)
+				plugin.hostListProviderService.SetInitialConnectionHostInfo(readerCandidateHost)
 			}
 			return readerCandidateConn, nil
 		}
 
-		readerCandidateConn, err = plugin.pluginService.Connect(readerCandidate, props, plugin)
+		readerCandidateConn, err = plugin.pluginService.Connect(readerCandidateHost, props, plugin)
 		if err != nil {
-			if plugin.handleGetVerifiedRoleConnectionError(readerCandidateConn, readerCandidate, err) {
-				time.Sleep(time.Millisecond * time.Duration(retryDelayMs))
+			if plugin.handleErrorAndShouldRetry(readerCandidateConn, readerCandidateHost, err) {
 				continue
 			}
 			return nil, err
@@ -330,8 +318,7 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) getVerifiedReaderConnection
 			// Force refresh to update the topology.
 			err = plugin.pluginService.ForceRefreshHostList(readerCandidateConn)
 			if err != nil {
-				if plugin.handleGetVerifiedRoleConnectionError(readerCandidateConn, readerCandidate, err) {
-					time.Sleep(time.Millisecond * time.Duration(retryDelayMs))
+				if plugin.handleErrorAndShouldRetry(readerCandidateConn, readerCandidateHost, err) {
 					continue
 				}
 				return nil, err
@@ -341,44 +328,45 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) getVerifiedReaderConnection
 				// It seems that cluster has no readers. Simulate Aurora reader cluster endpoint logic
 				// and return the current (writer) connection.
 				if isInitialConnection {
-					plugin.hostListProviderService.SetInitialConnectionHostInfo(readerCandidate)
+					plugin.hostListProviderService.SetInitialConnectionHostInfo(readerCandidateHost)
 				}
 				return readerCandidateConn, nil
 			}
 			_ = readerCandidateConn.Close()
-			time.Sleep(time.Millisecond * time.Duration(retryDelayMs))
+			plugin.delayMs()
 			continue
 		}
 		if isInitialConnection {
-			plugin.hostListProviderService.SetInitialConnectionHostInfo(readerCandidate)
+			plugin.hostListProviderService.SetInitialConnectionHostInfo(readerCandidateHost)
 		}
 		return readerCandidateConn, nil
 	}
 	return nil, nil
 }
 
-func (plugin *AuroraInitialConnectionStrategyPlugin) handleGetVerifiedRoleConnectionError(
+func (plugin *AuroraInitialConnectionStrategyPlugin) handleErrorAndShouldRetry(
 	candidateConn driver.Conn,
 	candidate *host_info_util.HostInfo,
 	err error) bool {
-	if err != nil {
-		if candidateConn != nil {
-			_ = candidateConn.Close()
-		}
-		if plugin.pluginService.IsLoginError(err) {
-			return false
-		} else {
-			if candidate != nil {
-				plugin.pluginService.SetAvailability(candidate.GetAllAliases(), host_info_util.UNAVAILABLE)
-			}
-			return true
-		}
+	if err == nil {
+		return false
 	}
+	if candidateConn != nil {
+		_ = candidateConn.Close()
+	}
+	slog.Debug(error_util.GetMessage("AuroraInitialConnectionStrategyPlugin.errorGettingConnection", err))
+	if plugin.pluginService.IsLoginError(err) {
+		return false
+	}
+	if candidate != nil {
+		plugin.pluginService.SetAvailability(candidate.GetAllAliases(), host_info_util.UNAVAILABLE)
+	}
+	plugin.delayMs()
 	return true
 }
 
 func (plugin *AuroraInitialConnectionStrategyPlugin) getReader(props *utils.RWMap[string, string], awsRegion string) (*host_info_util.HostInfo, error) {
-	strategy := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.READER_HOST_SELECTOR_STRATEGY)
+	strategy := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.READER_INITIAL_CONN_HOST_SELECTOR_STRATEGY)
 	if plugin.pluginService.AcceptsStrategy(strategy) {
 		var hostCandidates []*host_info_util.HostInfo
 		if awsRegion != "" {
@@ -393,11 +381,7 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) getReader(props *utils.RWMa
 
 		host, err := plugin.pluginService.GetHostInfoByStrategy(host_info_util.READER, strategy, hostCandidates)
 		if err != nil {
-			if error_util.IsType(err, error_util.UnsupportedStrategyErrorType) {
-				return nil, err
-			} else {
-				return nil, nil
-			}
+			return nil, nil
 		}
 		return host, nil
 	}
@@ -416,6 +400,10 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) hasNoReaders() bool {
 		// Found a reader node
 		return false
 	}
-	// Went through all hosts and foud no reader
+	// Went through all hosts and found no reader
 	return true
+}
+
+func (plugin *AuroraInitialConnectionStrategyPlugin) delayMs() {
+	time.Sleep(time.Millisecond * time.Duration(plugin.retryDelayMs))
 }
