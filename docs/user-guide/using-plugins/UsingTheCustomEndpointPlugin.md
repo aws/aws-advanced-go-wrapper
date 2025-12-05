@@ -6,7 +6,7 @@ The Custom Endpoint Plugin adds support for RDS custom endpoints. When the Custo
 ## Dependencies
 When the `customEndpoint` module is added as a dependency, the required AWS SDK modules will also be added as indirect dependencies.
 
-## How to use the Custom Endpoint Plugin with the AWS JDBC Driver
+## How to use the Custom Endpoint Plugin with the AWS Advanced Go Wrapper
 
 ### Enabling the Custom Endpoint Plugin
 

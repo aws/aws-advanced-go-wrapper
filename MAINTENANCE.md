@@ -5,6 +5,7 @@
 | Jul 31 2025     | [Release 2025-07-31](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2025-07-31) |
 | October 8 2025  | [Release 2025-10-08](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2025-10-08) |
 | October 17 2025 | [Release 2025-10-17](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2025-10-17) |
+| December 4 2025 | [Release 2025-12-04](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2025-12-04) |
 
 `aws-advanced-go-wrapper` and its modules follows [semver](https://semver.org/#semantic-versioning-200) which means we will only
 release breaking changes in major versions. Generally speaking, patches will be released to fix existing problems without
@@ -56,4 +57,4 @@ from the updated source after the PRs are merged.
 
 | Release                                                                                              | Status  | Initial Release | Maintenance Window Start | Maintenance Window End |
 |------------------------------------------------------------------------------------------------------|---------|-----------------|--------------------------|------------------------|
-| [Release 2025-10-17](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2025-10-17) | Current | Jul 31, 2025    | Jul 31, 2025             |                        |
+| [Release 2025-12-04](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2025-12-04) | Current | Jul 31, 2025    | Jul 31, 2025             |                        |

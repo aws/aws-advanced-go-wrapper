@@ -59,3 +59,26 @@ The Amazon Web Services (AWS) Advanced Go Wrapper allows an application to take 
 * `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.2](otlp/CHANGELOG.md#102---2025-10-17)
 * `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.0.2](pgx-driver/CHANGELOG.md#102---2025-10-17)
 * `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.2](xray/CHANGELOG.md#102---2025-10-17)
+
+# Release (2025-12-04)
+## General Highlights
+### :magic_wand: Added
+* Aurora Connection Tracker Plugin ([PR #272](https://github.com/aws/aws-advanced-go-wrapper/pull/272)). For more infomration, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/UsingTheAuroraConnectionTrackerPlugin.md).
+* Developer Plugin ([PR #274](https://github.com/aws/aws-advanced-go-wrapper/pull/274)). For more information, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheDeveloperPlugin.md).
+* Custom Endpoint Plugin ([PR #275](https://github.com/aws/aws-advanced-go-wrapper/pull/275)). For more information, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheCustomEndpointPlugin.md).
+
+### :bug: Fixed
+* Blue Green Plugin Status Monitor to poll with the correct rate ([PR #279](https://github.com/aws/aws-advanced-go-wrapper/pull/279)).
+
+# Module Highlights
+* `https://github.com/aws/aws-advanced-go-wrapper/auth-helpers`: [v1.0.3](auth-helpers/CHANGELOG.md#103---2025-12-04)
+* `https://github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager`: [v1.0.3](aws-secrets-manager/CHANGELOG.md#103---2025-12-04)
+* `https://github.com/aws/aws-advanced-go-wrapper/awssql`: [v1.2.0](awssql/CHANGELOG.md#120---2025-12-04)
+* `https://github.com/aws/aws-advanced-go-wrapper/custom-endpoint`: [v1.2.0](custom-endpoint/CHANGELOG.md#100---2025-12-04)
+* `https://github.com/aws/aws-advanced-go-wrapper/federated-auth`: [v1.0.3](federated-auth/CHANGELOG.md#103---2025-12-04)
+* `https://github.com/aws/aws-advanced-go-wrapper/iam`: [v1.0.3](iam/CHANGELOG.md#103---2025-12-04)
+* `https://github.com/aws/aws-advanced-go-wrapper/mysql-driver`: [v1.0.3](mysql-driver/CHANGELOG.md#103---2025-12-04)
+* `https://github.com/aws/aws-advanced-go-wrapper/okta`: [v1.0.3](okta/CHANGELOG.md#103---2025-12-04)
+* `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.3](otlp/CHANGELOG.md#103---2025-12-04)
+* `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.0.3](pgx-driver/CHANGELOG.md#103---2025-12-04)
+* `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.3](xray/CHANGELOG.md#103---2025-12-04)
