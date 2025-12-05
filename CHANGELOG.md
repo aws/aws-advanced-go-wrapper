@@ -73,7 +73,8 @@ The Amazon Web Services (AWS) Advanced Go Wrapper allows an application to take 
 # Module Highlights
 * `https://github.com/aws/aws-advanced-go-wrapper/auth-helpers`: [v1.0.3](auth-helpers/CHANGELOG.md#103---2025-12-04)
 * `https://github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager`: [v1.0.3](aws-secrets-manager/CHANGELOG.md#103---2025-12-04)
-* `https://github.com/aws/aws-advanced-go-wrapper/awssql`: [v1.2.0](awssql/CHANGELOG.md#120---2025-10-17)
+* `https://github.com/aws/aws-advanced-go-wrapper/awssql`: [v1.2.0](awssql/CHANGELOG.md#120---2025-12-04)
+* `https://github.com/aws/aws-advanced-go-wrapper/custom-endpoint`: [v1.2.0](custom-endpoint/CHANGELOG.md#100---2025-12-04)
 * `https://github.com/aws/aws-advanced-go-wrapper/federated-auth`: [v1.0.3](federated-auth/CHANGELOG.md#103---2025-12-04)
 * `https://github.com/aws/aws-advanced-go-wrapper/iam`: [v1.0.3](iam/CHANGELOG.md#103---2025-12-04)
 * `https://github.com/aws/aws-advanced-go-wrapper/mysql-driver`: [v1.0.3](mysql-driver/CHANGELOG.md#103---2025-12-04)
