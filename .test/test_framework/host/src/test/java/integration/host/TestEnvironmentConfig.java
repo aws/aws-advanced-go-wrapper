@@ -1297,6 +1297,8 @@ public class TestEnvironmentConfig implements AutoCloseable {
 
     switch (this.info.getRequest().getDatabaseEngineDeployment()) {
       case AURORA:
+      case RDS_MULTI_AZ_CLUSTER:
+      case AURORA_LIMITLESS:
         if (this.info.getRequest().getFeatures().contains(TestEnvironmentFeatures.BLUE_GREEN_DEPLOYMENT)
             && !StringUtils.isNullOrEmpty(this.info.getDatabaseInfo().getBlueGreenDeploymentId())) {
           deleteBlueGreenDeployment();
