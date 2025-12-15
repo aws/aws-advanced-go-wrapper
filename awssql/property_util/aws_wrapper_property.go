@@ -226,6 +226,10 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	WAIT_FOR_CUSTOM_ENDPOINT_INFO_TIMEOUT_MS.Name:   true,
 	CUSTOM_ENDPOINT_MONITOR_IDLE_EXPIRATION_MS.Name: true,
 	CUSTOM_ENDPOINT_REGION_PROPERTY.Name:            true,
+	READER_INITIAL_CONN_HOST_SELECTOR_STRATEGY.Name: true,
+	INITIAL_CONNECTION_RETRY_TIMEOUT_MS.Name:        true,
+	INITIAL_CONNECTION_RETRY_INTERVAL_MS.Name:       true,
+	VERIFY_INITIAL_CONNECTION_TYPE.Name:             true,
 }
 
 var USER = AwsWrapperProperty{
@@ -782,6 +786,34 @@ var CUSTOM_ENDPOINT_MONITOR_IDLE_EXPIRATION_MS = AwsWrapperProperty{
 var CUSTOM_ENDPOINT_REGION_PROPERTY = AwsWrapperProperty{
 	Name:                "customEndpointRegion",
 	description:         "The region of the cluster's custom endpoints. If not specified, the region will be parsed from the URL.",
+	defaultValue:        "",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var READER_INITIAL_CONN_HOST_SELECTOR_STRATEGY = AwsWrapperProperty{
+	Name:                "readerInitialConnectionHostSelectorStrategy",
+	description:         "The strategy that should be used to select a new reader host while opening a new connection.",
+	defaultValue:        "random",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var INITIAL_CONNECTION_RETRY_TIMEOUT_MS = AwsWrapperProperty{
+	Name:                "initialConnectionRetryTimeoutMs",
+	description:         "Maximum allowed time for the retries opening a connection.",
+	defaultValue:        "30000",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var INITIAL_CONNECTION_RETRY_INTERVAL_MS = AwsWrapperProperty{
+	Name:                "initialConnectionRetryIntervalMs",
+	description:         "Time between each retry of opening a connection.",
+	defaultValue:        "1000",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var VERIFY_INITIAL_CONNECTION_TYPE = AwsWrapperProperty{
+	Name:                "verifyInitialConnectionType",
+	description:         "Force to verify an opened connection to be either a writer or a reader.",
 	defaultValue:        "",
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
