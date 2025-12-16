@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-advanced-go-wrapper/auth-helpers v1.0.3
 	github.com/aws/aws-advanced-go-wrapper/awssql v1.2.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.5
-	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.39.4
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.41.0
 )
 
 require (
