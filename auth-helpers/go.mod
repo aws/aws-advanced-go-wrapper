@@ -23,7 +23,7 @@ require (
 	github.com/aws/smithy-go v1.24.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.6.0 // indirect
-	golang.org/x/text v0.29.0 // indirect
+	golang.org/x/text v0.32.0 // indirect
 )
 
 replace github.com/aws/aws-advanced-go-wrapper/awssql => ../awssql
