@@ -3,7 +3,7 @@ module github.com/aws/aws-advanced-go-wrapper/federated-auth
 go 1.24.0
 
 require (
-	github.com/PuerkitoBio/goquery v1.10.3
+	github.com/PuerkitoBio/goquery v1.11.0
 	github.com/aws/aws-advanced-go-wrapper/auth-helpers v1.0.3
 	github.com/aws/aws-advanced-go-wrapper/awssql v1.2.0
 )
@@ -26,8 +26,8 @@ require (
 	github.com/aws/smithy-go v1.24.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.6.0 // indirect
-	golang.org/x/net v0.39.0 // indirect
-	golang.org/x/text v0.29.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/text v0.31.0 // indirect
 )
 
 replace github.com/aws/aws-advanced-go-wrapper/awssql => ../awssql
