@@ -25,11 +25,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [1.2.0] - 2025-12-04
 ### :magic_wand: Added
-* Aurora Connection Tracker Plugin ([PR #272](https://github.com/aws/aws-advanced-go-wrapper/pull/272)). For more infomration, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/UsingTheAuroraConnectionTrackerPlugin.md).
+* Aurora Connection Tracker Plugin ([PR #272](https://github.com/aws/aws-advanced-go-wrapper/pull/272)). For more information, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/UsingTheAuroraConnectionTrackerPlugin.md).
 * Developer Plugin ([PR #274](https://github.com/aws/aws-advanced-go-wrapper/pull/274)). For more information, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheDeveloperPlugin.md).
 
 ### :bug: Fixed
 * Blue Green Plugin Status Monitor to poll with the correct rate ([PR #279](https://github.com/aws/aws-advanced-go-wrapper/pull/279)).
+
+## [1.3.0] - 2025-12-16
+### :magic_wand: Added
+* Aurora Initial Connection Strategy Plugin ([PR #282](https://github.com/aws/aws-advanced-go-wrapper/pull/282)). For more information, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheAuroraInitialConnectionStrategyPlugin.md).
+
+### :crab: Changed
+* Update various dependencies
 
 [1.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql/1.0.0
 [1.1.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql/1.1.0

@@ -82,3 +82,21 @@ The Amazon Web Services (AWS) Advanced Go Wrapper allows an application to take 
 * `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.3](otlp/CHANGELOG.md#103---2025-12-04)
 * `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.0.3](pgx-driver/CHANGELOG.md#103---2025-12-04)
 * `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.3](xray/CHANGELOG.md#103---2025-12-04)
+
+# Release (2025-12-16)
+## General Highlights
+### :magic_wand: Added
+* Aurora Initial Connection Strategy Plugin ([PR #282](https://github.com/aws/aws-advanced-go-wrapper/pull/282)). For more information, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheAuroraInitialConnectionStrategyPlugin.md).
+
+# Module Highlights
+* `https://github.com/aws/aws-advanced-go-wrapper/auth-helpers`: [v1.0.4](auth-helpers/CHANGELOG.md#104---2025-12-16)
+* `https://github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager`: [v1.0.4](aws-secrets-manager/CHANGELOG.md#104---2025-12-16)
+* `https://github.com/aws/aws-advanced-go-wrapper/awssql`: [v1.3.0](awssql/CHANGELOG.md#130---2025-12-16)
+* `https://github.com/aws/aws-advanced-go-wrapper/custom-endpoint`: [v1.0.1](custom-endpoint/CHANGELOG.md#101---2025-12-16)
+* `https://github.com/aws/aws-advanced-go-wrapper/federated-auth`: [v1.0.4](federated-auth/CHANGELOG.md#104---2025-12-16)
+* `https://github.com/aws/aws-advanced-go-wrapper/iam`: [v1.0.4](iam/CHANGELOG.md#104---2025-12-16)
+* `https://github.com/aws/aws-advanced-go-wrapper/mysql-driver`: [v1.0.4](mysql-driver/CHANGELOG.md#104---2025-12-16)
+* `https://github.com/aws/aws-advanced-go-wrapper/okta`: [v1.0.4](okta/CHANGELOG.md#104---2025-12-16)
+* `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.4](otlp/CHANGELOG.md#104---2025-12-16)
+* `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.0.4](pgx-driver/CHANGELOG.md#104---2025-12-16)
+* `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.4](xray/CHANGELOG.md#104---2025-12-16)
