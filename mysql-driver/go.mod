@@ -10,7 +10,7 @@ require (
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/nicksnyder/go-i18n/v2 v2.6.0 // indirect
+	github.com/nicksnyder/go-i18n/v2 v2.6.1 // indirect
 	golang.org/x/text v0.32.0 // indirect
 )
 

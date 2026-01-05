@@ -25,7 +25,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.5 // indirect
 	github.com/aws/smithy-go v1.24.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/nicksnyder/go-i18n/v2 v2.6.0 // indirect
+	github.com/nicksnyder/go-i18n/v2 v2.6.1 // indirect
 	golang.org/x/text v0.32.0 // indirect
 )
 
