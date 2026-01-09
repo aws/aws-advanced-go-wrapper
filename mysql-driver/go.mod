@@ -3,7 +3,7 @@ module github.com/aws/aws-advanced-go-wrapper/mysql-driver
 go 1.24.0
 
 require (
-	github.com/aws/aws-advanced-go-wrapper/awssql v1.3.0
+	github.com/aws/aws-advanced-go-wrapper/awssql v0.0.0-20260108221638-f44e1759e32b
 	github.com/go-sql-driver/mysql v1.9.3
 )
 

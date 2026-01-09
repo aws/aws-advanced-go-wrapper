@@ -3,7 +3,7 @@ module github.com/aws/aws-advanced-go-wrapper/pgx-driver
 go 1.24.0
 
 require (
-	github.com/aws/aws-advanced-go-wrapper/awssql v1.3.0
+	github.com/aws/aws-advanced-go-wrapper/awssql v0.0.0-20260108221638-f44e1759e32b
 	github.com/jackc/pgx/v5 v5.8.0
 )
 

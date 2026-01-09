@@ -3,7 +3,7 @@ module github.com/aws/aws-advanced-go-wrapper/otlp
 go 1.24.0
 
 require (
-	github.com/aws/aws-advanced-go-wrapper/awssql v1.3.0
+	github.com/aws/aws-advanced-go-wrapper/awssql v0.0.0-20260108221638-f44e1759e32b
 	go.opentelemetry.io/otel v1.39.0
 	go.opentelemetry.io/otel/metric v1.39.0
 	go.opentelemetry.io/otel/trace v1.39.0

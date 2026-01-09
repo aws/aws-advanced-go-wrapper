@@ -5,7 +5,7 @@ go 1.24.0
 require (
 	github.com/PuerkitoBio/goquery v1.11.0
 	github.com/aws/aws-advanced-go-wrapper/auth-helpers v1.0.4
-	github.com/aws/aws-advanced-go-wrapper/awssql v1.3.0
+	github.com/aws/aws-advanced-go-wrapper/awssql v0.0.0-20260108221638-f44e1759e32b
 )
 
 require (
