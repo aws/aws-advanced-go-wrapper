@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/aws/aws-advanced-go-wrapper/auth-helpers v0.0.0-20260109214203-691d0669a9bf
-	github.com/aws/aws-advanced-go-wrapper/awssql v0.0.0-20260108221638-f44e1759e32b
+	github.com/aws/aws-advanced-go-wrapper/awssql v0.0.0-20260110012411-88fd28bdf4f7
 )
 
 require (
