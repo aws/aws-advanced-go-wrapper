@@ -21,4 +21,8 @@ import (
 )
 
 //go:embed *.json
-var jsonResources embed.FS //nolint:unused
+var jsonResources embed.FS
+
+func init() {
+	_, _ = jsonResources.ReadFile("en.json")
+}
