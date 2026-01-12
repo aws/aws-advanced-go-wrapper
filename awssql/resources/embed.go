@@ -24,5 +24,4 @@ import (
 var jsonResources embed.FS
 
 func init() {
-	_, _ = jsonResources.ReadFile("en.json")
 }
