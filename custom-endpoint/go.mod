@@ -3,7 +3,7 @@ module github.com/aws/aws-advanced-go-wrapper/custom-endpoint
 go 1.24.0
 
 require (
-	github.com/aws/aws-advanced-go-wrapper/auth-helpers v0.0.0-20260110021651-9b2f78c733d7
+	github.com/aws/aws-advanced-go-wrapper/auth-helpers v0.0.0-20260112193607-ea632fd547bd
 	github.com/aws/aws-advanced-go-wrapper/awssql v0.0.0-20260112193301-0cbc85292d33
 	github.com/aws/aws-sdk-go-v2 v1.41.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.6
