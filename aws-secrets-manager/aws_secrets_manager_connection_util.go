@@ -77,7 +77,7 @@ func getRdsSecretFromAwsSecretsManager(
 		return secret, err
 	}
 
-	var secretMap map[string]interface{}
+	var secretMap map[string]any
 	err = json.Unmarshal([]byte(*secretOutput.SecretString), &secretMap)
 
 	if err != nil {
