@@ -32,8 +32,8 @@ import (
 )
 
 type AwsRdsSecrets struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username string
+	Password string
 }
 
 func getCacheKey(
@@ -48,6 +48,8 @@ func getRdsSecretFromAwsSecretsManager(
 	props *utils.RWMap[string, string],
 	endpoint string,
 	region string,
+	secretUsernameKey string,
+	secretPasswordKey string,
 	clientProvider NewAwsSecretsManagerClientProvider,
 ) (AwsRdsSecrets, error) {
 	var secret AwsRdsSecrets
@@ -75,14 +77,22 @@ func getRdsSecretFromAwsSecretsManager(
 		return secret, err
 	}
 
-	// Parse the secret string
-	err = json.Unmarshal([]byte(*secretOutput.SecretString), &secret)
+	var secretMap map[string]string
+	err = json.Unmarshal([]byte(*secretOutput.SecretString), &secretMap)
 
 	if err != nil {
 		slog.Error(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.unableToParseSecretValue", err))
+		return secret, err
 	}
 
-	return secret, err
+	secret.Username = secretMap[secretUsernameKey]
+	secret.Password = secretMap[secretPasswordKey]
+
+	if secret.Username == "" || secret.Password == "" {
+		return secret, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.emptySecretValue"))
+	}
+
+	return secret, nil
 }
 
 func GetAwsSecretsManagerRegion(regionStr string, secretId string) (region_util.Region, error) {

@@ -469,6 +469,20 @@ var SECRETS_MANAGER_EXPIRATION_SEC = AwsWrapperProperty{
 	wrapperPropertyType: WRAPPER_TYPE_INT,
 }
 
+var SECRETS_MANAGER_SECRET_USERNAME_PROPERTY = AwsWrapperProperty{
+	Name:                "secretsManagerSecretUsernameProperty",
+	description:         "Set this value to be the key in the JSON secret that contains the username for database connection.",
+	defaultValue:        "username",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var SECRETS_MANAGER_SECRET_PASSWORD_PROPERTY = AwsWrapperProperty{
+	Name:                "secretsManagerSecretPasswordProperty",
+	description:         "Set this value to be the key in the JSON secret that contains the password for database connection.",
+	defaultValue:        "password",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
 var WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS = AwsWrapperProperty{
 	Name:                "weightedRandomHostWeightPairs",
 	description:         "Comma separated list of database host-weight pairs in the format of `<host>:<weight>`.",
