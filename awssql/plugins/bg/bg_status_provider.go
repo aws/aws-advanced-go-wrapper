@@ -635,16 +635,14 @@ func (b *BlueGreenStatusProvider) CreatePostRouting() (connectRoutings []driver_
 			} else {
 				greenHostInfoWithIp = greenHostInfo
 			}
-			blueHostInfo := hostPair.GetLeft()
+			iamBlueHost, _ := host_info_util.NewHostInfoBuilder().CopyFrom(greenHostInfo).SetHost(utils.RemoveGreenInstancePrefix(greenHost)).Build()
 			var iamHosts []*host_info_util.HostInfo
-			if b.IsAlreadySuccessfullyConnected(greenHost, host) && !blueHostInfo.IsNil() {
+			if b.IsAlreadySuccessfullyConnected(greenHost, iamBlueHost.Host) {
 				// Green host has already changed its name, and it's not a new blue host (no prefixes).
-				iamHosts = []*host_info_util.HostInfo{blueHostInfo}
-			} else if !blueHostInfo.IsNil() {
-				// Green host hasn't yet changed its name, so we need to try both possible IAM host options.
-				iamHosts = []*host_info_util.HostInfo{greenHostInfo, blueHostInfo}
+				iamHosts = []*host_info_util.HostInfo{iamBlueHost}
 			} else {
-				iamHosts = []*host_info_util.HostInfo{greenHostInfo}
+				// Green host hasn't yet changed its name, so we need to try both possible IAM host options.
+				iamHosts = []*host_info_util.HostInfo{greenHostInfo, iamBlueHost}
 			}
 			var iamSuccessfulConnectNotify func(iamHost string) = nil
 			if utils.IsRdsInstance(host) {
