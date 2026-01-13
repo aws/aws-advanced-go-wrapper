@@ -89,7 +89,7 @@ func getRdsSecretFromAwsSecretsManager(
 	secret.Password = secretMap[secretPasswordKey]
 
 	if secret.Username == "" || secret.Password == "" {
-		return secret, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.emptySecretValue"))
+		return secret, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.emptySecretValue", secretUsernameKey, secretPasswordKey))
 	}
 
 	return secret, nil

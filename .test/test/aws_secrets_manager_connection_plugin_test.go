@@ -490,4 +490,6 @@ func TestAwsSecretsManagerConnectionPluginEmptyStringKey(t *testing.T) {
 	_, err = awsSecretsManagerConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
 
 	assert.NotNil(t, err)
+	errMsg := error_util.GetMessage("AwsSecretsManagerConnectionPlugin.emptySecretValue", "db_user", "db_pass")
+	assert.Equal(t, errMsg, err.Error())
 }
