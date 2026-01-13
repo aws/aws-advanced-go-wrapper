@@ -378,3 +378,146 @@ func TestAwsSecretsManagerConnectionPluginLoginError(t *testing.T) {
 	assert.Equal(t, "testuser", property_util.USER.Get(resultProps))
 	assert.Equal(t, "testpassword", property_util.PASSWORD.Get(resultProps))
 }
+
+func TestAwsSecretsManagerConnectionPluginCustomJsonKeys(t *testing.T) {
+	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	assert.Nil(t, err)
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
+
+	props := MakeMapFromKeysAndVals(
+		property_util.SECRETS_MANAGER_REGION.Name, "us-west-2",
+		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
+		property_util.SECRETS_MANAGER_SECRET_USERNAME_PROPERTY.Name, "db_user",
+		property_util.SECRETS_MANAGER_SECRET_PASSWORD_PROPERTY.Name, "db_pass",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+
+	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(
+		mockPluginService,
+		props,
+		NewMockAwsSecretsManagerClientWithCustomSecret("{\"db_user\":\"foo\",\"db_pass\":\"bar\"}"))
+
+	_, err = awsSecretsManagerConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
+
+	assert.Nil(t, err)
+	assert.Equal(t, "foo", property_util.USER.Get(resultProps))
+	assert.Equal(t, "bar", property_util.PASSWORD.Get(resultProps))
+}
+
+func TestAwsSecretsManagerConnectionPluginMissingUsernameKey(t *testing.T) {
+	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	assert.Nil(t, err)
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
+
+	// SECRETS_MANAGER_SECRET_USERNAME_PROPERTY should fall back to "username"
+	props := MakeMapFromKeysAndVals(
+		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
+		property_util.SECRETS_MANAGER_SECRET_PASSWORD_PROPERTY.Name, "db_pass",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+
+	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(
+		mockPluginService,
+		props,
+		NewMockAwsSecretsManagerClientWithCustomSecret("{\"username\":\"foo\",\"db_pass\":\"bar\"}"))
+
+	_, err = awsSecretsManagerConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
+
+	assert.Nil(t, err)
+	assert.Equal(t, "foo", property_util.USER.Get(resultProps))
+	assert.Equal(t, "bar", property_util.PASSWORD.Get(resultProps))
+}
+
+func TestAwsSecretsManagerConnectionPluginMissingPasswordKey(t *testing.T) {
+	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	assert.Nil(t, err)
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
+
+	// secretsManagerSecretPasswordProperty should fall back to "password"
+	props := MakeMapFromKeysAndVals(
+		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
+		property_util.SECRETS_MANAGER_SECRET_USERNAME_PROPERTY.Name, "db_user",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+
+	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(
+		mockPluginService,
+		props,
+		NewMockAwsSecretsManagerClientWithCustomSecret("{\"db_user\":\"foo\",\"password\":\"bar\"}"))
+
+	_, err = awsSecretsManagerConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
+
+	assert.Nil(t, err)
+	assert.Equal(t, "foo", property_util.USER.Get(resultProps))
+	assert.Equal(t, "bar", property_util.PASSWORD.Get(resultProps))
+}
+
+func TestAwsSecretsManagerConnectionPluginEmptyStringKey(t *testing.T) {
+	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	assert.Nil(t, err)
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
+		return &MockConn{throwError: true}, nil
+	}
+
+	props := MakeMapFromKeysAndVals(
+		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
+		property_util.SECRETS_MANAGER_SECRET_USERNAME_PROPERTY.Name, "db_user",
+		property_util.SECRETS_MANAGER_SECRET_PASSWORD_PROPERTY.Name, "db_pass",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+
+	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(
+		mockPluginService,
+		props,
+		NewMockAwsSecretsManagerClientWithCustomSecret("{\"db_user\":\"\",\"db_pass\":\"\"}"))
+
+	_, err = awsSecretsManagerConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
+
+	assert.NotNil(t, err)
+	errMsg := error_util.GetMessage("AwsSecretsManagerConnectionPlugin.emptySecretValue", "db_user", "db_pass")
+	assert.Equal(t, errMsg, err.Error())
+}
+
+func TestAwsSecretsManagerConnectionPluginMixedDataTypes(t *testing.T) {
+	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	assert.Nil(t, err)
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
+
+	props := MakeMapFromKeysAndVals(
+		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+
+	// Ensure the plugin can parse the JSON even if it contains different formats like integer and boolean
+	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(
+		mockPluginService,
+		props,
+		NewMockAwsSecretsManagerClientWithCustomSecret("{\"username\":\"foo\",\"password\":\"bar\",\"port\":3306,\"ssl\":true}"))
+
+	_, err = awsSecretsManagerConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
+
+	assert.Nil(t, err)
+	assert.Equal(t, "foo", property_util.USER.Get(resultProps))
+	assert.Equal(t, "bar", property_util.PASSWORD.Get(resultProps))
+}

@@ -70,6 +70,8 @@ type AwsSecretsManagerPlugin struct {
 	awsSecretsManagerClientProvider NewAwsSecretsManagerClientProvider
 	secretExpirationTimeSec         time.Duration
 	fetchCredentialsCounter         telemetry.TelemetryCounter
+	secretUsernameKey               string
+	secretPasswordKey               string
 }
 
 func NewAwsSecretsManagerPlugin(pluginService driver_infrastructure.PluginService,
@@ -82,6 +84,19 @@ func NewAwsSecretsManagerPlugin(pluginService driver_infrastructure.PluginServic
 	if secretId == "" {
 		return nil, error_util.NewGenericAwsWrapperError(
 			error_util.GetMessage("AwsSecretsManagerConnectionPlugin.secretIdMissing", property_util.SECRETS_MANAGER_SECRET_ID.Name))
+	}
+
+	secretUsernameKey := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.SECRETS_MANAGER_SECRET_USERNAME_PROPERTY)
+	secretPasswordKey := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.SECRETS_MANAGER_SECRET_PASSWORD_PROPERTY)
+
+	if secretUsernameKey == "" {
+		return nil, error_util.NewGenericAwsWrapperError(
+			error_util.GetMessage("AwsSecretsManagerConnectionPlugin.incorrectJsonKey", property_util.SECRETS_MANAGER_SECRET_USERNAME_PROPERTY.Name))
+	}
+
+	if secretPasswordKey == "" {
+		return nil, error_util.NewGenericAwsWrapperError(
+			error_util.GetMessage("AwsSecretsManagerConnectionPlugin.incorrectJsonKey", property_util.SECRETS_MANAGER_SECRET_PASSWORD_PROPERTY.Name))
 	}
 
 	// Get and validate region
@@ -118,6 +133,8 @@ func NewAwsSecretsManagerPlugin(pluginService driver_infrastructure.PluginServic
 		awsSecretsManagerClientProvider: awsSecretsManagerClientProvider,
 		secretExpirationTimeSec:         time.Second * time.Duration(secretExpirationTimeSec),
 		fetchCredentialsCounter:         fetchCredentialsCounter,
+		secretUsernameKey:               secretUsernameKey,
+		secretPasswordKey:               secretPasswordKey,
 	}, err
 }
 
@@ -149,7 +166,12 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectInternal(
 	hostInfo *host_info_util.HostInfo,
 	props *utils.RWMap[string, string],
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-	secretsWasFetched, _ := awsSecretsManagerPlugin.updateSecrets(hostInfo, props, false)
+	secretsWasFetched, err := awsSecretsManagerPlugin.updateSecrets(hostInfo, props, false)
+
+	if err != nil {
+		slog.Debug(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.failedToFetchCredentials"))
+		return nil, err
+	}
 
 	// try and connect
 	awsSecretsManagerPlugin.applySecretToProperties(props)
@@ -157,7 +179,7 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectInternal(
 
 	if err == nil {
 		if !secretsWasFetched {
-			slog.Debug("AwsSecretsManagerConnectionPlugin: Connected successfully using cached secret.")
+			slog.Debug(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.connectedWithCachedSecret"))
 		}
 		return conn, err
 	}
@@ -168,7 +190,7 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectInternal(
 		secretsWasFetched, err = awsSecretsManagerPlugin.updateSecrets(hostInfo, props, true)
 
 		if secretsWasFetched {
-			slog.Debug("AwsSecretsManagerConnectionPlugin: failed initial connection, trying again after fetching new secret value.")
+			slog.Debug(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.retryingAfterFetchingNewSecret"))
 
 			awsSecretsManagerPlugin.applySecretToProperties(props)
 			return connectFunc(props)
@@ -225,13 +247,15 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) updateSecrets(
 func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) fetchLatestCredentials(
 	hostInfo *host_info_util.HostInfo,
 	props *utils.RWMap[string, string]) (AwsRdsSecrets, error) {
-	slog.Debug("AwsSecretsManagerConnectionPlugin: Fetching latest credentials")
+	slog.Debug(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.fetchingLatestCredentials"))
 
 	secret, err := getRdsSecretFromAwsSecretsManager(
 		hostInfo,
 		props,
 		awsSecretsManagerPlugin.endpoint,
 		string(awsSecretsManagerPlugin.region),
+		awsSecretsManagerPlugin.secretUsernameKey,
+		awsSecretsManagerPlugin.secretPasswordKey,
 		awsSecretsManagerPlugin.awsSecretsManagerClientProvider)
 	return secret, err
 }

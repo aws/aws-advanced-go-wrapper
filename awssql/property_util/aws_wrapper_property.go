@@ -175,6 +175,8 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	SECRETS_MANAGER_REGION.Name:                     true,
 	SECRETS_MANAGER_ENDPOINT.Name:                   true,
 	SECRETS_MANAGER_EXPIRATION_SEC.Name:             true,
+	SECRETS_MANAGER_SECRET_USERNAME_PROPERTY.Name:	 true,
+	SECRETS_MANAGER_SECRET_PASSWORD_PROPERTY.Name:   true,
 	FAILURE_DETECTION_TIME_MS.Name:                  true,
 	FAILURE_DETECTION_INTERVAL_MS.Name:              true,
 	FAILURE_DETECTION_COUNT.Name:                    true,
@@ -467,6 +469,20 @@ var SECRETS_MANAGER_EXPIRATION_SEC = AwsWrapperProperty{
 	description:         "The time in seconds that secrets are cached for.",
 	defaultValue:        "870",
 	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var SECRETS_MANAGER_SECRET_USERNAME_PROPERTY = AwsWrapperProperty{
+	Name:                "secretsManagerSecretUsernameProperty",
+	description:         "Set this value to be the key in the JSON secret that contains the username for database connection.",
+	defaultValue:        "username",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var SECRETS_MANAGER_SECRET_PASSWORD_PROPERTY = AwsWrapperProperty{
+	Name:                "secretsManagerSecretPasswordProperty",
+	description:         "Set this value to be the key in the JSON secret that contains the password for database connection.",
+	defaultValue:        "password",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
 var WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS = AwsWrapperProperty{

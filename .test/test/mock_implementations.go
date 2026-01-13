@@ -715,6 +715,7 @@ func NewMockAwsStsClient(_ string) auth_helpers.AwsStsClient {
 
 // Secrets Manager Mocks.
 type MockAwsSecretsManagerClient struct {
+	SecretString string
 }
 
 func (m *MockAwsSecretsManagerClient) GetSecretValue(_ context.Context,
@@ -724,17 +725,27 @@ func (m *MockAwsSecretsManagerClient) GetSecretValue(_ context.Context,
 	mockOutput := secretsmanager.GetSecretValueOutput{
 		ARN:          aws.String("arn:aws:secretsmanager:us-west-2:account-id:secret:default"),
 		Name:         aws.String("default-secret-name"),
-		SecretString: aws.String("{\"username\":\"testuser\",\"password\":\"testpassword\"}"),
+		SecretString: aws.String(m.SecretString),
 		VersionId:    aws.String("default-version-id"),
 	}
 	return &mockOutput, nil
+}
+
+func (m *MockAwsSecretsManagerClient) SetSecretString(secretString string) {
+	m.SecretString = secretString
 }
 
 func NewMockAwsSecretsManagerClient(_ *host_info_util.HostInfo,
 	_ *utils.RWMap[string, string],
 	_ string,
 	_ string) (aws_secrets_manager.AwsSecretsManagerClient, error) {
-	return &MockAwsSecretsManagerClient{}, nil
+	return &MockAwsSecretsManagerClient{SecretString: "{\"username\":\"testuser\",\"password\":\"testpassword\"}"}, nil
+}
+
+func NewMockAwsSecretsManagerClientWithCustomSecret(secretString string) aws_secrets_manager.NewAwsSecretsManagerClientProvider {
+	return func(_ *host_info_util.HostInfo, _ *utils.RWMap[string, string], _ string, _ string) (aws_secrets_manager.AwsSecretsManagerClient, error) {
+		return &MockAwsSecretsManagerClient{SecretString: secretString}, nil
+	}
 }
 
 type MockConnectionProvider struct{}
