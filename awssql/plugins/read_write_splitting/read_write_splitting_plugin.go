@@ -407,14 +407,14 @@ func (r *ReadWriteSplittingPlugin) closeConnectionIfIdle(conn driver.Conn) {
 		currentConn != conn {
 		if !r.pluginService.GetTargetDriverDialect().IsClosed(conn) {
 			_ = conn.Close()
-		}
-		switch conn {
-		case r.readerConnection:
-			r.readerConnection = nil
-			r.readerHostInfo = nil
-		case r.writerConnection:
-			r.writerConnection = nil
-			r.writerHostInfo = nil
+			switch conn {
+			case r.readerConnection:
+				r.readerConnection = nil
+				r.readerHostInfo = nil
+			case r.writerConnection:
+				r.writerConnection = nil
+				r.writerHostInfo = nil
+			}
 		}
 	}
 }
