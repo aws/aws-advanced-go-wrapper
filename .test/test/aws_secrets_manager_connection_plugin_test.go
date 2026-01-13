@@ -447,7 +447,7 @@ func TestAwsSecretsManagerConnectionPluginMissingPasswordKey(t *testing.T) {
 		return &MockConn{throwError: true}, nil
 	}
 
-	// SECRETS_MANAGER_SECRET_USERNAME_PROPERTY should fall back to "username"
+	// secretsManagerSecretPasswordProperty should fall back to "password"
 	props := MakeMapFromKeysAndVals(
 		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
 		property_util.SECRETS_MANAGER_SECRET_USERNAME_PROPERTY.Name, "db_user",
