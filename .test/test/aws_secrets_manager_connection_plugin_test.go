@@ -493,3 +493,31 @@ func TestAwsSecretsManagerConnectionPluginEmptyStringKey(t *testing.T) {
 	errMsg := error_util.GetMessage("AwsSecretsManagerConnectionPlugin.emptySecretValue", "db_user", "db_pass")
 	assert.Equal(t, errMsg, err.Error())
 }
+
+func TestAwsSecretsManagerConnectionPluginMixedDataTypes(t *testing.T) {
+	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	assert.Nil(t, err)
+	var resultProps *utils.RWMap[string, string]
+	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
+		resultProps = props
+		return &MockConn{throwError: true}, nil
+	}
+
+	props := MakeMapFromKeysAndVals(
+		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+
+	// Ensure the plugin can parse the JSON even if it contains different formats like integer and boolean
+	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(
+		mockPluginService,
+		props,
+		NewMockAwsSecretsManagerClientWithCustomSecret("{\"username\":\"foo\",\"password\":\"bar\",\"port\":3306,\"ssl\":true}"))
+
+	_, err = awsSecretsManagerConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
+
+	assert.Nil(t, err)
+	assert.Equal(t, "foo", property_util.USER.Get(resultProps))
+	assert.Equal(t, "bar", property_util.PASSWORD.Get(resultProps))
+}

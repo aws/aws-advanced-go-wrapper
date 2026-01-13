@@ -77,7 +77,7 @@ func getRdsSecretFromAwsSecretsManager(
 		return secret, err
 	}
 
-	var secretMap map[string]string
+	var secretMap map[string]interface{}
 	err = json.Unmarshal([]byte(*secretOutput.SecretString), &secretMap)
 
 	if err != nil {
@@ -85,8 +85,12 @@ func getRdsSecretFromAwsSecretsManager(
 		return secret, err
 	}
 
-	secret.Username = secretMap[secretUsernameKey]
-	secret.Password = secretMap[secretPasswordKey]
+	if username, ok := secretMap[secretUsernameKey]; ok {
+		secret.Username = fmt.Sprintf("%v", username)
+	}
+	if password, ok := secretMap[secretPasswordKey]; ok {
+		secret.Password = fmt.Sprintf("%v", password)
+	}
 
 	if secret.Username == "" || secret.Password == "" {
 		return secret, errors.New(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.emptySecretValue", secretUsernameKey, secretPasswordKey))
