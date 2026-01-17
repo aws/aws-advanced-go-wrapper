@@ -108,6 +108,14 @@ func (b *BlueGreenStatusMonitor) runMonitoringLoop() {
 	b.wg.Add(1)
 	defer func() {
 		b.CloseConnection()
+		if b.hostListProvider != nil {
+			b.hostListProvider.StopMonitor();
+			canReleaseResources, ok := b.hostListProvider.(driver_infrastructure.CanReleaseResources)
+			if ok {
+				canReleaseResources.ReleaseResources()
+			}
+		}
+		b.hostListProvider = nil;
 		slog.Debug(error_util.GetMessage("BlueGreenDeployment.monitoringLoopCompleted", b.role))
 		b.wg.Done()
 	}()

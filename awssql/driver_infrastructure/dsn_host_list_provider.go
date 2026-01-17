@@ -109,3 +109,7 @@ func (c *DsnHostListProvider) CreateHost(hostName string, hostRole host_info_uti
 	hostInfo, _ := builder.Build()
 	return hostInfo
 }
+
+func (c *DsnHostListProvider) StopMonitor() {
+	// do nothing since this provider doesn't implement active monitoring
+}

@@ -31,4 +31,5 @@ type HostListProvider interface {
 	GetClusterId() (string, error)
 	IsStaticHostListProvider() bool
 	CreateHost(hostName string, role host_info_util.HostRole, lag float64, cpu float64, lastUpdateTime time.Time) *host_info_util.HostInfo
+	StopMonitor()
 }
