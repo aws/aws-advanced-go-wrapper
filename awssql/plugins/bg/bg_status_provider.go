@@ -32,6 +32,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
@@ -117,23 +118,45 @@ func (b *BlueGreenStatusProvider) ClearMonitors() {
 func (b *BlueGreenStatusProvider) initMonitoring() {
 	currentHostInfo, _ := b.pluginService.GetCurrentHostInfo()
 	monitoringProps := b.GetMonitoringProperties()
-	b.monitors[driver_infrastructure.SOURCE.GetValue()] = NewBlueGreenStatusMonitor(
-		driver_infrastructure.SOURCE,
-		b.bgdId,
-		currentHostInfo,
-		b.pluginService,
-		monitoringProps,
-		b.statusCheckIntervalMap,
-		b.PrepareStatus)
 
-	b.monitors[driver_infrastructure.TARGET.GetValue()] = NewBlueGreenStatusMonitor(
-		driver_infrastructure.TARGET,
-		b.bgdId,
-		currentHostInfo,
-		b.pluginService,
-		monitoringProps,
-		b.statusCheckIntervalMap,
-		b.PrepareStatus)
+	if pluginServiceImpl, ok := b.pluginService.(*plugin_helpers.PluginServiceImpl); ok {
+		partialPluginService := pluginServiceImpl.CreatePartialPluginService()
+		b.monitors[driver_infrastructure.SOURCE.GetValue()] = NewBlueGreenStatusMonitor(
+			driver_infrastructure.SOURCE,
+			b.bgdId,
+			currentHostInfo,
+			partialPluginService,
+			monitoringProps,
+			b.statusCheckIntervalMap,
+			b.PrepareStatus)
+
+		b.monitors[driver_infrastructure.TARGET.GetValue()] = NewBlueGreenStatusMonitor(
+			driver_infrastructure.TARGET,
+			b.bgdId,
+			currentHostInfo,
+			partialPluginService,
+			monitoringProps,
+			b.statusCheckIntervalMap,
+			b.PrepareStatus)
+	} else {
+		b.monitors[driver_infrastructure.SOURCE.GetValue()] = NewBlueGreenStatusMonitor(
+			driver_infrastructure.SOURCE,
+			b.bgdId,
+			currentHostInfo,
+			b.pluginService,
+			monitoringProps,
+			b.statusCheckIntervalMap,
+			b.PrepareStatus)
+
+		b.monitors[driver_infrastructure.TARGET.GetValue()] = NewBlueGreenStatusMonitor(
+			driver_infrastructure.TARGET,
+			b.bgdId,
+			currentHostInfo,
+			b.pluginService,
+			monitoringProps,
+			b.statusCheckIntervalMap,
+			b.PrepareStatus)
+	}
 }
 
 func (b *BlueGreenStatusProvider) GetMonitoringProperties() *utils.RWMap[string, string] {

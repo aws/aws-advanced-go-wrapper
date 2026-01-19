@@ -660,3 +660,7 @@ func ClearCaches() {
 		statusesExpiringCache.Clear()
 	}
 }
+
+func (p *PluginServiceImpl) CreatePartialPluginService() driver_infrastructure.PluginService {
+	return NewPartialPluginService(p.pluginManager, p.props, p.currentConnection, p.hostListProvider, p.dialect, p.driverDialect, p.AllHosts, &p.allowedAndBlockedHosts)
+}
