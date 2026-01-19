@@ -53,32 +53,32 @@ func (m *MockHostListProvider) EXPECT() *MockHostListProviderMockRecorder {
 }
 
 // CreateHost mocks base method.
-func (m *MockHostListProvider) CreateHost(arg0 string, arg1 host_info_util.HostRole, arg2, arg3 float64, arg4 time.Time) *host_info_util.HostInfo {
+func (m *MockHostListProvider) CreateHost(hostName string, role host_info_util.HostRole, lag, cpu float64, lastUpdateTime time.Time) *host_info_util.HostInfo {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateHost", arg0, arg1, arg2, arg3, arg4)
+	ret := m.ctrl.Call(m, "CreateHost", hostName, role, lag, cpu, lastUpdateTime)
 	ret0, _ := ret[0].(*host_info_util.HostInfo)
 	return ret0
 }
 
 // CreateHost indicates an expected call of CreateHost.
-func (mr *MockHostListProviderMockRecorder) CreateHost(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+func (mr *MockHostListProviderMockRecorder) CreateHost(hostName, role, lag, cpu, lastUpdateTime interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateHost", reflect.TypeOf((*MockHostListProvider)(nil).CreateHost), arg0, arg1, arg2, arg3, arg4)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateHost", reflect.TypeOf((*MockHostListProvider)(nil).CreateHost), hostName, role, lag, cpu, lastUpdateTime)
 }
 
 // ForceRefresh mocks base method.
-func (m *MockHostListProvider) ForceRefresh(arg0 driver.Conn) ([]*host_info_util.HostInfo, error) {
+func (m *MockHostListProvider) ForceRefresh(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ForceRefresh", arg0)
+	ret := m.ctrl.Call(m, "ForceRefresh", conn)
 	ret0, _ := ret[0].([]*host_info_util.HostInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ForceRefresh indicates an expected call of ForceRefresh.
-func (mr *MockHostListProviderMockRecorder) ForceRefresh(arg0 interface{}) *gomock.Call {
+func (mr *MockHostListProviderMockRecorder) ForceRefresh(conn interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForceRefresh", reflect.TypeOf((*MockHostListProvider)(nil).ForceRefresh), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForceRefresh", reflect.TypeOf((*MockHostListProvider)(nil).ForceRefresh), conn)
 }
 
 // GetClusterId mocks base method.
@@ -97,32 +97,32 @@ func (mr *MockHostListProviderMockRecorder) GetClusterId() *gomock.Call {
 }
 
 // GetHostRole mocks base method.
-func (m *MockHostListProvider) GetHostRole(arg0 driver.Conn) host_info_util.HostRole {
+func (m *MockHostListProvider) GetHostRole(conn driver.Conn) host_info_util.HostRole {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetHostRole", arg0)
+	ret := m.ctrl.Call(m, "GetHostRole", conn)
 	ret0, _ := ret[0].(host_info_util.HostRole)
 	return ret0
 }
 
 // GetHostRole indicates an expected call of GetHostRole.
-func (mr *MockHostListProviderMockRecorder) GetHostRole(arg0 interface{}) *gomock.Call {
+func (mr *MockHostListProviderMockRecorder) GetHostRole(conn interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHostRole", reflect.TypeOf((*MockHostListProvider)(nil).GetHostRole), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHostRole", reflect.TypeOf((*MockHostListProvider)(nil).GetHostRole), conn)
 }
 
 // IdentifyConnection mocks base method.
-func (m *MockHostListProvider) IdentifyConnection(arg0 driver.Conn) (*host_info_util.HostInfo, error) {
+func (m *MockHostListProvider) IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IdentifyConnection", arg0)
+	ret := m.ctrl.Call(m, "IdentifyConnection", conn)
 	ret0, _ := ret[0].(*host_info_util.HostInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // IdentifyConnection indicates an expected call of IdentifyConnection.
-func (mr *MockHostListProviderMockRecorder) IdentifyConnection(arg0 interface{}) *gomock.Call {
+func (mr *MockHostListProviderMockRecorder) IdentifyConnection(conn interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IdentifyConnection", reflect.TypeOf((*MockHostListProvider)(nil).IdentifyConnection), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IdentifyConnection", reflect.TypeOf((*MockHostListProvider)(nil).IdentifyConnection), conn)
 }
 
 // IsStaticHostListProvider mocks base method.
@@ -140,16 +140,28 @@ func (mr *MockHostListProviderMockRecorder) IsStaticHostListProvider() *gomock.C
 }
 
 // Refresh mocks base method.
-func (m *MockHostListProvider) Refresh(arg0 driver.Conn) ([]*host_info_util.HostInfo, error) {
+func (m *MockHostListProvider) Refresh(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Refresh", arg0)
+	ret := m.ctrl.Call(m, "Refresh", conn)
 	ret0, _ := ret[0].([]*host_info_util.HostInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Refresh indicates an expected call of Refresh.
-func (mr *MockHostListProviderMockRecorder) Refresh(arg0 interface{}) *gomock.Call {
+func (mr *MockHostListProviderMockRecorder) Refresh(conn interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Refresh", reflect.TypeOf((*MockHostListProvider)(nil).Refresh), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Refresh", reflect.TypeOf((*MockHostListProvider)(nil).Refresh), conn)
+}
+
+// StopMonitor mocks base method.
+func (m *MockHostListProvider) StopMonitor() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "StopMonitor")
+}
+
+// StopMonitor indicates an expected call of StopMonitor.
+func (mr *MockHostListProviderMockRecorder) StopMonitor() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopMonitor", reflect.TypeOf((*MockHostListProvider)(nil).StopMonitor))
 }

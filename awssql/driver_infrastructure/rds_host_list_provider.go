@@ -340,6 +340,10 @@ func (r *RdsHostListProvider) getHostEndpoint(hostName string) string {
 	return strings.Replace(host, "?", hostName, -1)
 }
 
+func (r *RdsHostListProvider) StopMonitor() {
+	// do nothing since this provider doesn't implement active monitoring
+}
+
 func ClearAllRdsHostListProviderCaches() {
 	TopologyCache.Clear()
 	primaryClusterIdCache.Clear()
