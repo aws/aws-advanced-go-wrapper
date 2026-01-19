@@ -128,6 +128,6 @@ func (m *MonitoringRdsHostListProvider) ForceRefreshHostListWithTimeout(shouldVe
 
 func (m *MonitoringRdsHostListProvider) StopMonitor() {
 	monitor := m.getMonitor()
-        monitor.Close()
+    monitor.Close()
 	clusterTopologyMonitors.Remove(m.clusterId)
 }
