@@ -234,6 +234,10 @@ func (m *MockHostListProvider) Refresh(_ driver.Conn) ([]*host_info_util.HostInf
 	return []*host_info_util.HostInfo{hostInfo}, nil
 }
 
+func (m *MockHostListProvider) StopMonitor() {
+	// do nothing since this provider doesn't implement active monitoring
+}
+
 type MockPluginManager struct {
 	driver_infrastructure.PluginManager
 	Changes           map[string]map[driver_infrastructure.HostChangeOptions]bool
