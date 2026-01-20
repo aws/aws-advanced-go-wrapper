@@ -33,7 +33,7 @@ const (
 	usEastRegionCustomDomain          = "custom-test-name.cluster-custom-XYZ.us-east-2.rds.amazonaws.com"
 	usEastRegionLimitlessDbShardGroup = "database-test-name.shardgrp-XYZ.us-east-2.rds.amazonaws.com"
 
-        euRedshift = "redshift-test-name.XYZ.eusc-de-east-1.rds.amazonaws.eu"
+	euRedshift = "redshift-test-name.XYZ.eusc-de-east-1.rds.amazonaws.eu"
 
 	chinaRegionCluster               = "database-test-name.cluster-XYZ.rds.cn-northwest-1.amazonaws.com.cn"
 	chinaRegionClusterTrailingDot    = "database-test-name.cluster-XYZ.rds.cn-northwest-1.amazonaws.com.cn."
