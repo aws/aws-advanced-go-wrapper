@@ -33,7 +33,7 @@ var (
 	AURORA_CHINA_DNS_PATTERN = regexp.MustCompile(
 		"(?i)^(?P<instance>.+)\\." +
 			"(?P<dns>proxy-|cluster-|cluster-ro-|cluster-custom-|shardgrp-)?" +
-			"(?<domain>[a-zA-Z0-9]+\\.(rds|rds-fips)\\.(?<region>[a-zA-Z0-9\\-]+)" +
+			"(?P<domain>[a-zA-Z0-9]+\\.(rds|rds-fips)\\.(?P<region>[a-zA-Z0-9\\-]+)" +
 			"\\.amazonaws\\.com\\.cn\\.?)$")
 
 	AURORA_OLD_CHINA_DNS_PATTERN = regexp.MustCompile(
@@ -45,7 +45,7 @@ var (
 	AURORA_GOV_DNS_PATTERN = regexp.MustCompile(
 		"(?i)^(?<instance>.+)\\." +
 			"(?P<dns>proxy-|cluster-|cluster-ro-|cluster-custom-|shardgrp-)?" +
-			"(?<domain>[a-zA-Z0-9]+\\.(rds|rds-fips)\\.(?<region>[a-zA-Z0-9\\-]+)" +
+			"(?P<domain>[a-zA-Z0-9]+\\.(rds|rds-fips)\\.(?P<region>[a-zA-Z0-9\\-]+)" +
 			"\\.(amazonaws\\.com\\.?|c2s\\.ic\\.gov\\.?|sc2s\\.sgov\\.gov\\.?))$")
 
 	IP_V4_REGEXP = regexp.MustCompile(
