@@ -33,6 +33,11 @@ const (
 	usEastRegionCustomDomain          = "custom-test-name.cluster-custom-XYZ.us-east-2.rds.amazonaws.com"
 	usEastRegionLimitlessDbShardGroup = "database-test-name.shardgrp-XYZ.us-east-2.rds.amazonaws.com"
 
+	euRedshift = "redshift-test-name.XYZ.eusc-de-east-1.rds.amazonaws.eu"
+	ukRedshift = "redshift-test-name.XYZ.eusc-de-east-1.rds.amazonaws.uk"
+	auRedshift = "redshift-test-name.XYZ.eusc-de-east-1.rds.amazonaws.au"
+	rdsFipsRedshift = "redshift-test-name.XYZ.eusc-de-east-1.rds-fips.amazonaws.au"
+
 	chinaRegionCluster               = "database-test-name.cluster-XYZ.rds.cn-northwest-1.amazonaws.com.cn"
 	chinaRegionClusterTrailingDot    = "database-test-name.cluster-XYZ.rds.cn-northwest-1.amazonaws.com.cn."
 	chinaRegionClusterReadOnly       = "database-test-name.cluster-ro-XYZ.rds.cn-northwest-1.amazonaws.com.cn"
@@ -88,6 +93,10 @@ func TestIsRdsDns(t *testing.T) {
 	assert.False(t, utils.IsRdsDns(usEastRegionElbUrl))
 	assert.False(t, utils.IsRdsDns(usEastRegionElbUrlTrailingDot))
 	assert.True(t, utils.IsRdsDns(usEastRegionLimitlessDbShardGroup))
+	assert.True(t, utils.IsRdsDns(euRedshift))
+	assert.True(t, utils.IsRdsDns(ukRedshift))
+	assert.True(t, utils.IsRdsDns(auRedshift))
+	assert.True(t, utils.IsRdsDns(rdsFipsRedshift))
 
 	assert.True(t, utils.IsRdsDns(usIsobEastRegionCluster))
 	assert.True(t, utils.IsRdsDns(usIsobEastRegionClusterReadOnly))
@@ -135,6 +144,10 @@ func TestIsWriterClusterDns(t *testing.T) {
 	assert.False(t, utils.IsWriterClusterDns(usEastRegionElbUrl))
 	assert.False(t, utils.IsWriterClusterDns(usEastRegionElbUrlTrailingDot))
 	assert.False(t, utils.IsWriterClusterDns(usEastRegionLimitlessDbShardGroup))
+	assert.False(t, utils.IsWriterClusterDns(euRedshift))
+	assert.False(t, utils.IsWriterClusterDns(ukRedshift))
+	assert.False(t, utils.IsWriterClusterDns(auRedshift))
+	assert.False(t, utils.IsWriterClusterDns(rdsFipsRedshift))
 
 	assert.True(t, utils.IsWriterClusterDns(usIsobEastRegionCluster))
 	assert.False(t, utils.IsWriterClusterDns(usIsobEastRegionClusterReadOnly))
@@ -179,6 +192,10 @@ func TestIsReaderClusterDns(t *testing.T) {
 	assert.False(t, utils.IsReaderClusterDns(usEastRegionElbUrl))
 	assert.False(t, utils.IsReaderClusterDns(usEastRegionElbUrlTrailingDot))
 	assert.False(t, utils.IsReaderClusterDns(usEastRegionLimitlessDbShardGroup))
+	assert.False(t, utils.IsReaderClusterDns(euRedshift))
+	assert.False(t, utils.IsReaderClusterDns(ukRedshift))
+	assert.False(t, utils.IsReaderClusterDns(auRedshift))
+	assert.False(t, utils.IsReaderClusterDns(rdsFipsRedshift))
 
 	assert.False(t, utils.IsReaderClusterDns(usIsobEastRegionCluster))
 	assert.True(t, utils.IsReaderClusterDns(usIsobEastRegionClusterReadOnly))
@@ -223,6 +240,10 @@ func TestIsLimitlessDbShardGroupDns(t *testing.T) {
 	assert.False(t, utils.IsLimitlessDbShardGroupDns(usEastRegionElbUrl))
 	assert.False(t, utils.IsLimitlessDbShardGroupDns(usEastRegionElbUrlTrailingDot))
 	assert.True(t, utils.IsLimitlessDbShardGroupDns(usEastRegionLimitlessDbShardGroup))
+	assert.False(t, utils.IsLimitlessDbShardGroupDns(euRedshift))
+	assert.False(t, utils.IsLimitlessDbShardGroupDns(ukRedshift))
+	assert.False(t, utils.IsLimitlessDbShardGroupDns(auRedshift))
+	assert.False(t, utils.IsLimitlessDbShardGroupDns(rdsFipsRedshift))
 
 	assert.False(t, utils.IsLimitlessDbShardGroupDns(usIsobEastRegionCluster))
 	assert.False(t, utils.IsLimitlessDbShardGroupDns(usIsobEastRegionClusterReadOnly))
@@ -262,6 +283,12 @@ func TestGetRdsRegion(t *testing.T) {
 	assert.Equal(t, "cn-northwest-1", utils.GetRdsRegion(chinaRegionClusterReadOnly))
 	assert.Equal(t, "us-isob-east-1", utils.GetRdsRegion(usIsobEastRegionCluster))
 	assert.Equal(t, "us-iso-east-1", utils.GetRdsRegion(usIsoEastRegionCluster))
+
+	euRedshiftExpectedHostPattern := "eusc-de-east-1"
+	assert.Equal(t, euRedshiftExpectedHostPattern, utils.GetRdsRegion(euRedshift))
+	assert.Equal(t, euRedshiftExpectedHostPattern, utils.GetRdsRegion(ukRedshift))
+	assert.Equal(t, euRedshiftExpectedHostPattern, utils.GetRdsRegion(auRedshift))
+	assert.Equal(t, euRedshiftExpectedHostPattern, utils.GetRdsRegion(rdsFipsRedshift))
 }
 
 func TestGetRdsClusterHostUrl(t *testing.T) {
