@@ -23,6 +23,7 @@ import (
 	"strings"
 	"sync"
 	"weak"
+	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -41,9 +42,17 @@ func NewOpenedConnectionTracker(pluginService driver_infrastructure.PluginServic
 	openedConnectionInitializer.Do(func() {
 		openedConnections = utils.NewRWMap[string, *utils.RWQueue[weak.Pointer[driver.Conn]]]()
 	})
-	return &OpenedConnectionTracker{
+	tracker := &OpenedConnectionTracker{
 		pluginService: pluginService,
 	}
+
+	go func() {
+		for true {
+			tracker.PruneNullConnections()
+			time.Sleep(30 * time.Second)
+		}
+	}()
+	return tracker
 }
 
 func (o *OpenedConnectionTracker) PopulateOpenedConnectionQueue(hostInfo *host_info_util.HostInfo, conn driver.Conn) {
