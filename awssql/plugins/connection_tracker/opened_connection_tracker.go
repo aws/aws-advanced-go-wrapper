@@ -47,7 +47,7 @@ func NewOpenedConnectionTracker(pluginService driver_infrastructure.PluginServic
 	}
 
 	go func() {
-		for true {
+		for {
 			tracker.PruneNullConnections()
 			time.Sleep(30 * time.Second)
 		}
