@@ -79,7 +79,7 @@ public class ContainerHelper {
     return exitCode;
   }
 
-  public void runTest(GenericContainer<?> container, boolean isPerformanceTest)
+  public void runTest(GenericContainer<?> container, boolean isPerformanceTest, boolean isRaceTest)
       throws IOException, InterruptedException {
     System.out.println("==== Container console feed ==== >>>>");
     Consumer<OutputFrame> consumer = new ConsoleConsumer(true);
@@ -98,6 +98,13 @@ public class ContainerHelper {
     Long exitCode;
     if (isPerformanceTest) {
       exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-timeout", timeout, PERFORMANCE_TEST_TAG, "-run", PERFORMANCE_TEST_FILTER,  "-v", "./test_framework/container/tests...");
+    } else if (isRaceTest) {
+      if (filter != null) {
+        exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-race", "-timeout", timeout, "-v", "./test_framework/container/tests/stress_test.go", "-run", filter);
+      } else {
+        // Run all tests located in aws-advanced-go-wrapper/.test/test_framework/container.
+        exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-race", "-timeout", timeout, "-v", "./test_framework/container/tests/stress_test.go");
+      }
     } else if (filter != null) {
       exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-timeout", timeout, "-v", "./test_framework/container/tests...", "-run", filter);
     } else {
