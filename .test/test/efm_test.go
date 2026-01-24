@@ -68,23 +68,25 @@ func TestMonitorServiceImpl(t *testing.T) {
 	}
 	assert.Nil(t, efm.EFM_MONITORS)
 
-	_, pluginService := initializeTest(map[string]string{property_util.DRIVER_PROTOCOL.Name: "mysql"}, true, false, false, false, false, false)
-	monitorService, _ := efm.NewMonitorServiceImpl(pluginService)
+	propsMap := map[string]string{property_util.DRIVER_PROTOCOL.Name: "mysql", property_util.FAILURE_DETECTION_TIME_MS.Name: "0", property_util.FAILURE_DETECTION_INTERVAL_MS.Name: "900", property_util.FAILURE_DETECTION_COUNT.Name: "3", property_util.MONITOR_DISPOSAL_TIME_MS.Name: "600000"}
+	_, pluginService := initializeTest(propsMap, true, false, false, false, false, false)
+	props := utils.NewRWMapFromMap(propsMap)
+	monitorService, _ := efm.NewMonitorServiceImpl(pluginService, props)
 	var testConn driver.Conn = &MockConn{throwError: false}
 
 	assert.NotNil(t, efm.EFM_MONITORS)
 	assert.Zero(t, efm.EFM_MONITORS.Size())
 
-	_, err := monitorService.StartMonitoring(nil, nil, emptyProps, 0, 0, 0, 0)
+	_, err := monitorService.StartMonitoring(nil, nil, emptyProps)
 	// Monitoring with an invalid conn should fail.
 	assert.True(t, strings.Contains(err.Error(), "conn"))
 
-	_, err = monitorService.StartMonitoring(&testConn, nil, emptyProps, 0, 0, 0, 0)
+	_, err = monitorService.StartMonitoring(&testConn, nil, emptyProps)
 	// Monitoring with an invalid monitoring HostInfo should fail.
 	assert.True(t, strings.Contains(err.Error(), "hostInfo"))
 
 	// Monitoring with correct parameters should create a new monitor.
-	state, err := monitorService.StartMonitoring(&testConn, mockHostInfo, emptyProps, 0, 900, 3, 600000)
+	state, err := monitorService.StartMonitoring(&testConn, mockHostInfo, emptyProps)
 	monitorKey := fmt.Sprintf("%d:%d:%d:%s", 0, 900, 3, mockHostInfo.GetUrl())
 
 	assert.Nil(t, err)
@@ -96,7 +98,7 @@ func TestMonitorServiceImpl(t *testing.T) {
 	monitor, ok := val.(*efm.MonitorImpl)
 	assert.True(t, ok)
 
-	state2, err := monitorService.StartMonitoring(&testConn, mockHostInfo, emptyProps, 0, 900, 3, 600000)
+	state2, err := monitorService.StartMonitoring(&testConn, mockHostInfo, emptyProps)
 	assert.Nil(t, err)
 	// Monitoring on the same host should not increase the cache size.
 	assert.Equal(t, efm.EFM_MONITORS.Size(), 1)
