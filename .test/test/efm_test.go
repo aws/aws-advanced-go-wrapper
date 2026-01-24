@@ -68,7 +68,13 @@ func TestMonitorServiceImpl(t *testing.T) {
 	}
 	assert.Nil(t, efm.EFM_MONITORS)
 
-	propsMap := map[string]string{property_util.DRIVER_PROTOCOL.Name: "mysql", property_util.FAILURE_DETECTION_TIME_MS.Name: "0", property_util.FAILURE_DETECTION_INTERVAL_MS.Name: "900", property_util.FAILURE_DETECTION_COUNT.Name: "3", property_util.MONITOR_DISPOSAL_TIME_MS.Name: "600000"}
+	propsMap := map[string]string{
+		property_util.DRIVER_PROTOCOL.Name: "mysql",
+		property_util.FAILURE_DETECTION_TIME_MS.Name: "0",
+		property_util.FAILURE_DETECTION_INTERVAL_MS.Name: "900",
+		property_util.FAILURE_DETECTION_COUNT.Name: "3",
+		property_util.MONITOR_DISPOSAL_TIME_MS.Name: "600000",
+	}
 	_, pluginService := initializeTest(propsMap, true, false, false, false, false, false)
 	props := utils.NewRWMapFromMap(propsMap)
 	monitorService, _ := efm.NewMonitorServiceImpl(pluginService, props)
