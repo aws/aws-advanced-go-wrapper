@@ -31,15 +31,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
-func init() {
-	go func() {
-		for {
-			pruneNullConnections()
-			time.Sleep(30 * time.Second)
-		}
-	}()
-}
-
 var openedConnections *utils.RWMap[string, *utils.RWQueue[weak.Pointer[driver.Conn]]]
 var openedConnectionInitializer sync.Once
 
@@ -50,6 +41,12 @@ type OpenedConnectionTracker struct {
 func NewOpenedConnectionTracker(pluginService driver_infrastructure.PluginService) *OpenedConnectionTracker {
 	openedConnectionInitializer.Do(func() {
 		openedConnections = utils.NewRWMap[string, *utils.RWQueue[weak.Pointer[driver.Conn]]]()
+		go func() {
+			for {
+				pruneNullConnections()
+				time.Sleep(30 * time.Second)
+			}
+		}()
 	})
 	tracker := &OpenedConnectionTracker{
 		pluginService: pluginService,
