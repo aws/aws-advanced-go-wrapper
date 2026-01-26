@@ -29,22 +29,27 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 )
 
 var EFM_MONITORS *utils.SlidingExpirationCache[Monitor]
 
 type MonitorService interface {
-	StartMonitoring(conn *driver.Conn, hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string],
-		failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionCount int, monitorDisposalTimeMillis int) (*MonitorConnectionState, error)
+	StartMonitoring(conn *driver.Conn, hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string]) (*MonitorConnectionState, error)
 	StopMonitoring(state *MonitorConnectionState, connToAbort driver.Conn)
 }
 
 type MonitorServiceImpl struct {
-	pluginService             driver_infrastructure.PluginService
-	abortedConnectionsCounter telemetry.TelemetryCounter
+	pluginService             	driver_infrastructure.PluginService
+	abortedConnectionsCounter 	telemetry.TelemetryCounter
+	failureDetectionTimeMillis 	int
+	failureDetectionIntervalMillis 	int
+	failureDetectionCount 		int
+	monitorDisposalTimeMillis	int
+	monitorKey			*MonitorKey
 }
 
-func NewMonitorServiceImpl(pluginService driver_infrastructure.PluginService) (*MonitorServiceImpl, error) {
+func NewMonitorServiceImpl(pluginService driver_infrastructure.PluginService, properties *utils.RWMap[string, string]) (*MonitorServiceImpl, error) {
 	if EFM_MONITORS == nil {
 		EFM_MONITORS = utils.NewSlidingExpirationCache(
 			"efm_monitors",
@@ -61,18 +66,41 @@ func NewMonitorServiceImpl(pluginService driver_infrastructure.PluginService) (*
 	if err != nil {
 		return nil, err
 	}
-	return &MonitorServiceImpl{pluginService: pluginService, abortedConnectionsCounter: abortedConnectionsCounter}, nil
+	failureDetectionTimeMillis, err := property_util.GetPositiveIntProperty(properties, property_util.FAILURE_DETECTION_TIME_MS)
+	if err != nil {
+		return nil, err
+	}
+	failureDetectionIntervalMillis, err := property_util.GetPositiveIntProperty(properties, property_util.FAILURE_DETECTION_INTERVAL_MS)
+	if err != nil {
+		return nil, err
+	}
+	failureDetectionCount, err := property_util.GetPositiveIntProperty(properties, property_util.FAILURE_DETECTION_COUNT)
+	if err != nil {
+		return nil, err
+	}
+	monitorDisposalTimeMillis, err := property_util.GetPositiveIntProperty(properties, property_util.MONITOR_DISPOSAL_TIME_MS)
+	if err != nil {
+		return nil, err
+	}
+	return &MonitorServiceImpl{
+		pluginService: pluginService,
+		abortedConnectionsCounter: abortedConnectionsCounter,
+		failureDetectionTimeMillis: failureDetectionTimeMillis,
+		failureDetectionIntervalMillis: failureDetectionIntervalMillis,
+		failureDetectionCount: failureDetectionCount,
+		monitorDisposalTimeMillis: monitorDisposalTimeMillis,
+		monitorKey: nil,
+	}, nil
 }
 
-func (m *MonitorServiceImpl) StartMonitoring(conn *driver.Conn, hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string],
-	failureDetectionTimeMillis int, failureDetectionIntervalMillis int, failureDetectionCount int, monitorDisposalTimeMillis int) (*MonitorConnectionState, error) {
+func (m *MonitorServiceImpl) StartMonitoring(conn *driver.Conn, hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string]) (*MonitorConnectionState, error) {
 	if conn == nil {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("MonitorServiceImpl.illegalArgumentError", "conn"))
 	}
 	if hostInfo.IsNil() {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("MonitorServiceImpl.illegalArgumentError", "hostInfo"))
 	}
-	monitor := m.getMonitor(hostInfo, props, failureDetectionTimeMillis, failureDetectionIntervalMillis, failureDetectionCount, monitorDisposalTimeMillis)
+	monitor := m.getMonitor(hostInfo, props)
 	state := NewMonitorConnectionState(conn)
 	monitor.StartMonitoring(state)
 	return state, nil
@@ -90,23 +118,42 @@ func (m *MonitorServiceImpl) StopMonitoring(state *MonitorConnectionState, connT
 	}
 }
 
-func (m *MonitorServiceImpl) getMonitor(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string], failureDetectionTimeMillis int,
-	failureDetectionIntervalMillis int, failureDetectionCount int, monitorDisposalTimeMillis int) Monitor {
-	monitorKey := fmt.Sprintf("%d:%d:%d:%s", failureDetectionTimeMillis, failureDetectionIntervalMillis, failureDetectionCount, hostInfo.GetUrl())
-	cacheExpirationNano := time.Millisecond * time.Duration(monitorDisposalTimeMillis)
+func (m *MonitorServiceImpl) getMonitor(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string]) Monitor {
+	hostUrl := hostInfo.GetUrl()
+	if m.monitorKey == nil || hostUrl != m.monitorKey.GetUrl() {
+		m.monitorKey = NewMonitorKey(hostUrl, fmt.Sprintf("%d:%d:%d:%s", m.failureDetectionTimeMillis, m.failureDetectionIntervalMillis, m.failureDetectionCount, hostInfo.GetUrl()))
+	}
+	cacheExpirationNano := time.Millisecond * time.Duration(m.monitorDisposalTimeMillis)
 	return EFM_MONITORS.ComputeIfAbsent(
-		monitorKey,
+		m.monitorKey.GetKeyValue(),
 		func() Monitor {
 			return NewMonitorImpl(
 				m.pluginService,
 				hostInfo,
 				props,
-				failureDetectionTimeMillis,
-				failureDetectionIntervalMillis,
-				failureDetectionCount,
+				m.failureDetectionTimeMillis,
+				m.failureDetectionIntervalMillis,
+				m.failureDetectionCount,
 				m.abortedConnectionsCounter)
 		},
 		cacheExpirationNano)
+}
+
+type MonitorKey struct {
+	url 		string
+	keyValue 	string
+}
+
+func NewMonitorKey(url string, keyValue string) *MonitorKey {
+	return &MonitorKey{url: url, keyValue: keyValue}
+}
+
+func (m *MonitorKey) GetUrl() string {
+	return m.url
+}
+
+func (m *MonitorKey) GetKeyValue() string {
+	return m.keyValue
 }
 
 type MonitorConnectionState struct {

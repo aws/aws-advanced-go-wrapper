@@ -25,7 +25,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
@@ -40,24 +39,7 @@ func (h HostMonitoringPluginFactory) GetInstance(pluginService driver_infrastruc
 	if properties == nil {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("HostMonitoringConnectionPlugin.illegalArgumentError", "properties"))
 	}
-	failureDetectionTimeMillis, err := property_util.GetPositiveIntProperty(properties, property_util.FAILURE_DETECTION_TIME_MS)
-	if err != nil {
-		return nil, err
-	}
-	failureDetectionIntervalMillis, err := property_util.GetPositiveIntProperty(properties, property_util.FAILURE_DETECTION_INTERVAL_MS)
-	if err != nil {
-		return nil, err
-	}
-	failureDetectionCount, err := property_util.GetPositiveIntProperty(properties, property_util.FAILURE_DETECTION_COUNT)
-	if err != nil {
-		return nil, err
-	}
-	monitorDisposalTimeMillis, err := property_util.GetPositiveIntProperty(properties, property_util.MONITOR_DISPOSAL_TIME_MS)
-	if err != nil {
-		return nil, err
-	}
-	return &HostMonitorConnectionPlugin{pluginService: pluginService, props: properties, failureDetectionTimeMs: failureDetectionTimeMillis,
-		failureDetectionIntervalMs: failureDetectionIntervalMillis, failureDetectionCount: failureDetectionCount, monitorDisposalTimeMs: monitorDisposalTimeMillis}, nil
+	return &HostMonitorConnectionPlugin{pluginService: pluginService, props: properties}, nil
 }
 
 func (h HostMonitoringPluginFactory) ClearCaches() {
@@ -75,10 +57,6 @@ type HostMonitorConnectionPlugin struct {
 	props                      *utils.RWMap[string, string]
 	monitoringHostInfo         *host_info_util.HostInfo
 	monitorService             MonitorService
-	failureDetectionTimeMs     int
-	failureDetectionIntervalMs int
-	failureDetectionCount      int
-	monitorDisposalTimeMs      int
 	plugins.BaseConnectionPlugin
 }
 
@@ -138,8 +116,7 @@ func (b *HostMonitorConnectionPlugin) Execute(
 	if err == nil {
 		slog.Debug(error_util.GetMessage("HostMonitoringConnectionPlugin.activatedMonitoring", methodName))
 		monitorState, err = b.monitorService.StartMonitoring(
-			b.pluginService.GetCurrentConnectionRef(), monitoringHostInfo, b.props,
-			b.failureDetectionTimeMs, b.failureDetectionIntervalMs, b.failureDetectionCount, b.monitorDisposalTimeMs)
+			b.pluginService.GetCurrentConnectionRef(), monitoringHostInfo, b.props)
 		if err != nil {
 			slog.Warn(err.Error())
 			wrappedErr = err
@@ -161,7 +138,7 @@ func (b *HostMonitorConnectionPlugin) Execute(
 
 func (b *HostMonitorConnectionPlugin) initMonitorService() error {
 	if b.monitorService == nil {
-		monitorService, err := NewMonitorServiceImpl(b.pluginService)
+		monitorService, err := NewMonitorServiceImpl(b.pluginService, b.props)
 		if err != nil {
 			return err
 		}
