@@ -31,6 +31,15 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
+func init() {
+	go func() {
+		for {
+			pruneNullConnections()
+			time.Sleep(30 * time.Second)
+		}
+	}()
+}
+
 var openedConnections *utils.RWMap[string, *utils.RWQueue[weak.Pointer[driver.Conn]]]
 var openedConnectionInitializer sync.Once
 
@@ -46,12 +55,6 @@ func NewOpenedConnectionTracker(pluginService driver_infrastructure.PluginServic
 		pluginService: pluginService,
 	}
 
-	go func() {
-		for {
-			tracker.PruneNullConnections()
-			time.Sleep(30 * time.Second)
-		}
-	}()
 	return tracker
 }
 
@@ -166,11 +169,17 @@ func (o *OpenedConnectionTracker) LogOpenedConnections() {
 }
 
 func (o *OpenedConnectionTracker) PruneNullConnections() {
-	openedConnections.ForEach(func(host string, queue *utils.RWQueue[weak.Pointer[driver.Conn]]) {
-		queue.RemoveIf(func(wp weak.Pointer[driver.Conn]) bool {
-			return wp.Value() == nil
+	pruneNullConnections()
+}
+
+func pruneNullConnections() {
+	if openedConnections != nil {
+		openedConnections.ForEach(func(host string, queue *utils.RWQueue[weak.Pointer[driver.Conn]]) {
+			queue.RemoveIf(func(wp weak.Pointer[driver.Conn]) bool {
+				return wp.Value() == nil
+			})
 		})
-	})
+	}
 }
 
 func (o *OpenedConnectionTracker) ClearCache() {
