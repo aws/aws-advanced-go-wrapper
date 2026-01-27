@@ -48,11 +48,9 @@ func NewOpenedConnectionTracker(pluginService driver_infrastructure.PluginServic
 			}
 		}()
 	})
-	tracker := &OpenedConnectionTracker{
+	return &OpenedConnectionTracker{
 		pluginService: pluginService,
 	}
-
-	return tracker
 }
 
 func (o *OpenedConnectionTracker) PopulateOpenedConnectionQueue(hostInfo *host_info_util.HostInfo, conn driver.Conn) {
