@@ -23,6 +23,7 @@ import (
 	"strings"
 	"sync"
 	"weak"
+	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -40,6 +41,12 @@ type OpenedConnectionTracker struct {
 func NewOpenedConnectionTracker(pluginService driver_infrastructure.PluginService) *OpenedConnectionTracker {
 	openedConnectionInitializer.Do(func() {
 		openedConnections = utils.NewRWMap[string, *utils.RWQueue[weak.Pointer[driver.Conn]]]()
+		go func() {
+			for {
+				pruneNullConnections()
+				time.Sleep(30 * time.Second)
+			}
+		}()
 	})
 	return &OpenedConnectionTracker{
 		pluginService: pluginService,
@@ -157,11 +164,17 @@ func (o *OpenedConnectionTracker) LogOpenedConnections() {
 }
 
 func (o *OpenedConnectionTracker) PruneNullConnections() {
-	openedConnections.ForEach(func(host string, queue *utils.RWQueue[weak.Pointer[driver.Conn]]) {
-		queue.RemoveIf(func(wp weak.Pointer[driver.Conn]) bool {
-			return wp.Value() == nil
+	pruneNullConnections()
+}
+
+func pruneNullConnections() {
+	if openedConnections != nil {
+		openedConnections.ForEach(func(host string, queue *utils.RWQueue[weak.Pointer[driver.Conn]]) {
+			queue.RemoveIf(func(wp weak.Pointer[driver.Conn]) bool {
+				return wp.Value() == nil
+			})
 		})
-	})
+	}
 }
 
 func (o *OpenedConnectionTracker) ClearCache() {
