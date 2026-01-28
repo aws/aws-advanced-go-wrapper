@@ -56,6 +56,7 @@ const (
 	NETWORK_OUTAGES_ENABLED        TestEnvironmentFeatures = "NETWORK_OUTAGES_ENABLED"
 	AWS_CREDENTIALS_ENABLED        TestEnvironmentFeatures = "AWS_CREDENTIALS_ENABLED"
 	PERFORMANCE                    TestEnvironmentFeatures = "PERFORMANCE"
+	RACE                           TestEnvironmentFeatures = "RACE"
 	RUN_AUTOSCALING_TESTS_ONLY     TestEnvironmentFeatures = "RUN_AUTOSCALING_TESTS_ONLY"
 	SKIP_MYSQL_DRIVER_TESTS        TestEnvironmentFeatures = "SKIP_MYSQL_DRIVER_TESTS"
 	SKIP_PG_DRIVER_TESTS           TestEnvironmentFeatures = "SKIP_PG_DRIVER_TESTS"
