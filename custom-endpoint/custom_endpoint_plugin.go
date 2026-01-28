@@ -222,20 +222,9 @@ func (plugin *CustomEndpointPlugin) createMonitorIfAbsent(
 				return nil, err
 			}
 
-			if pluginServiceImpl, ok := plugin.pluginService.(*plugin_helpers.PluginServiceImpl); ok {
-				partialPluginService := pluginServiceImpl.CreatePartialPluginService()
-				return NewCustomEndpointMonitorImpl(
-					partialPluginService,
-					plugin.customEndpointHostInfo,
-					plugin.customEndpointId,
-					plugin.region,
-					refreshRateMs,
-					infoChangedCounter,
-					rdsClient,
-				), nil
-			}
+			partialPluginService := plugin.pluginService.CreatePartialPluginService()
 			return NewCustomEndpointMonitorImpl(
-				plugin.pluginService,
+				partialPluginService,
 				plugin.customEndpointHostInfo,
 				plugin.customEndpointId,
 				plugin.region,

@@ -153,7 +153,7 @@ func (p *PartialPluginService) GetAllHosts() []*host_info_util.HostInfo {
 func (p *PartialPluginService) GetHosts() []*host_info_util.HostInfo {
 	p.allHostsLock.RLock()
 	defer p.allHostsLock.RUnlock()
-	
+
 	hostPermissions := p.allowedAndBlockedHosts.Load()
 	if hostPermissions == nil {
 		return p.AllHosts
@@ -178,6 +178,10 @@ func (p *PartialPluginService) GetHosts() []*host_info_util.HostInfo {
 	}
 
 	return hosts
+}
+
+func (p *PartialPluginService) CreatePartialPluginService() driver_infrastructure.PluginService {
+	return p
 }
 
 func (p *PartialPluginService) GetCurrentConnection() driver.Conn { panic("Method not implemented.") }

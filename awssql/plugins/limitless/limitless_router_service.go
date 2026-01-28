@@ -25,7 +25,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
@@ -342,20 +341,10 @@ func (routerService *LimitlessRouterServiceImpl) StartMonitoring(hostInfo *host_
 		LIMITLESS_ROUTER_MONITOR_CACHE.ComputeIfAbsent(
 			cacheKey,
 			func() LimitlessRouterMonitor {
-				if pluginServiceImpl, ok := routerService.pluginService.(*plugin_helpers.PluginServiceImpl); ok {
-					partialPluginService := pluginServiceImpl.CreatePartialPluginService()
-					return NewLimitlessRouterMonitorImpl(
-						NewLimitlessQueryHelperImpl(partialPluginService),
-						partialPluginService,
-						hostInfo,
-						LIMITLESS_ROUTER_CACHE,
-						cacheKey,
-						intervalMs,
-						props)
-				}
+				partialPluginService := routerService.pluginService.CreatePartialPluginService()
 				return NewLimitlessRouterMonitorImpl(
-					NewLimitlessQueryHelperImpl(routerService.pluginService),
-					routerService.pluginService,
+					NewLimitlessQueryHelperImpl(partialPluginService),
+					partialPluginService,
 					hostInfo,
 					LIMITLESS_ROUTER_CACHE,
 					cacheKey,
