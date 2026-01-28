@@ -357,37 +357,45 @@ func (b *BlueGreenStatusProvider) UpdateMonitors() error {
 	switch b.summaryStatus.GetCurrentPhase() {
 	case driver_infrastructure.NOT_CREATED:
 		for _, monitor := range b.monitors {
-			monitor.SetIntervalRate(driver_infrastructure.BASELINE)
-			monitor.collectedIpAddresses.Store(false)
-			monitor.collectedTopology.Store(false)
-			monitor.useIpAddress.Store(false)
+			if monitor != nil {
+				monitor.SetIntervalRate(driver_infrastructure.BASELINE)
+				monitor.collectedIpAddresses.Store(false)
+				monitor.collectedTopology.Store(false)
+				monitor.useIpAddress.Store(false)
+			}
 		}
 	case driver_infrastructure.CREATED:
 		for _, monitor := range b.monitors {
-			monitor.SetIntervalRate(driver_infrastructure.INCREASED)
-			monitor.collectedIpAddresses.Store(true)
-			monitor.collectedTopology.Store(true)
-			monitor.useIpAddress.Store(false)
-			if b.rollback {
-				monitor.ResetCollectedData()
+			if monitor != nil {
+				monitor.SetIntervalRate(driver_infrastructure.INCREASED)
+				monitor.collectedIpAddresses.Store(true)
+				monitor.collectedTopology.Store(true)
+				monitor.useIpAddress.Store(false)
+				if b.rollback {
+					monitor.ResetCollectedData()
+				}
 			}
 		}
 	case driver_infrastructure.PREPARATION:
 	case driver_infrastructure.IN_PROGRESS:
 	case driver_infrastructure.POST:
 		for _, monitor := range b.monitors {
-			monitor.SetIntervalRate(driver_infrastructure.HIGH)
-			monitor.collectedIpAddresses.Store(false)
-			monitor.collectedTopology.Store(false)
-			monitor.useIpAddress.Store(true)
+			if monitor != nil {
+				monitor.SetIntervalRate(driver_infrastructure.HIGH)
+				monitor.collectedIpAddresses.Store(false)
+				monitor.collectedTopology.Store(false)
+				monitor.useIpAddress.Store(true)
+			}
 		}
 	case driver_infrastructure.COMPLETED:
 		for _, monitor := range b.monitors {
-			monitor.SetIntervalRate(driver_infrastructure.BASELINE)
-			monitor.collectedIpAddresses.Store(false)
-			monitor.collectedTopology.Store(false)
-			monitor.useIpAddress.Store(false)
-			monitor.ResetCollectedData()
+			if monitor != nil {
+				monitor.SetIntervalRate(driver_infrastructure.BASELINE)
+				monitor.collectedIpAddresses.Store(false)
+				monitor.collectedTopology.Store(false)
+				monitor.useIpAddress.Store(false)
+				monitor.ResetCollectedData()
+			}
 		}
 
 		if !b.rollback {
