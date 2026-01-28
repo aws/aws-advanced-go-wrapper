@@ -23,6 +23,7 @@ import (
 	"log/slog"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -51,6 +52,7 @@ type PluginServiceImpl struct {
 	connectionProviderManager driver_infrastructure.ConnectionProviderManager
 	originalDsn               string
 	AllHosts                  []*host_info_util.HostInfo
+	allHostsLock              *sync.RWMutex
 	initialHostInfo           *host_info_util.HostInfo
 	isInTransaction           bool
 	currentTx                 driver.Tx
@@ -79,6 +81,7 @@ func NewPluginServiceImpl(
 		dialect:                   dialect,
 		originalDsn:               dsn,
 		connectionProviderManager: connectionProviderManager,
+		allHostsLock:              new(sync.RWMutex),
 	}
 	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(pluginService, props)
 	pluginService.sessionStateService = sessionStateService
@@ -244,6 +247,8 @@ func (p *PluginServiceImpl) GetCurrentHostInfo() (*host_info_util.HostInfo, erro
 	if p.currentHostInfo.IsNil() {
 		p.currentHostInfo = p.initialHostInfo
 		if p.currentHostInfo.IsNil() {
+			p.allHostsLock.RLock()
+			defer p.allHostsLock.RUnlock()
 			if len(p.AllHosts) == 0 {
 				return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginServiceImpl.hostListEmpty"))
 			}
@@ -268,18 +273,23 @@ func (p *PluginServiceImpl) GetCurrentHostInfo() (*host_info_util.HostInfo, erro
 }
 
 func (p *PluginServiceImpl) GetAllHosts() []*host_info_util.HostInfo {
+	p.allHostsLock.RLock()
+	defer p.allHostsLock.RUnlock()
 	return p.AllHosts
 }
 
 func (p *PluginServiceImpl) GetHosts() []*host_info_util.HostInfo {
+	p.allHostsLock.RLock()
+	defer p.allHostsLock.RUnlock()
+
 	hostPermissions := p.allowedAndBlockedHosts.Load()
 	if hostPermissions == nil {
 		return p.AllHosts
 	}
 
 	hosts := p.AllHosts
-	allowedHosts := p.allowedAndBlockedHosts.Load().GetAllowedHostIds()
-	blockedHosts := p.allowedAndBlockedHosts.Load().GetBlockedHostIds()
+	allowedHosts := hostPermissions.GetAllowedHostIds()
+	blockedHosts := hostPermissions.GetBlockedHostIds()
 
 	if len(allowedHosts) > 0 {
 		hosts = utils.FilterSlice(hosts, func(item *host_info_util.HostInfo) bool {
@@ -333,6 +343,8 @@ func (p *PluginServiceImpl) SetAvailability(hostAliases map[string]bool, availab
 	changes := map[string]map[driver_infrastructure.HostChangeOptions]bool{}
 	hostsToChange := false
 
+	p.allHostsLock.Lock()
+	defer p.allHostsLock.Unlock()
 	for i, host := range p.AllHosts {
 		hostAliasesAsSlice := utils.AllKeys(hostAliases)
 		if slices.Contains(hostAliasesAsSlice, host.GetHostAndPort()) || utils.SliceAndMapHaveCommonElement(hostAliasesAsSlice, host.AllAliases) {
@@ -404,14 +416,16 @@ func (p *PluginServiceImpl) updateHostListIfNeeded(updatedHostList []*host_info_
 	}
 	if !host_info_util.AreHostListsEqual(p.AllHosts, updatedHostList) {
 		p.updateHostAvailability(updatedHostList)
-		p.setHostList(p.AllHosts, updatedHostList)
+		p.setHostList(updatedHostList)
 	}
 	return nil
 }
 
-func (p *PluginServiceImpl) setHostList(oldHosts []*host_info_util.HostInfo, newHosts []*host_info_util.HostInfo) {
+func (p *PluginServiceImpl) setHostList(newHosts []*host_info_util.HostInfo) {
+	p.allHostsLock.Lock()
+	defer p.allHostsLock.Unlock()
 	var oldHostMap = map[string]*host_info_util.HostInfo{}
-	for _, host := range oldHosts {
+	for _, host := range p.AllHosts {
 		oldHostMap[host.GetHostAndPort()] = host
 	}
 
@@ -476,7 +490,7 @@ func (p *PluginServiceImpl) ForceRefreshHostListWithTimeout(shouldVerifyWriter b
 	}
 	if len(updatedHostList) != 0 {
 		p.updateHostAvailability(updatedHostList)
-		p.setHostList(p.AllHosts, updatedHostList)
+		p.setHostList(updatedHostList)
 		return true, nil
 	}
 
@@ -662,5 +676,7 @@ func ClearCaches() {
 }
 
 func (p *PluginServiceImpl) CreatePartialPluginService() driver_infrastructure.PluginService {
-	return NewPartialPluginService(p.pluginManager, p.props, p.currentConnection, p.hostListProvider, p.dialect, p.driverDialect, p.AllHosts, &p.allowedAndBlockedHosts)
+	p.allHostsLock.RLock()
+	defer p.allHostsLock.RUnlock()
+	return NewPartialPluginService(p.pluginManager, p.props, p.hostListProvider, p.dialect, p.driverDialect, p.AllHosts, p.allHostsLock, &p.allowedAndBlockedHosts)
 }

@@ -21,6 +21,7 @@ import (
 	"database/sql/driver"
 	"log/slog"
 	"slices"
+	"sync"
 	"sync/atomic"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
@@ -36,37 +37,37 @@ import (
 type PartialPluginService struct {
 	pluginManager          driver_infrastructure.PluginManager
 	props                  *utils.RWMap[string, string]
-	currentConnection      *driver.Conn
 	hostListProvider       driver_infrastructure.HostListProvider
 	dialect                driver_infrastructure.DatabaseDialect
 	driverDialect          driver_infrastructure.DriverDialect
 	AllHosts               []*host_info_util.HostInfo
+	allHostsLock           *sync.RWMutex
 	allowedAndBlockedHosts *atomic.Pointer[driver_infrastructure.AllowedAndBlockedHosts]
 }
 
 func NewPartialPluginService(
 	pluginManager driver_infrastructure.PluginManager,
 	props *utils.RWMap[string, string],
-	currentConnection *driver.Conn,
 	hostListProvider driver_infrastructure.HostListProvider,
 	dialect driver_infrastructure.DatabaseDialect,
 	driverDialect driver_infrastructure.DriverDialect,
 	AllHosts []*host_info_util.HostInfo,
+	allHostsLock *sync.RWMutex,
 	allowedAndBlockedHosts *atomic.Pointer[driver_infrastructure.AllowedAndBlockedHosts]) driver_infrastructure.PluginService {
 	return &PartialPluginService{
 		pluginManager:          pluginManager,
 		props:                  props,
-		currentConnection:      currentConnection,
 		hostListProvider:       hostListProvider,
 		dialect:                dialect,
 		driverDialect:          driverDialect,
 		AllHosts:               AllHosts,
+		allHostsLock:           allHostsLock,
 		allowedAndBlockedHosts: allowedAndBlockedHosts,
 	}
 }
 
 func (p *PartialPluginService) ForceConnect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string]) (driver.Conn, error) {
-	return p.pluginManager.ForceConnect(hostInfo, props, p.currentConnection == nil)
+	return p.pluginManager.ForceConnect(hostInfo, props, true)
 }
 
 func (p *PartialPluginService) GetHostSelectorStrategy(strategy string) (hostSelector driver_infrastructure.HostSelector, err error) {
@@ -105,6 +106,8 @@ func (p *PartialPluginService) SetAvailability(hostAliases map[string]bool, avai
 	changes := map[string]map[driver_infrastructure.HostChangeOptions]bool{}
 	hostsToChange := false
 
+	p.allHostsLock.Lock()
+	defer p.allHostsLock.Unlock()
 	for i, host := range p.AllHosts {
 		hostAliasesAsSlice := utils.AllKeys(hostAliases)
 		if slices.Contains(hostAliasesAsSlice, host.GetHostAndPort()) || utils.SliceAndMapHaveCommonElement(hostAliasesAsSlice, host.AllAliases) {
@@ -143,17 +146,22 @@ func (p *PartialPluginService) SetAvailability(hostAliases map[string]bool, avai
 }
 
 func (p *PartialPluginService) GetAllHosts() []*host_info_util.HostInfo {
+	p.allHostsLock.RLock()
+	defer p.allHostsLock.RUnlock()
 	return p.AllHosts
 }
 func (p *PartialPluginService) GetHosts() []*host_info_util.HostInfo {
+	p.allHostsLock.RLock()
+	defer p.allHostsLock.RUnlock()
+	
 	hostPermissions := p.allowedAndBlockedHosts.Load()
 	if hostPermissions == nil {
 		return p.AllHosts
 	}
 
 	hosts := p.AllHosts
-	allowedHosts := p.allowedAndBlockedHosts.Load().GetAllowedHostIds()
-	blockedHosts := p.allowedAndBlockedHosts.Load().GetBlockedHostIds()
+	allowedHosts := hostPermissions.GetAllowedHostIds()
+	blockedHosts := hostPermissions.GetBlockedHostIds()
 
 	if len(allowedHosts) > 0 {
 		hosts = utils.FilterSlice(hosts, func(item *host_info_util.HostInfo) bool {

@@ -19,6 +19,7 @@ package test
 import (
 	"database/sql/driver"
 	"errors"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -42,7 +43,6 @@ func preparePartialPluginService(t *testing.T) (*plugin_helpers.PartialPluginSer
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(someProps)
 	mockPluginManager := &MockPluginManager{
 		plugin_helpers.NewPluginManagerImpl(mockTargetDriver, someProps, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory), nil, nil}
-	var mockCurrentConn driver.Conn = mock_database_sql_driver.NewMockConn(ctrl)
 	mockHostListProvider := mock_driver_infrastructure.NewMockHostListProvider(ctrl)
 	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
@@ -51,11 +51,11 @@ func preparePartialPluginService(t *testing.T) (*plugin_helpers.PartialPluginSer
 	partialPluginService := plugin_helpers.NewPartialPluginService(
 		mockPluginManager,
 		someProps,
-		&mockCurrentConn,
 		mockHostListProvider,
 		mockDialect,
 		mockDriverDialect,
 		someAllHosts,
+		new(sync.RWMutex),
 		mockAllowedAndBlockedHosts)
 	return partialPluginService.(*plugin_helpers.PartialPluginService), mockPluginManager, host_info_util.NewHostInfoBuilder()
 }
@@ -68,7 +68,6 @@ func TestForceConnect_PartialPluginService(t *testing.T) {
 	someProps := MakeMapFromKeysAndVals(
 		"someKey", "someVal",
 	)
-	var mockCurrentConn driver.Conn = mock_database_sql_driver.NewMockConn(ctrl)
 
 	someHost := &host_info_util.HostInfo{}
 	expectedConn := mock_database_sql_driver.NewMockConn(ctrl)
@@ -76,14 +75,14 @@ func TestForceConnect_PartialPluginService(t *testing.T) {
 	partialPluginService := plugin_helpers.NewPartialPluginService(
 		mockPluginManager,
 		someProps,
-		&mockCurrentConn,
 		mock_driver_infrastructure.NewMockHostListProvider(ctrl),
 		mock_driver_infrastructure.NewMockDatabaseDialect(ctrl),
 		mock_driver_infrastructure.NewMockDriverDialect(ctrl),
 		[]*host_info_util.HostInfo{},
+		new(sync.RWMutex),
 		new(atomic.Pointer[driver_infrastructure.AllowedAndBlockedHosts]))
 
-	mockPluginManager.EXPECT().ForceConnect(someHost, someProps, false).Return(expectedConn, nil)
+	mockPluginManager.EXPECT().ForceConnect(someHost, someProps, true).Return(expectedConn, nil)
 	actualConn, err := partialPluginService.ForceConnect(someHost, someProps)
 
 	assert.Equal(t, expectedConn, actualConn)
@@ -98,7 +97,6 @@ func TestGetHostSelectorStrategy_PartialPluginService(t *testing.T) {
 	someProps := MakeMapFromKeysAndVals(
 		"someKey", "someVal",
 	)
-	var mockCurrentConn driver.Conn = mock_database_sql_driver.NewMockConn(ctrl)
 
 	someStrategy := "someStrategy"
 	expectedHostSelector := &driver_infrastructure.HighestWeightHostSelector{}
@@ -106,11 +104,11 @@ func TestGetHostSelectorStrategy_PartialPluginService(t *testing.T) {
 	partialPluginService := plugin_helpers.NewPartialPluginService(
 		mockPluginManager,
 		someProps,
-		&mockCurrentConn,
 		mock_driver_infrastructure.NewMockHostListProvider(ctrl),
 		mock_driver_infrastructure.NewMockDatabaseDialect(ctrl),
 		mock_driver_infrastructure.NewMockDriverDialect(ctrl),
 		[]*host_info_util.HostInfo{},
+		new(sync.RWMutex),
 		new(atomic.Pointer[driver_infrastructure.AllowedAndBlockedHosts]))
 
 	mockPluginManager.EXPECT().GetHostSelectorStrategy(someStrategy).Return(expectedHostSelector, nil)
@@ -127,16 +125,16 @@ func TestCreateHostListProvider_PartialPluginService(t *testing.T) {
 	someProps := MakeMapFromKeysAndVals(
 		"someKey", "someVal",
 	)
-	var mockCurrentConn driver.Conn = mock_database_sql_driver.NewMockConn(ctrl)
 
 	mockDatabaseDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 
 	partialPluginService := plugin_helpers.NewPartialPluginService(
 		mock_driver_infrastructure.NewMockPluginManager(ctrl),
-		someProps, &mockCurrentConn,
+		someProps,
 		mock_driver_infrastructure.NewMockHostListProvider(ctrl),
 		mockDatabaseDialect, mock_driver_infrastructure.NewMockDriverDialect(ctrl),
 		[]*host_info_util.HostInfo{},
+		new(sync.RWMutex),
 		new(atomic.Pointer[driver_infrastructure.AllowedAndBlockedHosts]))
 
 	expectedHostListProvider := mock_driver_infrastructure.NewMockHostListProvider(ctrl)
