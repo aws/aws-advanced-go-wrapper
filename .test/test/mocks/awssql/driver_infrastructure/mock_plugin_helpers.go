@@ -222,6 +222,20 @@ func (mr *MockPluginServiceMockRecorder) CreateHostListProvider(props any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateHostListProvider", reflect.TypeOf((*MockPluginService)(nil).CreateHostListProvider), props)
 }
 
+// CreatePartialPluginService mocks base method.
+func (m *MockPluginService) CreatePartialPluginService() driver_infrastructure.PluginService {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreatePartialPluginService")
+	ret0, _ := ret[0].(driver_infrastructure.PluginService)
+	return ret0
+}
+
+// CreatePartialPluginService indicates an expected call of CreatePartialPluginService.
+func (mr *MockPluginServiceMockRecorder) CreatePartialPluginService() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePartialPluginService", reflect.TypeOf((*MockPluginService)(nil).CreatePartialPluginService))
+}
+
 // FillAliases mocks base method.
 func (m *MockPluginService) FillAliases(conn driver.Conn, hostInfo *host_info_util.HostInfo) {
 	m.ctrl.T.Helper()

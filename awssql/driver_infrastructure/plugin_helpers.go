@@ -90,6 +90,7 @@ type PluginService interface {
 	SetBgStatus(status BlueGreenStatus, id string)
 	IsPluginInUse(pluginName string) bool
 	ResetSession()
+	CreatePartialPluginService() PluginService
 }
 
 type PluginServiceProvider func(

@@ -117,11 +117,13 @@ func (b *BlueGreenStatusProvider) ClearMonitors() {
 func (b *BlueGreenStatusProvider) initMonitoring() {
 	currentHostInfo, _ := b.pluginService.GetCurrentHostInfo()
 	monitoringProps := b.GetMonitoringProperties()
+
+	partialPluginService := b.pluginService.CreatePartialPluginService()
 	b.monitors[driver_infrastructure.SOURCE.GetValue()] = NewBlueGreenStatusMonitor(
 		driver_infrastructure.SOURCE,
 		b.bgdId,
 		currentHostInfo,
-		b.pluginService,
+		partialPluginService,
 		monitoringProps,
 		b.statusCheckIntervalMap,
 		b.PrepareStatus)
@@ -130,7 +132,7 @@ func (b *BlueGreenStatusProvider) initMonitoring() {
 		driver_infrastructure.TARGET,
 		b.bgdId,
 		currentHostInfo,
-		b.pluginService,
+		partialPluginService,
 		monitoringProps,
 		b.statusCheckIntervalMap,
 		b.PrepareStatus)

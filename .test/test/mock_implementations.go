@@ -542,6 +542,10 @@ func (p *MockPluginService) IsPluginInUse(_ string) bool {
 	return false
 }
 
+func (p *MockPluginService) CreatePartialPluginService() driver_infrastructure.PluginService {
+	return nil
+}
+
 type MockDriverConn struct {
 	driver.Conn
 }

@@ -222,8 +222,9 @@ func (plugin *CustomEndpointPlugin) createMonitorIfAbsent(
 				return nil, err
 			}
 
+			partialPluginService := plugin.pluginService.CreatePartialPluginService()
 			return NewCustomEndpointMonitorImpl(
-				plugin.pluginService,
+				partialPluginService,
 				plugin.customEndpointHostInfo,
 				plugin.customEndpointId,
 				plugin.region,
