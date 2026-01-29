@@ -50,6 +50,7 @@ jobs:
           RDS_DB_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
           AURORA_MYSQL_DB_ENGINE_VERSION: "latest"
           AURORA_PG_DB_ENGINE_VERSION: "latest"
+          AWS_RDS_MONITORING_ROLE_ARN: ${{ secrets.AWS_RDS_MONITORING_ROLE_ARN }}
       - name: "Get Github Action IP"
         if: always()
         id: ip
