@@ -38,7 +38,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### :crab: Changed
 * Update various dependencies
 
+## [1.4.0] - 2026-02-03
+### :magic_wand: Added
+* Support for EU, AU, and UK domains ([PR #325](https://github.com/aws/aws-advanced-go-wrapper/pull/325)).
+
+### :bug: Fixed
+* Embed messages file to allow it to be bundled in with binary ([Issue #301](https://github.com/aws/aws-advanced-go-wrapper/issues/301)).
+* During B/G switchover, ensure IAM host name should be based on green host ([PR #321](https://github.com/aws/aws-advanced-go-wrapper/pull/321)).
+* Address race conditions associated with PluginServiceImpl by implementing a separate PartialPluginService to be used by monitoring structs for plugins such as BlueGreen, CustomEndpoint, and Limitless ([Issue #318](https://github.com/aws/aws-advanced-go-wrapper/issues/318)).
+* Stop B/G monitors after switchover completes ([PR #323](https://github.com/aws/aws-advanced-go-wrapper/pull/323)).
+* Goroutine to clean up open connections when failover never happens ([PR #327](https://github.com/aws/aws-advanced-go-wrapper/pull/327)).
+* Ensure B/G monitors are set up ([PR #330](https://github.com/aws/aws-advanced-go-wrapper/pull/330)).
+
+### :crab: Changed
+* Cache efm2 monitor key for better performance ([PR #328](https://github.com/aws/aws-advanced-go-wrapper/pull/328)).
+
 [1.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql/1.0.0
 [1.1.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql/1.1.0
 [1.1.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql/1.1.1
 [1.2.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql/1.2.0
+[1.3.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql/1.3.0
+[1.4.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql/1.4.0
