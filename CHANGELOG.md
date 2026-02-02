@@ -100,3 +100,33 @@ The Amazon Web Services (AWS) Advanced Go Wrapper allows an application to take 
 * `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.4](otlp/CHANGELOG.md#104---2025-12-16)
 * `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.0.4](pgx-driver/CHANGELOG.md#104---2025-12-16)
 * `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.4](xray/CHANGELOG.md#104---2025-12-16)
+
+# Release (2026-02-03)
+## General Highlights
+### :magic_wand: Added
+* New connection properties allowing users to load custom Secret Data format ([PR #310](https://github.com/aws/aws-advanced-go-wrapper/pull/320)), see [Using the AWS Secrets Manager Plugin](../docs/user-guide/using-plugins/UsingTheAwsSecretsManagerPlugin.md) for more details.
+* Support for EU, AU, and UK domains ([PR #325](https://github.com/aws/aws-advanced-go-wrapper/pull/325)).
+
+### :bug: Fixed
+* Embed messages file to allow it to be bundled in with binary ([Issue #301](https://github.com/aws/aws-advanced-go-wrapper/issues/301)).
+* During B/G switchover, ensure IAM host name should be based on green host ([PR #321](https://github.com/aws/aws-advanced-go-wrapper/pull/321)).
+* Address various race conditions ([Issue #318](https://github.com/aws/aws-advanced-go-wrapper/issues/318)).
+* Stop B/G monitors after switchover completes ([PR #323](https://github.com/aws/aws-advanced-go-wrapper/pull/323)).
+* Goroutine to clean up open connections when failover never happens ([PR #327](https://github.com/aws/aws-advanced-go-wrapper/pull/327)).
+* Ensure B/G monitors are set up ([PR #330](https://github.com/aws/aws-advanced-go-wrapper/pull/330)). 
+
+### :crab: Changed
+* Cache efm2 monitor key for better performance ([PR #328](https://github.com/aws/aws-advanced-go-wrapper/pull/328)).
+
+# Module Highlights
+* `https://github.com/aws/aws-advanced-go-wrapper/auth-helpers`: [v1.0.5](auth-helpers/CHANGELOG.md#105---2026-02-03)
+* `https://github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager`: [v1.1.0](aws-secrets-manager/CHANGELOG.md#110---2026-02-03)
+* `https://github.com/aws/aws-advanced-go-wrapper/awssql`: [v1.4.0](awssql/CHANGELOG.md#140---2026-02-03)
+* `https://github.com/aws/aws-advanced-go-wrapper/custom-endpoint`: [v1.0.2](custom-endpoint/CHANGELOG.md#102---2026-02-03)
+* `https://github.com/aws/aws-advanced-go-wrapper/federated-auth`: [v1.0.5](federated-auth/CHANGELOG.md#105---2026-02-03)
+* `https://github.com/aws/aws-advanced-go-wrapper/iam`: [v1.0.5](iam/CHANGELOG.md#105---2026-02-03)
+* `https://github.com/aws/aws-advanced-go-wrapper/mysql-driver`: [v1.0.5](mysql-driver/CHANGELOG.md#105---2026-02-03)
+* `https://github.com/aws/aws-advanced-go-wrapper/okta`: [v1.0.5](okta/CHANGELOG.md#105---2026-02-03)
+* `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.5](otlp/CHANGELOG.md#105---2026-02-03)
+* `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.0.5](pgx-driver/CHANGELOG.md#105---2026-02-03)
+* `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.5](xray/CHANGELOG.md#105---2026-02-03)
