@@ -481,7 +481,8 @@ func TestAuroraRdsMySQLDatabaseDialect_GetHostName(t *testing.T) {
 	})
 	mockRows.EXPECT().Close().Return(nil)
 
-	assert.Equal(t, instanceId, testDatabaseDialect.GetHostName(conn))
+	id, _ := testDatabaseDialect.GetHostName(conn)
+	assert.Equal(t, instanceId, id)
 
 	// No Success
 	mockQueryer.EXPECT().
@@ -493,7 +494,8 @@ func TestAuroraRdsMySQLDatabaseDialect_GetHostName(t *testing.T) {
 	})
 	mockRows.EXPECT().Close().Return(nil)
 
-	assert.Equal(t, "", testDatabaseDialect.GetHostName(conn))
+	emptyId, _ := testDatabaseDialect.GetHostName(conn)
+	assert.Equal(t, "", emptyId)
 }
 
 func TestAuroraRdsMySQLDatabaseDialect_GetWriterHostName(t *testing.T) {
@@ -659,7 +661,7 @@ func TestRdsMultiAzClusterMySQLDatabaseDialect_GetHostRole(t *testing.T) {
 
 func TestRdsMultiAzClusterMySQLDatabaseDialect_GetHostName(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.RdsMultiAzClusterMySQLDatabaseDialect{}
-	hostIdQuery := "SELECT endpoint from mysql.rds_topology as top where top.id = (SELECT @@server_id)"
+	hostIdQuery := "SELECT id, endpoint from mysql.rds_topology as top where top.id = (SELECT @@server_id)"
 	instanceId := "myinstance"
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -686,7 +688,8 @@ func TestRdsMultiAzClusterMySQLDatabaseDialect_GetHostName(t *testing.T) {
 	})
 	mockRows.EXPECT().Close().Return(nil)
 
-	assert.Equal(t, instanceId, testDatabaseDialect.GetHostName(conn))
+	id, _ := testDatabaseDialect.GetHostName(conn)
+	assert.Equal(t, instanceId, id)
 
 	// No Success
 	mockQueryer.EXPECT().
@@ -698,7 +701,8 @@ func TestRdsMultiAzClusterMySQLDatabaseDialect_GetHostName(t *testing.T) {
 	})
 	mockRows.EXPECT().Close().Return(nil)
 
-	assert.Equal(t, "", testDatabaseDialect.GetHostName(conn))
+	emptyId, _ := testDatabaseDialect.GetHostName(conn)
+	assert.Equal(t, "", emptyId)
 }
 
 func TestRdsMultiAzClusterMySQLDatabaseDialect_GetWriterHostName(t *testing.T) {

@@ -226,8 +226,8 @@ func (m *MySQLTopologyAwareDatabaseDialect) GetHostRole(conn driver.Conn) host_i
 	return host_info_util.UNKNOWN
 }
 
-func (m *MySQLTopologyAwareDatabaseDialect) GetHostName(_ driver.Conn) string {
-	return ""
+func (m *MySQLTopologyAwareDatabaseDialect) GetHostName(_ driver.Conn) (string, string) {
+	return "", ""
 }
 
 func (m *MySQLTopologyAwareDatabaseDialect) GetWriterHostName(_ driver.Conn) (string, error) {
@@ -271,13 +271,13 @@ func (m *AuroraMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	return row != nil
 }
 
-func (m *AuroraMySQLDatabaseDialect) GetHostName(conn driver.Conn) string {
+func (m *AuroraMySQLDatabaseDialect) GetHostName(conn driver.Conn) (string, string) {
 	hostIdQuery := "SELECT @@aurora_server_id"
 	res := utils.GetFirstRowFromQueryAsString(conn, hostIdQuery)
 	if len(res) > 0 {
-		return res[0]
+		return res[0], res[0]
 	}
-	return ""
+	return "", ""
 }
 
 func (m *AuroraMySQLDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, error) {
@@ -464,15 +464,17 @@ func (r *RdsMultiAzClusterMySQLDatabaseDialect) processTopologyQueryResults(
 	return hosts
 }
 
-func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetHostName(conn driver.Conn) string {
-	hostNameQuery := "SELECT endpoint from mysql.rds_topology as top where top.id = (SELECT @@server_id)"
+func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetHostName(conn driver.Conn) (string, string) {
+	hostNameQuery := "SELECT id, endpoint from mysql.rds_topology as top where top.id = (SELECT @@server_id)"
 	row := utils.GetFirstRowFromQueryAsString(conn, hostNameQuery)
 
-	if len(row) > 0 {
-		return utils.GetHostNameFromEndpoint(row[0])
+	if len(row) > 1 {
+		return row[0], utils.GetHostNameFromEndpoint(row[1])
+	} else if len(row) > 0 {
+		return row[0], ""
 	}
 
-	return ""
+	return "", ""
 }
 
 func (r *RdsMultiAzClusterMySQLDatabaseDialect) getWriterHostId(conn driver.Conn) string {

@@ -256,9 +256,9 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 					c.writerHostInfo.Store(c.initialHostInfo)
 					slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.writerMonitoringConnection", c.writerHostInfo.Load().GetHost()))
 				} else {
-					hostId := c.databaseDialect.GetHostName(c.loadConn(c.monitoringConn))
-					if hostId != "" {
-						c.writerHostInfo.Store(c.createHost(hostId, true, 0, time.Time{}))
+					hostId, hostName := c.databaseDialect.GetHostName(c.loadConn(c.monitoringConn))
+					if hostId != "" || hostName != "" {
+						c.writerHostInfo.Store(c.createHost(hostId, hostName, true, 0, time.Time{}))
 						slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.writerMonitoringConnection", c.writerHostInfo.Load().GetHost()))
 					}
 				}
@@ -346,7 +346,7 @@ func (c *ClusterTopologyMonitorImpl) closeConnection(conn driver.Conn) {
 	}
 }
 
-func (c *ClusterTopologyMonitorImpl) createHost(hostName string, isWriter bool, weight int, lastUpdateTime time.Time) *host_info_util.HostInfo {
+func (c *ClusterTopologyMonitorImpl) createHost(hostId string, hostName string, isWriter bool, weight int, lastUpdateTime time.Time) *host_info_util.HostInfo {
 	if hostName == "" {
 		hostName = "?"
 	}
@@ -371,7 +371,7 @@ func (c *ClusterTopologyMonitorImpl) createHost(hostName string, isWriter bool, 
 	hostInfoBuilder := host_info_util.NewHostInfoBuilder()
 	hostInfo, err := hostInfoBuilder.
 		SetHost(endpoint).
-		SetHostId(hostName).
+		SetHostId(hostId).
 		SetPort(port).
 		SetRole(role).
 		SetAvailability(host_info_util.AVAILABLE).

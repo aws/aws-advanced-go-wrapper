@@ -169,7 +169,7 @@ func (r *RdsHostListProvider) GetHostRole(conn driver.Conn) host_info_util.HostR
 }
 
 func (r *RdsHostListProvider) IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error) {
-	instanceName := r.databaseDialect.GetHostName(conn)
+	instanceName, _ := r.databaseDialect.GetHostName(conn)
 	if instanceName != "" {
 		topology, err := r.Refresh(conn)
 		forcedRefresh := false

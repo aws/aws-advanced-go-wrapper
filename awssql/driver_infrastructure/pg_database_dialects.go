@@ -210,8 +210,8 @@ func (m *PgTopologyAwareDatabaseDialect) GetHostRole(conn driver.Conn) host_info
 	return host_info_util.UNKNOWN
 }
 
-func (m *PgTopologyAwareDatabaseDialect) GetHostName(_ driver.Conn) string {
-	return ""
+func (m *PgTopologyAwareDatabaseDialect) GetHostName(_ driver.Conn) (string, string) {
+	return "", ""
 }
 func (m *PgTopologyAwareDatabaseDialect) GetWriterHostName(_ driver.Conn) (string, error) {
 	return "", nil
@@ -316,16 +316,16 @@ func (m *AuroraPgDatabaseDialect) GetTopology(conn driver.Conn, provider HostLis
 	return hosts, nil
 }
 
-func (m *AuroraPgDatabaseDialect) GetHostName(conn driver.Conn) string {
+func (m *AuroraPgDatabaseDialect) GetHostName(conn driver.Conn) (string, string) {
 	hostIdQuery := "SELECT pg_catalog.aurora_db_instance_identifier()"
 	res := utils.GetFirstRowFromQuery(conn, hostIdQuery)
 	if len(res) > 0 {
 		instanceId, ok := (res[0]).(string)
 		if ok {
-			return instanceId
+			return instanceId, instanceId
 		}
 	}
-	return ""
+	return "", ""
 }
 
 func (m *AuroraPgDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, error) {
@@ -460,15 +460,17 @@ func (r *RdsMultiAzClusterPgDatabaseDialect) getHostIdOfCurrentConnection(conn d
 	return ""
 }
 
-func (r *RdsMultiAzClusterPgDatabaseDialect) GetHostName(conn driver.Conn) string {
-	hostNameQuery := "SELECT serverid FROM rds_tools.db_instance_identifier()"
+func (r *RdsMultiAzClusterPgDatabaseDialect) GetHostName(conn driver.Conn) (string, string) {
+	hostNameQuery := "SELECT serverid, endpoint FROM rds_tools.db_instance_identifier()"
 	row := utils.GetFirstRowFromQueryAsString(conn, hostNameQuery)
 
-	if len(row) > 0 {
-		return row[0]
+	if len(row) > 1 {
+		return row[0], utils.GetHostNameFromEndpoint(row[1])
+	} else if len(row) > 0 {
+		return row[0], ""
 	}
 
-	return ""
+	return "", ""
 }
 
 func (r *RdsMultiAzClusterPgDatabaseDialect) getWriterHostId(conn driver.Conn) string {
