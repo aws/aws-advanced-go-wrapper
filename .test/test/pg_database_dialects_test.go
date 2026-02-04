@@ -621,7 +621,8 @@ func TestAuroraRdsPgDatabaseDialect_GetHostName(t *testing.T) {
 	})
 	mockRows.EXPECT().Close().Return(nil)
 
-	assert.Equal(t, instanceId, testDatabaseDialect.GetHostName(conn))
+	id, _ := testDatabaseDialect.GetHostName(conn)
+	assert.Equal(t, instanceId, id)
 
 	// No Success
 	mockQueryer.EXPECT().
@@ -633,7 +634,8 @@ func TestAuroraRdsPgDatabaseDialect_GetHostName(t *testing.T) {
 	})
 	mockRows.EXPECT().Close().Return(nil)
 
-	assert.Equal(t, "", testDatabaseDialect.GetHostName(conn))
+	emptyId, _ := testDatabaseDialect.GetHostName(conn)
+	assert.Equal(t, "", emptyId)
 }
 
 func TestAuroraRdsPgDatabaseDialect_GetWriterHostName(t *testing.T) {
@@ -804,7 +806,7 @@ func TestRdsMultiAzDbClusterPgDialect_GetHostRole(t *testing.T) {
 
 func TestRdsMultiAzDbClusterPgDialect_GetHostName(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.RdsMultiAzClusterPgDatabaseDialect{}
-	hostIdQuery := "SELECT serverid FROM rds_tools.db_instance_identifier()"
+	hostIdQuery := "SELECT serverid, endpoint FROM rds_tools.db_instance_identifier()"
 	instanceId := "myinstance"
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -831,7 +833,8 @@ func TestRdsMultiAzDbClusterPgDialect_GetHostName(t *testing.T) {
 	})
 	mockRows.EXPECT().Close().Return(nil)
 
-	assert.Equal(t, instanceId, testDatabaseDialect.GetHostName(conn))
+	id, _ := testDatabaseDialect.GetHostName(conn)
+	assert.Equal(t, instanceId, id)
 
 	// No Success
 	mockQueryer.EXPECT().
@@ -843,7 +846,8 @@ func TestRdsMultiAzDbClusterPgDialect_GetHostName(t *testing.T) {
 	})
 	mockRows.EXPECT().Close().Return(nil)
 
-	assert.Equal(t, "", testDatabaseDialect.GetHostName(conn))
+	emptyId, _ := testDatabaseDialect.GetHostName(conn)
+	assert.Equal(t, "", emptyId)
 }
 
 func TestRdsMultiAzDbClusterPgDialect_GetWriterHostName(t *testing.T) {
