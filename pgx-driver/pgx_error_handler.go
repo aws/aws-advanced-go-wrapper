@@ -38,7 +38,6 @@ var NetworkErrors = []string{
 	"08",
 	"99",
 	"F0",
-	"XX",
 }
 
 var PgNetworkErrorMessages = []string{
