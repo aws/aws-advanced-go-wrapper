@@ -145,6 +145,9 @@ func (b *BlueGreenPlugin) Connect(
 					routing = matchingRoutes[0]
 					continue
 				}
+			} else {
+				b.endTime.Store(time.Now().Unix())
+				return b.regularOpenConnection(connectFunc, isInitialConnection)
 			}
 			routing = nil
 		}
