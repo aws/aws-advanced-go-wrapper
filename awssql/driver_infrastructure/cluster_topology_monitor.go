@@ -57,7 +57,7 @@ type ClusterTopologyMonitor interface {
 
 type ClusterTopologyMonitorImpl struct {
 	hostListProvider                        *MonitoringRdsHostListProvider
-	databaseDialect                         TopologyAwareDialect
+	topologyUtils                           TopologyUtils
 	clusterId                               string
 	isVerifiedWriterConn                    bool
 	highRefreshRateEndTimeInNanos           int64
@@ -87,7 +87,7 @@ type ClusterTopologyMonitorImpl struct {
 
 func NewClusterTopologyMonitorImpl(
 	hostListProvider *MonitoringRdsHostListProvider,
-	dialect TopologyAwareDialect,
+	topologyUtils TopologyUtils,
 	clusterId string,
 	highRefreshRateNano time.Duration,
 	refreshRateNano time.Duration,
@@ -98,7 +98,7 @@ func NewClusterTopologyMonitorImpl(
 	pluginService PluginService) *ClusterTopologyMonitorImpl {
 	return &ClusterTopologyMonitorImpl{
 		hostListProvider:               hostListProvider,
-		databaseDialect:                dialect,
+		topologyUtils:                  topologyUtils,
 		clusterId:                      clusterId,
 		monitoringProps:                props,
 		initialHostInfo:                initialHostInfo,
@@ -224,7 +224,7 @@ func (c *ClusterTopologyMonitorImpl) fetchTopologyAndUpdateCache(conn driver.Con
 }
 
 func (c *ClusterTopologyMonitorImpl) queryForTopology(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
-	return c.databaseDialect.GetTopology(conn, c.hostListProvider)
+	return c.topologyUtils.QueryForTopology(conn, c.initialHostInfo, c.clusterInstanceTemplate)
 }
 
 func (c *ClusterTopologyMonitorImpl) updateTopologyCache(hosts []*host_info_util.HostInfo) {
@@ -247,8 +247,8 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 		if c.monitoringConn.CompareAndSwap(emptyContainer, ConnectionContainer{conn}) {
 			slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.openedMonitoringConnection", c.initialHostInfo.GetHost()))
 
-			writerId, getWriterNameErr := c.databaseDialect.GetWriterHostName(conn)
-			if getWriterNameErr == nil && writerId != "" {
+			isWriterInstance, getWriterNameErr := c.topologyUtils.IsWriterInstance(conn)
+			if getWriterNameErr == nil && isWriterInstance {
 				c.isVerifiedWriterConn = true
 				writerVerifiedByThisRoutine = true
 
@@ -256,9 +256,10 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 					c.writerHostInfo.Store(c.initialHostInfo)
 					slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.writerMonitoringConnection", c.writerHostInfo.Load().GetHost()))
 				} else {
-					hostId, hostName := c.databaseDialect.GetHostName(c.loadConn(c.monitoringConn))
+
+					hostId, hostName := c.topologyUtils.GetInstanceId(conn)
 					if hostId != "" || hostName != "" {
-						c.writerHostInfo.Store(c.createHost(hostId, hostName, true, 0, time.Time{}))
+						c.writerHostInfo.Store(c.topologyUtils.CreateHost(hostId, hostName, true, 0, time.Time{}, c.initialHostInfo, c.clusterInstanceTemplate))
 						slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.writerMonitoringConnection", c.writerHostInfo.Load().GetHost()))
 					}
 				}
@@ -344,44 +345,6 @@ func (c *ClusterTopologyMonitorImpl) closeConnection(conn driver.Conn) {
 	if conn != nil && !c.pluginService.GetTargetDriverDialect().IsClosed(conn) {
 		_ = conn.Close()
 	}
-}
-
-func (c *ClusterTopologyMonitorImpl) createHost(hostId string, hostName string, isWriter bool, weight int, lastUpdateTime time.Time) *host_info_util.HostInfo {
-	if hostName == "" {
-		hostName = "?"
-	}
-
-	endpoint := c.getHostEndpoint(hostName)
-	port := c.clusterInstanceTemplate.Port
-	if port == host_info_util.HOST_NO_PORT {
-		if c.initialHostInfo.IsPortSpecified() {
-			port = c.initialHostInfo.Port
-		} else {
-			port = c.hostListProvider.databaseDialect.GetDefaultPort()
-		}
-	}
-
-	var role host_info_util.HostRole
-	if isWriter {
-		role = host_info_util.WRITER
-	} else {
-		role = host_info_util.READER
-	}
-
-	hostInfoBuilder := host_info_util.NewHostInfoBuilder()
-	hostInfo, err := hostInfoBuilder.
-		SetHost(endpoint).
-		SetHostId(hostId).
-		SetPort(port).
-		SetRole(role).
-		SetAvailability(host_info_util.AVAILABLE).
-		SetWeight(weight).
-		SetLastUpdateTime(lastUpdateTime).
-		Build()
-	if err == nil {
-		hostInfo.AddAlias(hostName)
-	}
-	return hostInfo
 }
 
 func (c *ClusterTopologyMonitorImpl) getHostEndpoint(hostName string) string {
@@ -553,21 +516,20 @@ func (h *HostMonitoringRoutine) run() {
 		}
 
 		if conn != nil {
-			writerId := ""
-			writerId, err = h.monitor.databaseDialect.GetWriterHostName(conn)
+			isWriter, err := h.monitor.topologyUtils.IsWriterInstance(conn)
 			if err != nil {
 				h.monitor.closeConnection(conn)
 				conn = nil
 			}
 
-			if writerId != "" {
+			if isWriter {
 				// This prevents closing connection in run cleanup.
 				if !h.monitor.hostRoutinesWriterConn.CompareAndSwap(emptyContainer, ConnectionContainer{conn}) {
 					// Writer connection is already set up.
 					h.monitor.closeConnection(conn)
 				} else {
 					// Writer connection is successfully set to writerConn
-					slog.Debug(error_util.GetMessage("HostMonitoringRoutine.detectedWriter", writerId))
+					slog.Debug(error_util.GetMessage("HostMonitoringRoutine.detectedWriter"))
 					// When hostRoutinesWriterConn and hostRoutinesWriterHostInfo are both set, the topology monitor may
 					// set ignoreNewTopologyRequestsEndTimeInNanos, in which case other routines will use the cached topology
 					// for the ignore duration, so we need to update the topology before setting hostRoutinesWriterHostInfo.

@@ -19,7 +19,6 @@ package driver_infrastructure
 import (
 	"database/sql/driver"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
@@ -28,6 +27,7 @@ type DatabaseDialect interface {
 	GetHostAliasQuery() string
 	GetServerVersionQuery() string
 	GetDialectUpdateCandidates() []string
+	GetIsReaderQuery() string
 	IsDialect(conn driver.Conn) bool
 	GetHostListProvider(props *utils.RWMap[string, string], hostListProviderService HostListProviderService, pluginService PluginService) HostListProvider
 	DoesStatementSetAutoCommit(statement string) (bool, bool)
@@ -42,12 +42,32 @@ type DatabaseDialect interface {
 	GetSetTransactionIsolationQuery(level TransactionIsolationLevel) (string, error)
 }
 
-type TopologyAwareDialect interface {
-	GetTopology(conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error)
-	GetHostRole(conn driver.Conn) host_info_util.HostRole
-	GetHostName(conn driver.Conn) (string, string)
-	GetWriterHostName(conn driver.Conn) (string, error)
+// TopologyDialect provides the SQL queries needed for topology operations.
+// This separates query definitions from query execution/parsing.
+type TopologyDialect interface {
 	DatabaseDialect
+	// GetTopologyQuery returns the SQL query to fetch cluster topology.
+	GetTopologyQuery() string
+
+	// GetInstanceIdQuery returns the SQL query to get the current instance's identifier.
+	GetInstanceIdQuery() string
+
+	// GetWriterIdQuery returns the SQL query to determine if connected to the writer.
+	GetWriterIdQuery() string
+}
+
+// MultiAzTopologyDialect extends TopologyDialect with Multi-AZ specific methods.
+type MultiAzTopologyDialect interface {
+	TopologyDialect
+	// GetWriterIdColumnName returns the column name for the writer ID in the result set.
+	GetWriterIdColumnName() string
+}
+
+// GlobalAuroraTopologyDialect extends TopologyDialect with Global Aurora specific methods.
+type GlobalAuroraTopologyDialect interface {
+	TopologyDialect
+	// GetRegionByInstanceIdQuery returns the SQL query to get the region for an instance.
+	GetRegionByInstanceIdQuery() string
 }
 
 type AuroraLimitlessDialect interface {

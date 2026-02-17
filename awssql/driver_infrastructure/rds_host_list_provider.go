@@ -35,7 +35,8 @@ import (
 
 func NewRdsHostListProvider(
 	hostListProviderService HostListProviderService,
-	databaseDialect TopologyAwareDialect,
+	databaseDialect TopologyDialect,
+	topologyUtils TopologyUtils,
 	properties *utils.RWMap[string, string],
 	queryForTopologyFunc func(conn driver.Conn) ([]*host_info_util.HostInfo, error),
 	clusterIdChangedFunc func(oldClusterId string)) *RdsHostListProvider {
@@ -47,11 +48,12 @@ func NewRdsHostListProvider(
 	}
 	if queryForTopologyFunc == nil {
 		queryForTopologyFunc = func(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
-			return r.databaseDialect.GetTopology(conn, r)
+			return r.topologyUtils.QueryForTopology(conn, r.initialHostInfo, r.clusterInstanceTemplate)
 		}
 	}
 	r.queryForTopologyFunc = queryForTopologyFunc
 	r.clusterIdChangedFunc = clusterIdChangedFunc
+	r.topologyUtils = topologyUtils
 	return r
 }
 
@@ -61,7 +63,8 @@ var TopologyCache = utils.NewCache[[]*host_info_util.HostInfo]()
 
 type RdsHostListProvider struct {
 	hostListProviderService HostListProviderService
-	databaseDialect         TopologyAwareDialect
+	databaseDialect         TopologyDialect
+	topologyUtils           TopologyUtils
 	properties              *utils.RWMap[string, string]
 	isInitialized           bool
 	// The following properties are initialized from the above in init().
@@ -165,11 +168,12 @@ func (r *RdsHostListProvider) GetClusterId() (string, error) {
 }
 
 func (r *RdsHostListProvider) GetHostRole(conn driver.Conn) host_info_util.HostRole {
-	return r.databaseDialect.GetHostRole(conn)
+	return r.topologyUtils.GetHostRole(conn)
 }
 
 func (r *RdsHostListProvider) IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error) {
-	instanceName, _ := r.databaseDialect.GetHostName(conn)
+	r.init()
+	_, instanceName := r.topologyUtils.GetInstanceId(conn)
 	if instanceName != "" {
 		topology, err := r.Refresh(conn)
 		forcedRefresh := false

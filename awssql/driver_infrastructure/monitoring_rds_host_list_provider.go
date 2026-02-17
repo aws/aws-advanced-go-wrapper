@@ -49,7 +49,8 @@ func MonitoringRdsHostListProviderClearCaches() {
 
 func NewMonitoringRdsHostListProvider(
 	hostListProviderService HostListProviderService,
-	databaseDialect TopologyAwareDialect,
+	databaseDialect TopologyDialect,
+	topologyUtils TopologyUtils,
 	properties *utils.RWMap[string, string],
 	pluginService PluginService) *MonitoringRdsHostListProvider {
 	clusterTopologyMonitorsMutex.Lock()
@@ -87,7 +88,7 @@ func NewMonitoringRdsHostListProvider(
 			TopologyCache.Put(m.clusterId, existingHosts, TOPOLOGY_CACHE_EXPIRATION_NANO)
 		}
 	}
-	m.RdsHostListProvider = NewRdsHostListProvider(hostListProviderService, databaseDialect, properties, queryForTopologyFunc, clusterIdChangedFunc)
+	m.RdsHostListProvider = NewRdsHostListProvider(hostListProviderService, databaseDialect, topologyUtils, properties, queryForTopologyFunc, clusterIdChangedFunc)
 	return m
 }
 
@@ -102,7 +103,7 @@ func (m *MonitoringRdsHostListProvider) getMonitor() ClusterTopologyMonitor {
 	computeFunc := func() ClusterTopologyMonitor {
 		monitor = NewClusterTopologyMonitorImpl(
 			m,
-			m.databaseDialect,
+			m.topologyUtils,
 			m.clusterId,
 			highRefreshRateNano,
 			m.refreshRateNanos,
@@ -128,6 +129,6 @@ func (m *MonitoringRdsHostListProvider) ForceRefreshHostListWithTimeout(shouldVe
 
 func (m *MonitoringRdsHostListProvider) StopMonitor() {
 	monitor := m.getMonitor()
-    monitor.Close()
+	monitor.Close()
 	clusterTopologyMonitors.Remove(m.clusterId)
 }
