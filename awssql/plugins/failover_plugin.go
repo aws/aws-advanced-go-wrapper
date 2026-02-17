@@ -260,13 +260,15 @@ func (p *FailoverPlugin) Execute(
 	methodName string,
 	executeFunc driver_infrastructure.ExecuteFunc,
 	_ ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
-
 	conn := p.pluginService.GetCurrentConnection()
 	if conn != nil &&
 		!p.canDirectExecute(methodName) &&
 		!p.closedExplicitly &&
 		p.pluginService.GetTargetDriverDialect().IsClosed(conn) {
-		p.pickNewConnection()
+		err := p.pickNewConnection()
+		if err != nil {
+			return nil, nil, false, err
+		}
 	}
 
 	if p.canDirectExecute(methodName) {
@@ -289,14 +291,14 @@ func (p *FailoverPlugin) Execute(
 	return wrappedReturnValue, wrappedReturnValue2, wrappedOk, wrappedErr
 }
 
-func (p *FailoverPlugin) pickNewConnection() {
+func (p *FailoverPlugin) pickNewConnection() error {
 	conn := p.pluginService.GetCurrentConnection()
 	if (p.pluginService.GetTargetDriverDialect().IsClosed(conn) && p.closedExplicitly) {
 		slog.Info(error_util.GetMessage("Failover.detectedError"))
-		return
+		return nil
 	}
 
-	p.Failover()
+	return p.Failover()
 }
 
 func (p *FailoverPlugin) DealWithError(err error) error {
