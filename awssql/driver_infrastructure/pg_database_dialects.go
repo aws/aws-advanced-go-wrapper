@@ -176,7 +176,7 @@ func (m *RdsPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 		hasExtensions[1] == false // If aurora_stat_utils is present then it should be treated as an Aurora cluster, not an RDS cluster.
 }
 
-func (m *RdsPgDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) []BlueGreenResult {
+func (m *RdsPgDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) []BlueGreenResult, error {
 	bgStatusQuery := "SELECT version, endpoint, port, role, status FROM rds_tools.show_topology('aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
 	return pgGetBlueGreenStatus(conn, bgStatusQuery)
 }
@@ -516,6 +516,6 @@ func (r *RdsMultiAzClusterPgDatabaseDialect) GetHostListProvider(
 	return r.getTopologyAwareHostListProvider(r, props, hostListProviderService, pluginService)
 }
 
-func pgGetBlueGreenStatus(conn driver.Conn, query string) []BlueGreenResult {
+func pgGetBlueGreenStatus(conn driver.Conn, query string) []BlueGreenResult, error {
 	return getBlueGreenStatus(conn, query, utils.PgConvertValToString)
 }
