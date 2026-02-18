@@ -310,8 +310,7 @@ func (b *BlueGreenStatusMonitor) CollectStatus() {
 			// If connection isn't closed but there's an exception then let's log it.
 
 			// For PG databases
-			if (err.GetMessage() != nil
-				&& err.GetMessage().Contains("An error occured while retrieving the blue/green fast switchover metadata")) {
+			if strings.Contains(err.Error(), "An error occured while retrieving the blue/green fast switchover metadata") {
 				b.currentPhase = driver_infrastructure.NOT_CREATED
 		  		return
 			}

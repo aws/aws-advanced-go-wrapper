@@ -56,7 +56,7 @@ type AuroraLimitlessDialect interface {
 }
 
 type BlueGreenDialect interface {
-	GetBlueGreenStatus(conn driver.Conn) []BlueGreenResult
+	GetBlueGreenStatus(conn driver.Conn) ([]BlueGreenResult, error)
 	IsBlueGreenStatusAvailable(conn driver.Conn) bool
 	DatabaseDialect
 }

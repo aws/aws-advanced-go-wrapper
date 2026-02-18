@@ -1107,7 +1107,7 @@ func TestAuroraMySQLDatabaseDialect_GetBlueGreenStatus(t *testing.T) {
 	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip)
 	mockRows.EXPECT().Close().Return(nil)
 
-	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+	results, _ := testDatabaseDialect.GetBlueGreenStatus(conn)
 
 	assert.Len(t, results, 2)
 
@@ -1146,7 +1146,7 @@ func TestAuroraMySQLDatabaseDialect_GetBlueGreenStatus_QueryError(t *testing.T) 
 		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
 		Return(nil, fmt.Errorf("table does not exist"))
 
-	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+	results, _ := testDatabaseDialect.GetBlueGreenStatus(conn)
 	assert.Nil(t, results)
 }
 
@@ -1157,7 +1157,7 @@ func TestAuroraMySQLDatabaseDialect_GetBlueGreenStatus_NoQueryerContext(t *testi
 
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 
-	results := testDatabaseDialect.GetBlueGreenStatus(mockConn)
+	results, _ := testDatabaseDialect.GetBlueGreenStatus(mockConn)
 	assert.Nil(t, results)
 }
 
@@ -1243,7 +1243,7 @@ func TestRdsMySQLDatabaseDialect_GetBlueGreenStatus(t *testing.T) {
 	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip)
 	mockRows.EXPECT().Close().Return(nil)
 
-	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+	results, _ := testDatabaseDialect.GetBlueGreenStatus(conn)
 
 	assert.Len(t, results, 1)
 	assert.Equal(t, "2.0", results[0].Version)
@@ -1280,7 +1280,7 @@ func TestRdsMySQLDatabaseDialect_GetBlueGreenStatus_EmptyResults(t *testing.T) {
 	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip) // No rows
 	mockRows.EXPECT().Close().Return(nil)
 
-	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+	results, _ := testDatabaseDialect.GetBlueGreenStatus(conn)
 	assert.Empty(t, results)
 }
 
@@ -1395,7 +1395,7 @@ func TestGetBlueGreenStatus_InvalidRowData(t *testing.T) {
 	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip)
 	mockRows.EXPECT().Close().Return(nil)
 
-	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+	results, _ := testDatabaseDialect.GetBlueGreenStatus(conn)
 
 	// Should only return the valid row, invalid row should be skipped
 	assert.Len(t, results, 1)
@@ -1438,7 +1438,7 @@ func TestGetBlueGreenStatus_InsufficientColumns(t *testing.T) {
 	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip)
 	mockRows.EXPECT().Close().Return(nil)
 
-	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+	results, _ := testDatabaseDialect.GetBlueGreenStatus(conn)
 
 	assert.Empty(t, results)
 }

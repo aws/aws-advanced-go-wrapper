@@ -192,7 +192,7 @@ func (m *RdsMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	return false
 }
 
-func (m *RdsMySQLDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) []BlueGreenResult {
+func (m *RdsMySQLDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) ([]BlueGreenResult, error) {
 	bgStatusQuery := "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
 	return mySqlGetBlueGreenStatus(conn, bgStatusQuery)
 }
@@ -361,7 +361,7 @@ func (m *AuroraMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider Host
 	return hosts, nil
 }
 
-func (m *AuroraMySQLDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) []BlueGreenResult, error {
+func (m *AuroraMySQLDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) ([]BlueGreenResult, error) {
 	bgStatusQuery := "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
 	return mySqlGetBlueGreenStatus(conn, bgStatusQuery)
 }
@@ -560,11 +560,11 @@ func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetHostListProvider(
 	return r.getTopologyAwareHostListProvider(r, props, hostListProviderService, pluginService)
 }
 
-func mySqlGetBlueGreenStatus(conn driver.Conn, query string) []BlueGreenResult, error {
+func mySqlGetBlueGreenStatus(conn driver.Conn, query string) ([]BlueGreenResult, error) {
 	return getBlueGreenStatus(conn, query, utils.MySqlConvertValToString)
 }
 
-func getBlueGreenStatus(conn driver.Conn, query string, convertFunc func(driver.Value) (string, bool)) []BlueGreenResult, error {
+func getBlueGreenStatus(conn driver.Conn, query string, convertFunc func(driver.Value) (string, bool)) ([]BlueGreenResult, error) {
 	queryerCtx, ok := conn.(driver.QueryerContext)
 	if !ok {
 		// Unable to query, conn does not implement QueryerContext.

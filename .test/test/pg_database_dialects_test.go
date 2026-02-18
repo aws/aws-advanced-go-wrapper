@@ -1275,7 +1275,7 @@ func TestAuroraPgDatabaseDialect_GetBlueGreenStatus(t *testing.T) {
 	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip)
 	mockRows.EXPECT().Close().Return(nil)
 
-	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+	results, _ := testDatabaseDialect.GetBlueGreenStatus(conn)
 
 	assert.Len(t, results, 2)
 
@@ -1315,7 +1315,7 @@ func TestAuroraPgDatabaseDialect_GetBlueGreenStatus_QueryError(t *testing.T) {
 		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
 		Return(nil, fmt.Errorf("function does not exist"))
 
-	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+	results, _ := testDatabaseDialect.GetBlueGreenStatus(conn)
 	assert.Nil(t, results)
 }
 
@@ -1326,7 +1326,7 @@ func TestAuroraPgDatabaseDialect_GetBlueGreenStatus_NoQueryerContext(t *testing.
 
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 
-	results := testDatabaseDialect.GetBlueGreenStatus(mockConn)
+	results, _ := testDatabaseDialect.GetBlueGreenStatus(mockConn)
 	assert.Nil(t, results)
 }
 
@@ -1414,7 +1414,7 @@ func TestRdsPgDatabaseDialect_GetBlueGreenStatus(t *testing.T) {
 	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip)
 	mockRows.EXPECT().Close().Return(nil)
 
-	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+	results, _ := testDatabaseDialect.GetBlueGreenStatus(conn)
 
 	assert.Len(t, results, 1)
 	assert.Equal(t, "2.0", results[0].Version)
@@ -1453,7 +1453,7 @@ func TestRdsPgDatabaseDialect_GetBlueGreenStatus_EmptyResults(t *testing.T) {
 	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip) // No rows
 	mockRows.EXPECT().Close().Return(nil)
 
-	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+	results, _ := testDatabaseDialect.GetBlueGreenStatus(conn)
 	assert.Empty(t, results)
 }
 
@@ -1546,7 +1546,7 @@ func TestPgGetBlueGreenStatus_InvalidRowData(t *testing.T) {
 	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip)
 	mockRows.EXPECT().Close().Return(nil)
 
-	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+	results, _ := testDatabaseDialect.GetBlueGreenStatus(conn)
 
 	assert.Len(t, results, 1)
 	assert.Equal(t, "valid-endpoint.amazonaws.com", results[0].Endpoint)
@@ -1589,7 +1589,7 @@ func TestPgGetBlueGreenStatus_InsufficientColumns(t *testing.T) {
 	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip)
 	mockRows.EXPECT().Close().Return(nil)
 
-	results := testDatabaseDialect.GetBlueGreenStatus(conn)
+	results, _ := testDatabaseDialect.GetBlueGreenStatus(conn)
 
 	assert.Empty(t, results)
 }
