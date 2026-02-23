@@ -17,16 +17,13 @@
 package driver_infrastructure
 
 import (
-	"context"
 	"database/sql/driver"
 	"fmt"
-	"log/slog"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
@@ -61,6 +58,10 @@ func (m *MySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 		return true
 	}
 	return false
+}
+
+func (m *MySQLDatabaseDialect) GetRowParser() RowParser {
+	return MySQLRowParser
 }
 
 func (m *MySQLDatabaseDialect) GetHostListProvider(
@@ -194,14 +195,13 @@ func (m *RdsMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	return false
 }
 
-func (m *RdsMySQLDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) []BlueGreenResult {
-	bgStatusQuery := "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
-	return mySqlGetBlueGreenStatus(conn, bgStatusQuery)
+func (m *RdsMySQLDatabaseDialect) GetBlueGreenStatusQuery() string {
+	return "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
 }
 
 func (m *RdsMySQLDatabaseDialect) IsBlueGreenStatusAvailable(conn driver.Conn) bool {
 	topologyTableExistQuery := "SELECT 1 AS tmp FROM information_schema.tables WHERE table_schema = 'mysql' AND table_name = 'rds_topology'"
-	return utils.GetFirstRowFromQuery(conn, topologyTableExistQuery) != nil
+	return utils.CheckExistenceQueries(conn, topologyTableExistQuery)
 }
 
 type AuroraMySQLDatabaseDialect struct {
@@ -240,18 +240,16 @@ func (m *AuroraMySQLDatabaseDialect) GetHostListProvider(
 	props *utils.RWMap[string, string],
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
-	topologyUtils := NewAuroraTopologyUtils(m, MySQLRowParser)
-	return getMySQLTopologyAwareHostListProvider(m, topologyUtils, props, hostListProviderService, pluginService)
+	return NewRdsHostListProvider(hostListProviderService, m, NewAuroraTopologyUtils(m), props, pluginService)
 }
 
-func (m *AuroraMySQLDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) []BlueGreenResult {
-	bgStatusQuery := "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
-	return mySqlGetBlueGreenStatus(conn, bgStatusQuery)
+func (m *AuroraMySQLDatabaseDialect) GetBlueGreenStatusQuery() string {
+	return "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
 }
 
 func (m *AuroraMySQLDatabaseDialect) IsBlueGreenStatusAvailable(conn driver.Conn) bool {
 	topologyTableExistQuery := "SELECT 1 AS tmp FROM information_schema.tables WHERE table_schema = 'mysql' AND table_name = 'rds_topology'"
-	return utils.GetFirstRowFromQuery(conn, topologyTableExistQuery) != nil
+	return utils.CheckExistenceQueries(conn, topologyTableExistQuery)
 }
 
 type RdsMultiAzClusterMySQLDatabaseDialect struct {
@@ -315,71 +313,5 @@ func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetHostListProvider(
 	props *utils.RWMap[string, string],
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
-	topologyUtils := NewMultiAzTopologyUtils(r, MySQLRowParser)
-	return getMySQLTopologyAwareHostListProvider(r, topologyUtils, props, hostListProviderService, pluginService)
-}
-
-func mySqlGetBlueGreenStatus(conn driver.Conn, query string) []BlueGreenResult {
-	return getBlueGreenStatus(conn, query, utils.MySqlConvertValToString)
-}
-
-func getBlueGreenStatus(conn driver.Conn, query string, convertFunc func(driver.Value) (string, bool)) []BlueGreenResult {
-	queryerCtx, ok := conn.(driver.QueryerContext)
-	if !ok {
-		// Unable to query, conn does not implement QueryerContext.
-		slog.Warn(error_util.GetMessage("Conn.doesNotImplementRequiredInterface", "driver.QueryerContext"))
-		return nil
-	}
-
-	rows, err := queryerCtx.QueryContext(context.Background(), query, nil)
-	if err != nil {
-		// Query failed.
-		slog.Warn(error_util.GetMessage("BlueGreenDeployment.errorQueryingStatusTable", err))
-		return nil
-	}
-	if rows != nil {
-		defer rows.Close()
-	}
-
-	var statuses []BlueGreenResult
-	row := make([]driver.Value, len(rows.Columns()))
-	for rows.Next(row) == nil {
-		if len(row) > 4 {
-			version, ok1 := convertFunc(row[0])
-			endpoint, ok2 := convertFunc(row[1])
-			portAsFloat, ok3 := row[2].(int64)
-			role, ok4 := convertFunc(row[3])
-			status, ok5 := convertFunc(row[4])
-
-			if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 {
-				continue
-			}
-			statuses = append(statuses, BlueGreenResult{
-				Version:  version,
-				Endpoint: endpoint,
-				Port:     int(portAsFloat),
-				Role:     role,
-				Status:   status,
-			})
-		}
-	}
-
-	return statuses
-}
-
-func getMySQLTopologyAwareHostListProvider(
-	dialect TopologyDialect,
-	topologyUtil TopologyUtils,
-	props *utils.RWMap[string, string],
-	hostListProviderService HostListProviderService,
-	pluginService PluginService) HostListProvider {
-	pluginsProp := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PLUGINS)
-
-	if strings.Contains(pluginsProp, "failover") {
-		slog.Debug(error_util.GetMessage("DatabaseDialect.usingMonitoringHostListProvider"))
-		return NewMonitoringRdsHostListProvider(hostListProviderService, dialect, topologyUtil, props, pluginService)
-	}
-
-	slog.Debug(error_util.GetMessage("DatabaseDialect.usingRdsHostListProvider"))
-	return NewRdsHostListProvider(hostListProviderService, dialect, topologyUtil, props, nil, nil)
+	return NewRdsHostListProvider(hostListProviderService, r, NewMultiAzTopologyUtils(r), props, pluginService)
 }

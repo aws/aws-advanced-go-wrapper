@@ -29,6 +29,7 @@ type DatabaseDialect interface {
 	GetDialectUpdateCandidates() []string
 	GetIsReaderQuery() string
 	IsDialect(conn driver.Conn) bool
+	GetRowParser() RowParser
 	GetHostListProvider(props *utils.RWMap[string, string], hostListProviderService HostListProviderService, pluginService PluginService) HostListProvider
 	DoesStatementSetAutoCommit(statement string) (bool, bool)
 	DoesStatementSetReadOnly(statement string) (bool, bool)
@@ -76,7 +77,7 @@ type AuroraLimitlessDialect interface {
 }
 
 type BlueGreenDialect interface {
-	GetBlueGreenStatus(conn driver.Conn) []BlueGreenResult
+	GetBlueGreenStatusQuery() string
 	IsBlueGreenStatusAvailable(conn driver.Conn) bool
 	DatabaseDialect
 }

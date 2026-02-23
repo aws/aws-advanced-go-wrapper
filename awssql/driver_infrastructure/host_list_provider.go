@@ -36,6 +36,16 @@ type HostListProvider interface {
 	StopMonitor()
 }
 
+type StaticHostListProvider interface {
+	HostListProvider
+	IsStaticHostListProvider() bool
+}
+
+type DynamicHostListProvider interface {
+	HostListProvider
+	IsDynamicHostListProvider() bool
+}
+
 type HostListProviderSupplier func(
 	props *utils.RWMap[string, string],
 	hostListProviderService HostListProviderService,

@@ -17,6 +17,7 @@
 package bg
 
 import (
+	"context"
 	"database/sql/driver"
 	"fmt"
 	"log/slog"
@@ -109,13 +110,13 @@ func (b *BlueGreenStatusMonitor) runMonitoringLoop() {
 	defer func() {
 		b.CloseConnection()
 		if b.hostListProvider != nil {
-			b.hostListProvider.StopMonitor();
+			b.hostListProvider.StopMonitor()
 			canReleaseResources, ok := b.hostListProvider.(driver_infrastructure.CanReleaseResources)
 			if ok {
 				canReleaseResources.ReleaseResources()
 			}
 		}
-		b.hostListProvider = nil;
+		b.hostListProvider = nil
 		slog.Debug(error_util.GetMessage("BlueGreenDeployment.monitoringLoopCompleted", b.role))
 		b.wg.Done()
 	}()
@@ -176,6 +177,52 @@ func (b *BlueGreenStatusMonitor) Delay() {
 	for b.GetIntervalRate() == currentBgIntervalRate && time.Now().Before(endTime) && !b.stop.Load() && b.panicMode.Load() == currentPanic {
 		time.Sleep(time.Duration(minDelayMs) * time.Millisecond)
 	}
+}
+
+func (b *BlueGreenStatusMonitor) getBlueGreenStatus(conn driver.Conn) []driver_infrastructure.BlueGreenResult {
+	query := b.blueGreenDialect.GetBlueGreenStatusQuery()
+	parser := b.blueGreenDialect.GetRowParser()
+	queryerCtx, ok := conn.(driver.QueryerContext)
+	if !ok {
+		// Unable to query, conn does not implement QueryerContext.
+		slog.Warn(error_util.GetMessage("Conn.doesNotImplementRequiredInterface", "driver.QueryerContext"))
+		return nil
+	}
+
+	rows, err := queryerCtx.QueryContext(context.Background(), query, nil)
+	if err != nil {
+		// Query failed.
+		slog.Warn(error_util.GetMessage("BlueGreenDeployment.errorQueryingStatusTable", err))
+		return nil
+	}
+	if rows != nil {
+		defer rows.Close()
+	}
+
+	var statuses []driver_infrastructure.BlueGreenResult
+	row := make([]driver.Value, len(rows.Columns()))
+	for rows.Next(row) == nil {
+		if len(row) > 4 {
+			version, ok1 := parser.ParseString(row[0])
+			endpoint, ok2 := parser.ParseString(row[1])
+			portAsFloat, ok3 := parser.ParseInt64(row[2])
+			role, ok4 := parser.ParseString(row[3])
+			status, ok5 := parser.ParseString(row[4])
+
+			if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 {
+				continue
+			}
+			statuses = append(statuses, driver_infrastructure.BlueGreenResult{
+				Version:  version,
+				Endpoint: endpoint,
+				Port:     int(portAsFloat),
+				Role:     role,
+				Status:   status,
+			})
+		}
+	}
+
+	return statuses
 }
 
 func (b *BlueGreenStatusMonitor) SetIntervalRate(intervalRate driver_infrastructure.BlueGreenIntervalRate) {
@@ -302,7 +349,7 @@ func (b *BlueGreenStatusMonitor) CollectStatus() {
 		return
 	}
 
-	results := b.blueGreenDialect.GetBlueGreenStatus(conn)
+	results := b.getBlueGreenStatus(conn)
 
 	statusEntries := make([]StatusInfo, 0, len(results))
 	for _, result := range results {

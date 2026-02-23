@@ -173,7 +173,7 @@
   "HostMonitoringConnectionPlugin.monitoringDeactivated": "Monitoring deactivated for method %v.",
   "HostMonitoringConnectionPlugin.unableToIdentifyConnection": "Unable to identify the given connection %v : %v. Please ensure the correct host list provider is specified.",
   "HostMonitoringConnectionPlugin.unavailableHost": "Host '%v' is unavailable.",
-  "HostMonitoringRoutine.detectedWriter": "Writer detected by host monitoring routine: '%s'.",
+  "HostMonitoringRoutine.detectedWriter": "Writer detected by host monitoring routine.",
   "HostMonitoringRoutine.routineCompleted": "Host monitoring routine completed in %v.",
   "HostMonitoringRoutine.writerHostChanged": "Writer host changed from '%s' to host '%s'.",
   "HostSelector.invalidHostWeightPairs": "The provided host weight pairs have not been configured correctly. Please ensure the provided host weight pairs is a comma separated list of pairs, each pair in the format of <host>:<weight>. Weight values must be an integer greater than or equal to the default weight value of 1.",

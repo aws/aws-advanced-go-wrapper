@@ -19,13 +19,11 @@ package driver_infrastructure
 import (
 	"database/sql/driver"
 	"fmt"
-	"log/slog"
 	"regexp"
 	"strings"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_info"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
@@ -53,9 +51,11 @@ func (m *PgDatabaseDialect) GetIsReaderQuery() string {
 }
 
 func (p *PgDatabaseDialect) IsDialect(conn driver.Conn) bool {
-	row := utils.GetFirstRowFromQuery(conn, "SELECT 1 FROM pg_catalog.pg_proc LIMIT 1")
-	// If the pg_proc table exists then it's a PostgreSQL cluster.
-	return row != nil
+	return utils.CheckExistenceQueries(conn, "SELECT 1 FROM pg_catalog.pg_proc LIMIT 1")
+}
+
+func (p *PgDatabaseDialect) GetRowParser() RowParser {
+	return PgRowParser
 }
 
 func (p *PgDatabaseDialect) GetHostListProvider(
@@ -177,14 +177,13 @@ func (m *RdsPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 		hasExtensions[1] == false // If aurora_stat_utils is present then it should be treated as an Aurora cluster, not an RDS cluster.
 }
 
-func (m *RdsPgDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) []BlueGreenResult {
-	bgStatusQuery := "SELECT version, endpoint, port, role, status FROM rds_tools.show_topology('aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
-	return pgGetBlueGreenStatus(conn, bgStatusQuery)
+func (m *RdsPgDatabaseDialect) GetBlueGreenStatus() string {
+	return "SELECT version, endpoint, port, role, status FROM rds_tools.show_topology('aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
 }
 
 func (m *RdsPgDatabaseDialect) IsBlueGreenStatusAvailable(conn driver.Conn) bool {
 	topologyTableExistQuery := "SELECT 'rds_tools.show_topology'::regproc"
-	return utils.GetFirstRowFromQuery(conn, topologyTableExistQuery) != nil
+	return utils.CheckExistenceQueries(conn, topologyTableExistQuery)
 }
 
 type AuroraPgDatabaseDialect struct {
@@ -229,25 +228,36 @@ func (m *AuroraPgDatabaseDialect) GetHostListProvider(
 	props *utils.RWMap[string, string],
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
-	topologyUtils := NewAuroraTopologyUtils(m, PgRowParser)
-	return getPgTopologyAwareHostListProvider(m, topologyUtils, props, hostListProviderService, pluginService)
+	return NewRdsHostListProvider(hostListProviderService, m, NewAuroraTopologyUtils(m), props, pluginService)
 }
 
 func (m *AuroraPgDatabaseDialect) GetLimitlessRouterEndpointQuery() string {
 	return "select router_endpoint, load from pg_catalog.aurora_limitless_router_endpoints()"
 }
 
-func (m *AuroraPgDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) []BlueGreenResult {
-	bgStatusQuery := "SELECT version, endpoint, port, role, status FROM pg_catalog.get_blue_green_fast_switchover_metadata(" +
+func (m *AuroraPgDatabaseDialect) GetBlueGreenStatusQuery() string {
+	return "SELECT version, endpoint, port, role, status FROM pg_catalog.get_blue_green_fast_switchover_metadata(" +
 		"'aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
-	return pgGetBlueGreenStatus(conn, bgStatusQuery)
 }
 
 func (m *AuroraPgDatabaseDialect) IsBlueGreenStatusAvailable(conn driver.Conn) bool {
 	topologyTableExistQuery := "SELECT 'pg_catalog.get_blue_green_fast_switchover_metadata'::regproc"
-	return utils.GetFirstRowFromQuery(conn, topologyTableExistQuery) != nil
+	return utils.CheckExistenceQueries(conn, topologyTableExistQuery)
 }
 
+// type GlobalAuroraPgDatabaseDialect struct {
+// 	AuroraPgDatabaseDialect
+// }
+
+// func (g *GlobalAuroraPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
+
+// }
+
+// func (g *GlobalAuroraPgDatabaseDialect) GetDialectUpdateCandidates() []string {
+// 	return []string{}
+// }
+
+// func (g* GlobalAuroraPgDatabaseDialect)
 type RdsMultiAzClusterPgDatabaseDialect struct {
 	PgDatabaseDialect
 }
@@ -291,30 +301,9 @@ func (r *RdsMultiAzClusterPgDatabaseDialect) GetHostListProvider(
 	props *utils.RWMap[string, string],
 	hostListProviderService HostListProviderService,
 	pluginService PluginService) HostListProvider {
-	return getPgTopologyAwareHostListProvider(r, NewMultiAzTopologyUtils(r, PgRowParser), props, hostListProviderService, pluginService)
+	return NewRdsHostListProvider(hostListProviderService, r, NewMultiAzTopologyUtils(r), props, pluginService)
 }
 
 func (r *RdsMultiAzClusterPgDatabaseDialect) GetWriterIdColumnName() string {
 	return "multi_az_db_cluster_source_dbi_resource_id"
-}
-
-func pgGetBlueGreenStatus(conn driver.Conn, query string) []BlueGreenResult {
-	return getBlueGreenStatus(conn, query, utils.PgConvertValToString)
-}
-
-func getPgTopologyAwareHostListProvider(
-	dialect TopologyDialect,
-	topologyUtil TopologyUtils,
-	props *utils.RWMap[string, string],
-	hostListProviderService HostListProviderService,
-	pluginService PluginService) HostListProvider {
-	pluginsProp := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PLUGINS)
-
-	if strings.Contains(pluginsProp, "failover") {
-		slog.Debug(error_util.GetMessage("DatabaseDialect.usingMonitoringHostListProvider"))
-		return NewMonitoringRdsHostListProvider(hostListProviderService, dialect, topologyUtil, props, pluginService)
-	}
-
-	slog.Debug(error_util.GetMessage("DatabaseDialect.usingRdsHostListProvider"))
-	return NewRdsHostListProvider(hostListProviderService, dialect, topologyUtil, props, nil, nil)
 }
