@@ -56,7 +56,7 @@ type ClusterTopologyMonitor interface {
 }
 
 type ClusterTopologyMonitorImpl struct {
-	hostListProvider                        *MonitoringRdsHostListProvider
+	hostListProvider                        *RdsHostListProvider
 	topologyUtils                           TopologyUtils
 	clusterId                               string
 	isVerifiedWriterConn                    bool
@@ -86,7 +86,7 @@ type ClusterTopologyMonitorImpl struct {
 }
 
 func NewClusterTopologyMonitorImpl(
-	hostListProvider *MonitoringRdsHostListProvider,
+	hostListProvider *RdsHostListProvider,
 	topologyUtils TopologyUtils,
 	clusterId string,
 	highRefreshRateNano time.Duration,
