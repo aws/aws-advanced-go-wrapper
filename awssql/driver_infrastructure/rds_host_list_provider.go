@@ -49,7 +49,7 @@ var TopologyCache = utils.NewCache[[]*host_info_util.HostInfo]()
 
 type RdsHostListProvider struct {
 	hostListProviderService HostListProviderService
-	databaseDialect         TopologyDialect
+	servicesContainer       ServicesContainer
 	topologyUtils           TopologyUtils
 	properties              *utils.RWMap[string, string]
 	isInitialized           bool
@@ -68,10 +68,9 @@ type RdsHostListProvider struct {
 
 func NewRdsHostListProvider(
 	hostListProviderService HostListProviderService,
-	databaseDialect TopologyDialect,
 	topologyUtils TopologyUtils,
 	properties *utils.RWMap[string, string],
-	pluginService PluginService,
+	servicesContainer ServicesContainer,
 ) *RdsHostListProvider {
 	// Initialize monitor cache if needed
 	clusterTopologyMonitorsMutex.Lock()
@@ -87,10 +86,10 @@ func NewRdsHostListProvider(
 
 	return &RdsHostListProvider{
 		hostListProviderService:       hostListProviderService,
-		databaseDialect:               databaseDialect,
 		topologyUtils:                 topologyUtils,
 		properties:                    properties,
-		pluginService:                 pluginService,
+		servicesContainer:             servicesContainer,
+		pluginService:                 servicesContainer.GetPluginService(),
 		defaultTopologyQueryTimeoutMs: DEFAULT_TOPOLOGY_QUERY_TIMEOUT_MS,
 		isInitialized:                 false,
 	}

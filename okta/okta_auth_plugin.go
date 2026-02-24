@@ -42,12 +42,12 @@ func init() {
 type OktaAuthPluginFactory struct{}
 
 func (o OktaAuthPluginFactory) GetInstance(
-	pluginService driver_infrastructure.PluginService,
+	servicesContainer driver_infrastructure.ServicesContainer,
 	_ *utils.RWMap[string, string],
 ) (driver_infrastructure.ConnectionPlugin, error) {
-	providerFactory := NewOktaCredentialsProviderFactory(auth_helpers.GetBasicHttpClient, auth_helpers.NewAwsStsClient, pluginService)
+	providerFactory := NewOktaCredentialsProviderFactory(auth_helpers.GetBasicHttpClient, auth_helpers.NewAwsStsClient, servicesContainer.GetPluginService())
 
-	return NewOktaAuthPlugin(pluginService, providerFactory, &auth_helpers.RegularIamTokenUtility{})
+	return NewOktaAuthPlugin(servicesContainer.GetPluginService(), providerFactory, &auth_helpers.RegularIamTokenUtility{})
 }
 
 func (o OktaAuthPluginFactory) ClearCaches() {

@@ -18,8 +18,6 @@ package driver_infrastructure
 
 import (
 	"database/sql/driver"
-
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 type DatabaseDialect interface {
@@ -30,7 +28,7 @@ type DatabaseDialect interface {
 	GetIsReaderQuery() string
 	IsDialect(conn driver.Conn) bool
 	GetRowParser() RowParser
-	GetHostListProvider(props *utils.RWMap[string, string], hostListProviderService HostListProviderService, pluginService PluginService) HostListProvider
+	GetHostListProviderSupplier() HostListProviderSupplier
 	DoesStatementSetAutoCommit(statement string) (bool, bool)
 	DoesStatementSetReadOnly(statement string) (bool, bool)
 	DoesStatementSetCatalog(statement string) (string, bool)

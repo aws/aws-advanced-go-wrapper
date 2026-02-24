@@ -32,9 +32,9 @@ import (
 
 type ReadWriteSplittingPluginFactory struct{}
 
-func (factory ReadWriteSplittingPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
+func (factory ReadWriteSplittingPluginFactory) GetInstance(servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewReadWriteSplittingPlugin(pluginService, props), nil
+	return NewReadWriteSplittingPlugin(servicesContainer.GetPluginService(), props), nil
 }
 
 func (factory ReadWriteSplittingPluginFactory) ClearCaches() {

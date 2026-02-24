@@ -44,10 +44,10 @@ var TokenCache = utils.NewCache[string]()
 type FederatedAuthPluginFactory struct{}
 
 func (f FederatedAuthPluginFactory) GetInstance(
-	pluginService driver_infrastructure.PluginService,
+	servicesContainer driver_infrastructure.ServicesContainer,
 	_ *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-	providerFactory := NewAdfsCredentialsProviderFactory(auth_helpers.GetBasicHttpClient, auth_helpers.NewAwsStsClient, pluginService)
-	return NewFederatedAuthPlugin(pluginService, providerFactory, &auth_helpers.RegularIamTokenUtility{})
+	providerFactory := NewAdfsCredentialsProviderFactory(auth_helpers.GetBasicHttpClient, auth_helpers.NewAwsStsClient, servicesContainer.GetPluginService())
+	return NewFederatedAuthPlugin(servicesContainer.GetPluginService(), providerFactory, &auth_helpers.RegularIamTokenUtility{})
 }
 
 func (f FederatedAuthPluginFactory) ClearCaches() {

@@ -32,9 +32,9 @@ import (
 type LimitlessPluginFactory struct {
 }
 
-func (factory LimitlessPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
+func (factory LimitlessPluginFactory) GetInstance(servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewLimitlessPlugin(pluginService, props)
+	return NewLimitlessPlugin(servicesContainer, props)
 }
 
 func (factory LimitlessPluginFactory) ClearCaches() {}
@@ -50,7 +50,7 @@ type LimitlessPlugin struct {
 	routerService LimitlessRouterService
 }
 
-func NewLimitlessPlugin(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string, string]) (*LimitlessPlugin, error) {
+func NewLimitlessPlugin(servicesContainer driver_infrastructure.ServicesContainer, props *utils.RWMap[string, string]) (*LimitlessPlugin, error) {
 	validateShardGroupUrl := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.LIMITLESS_USE_SHARD_GROUP_URL)
 	if validateShardGroupUrl {
 		host := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.HOST)
@@ -61,7 +61,7 @@ func NewLimitlessPlugin(pluginService driver_infrastructure.PluginService, props
 	}
 
 	return &LimitlessPlugin{
-		pluginService: pluginService,
+		pluginService: servicesContainer.GetPluginService(),
 		props:         props,
 	}, nil
 }

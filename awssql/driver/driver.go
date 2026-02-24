@@ -32,6 +32,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/read_write_splitting"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/services"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 )
@@ -68,32 +69,41 @@ func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 	slog.Debug(error_util.GetMessage("AwsWrapper.initializingDatabaseHandle", property_util.MaskProperties(props)))
 
 	defaultConnProvider := driver_infrastructure.NewDriverConnectionProvider(d.UnderlyingDriver)
-	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{DefaultProvider: defaultConnProvider}
 
 	telemetryFactory, err := telemetry.NewDefaultTelemetryFactory(props)
 	if err != nil {
 		return nil, err
 	}
-	pluginManager := plugin_helpers.NewPluginManagerImpl(d.UnderlyingDriver, props, connectionProviderManager, telemetryFactory)
-	pluginService, err := plugin_helpers.NewPluginServiceImpl(pluginManager, d.DriverDialect, props, dsn)
+
+	// Create service factory with component factories
+	serviceFactory := services.NewServiceFactory(
+		plugin_helpers.NewPluginManagerImpl,
+		plugin_helpers.NewPluginServiceImpl,
+		&ConnectionPluginChainBuilder{},
+	)
+
+	// Create fully-wired container using the factory
+	coreServices := services.GetCoreServiceContainer()
+	container, err := serviceFactory.CreateStandardContainer(
+		d.UnderlyingDriver,
+		&services.StandardContainerConfig{
+			Storage:             coreServices.Storage,
+			Monitor:             coreServices.Monitor,
+			Events:              coreServices.Events,
+			DefaultConnProvider: defaultConnProvider,
+			TelemetryFactory:    telemetryFactory,
+			OriginalURL:         dsn,
+			DriverDialect:       d.DriverDialect,
+			Props:               props,
+			PluginFactoryByCode: pluginFactoryByCode,
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	pluginChainBuilder := ConnectionPluginChainBuilder{}
-	currentPlugins, err := pluginChainBuilder.GetPlugins(pluginService, pluginManager, props, pluginFactoryByCode)
-	if err != nil {
-		return nil, err
-	}
-
-	err = pluginManager.Init(pluginService, currentPlugins)
-	if err != nil {
-		return nil, err
-	}
-
-	hostListProviderService := driver_infrastructure.HostListProviderService(pluginService)
-	provider := hostListProviderService.CreateHostListProvider(props)
-	hostListProviderService.SetHostListProvider(provider)
+	pluginManager := container.GetPluginManager()
+	pluginService := container.GetPluginService()
 
 	telemetryCtx, ctx := pluginManager.GetTelemetryFactory().OpenTelemetryContext(telemetry.TELEMETRY_OPEN_CONNECTION, telemetry.TOP_LEVEL, nil)
 	pluginManager.SetTelemetryContext(ctx)
@@ -101,16 +111,6 @@ func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 		telemetryCtx.CloseContext()
 		pluginManager.SetTelemetryContext(context.TODO())
 	}()
-
-	err = pluginManager.InitHostProvider(props, hostListProviderService)
-	if err != nil {
-		return nil, err
-	}
-
-	refreshErr := pluginService.RefreshHostList(nil)
-	if refreshErr != nil {
-		return nil, refreshErr
-	}
 
 	dbEngine, dbEngineErr := GetDatabaseEngine(props)
 	if dbEngineErr != nil {
@@ -134,7 +134,7 @@ func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 			return nil, err
 		}
 
-		refreshErr = pluginService.RefreshHostList(conn)
+		refreshErr := pluginService.RefreshHostList(conn)
 		if refreshErr != nil {
 			return nil, refreshErr
 		}

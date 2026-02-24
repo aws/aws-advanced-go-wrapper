@@ -42,9 +42,9 @@ func init() {
 
 type IamAuthPluginFactory struct{}
 
-func (factory IamAuthPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
+func (factory IamAuthPluginFactory) GetInstance(servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewIamAuthPlugin(pluginService, &auth_helpers.RegularIamTokenUtility{}, props)
+	return NewIamAuthPlugin(servicesContainer.GetPluginService(), &auth_helpers.RegularIamTokenUtility{}, props)
 }
 
 func (factory IamAuthPluginFactory) ClearCaches() {
