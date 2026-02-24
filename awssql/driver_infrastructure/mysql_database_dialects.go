@@ -64,11 +64,14 @@ func (m *MySQLDatabaseDialect) GetRowParser() RowParser {
 	return MySQLRowParser
 }
 
-func (m *MySQLDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string, string],
-	hostListProviderService HostListProviderService,
-	_ PluginService) HostListProvider {
-	return NewDsnHostListProvider(props, hostListProviderService)
+func (m *MySQLDatabaseDialect) GetHostListProviderSupplier() HostListProviderSupplier {
+	return func(
+		props *utils.RWMap[string, string],
+		initialDsn string,
+		servicesContainer ServicesContainer,
+	) HostListProvider {
+		return NewDsnHostListProvider(props, servicesContainer.GetHostListProviderService())
+	}
 }
 
 func (m *MySQLDatabaseDialect) GetSetAutoCommitQuery(autoCommit bool) (string, error) {
@@ -236,13 +239,15 @@ func (m *AuroraMySQLDatabaseDialect) GetWriterIdQuery() string {
 		"WHERE SESSION_ID = 'MASTER_SESSION_ID' AND SERVER_ID = @@aurora_server_id"
 }
 
-func (m *AuroraMySQLDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string, string],
-	hostListProviderService HostListProviderService,
-	pluginService PluginService) HostListProvider {
-	return NewRdsHostListProvider(hostListProviderService, m, NewAuroraTopologyUtils(m), props, pluginService)
+func (m *AuroraMySQLDatabaseDialect) GetHostListProviderSupplier() HostListProviderSupplier {
+	return func(
+		props *utils.RWMap[string, string],
+		initialDsn string,
+		servicesContainer ServicesContainer,
+	) HostListProvider {
+		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewAuroraTopologyUtils(m), props, servicesContainer)
+	}
 }
-
 func (m *AuroraMySQLDatabaseDialect) GetBlueGreenStatusQuery() string {
 	return "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
 }
@@ -309,9 +314,12 @@ func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetWriterIdColumnName() string {
 	return "Source_Server_Id"
 }
 
-func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string, string],
-	hostListProviderService HostListProviderService,
-	pluginService PluginService) HostListProvider {
-	return NewRdsHostListProvider(hostListProviderService, r, NewMultiAzTopologyUtils(r), props, pluginService)
+func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetHostListProviderSupplier() HostListProviderSupplier {
+	return func(
+		props *utils.RWMap[string, string],
+		initialDsn string,
+		servicesContainer ServicesContainer,
+	) HostListProvider {
+		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewAuroraTopologyUtils(r), props, servicesContainer)
+	}
 }

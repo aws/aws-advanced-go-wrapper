@@ -100,7 +100,7 @@ type PluginServiceProvider func(
 	dsn string) (PluginService, error)
 
 type PluginManager interface {
-	Init(pluginService PluginService, plugins []ConnectionPlugin) error
+	Init(plugins []ConnectionPlugin) error
 	InitHostProvider(props *utils.RWMap[string, string], hostListProviderService HostListProviderService) error
 	Connect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string], isInitialConnection bool, pluginToSkip ConnectionPlugin) (driver.Conn, error)
 	ForceConnect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string], isInitialConnection bool) (driver.Conn, error)

@@ -36,8 +36,8 @@ func NewDeveloperConnectionPluginFactory() driver_infrastructure.ConnectionPlugi
 }
 
 func (d *DeveloperConnectionPluginFactory) GetInstance(
-	pluginService driver_infrastructure.PluginService, props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewDeveloperConnectionPlugin(pluginService, props), nil
+	servicesContainer driver_infrastructure.ServicesContainer, props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
+	return NewDeveloperConnectionPlugin(servicesContainer.GetPluginService(), props), nil
 }
 
 func (d *DeveloperConnectionPluginFactory) ClearCaches() {

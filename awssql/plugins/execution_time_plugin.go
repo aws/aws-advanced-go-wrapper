@@ -33,10 +33,10 @@ func NewExecutionTimePluginFactory() driver_infrastructure.ConnectionPluginFacto
 	return ExecutionTimePluginFactory{}
 }
 
-func (factory ExecutionTimePluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
+func (factory ExecutionTimePluginFactory) GetInstance(servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string],
 ) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewExecutionTimePlugin(pluginService, props)
+	return NewExecutionTimePlugin(servicesContainer.GetPluginService(), props)
 }
 
 func (factory ExecutionTimePluginFactory) ClearCaches() {}

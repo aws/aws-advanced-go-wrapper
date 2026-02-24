@@ -46,9 +46,9 @@ type DynamicHostListProvider interface {
 	IsDynamicHostListProvider() bool
 }
 
+// HostListProviderSupplier is a factory function for creating HostListProvider instances.
 type HostListProviderSupplier func(
 	props *utils.RWMap[string, string],
-	hostListProviderService HostListProviderService,
-	topologyUtils, TopologyUtils,
-	pluginService PluginService,
+	initialDsn string,
+	servicesContainer ServicesContainer,
 ) HostListProvider

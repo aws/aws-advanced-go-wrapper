@@ -31,9 +31,9 @@ import (
 
 type AuroraConnectionTrackerPluginFactory struct{}
 
-func (factory AuroraConnectionTrackerPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
+func (factory AuroraConnectionTrackerPluginFactory) GetInstance(servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewAuroraConnectionTrackerPlugin(pluginService, props, connection_tracker.NewOpenedConnectionTracker(pluginService)), nil
+	return NewAuroraConnectionTrackerPlugin(servicesContainer.GetPluginService(), props, connection_tracker.NewOpenedConnectionTracker(servicesContainer.GetPluginService())), nil
 }
 
 func (factory AuroraConnectionTrackerPluginFactory) ClearCaches() {}

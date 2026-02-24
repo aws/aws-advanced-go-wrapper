@@ -58,8 +58,7 @@ type ConnectionPluginChainBuilder struct {
 }
 
 func (builder *ConnectionPluginChainBuilder) GetPlugins(
-	pluginService driver_infrastructure.PluginService,
-	pluginManager driver_infrastructure.PluginManager,
+	servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string],
 	availablePlugins map[string]driver_infrastructure.ConnectionPluginFactory) ([]driver_infrastructure.ConnectionPlugin, error) {
 	var resultPlugins []driver_infrastructure.ConnectionPlugin
@@ -103,7 +102,7 @@ func (builder *ConnectionPluginChainBuilder) GetPlugins(
 	}
 
 	for _, pluginFactoryFuncWeight := range pluginFactoryWeights {
-		plugin, err := pluginFactoryFuncWeight.pluginFactory.GetInstance(pluginService, props)
+		plugin, err := pluginFactoryFuncWeight.pluginFactory.GetInstance(servicesContainer, props)
 		if err != nil {
 			return nil, err
 		}
@@ -112,9 +111,9 @@ func (builder *ConnectionPluginChainBuilder) GetPlugins(
 		}
 	}
 
+	pluginManager := servicesContainer.GetPluginManager()
 	defaultPlugin := &plugins.DefaultPlugin{
-		PluginService:       pluginService,
-		DefaultConnProvider: pluginManager.GetDefaultConnectionProvider(),
+		ServicesContainer:   servicesContainer,
 		ConnProviderManager: pluginManager.GetConnectionProviderManager(),
 	}
 	resultPlugins = append(resultPlugins, defaultPlugin)

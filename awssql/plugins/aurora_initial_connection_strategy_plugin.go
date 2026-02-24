@@ -40,9 +40,9 @@ func (factory AuroraInitialConnectionStrategyPluginFactory) ClearCaches() {
 }
 
 func (factory AuroraInitialConnectionStrategyPluginFactory) GetInstance(
-	pluginService driver_infrastructure.PluginService,
+	servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewAuroraInitialConnectionStrategyPlugin(pluginService, props)
+	return NewAuroraInitialConnectionStrategyPlugin(servicesContainer.GetPluginService(), props)
 }
 
 func verifiedOpenedConnectionTypeFromString(value string) host_info_util.HostRole {

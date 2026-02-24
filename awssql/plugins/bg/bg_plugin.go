@@ -47,9 +47,9 @@ func (b *BlueGreenPluginFactory) ClearCaches() {
 }
 
 func (b *BlueGreenPluginFactory) GetInstance(
-	pluginService driver_infrastructure.PluginService,
+	servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewBlueGreenPlugin(pluginService, props)
+	return NewBlueGreenPlugin(servicesContainer, props)
 }
 
 func NewBlueGreenPluginFactory() driver_infrastructure.ConnectionPluginFactory {
@@ -61,6 +61,7 @@ type BlueGreenPlugin struct {
 	bgStatus           driver_infrastructure.BlueGreenStatus
 	bgProviderSupplier BlueGreenProviderSupplier
 	isIamInUse         bool
+	servicesContainer  driver_infrastructure.ServicesContainer
 	pluginService      driver_infrastructure.PluginService
 	props              *utils.RWMap[string, string]
 	startTime          atomic.Int64
@@ -68,7 +69,7 @@ type BlueGreenPlugin struct {
 	plugins.BaseConnectionPlugin
 }
 
-func NewBlueGreenPlugin(pluginService driver_infrastructure.PluginService,
+func NewBlueGreenPlugin(servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
 	bgId := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.BGD_ID)
 	if bgId == "" {
@@ -77,7 +78,8 @@ func NewBlueGreenPlugin(pluginService driver_infrastructure.PluginService,
 	return &BlueGreenPlugin{
 		bgId:               bgId,
 		props:              props,
-		pluginService:      pluginService,
+		servicesContainer:  servicesContainer,
+		pluginService:      servicesContainer.GetPluginService(),
 		bgProviderSupplier: NewBlueGreenStatusProvider,
 	}, nil
 }

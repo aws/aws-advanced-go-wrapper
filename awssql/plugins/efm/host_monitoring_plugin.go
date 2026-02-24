@@ -31,15 +31,15 @@ import (
 type HostMonitoringPluginFactory struct {
 }
 
-func (h HostMonitoringPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
+func (h HostMonitoringPluginFactory) GetInstance(servicesContainer driver_infrastructure.ServicesContainer,
 	properties *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-	if pluginService == nil {
+	if servicesContainer.GetPluginService() == nil {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("HostMonitoringConnectionPlugin.illegalArgumentError", "pluginService"))
 	}
 	if properties == nil {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("HostMonitoringConnectionPlugin.illegalArgumentError", "properties"))
 	}
-	return &HostMonitorConnectionPlugin{pluginService: pluginService, props: properties}, nil
+	return &HostMonitorConnectionPlugin{servicesContainer: servicesContainer, pluginService: servicesContainer.GetPluginService(), props: properties}, nil
 }
 
 func (h HostMonitoringPluginFactory) ClearCaches() {
@@ -53,10 +53,11 @@ func NewHostMonitoringPluginFactory() driver_infrastructure.ConnectionPluginFact
 }
 
 type HostMonitorConnectionPlugin struct {
-	pluginService              driver_infrastructure.PluginService
-	props                      *utils.RWMap[string, string]
-	monitoringHostInfo         *host_info_util.HostInfo
-	monitorService             MonitorService
+	servicesContainer  driver_infrastructure.ServicesContainer
+	pluginService      driver_infrastructure.PluginService
+	props              *utils.RWMap[string, string]
+	monitoringHostInfo *host_info_util.HostInfo
+	monitorService     MonitorService
 	plugins.BaseConnectionPlugin
 }
 

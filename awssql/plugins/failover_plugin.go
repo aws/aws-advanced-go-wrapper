@@ -63,9 +63,9 @@ type ReaderFailoverResult struct {
 type FailoverPluginFactory struct{}
 
 func (f FailoverPluginFactory) GetInstance(
-	pluginService driver_infrastructure.PluginService,
+	servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewFailoverPlugin(pluginService, props)
+	return NewFailoverPlugin(servicesContainer, props)
 }
 
 func (f FailoverPluginFactory) ClearCaches() {}
@@ -75,6 +75,7 @@ func NewFailoverPluginFactory() driver_infrastructure.ConnectionPluginFactory {
 }
 
 type FailoverPlugin struct {
+	servicesContainer                          driver_infrastructure.ServicesContainer
 	pluginService                              driver_infrastructure.PluginService
 	hostListProviderService                    driver_infrastructure.HostListProviderService
 	props                                      *utils.RWMap[string, string]
@@ -95,44 +96,46 @@ type FailoverPlugin struct {
 	BaseConnectionPlugin
 }
 
-func NewFailoverPlugin(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string, string]) (*FailoverPlugin, error) {
+func NewFailoverPlugin(servicesContainer driver_infrastructure.ServicesContainer, props *utils.RWMap[string, string]) (*FailoverPlugin, error) {
 	failoverTimeoutMsSetting, err := property_util.GetPositiveIntProperty(props, property_util.FAILOVER_TIMEOUT_MS)
 	if err != nil {
 		return nil, err
 	}
 	failoverReaderHostSelectorStrategySetting := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.FAILOVER_READER_HOST_SELECTOR_STRATEGY)
 
-	failoverWriterTriggeredCounter, err := pluginService.GetTelemetryFactory().CreateCounter("writerFailover.triggered.count")
+	failoverWriterTriggeredCounter, err := servicesContainer.GetTelemetryFactory().CreateCounter("writerFailover.triggered.count")
 	if err != nil {
 		return nil, err
 	}
-	failoverWriterSuccessCounter, err := pluginService.GetTelemetryFactory().CreateCounter("writerFailover.completed.success.count")
+	failoverWriterSuccessCounter, err := servicesContainer.GetTelemetryFactory().CreateCounter("writerFailover.completed.success.count")
 	if err != nil {
 		return nil, err
 	}
-	failoverWriterFailedCounter, err := pluginService.GetTelemetryFactory().CreateCounter("writerFailover.completed.failed.count")
+	failoverWriterFailedCounter, err := servicesContainer.GetTelemetryFactory().CreateCounter("writerFailover.completed.failed.count")
 	if err != nil {
 		return nil, err
 	}
-	failoverReaderTriggeredCounter, err := pluginService.GetTelemetryFactory().CreateCounter("readerFailover.triggered.count")
+	failoverReaderTriggeredCounter, err := servicesContainer.GetTelemetryFactory().CreateCounter("readerFailover.triggered.count")
 	if err != nil {
 		return nil, err
 	}
-	failoverReaderSuccessCounter, err := pluginService.GetTelemetryFactory().CreateCounter("readerFailover.completed.success.count")
+	failoverReaderSuccessCounter, err := servicesContainer.GetTelemetryFactory().CreateCounter("readerFailover.completed.success.count")
 	if err != nil {
 		return nil, err
 	}
-	failoverReaderFailedCounter, err := pluginService.GetTelemetryFactory().CreateCounter("readerFailover.completed.failed.count")
+	failoverReaderFailedCounter, err := servicesContainer.GetTelemetryFactory().CreateCounter("readerFailover.completed.failed.count")
 	if err != nil {
 		return nil, err
 	}
 
+	pluginService := servicesContainer.GetPluginService()
 	staleDnsHelper, err := NewStaleDnsHelper(pluginService)
 	if err != nil {
 		return nil, err
 	}
 
 	return &FailoverPlugin{
+		servicesContainer:        servicesContainer,
 		pluginService:            pluginService,
 		props:                    props,
 		failoverTimeoutMsSetting: failoverTimeoutMsSetting,

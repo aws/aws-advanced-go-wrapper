@@ -58,11 +58,14 @@ func (p *PgDatabaseDialect) GetRowParser() RowParser {
 	return PgRowParser
 }
 
-func (p *PgDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string, string],
-	hostListProviderService HostListProviderService,
-	_ PluginService) HostListProvider {
-	return NewDsnHostListProvider(props, hostListProviderService)
+func (p *PgDatabaseDialect) GetHostListProviderSupplier() HostListProviderSupplier {
+	return func(
+		props *utils.RWMap[string, string],
+		initialDsn string,
+		servicesContainer ServicesContainer,
+	) HostListProvider {
+		return NewDsnHostListProvider(props, servicesContainer.GetHostListProviderService())
+	}
 }
 
 func (p *PgDatabaseDialect) DoesStatementSetAutoCommit(_ string) (bool, bool) {
@@ -224,11 +227,14 @@ func (m *AuroraPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	return hasExtensions != nil && hasExtensions[0] == true && hasTopology != nil
 }
 
-func (m *AuroraPgDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string, string],
-	hostListProviderService HostListProviderService,
-	pluginService PluginService) HostListProvider {
-	return NewRdsHostListProvider(hostListProviderService, m, NewAuroraTopologyUtils(m), props, pluginService)
+func (m *AuroraPgDatabaseDialect) GetHostListProviderSupplier() HostListProviderSupplier {
+	return func(
+		props *utils.RWMap[string, string],
+		initialDsn string,
+		servicesContainer ServicesContainer,
+	) HostListProvider {
+		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewAuroraTopologyUtils(m), props, servicesContainer)
+	}
 }
 
 func (m *AuroraPgDatabaseDialect) GetLimitlessRouterEndpointQuery() string {
@@ -245,19 +251,6 @@ func (m *AuroraPgDatabaseDialect) IsBlueGreenStatusAvailable(conn driver.Conn) b
 	return utils.CheckExistenceQueries(conn, topologyTableExistQuery)
 }
 
-// type GlobalAuroraPgDatabaseDialect struct {
-// 	AuroraPgDatabaseDialect
-// }
-
-// func (g *GlobalAuroraPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
-
-// }
-
-// func (g *GlobalAuroraPgDatabaseDialect) GetDialectUpdateCandidates() []string {
-// 	return []string{}
-// }
-
-// func (g* GlobalAuroraPgDatabaseDialect)
 type RdsMultiAzClusterPgDatabaseDialect struct {
 	PgDatabaseDialect
 }
@@ -297,11 +290,14 @@ func (r *RdsMultiAzClusterPgDatabaseDialect) GetWriterIdQuery() string {
 		"FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()"
 }
 
-func (r *RdsMultiAzClusterPgDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string, string],
-	hostListProviderService HostListProviderService,
-	pluginService PluginService) HostListProvider {
-	return NewRdsHostListProvider(hostListProviderService, r, NewMultiAzTopologyUtils(r), props, pluginService)
+func (r *RdsMultiAzClusterPgDatabaseDialect) GetHostListProviderSupplier() HostListProviderSupplier {
+	return func(
+		props *utils.RWMap[string, string],
+		initialDsn string,
+		servicesContainer ServicesContainer,
+	) HostListProvider {
+		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewAuroraTopologyUtils(r), props, servicesContainer)
+	}
 }
 
 func (r *RdsMultiAzClusterPgDatabaseDialect) GetWriterIdColumnName() string {
