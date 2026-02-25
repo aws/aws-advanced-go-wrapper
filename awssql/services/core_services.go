@@ -44,8 +44,10 @@ type CoreServiceContainer struct {
 func GetCoreServiceContainer() *CoreServiceContainer {
 	coreServiceContainerOnce.Do(func() {
 		events := NewBatchingEventPublisher(DefaultMessageInterval)
+		storage := NewExpiringStorage(DefaultStorageCleanupInterval, events)
+		driver_infrastructure.RegisterDefaultStorageTypes(storage)
 		coreServiceContainer = &CoreServiceContainer{
-			Storage: NewExpiringStorage(DefaultStorageCleanupInterval, events),
+			Storage: storage,
 			Monitor: NewMonitorManager(DefaultMonitorCheckInterval, events),
 			Events:  events,
 		}

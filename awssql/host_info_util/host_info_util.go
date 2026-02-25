@@ -101,3 +101,15 @@ func IsHostInList(host *HostInfo, hosts []*HostInfo) bool {
 	}
 	return false
 }
+
+// CopyHostList returns a shallow copy of the host list.
+// This is the Go equivalent of Java's Collections.unmodifiableList() -
+// modifications to the returned slice won't affect the original.
+func CopyHostList(hosts []*HostInfo) []*HostInfo {
+	if hosts == nil {
+		return nil
+	}
+	result := make([]*HostInfo, len(hosts))
+	copy(result, hosts)
+	return result
+}

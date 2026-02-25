@@ -70,7 +70,7 @@ func (m *MySQLDatabaseDialect) GetHostListProviderSupplier() HostListProviderSup
 		initialDsn string,
 		servicesContainer ServicesContainer,
 	) HostListProvider {
-		return NewDsnHostListProvider(props, servicesContainer.GetHostListProviderService())
+		return NewConnectionStringHostListProvider(props, servicesContainer.GetHostListProviderService())
 	}
 }
 

@@ -17,65 +17,46 @@
 package services
 
 import (
+	"sync"
 	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
-// Predefined storage type keys.
-const (
-	TopologyType              = "Topology"
-	AllowedAndBlockedHostType = "AllowedAndBlockedHosts"
-	BlueGreenStatusType       = "BlueGreenStatus"
-)
+// Default cleanup interval.
+const defaultCleanupInterval = 5 * time.Minute
 
-// Default TTLs matching Java implementation.
-const (
-	defaultTopologyTTL              = 5 * time.Minute
-	defaultAllowedAndBlockedHostTTL = 5 * time.Minute
-	defaultBlueGreenStatusTTL       = 60 * time.Minute
-)
-
-// expirationCache holds items with expiration for a single type.
-type expirationCache struct {
-	items         *utils.RWMap[any, *storageItem]
-	ttl           time.Duration
-	renewOnAccess bool
-	shouldDispose driver_infrastructure.ShouldDisposeFunc
-	onDispose     driver_infrastructure.ItemDisposalFunc
-}
-
-// storageItem holds a cached value with expiration.
-type storageItem struct {
-	value     any
-	expiresAt time.Time
+// cacheEntry wraps an ExpirationCache with its configuration.
+type cacheEntry struct {
+	cache *utils.ExpirationCache[any, any]
 }
 
 // ExpiringStorage provides shared, expiring key-value storage for driver components.
-// It maintains a map of expiration caches, with predefined caches for Topology,
-// AllowedAndBlockedHosts, and BlueGreenStatus.
+// Uses ExpirationCache (non-sliding by default) to match Java's StorageServiceImpl.
 // Implements driver_infrastructure.StorageService.
 type ExpiringStorage struct {
-	caches          *utils.RWMap[string, *expirationCache]
+	caches          map[string]*cacheEntry
+	cachesMu        sync.RWMutex
 	publisher       driver_infrastructure.EventPublisher
 	cleanupInterval time.Duration
 	stopCleanup     chan struct{}
 }
 
-// NewExpiringStorage creates a new expiring storage with predefined caches.
+// NewExpiringStorage creates a new expiring storage.
+// Call driver_infrastructure.RegisterDefaultStorageTypes(s) after creation
+// to register the built-in storage types.
 func NewExpiringStorage(cleanupInterval time.Duration, publisher driver_infrastructure.EventPublisher) *ExpiringStorage {
+	if cleanupInterval == 0 {
+		cleanupInterval = defaultCleanupInterval
+	}
+
 	s := &ExpiringStorage{
-		caches:          utils.NewRWMap[string, *expirationCache](),
+		caches:          make(map[string]*cacheEntry),
 		publisher:       publisher,
 		cleanupInterval: cleanupInterval,
 		stopCleanup:     make(chan struct{}),
 	}
-
-	// Register default caches (matching Java's defaultCacheSuppliers)
-	s.register(TopologyType, defaultTopologyTTL, true, nil, nil)
-	s.register(AllowedAndBlockedHostType, defaultAllowedAndBlockedHostTTL, true, nil, nil)
-	s.register(BlueGreenStatusType, defaultBlueGreenStatusTTL, false, nil, nil)
 
 	go s.cleanupLoop()
 	return s
@@ -89,14 +70,28 @@ func (s *ExpiringStorage) register(
 	shouldDispose driver_infrastructure.ShouldDisposeFunc,
 	onDispose driver_infrastructure.ItemDisposalFunc,
 ) {
-	cache := &expirationCache{
-		items:         utils.NewRWMap[any, *storageItem](),
-		ttl:           ttl,
-		renewOnAccess: renewOnAccess,
-		shouldDispose: shouldDispose,
-		onDispose:     onDispose,
+	var shouldDisposeFunc utils.ShouldDisposeFunc[any]
+	var itemDisposalFunc utils.ItemDisposalFunc[any]
+
+	if shouldDispose != nil {
+		shouldDisposeFunc = func(v any) bool { return shouldDispose(v) }
 	}
-	s.caches.PutIfAbsent(typeKey, cache)
+	if onDispose != nil {
+		itemDisposalFunc = func(v any) { onDispose(v) }
+	}
+
+	cache := utils.NewExpirationCache[any, any](utils.ExpirationCacheConfig[any]{
+		TTL:              ttl,
+		RenewOnAccess:    renewOnAccess,
+		ShouldDispose:    shouldDisposeFunc,
+		ItemDisposalFunc: itemDisposalFunc,
+	})
+
+	s.cachesMu.Lock()
+	if _, exists := s.caches[typeKey]; !exists {
+		s.caches[typeKey] = &cacheEntry{cache: cache}
+	}
+	s.cachesMu.Unlock()
 }
 
 // Register registers a new item type with the storage service.
@@ -113,41 +108,30 @@ func (s *ExpiringStorage) Register(
 
 // Set stores an item under the given type and key.
 func (s *ExpiringStorage) Set(typeKey string, key any, value any) {
-	cache, ok := s.caches.Get(typeKey)
-	if !ok {
+	s.cachesMu.RLock()
+	entry := s.caches[typeKey]
+	s.cachesMu.RUnlock()
+
+	if entry == nil {
 		return
 	}
 
-	cache.items.Put(key, &storageItem{
-		value:     value,
-		expiresAt: time.Now().Add(cache.ttl),
-	})
+	entry.cache.Put(key, value)
 }
 
 // Get retrieves an item by type and key. Returns nil if not found or expired.
 func (s *ExpiringStorage) Get(typeKey string, key any) (any, bool) {
-	cache, ok := s.caches.Get(typeKey)
+	s.cachesMu.RLock()
+	entry := s.caches[typeKey]
+	s.cachesMu.RUnlock()
+
+	if entry == nil {
+		return nil, false
+	}
+
+	value, ok := entry.cache.Get(key)
 	if !ok {
 		return nil, false
-	}
-
-	item, ok := cache.items.Get(key)
-	if !ok || item == nil {
-		return nil, false
-	}
-
-	// Check if expired
-	if time.Now().After(item.expiresAt) {
-		cache.items.Remove(key)
-		if cache.onDispose != nil {
-			cache.onDispose(item.value)
-		}
-		return nil, false
-	}
-
-	// Renew expiration on access if configured
-	if cache.renewOnAccess {
-		item.expiresAt = time.Now().Add(cache.ttl)
 	}
 
 	// Publish data access event
@@ -158,63 +142,73 @@ func (s *ExpiringStorage) Get(typeKey string, key any) (any, bool) {
 		})
 	}
 
-	return item.value, true
+	return value, true
 }
 
 // Exists checks if an item exists (and is not expired).
 func (s *ExpiringStorage) Exists(typeKey string, key any) bool {
-	_, ok := s.Get(typeKey, key)
-	return ok
+	s.cachesMu.RLock()
+	entry := s.caches[typeKey]
+	s.cachesMu.RUnlock()
+
+	if entry == nil {
+		return false
+	}
+
+	return entry.cache.Exists(key)
 }
 
 // Remove removes an item by type and key.
 func (s *ExpiringStorage) Remove(typeKey string, key any) {
-	cache, ok := s.caches.Get(typeKey)
-	if !ok {
+	s.cachesMu.RLock()
+	entry := s.caches[typeKey]
+	s.cachesMu.RUnlock()
+
+	if entry == nil {
 		return
 	}
 
-	item, exists := cache.items.Get(key)
-	if exists && item != nil && cache.onDispose != nil {
-		cache.onDispose(item.value)
-	}
-	cache.items.Remove(key)
+	entry.cache.Remove(key)
 }
 
 // Clear removes all items of the given type.
 func (s *ExpiringStorage) Clear(typeKey string) {
-	cache, ok := s.caches.Get(typeKey)
-	if !ok {
+	s.cachesMu.RLock()
+	entry := s.caches[typeKey]
+	s.cachesMu.RUnlock()
+
+	if entry == nil {
 		return
 	}
 
-	if cache.onDispose != nil {
-		cache.items.ForEach(func(_ any, item *storageItem) {
-			cache.onDispose(item.value)
-		})
-	}
-	cache.items.Clear()
+	entry.cache.Clear()
 }
 
 // ClearAll removes all items from all caches.
 func (s *ExpiringStorage) ClearAll() {
-	s.caches.ForEach(func(typeKey string, cache *expirationCache) {
-		if cache.onDispose != nil {
-			cache.items.ForEach(func(_ any, item *storageItem) {
-				cache.onDispose(item.value)
-			})
-		}
-		cache.items.Clear()
-	})
+	s.cachesMu.RLock()
+	entries := make([]*cacheEntry, 0, len(s.caches))
+	for _, entry := range s.caches {
+		entries = append(entries, entry)
+	}
+	s.cachesMu.RUnlock()
+
+	for _, entry := range entries {
+		entry.cache.Clear()
+	}
 }
 
 // Size returns the number of items stored under the given type.
 func (s *ExpiringStorage) Size(typeKey string) int {
-	cache, ok := s.caches.Get(typeKey)
-	if !ok {
+	s.cachesMu.RLock()
+	entry := s.caches[typeKey]
+	s.cachesMu.RUnlock()
+
+	if entry == nil {
 		return 0
 	}
-	return cache.items.Size()
+
+	return entry.cache.Size()
 }
 
 // Stop stops the background cleanup goroutine.
@@ -231,29 +225,20 @@ func (s *ExpiringStorage) cleanupLoop() {
 		case <-s.stopCleanup:
 			return
 		case <-ticker.C:
-			s.cleanup()
+			s.removeExpiredItems()
 		}
 	}
 }
 
-func (s *ExpiringStorage) cleanup() {
-	now := time.Now()
+func (s *ExpiringStorage) removeExpiredItems() {
+	s.cachesMu.RLock()
+	entries := make([]*cacheEntry, 0, len(s.caches))
+	for _, entry := range s.caches {
+		entries = append(entries, entry)
+	}
+	s.cachesMu.RUnlock()
 
-	s.caches.ForEach(func(_ string, cache *expirationCache) {
-		cache.items.Filter(func(_ any, item *storageItem) bool {
-			// Keep if not expired
-			if !now.After(item.expiresAt) {
-				return true
-			}
-			// Item is expired - check shouldDispose
-			if cache.shouldDispose != nil && !cache.shouldDispose(item.value) {
-				return true // Keep it - shouldDispose said no
-			}
-			// Dispose and remove
-			if cache.onDispose != nil {
-				cache.onDispose(item.value)
-			}
-			return false
-		})
-	})
+	for _, entry := range entries {
+		entry.cache.RemoveExpiredEntries()
+	}
 }

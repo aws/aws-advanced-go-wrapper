@@ -27,12 +27,9 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-
-	"github.com/google/uuid"
 )
 
 var highRefreshPeriodAfterPanicNano = time.Second * 30
-var ignoreTopologyRequestNano = time.Second * 10
 var FallbackTopologyRefreshTimeoutMs = 1100
 var topologyUpdateWaitTime = time.Millisecond * 1000
 
@@ -42,13 +39,7 @@ type ConnectionContainer struct {
 
 var emptyContainer = ConnectionContainer{}
 
-type topologyMapEntry struct {
-	id       string
-	topology []*host_info_util.HostInfo
-}
-
 type ClusterTopologyMonitor interface {
-	SetClusterId(clusterId string)
 	ForceRefreshVerifyWriter(writerImportant bool, timeoutMs int) ([]*host_info_util.HostInfo, error)
 	ForceRefreshUsingConn(conn driver.Conn, timeoutMs int) ([]*host_info_util.HostInfo, error)
 	Close()
@@ -56,37 +47,35 @@ type ClusterTopologyMonitor interface {
 }
 
 type ClusterTopologyMonitorImpl struct {
-	hostListProvider                        *RdsHostListProvider
-	topologyUtils                           TopologyUtils
-	clusterId                               string
-	isVerifiedWriterConn                    bool
-	highRefreshRateEndTimeInNanos           int64
-	highRefreshRateNano                     time.Duration
-	refreshRateNano                         time.Duration
-	topologyCacheExpirationNano             time.Duration
-	topologyMap                             *utils.CacheMap[topologyMapEntry]
-	monitoringProps                         *utils.RWMap[string, string]
-	initialHostInfo                         *host_info_util.HostInfo
-	clusterInstanceTemplate                 *host_info_util.HostInfo
-	pluginService                           PluginService
-	hostRoutines                            *sync.Map
-	hostRoutinesWg                          sync.WaitGroup
-	stop                                    atomic.Bool
-	ignoreNewTopologyRequestsEndTimeInNanos atomic.Int64
-	requestToUpdateTopology                 atomic.Bool
-	requestToUpdateTopologyChannel          chan bool
-	topologyUpdatedChannel                  chan bool
-	hostRoutinesStop                        atomic.Bool
-	monitoringConn                          atomic.Value
-	hostRoutinesWriterConn                  atomic.Value
-	hostRoutinesReaderConn                  atomic.Value
-	hostRoutinesLatestTopology              atomic.Value
-	hostRoutinesWriterHostInfo              atomic.Pointer[host_info_util.HostInfo]
-	writerHostInfo                          atomic.Pointer[host_info_util.HostInfo]
+	servicesContainer              ServicesContainer
+	topologyUtils                  TopologyUtils
+	clusterId                      string
+	isVerifiedWriterConn           bool
+	highRefreshRateEndTimeInNanos  int64
+	highRefreshRateNano            time.Duration
+	refreshRateNano                time.Duration
+	topologyCacheExpirationNano    time.Duration
+	monitoringProps                *utils.RWMap[string, string]
+	initialHostInfo                *host_info_util.HostInfo
+	clusterInstanceTemplate        *host_info_util.HostInfo
+	pluginService                  PluginService
+	hostRoutines                   *sync.Map
+	hostRoutinesWg                 sync.WaitGroup
+	stop                           atomic.Bool
+	requestToUpdateTopology        atomic.Bool
+	requestToUpdateTopologyChannel chan bool
+	topologyUpdatedChannel         chan bool
+	hostRoutinesStop               atomic.Bool
+	monitoringConn                 atomic.Value
+	hostRoutinesWriterConn         atomic.Value
+	hostRoutinesReaderConn         atomic.Value
+	hostRoutinesLatestTopology     atomic.Value
+	hostRoutinesWriterHostInfo     atomic.Pointer[host_info_util.HostInfo]
+	writerHostInfo                 atomic.Pointer[host_info_util.HostInfo]
 }
 
 func NewClusterTopologyMonitorImpl(
-	hostListProvider *RdsHostListProvider,
+	servicesContainer ServicesContainer,
 	topologyUtils TopologyUtils,
 	clusterId string,
 	highRefreshRateNano time.Duration,
@@ -97,15 +86,15 @@ func NewClusterTopologyMonitorImpl(
 	clusterInstanceTemplate *host_info_util.HostInfo,
 	pluginService PluginService) *ClusterTopologyMonitorImpl {
 	return &ClusterTopologyMonitorImpl{
-		hostListProvider:               hostListProvider,
-		topologyUtils:                  topologyUtils,
-		clusterId:                      clusterId,
-		monitoringProps:                props,
-		initialHostInfo:                initialHostInfo,
-		clusterInstanceTemplate:        clusterInstanceTemplate,
-		pluginService:                  pluginService,
-		hostRoutines:                   &sync.Map{},
-		topologyMap:                    utils.NewCache[topologyMapEntry](),
+		servicesContainer:       servicesContainer,
+		topologyUtils:           topologyUtils,
+		clusterId:               clusterId,
+		monitoringProps:         props,
+		initialHostInfo:         initialHostInfo,
+		clusterInstanceTemplate: clusterInstanceTemplate,
+		pluginService:           pluginService,
+		hostRoutines:            &sync.Map{},
+		// topologyMap:                    utils.NewCache[topologyMapEntry](),
 		highRefreshRateNano:            highRefreshRateNano,
 		refreshRateNano:                refreshRateNano,
 		topologyCacheExpirationNano:    topologyCacheExpirationNano,
@@ -120,10 +109,6 @@ func (c *ClusterTopologyMonitorImpl) Start(wg *sync.WaitGroup) {
 	c.hostRoutinesReaderConn.Store(emptyContainer)
 	wg.Add(1)
 	go c.Run(wg)
-}
-
-func (c *ClusterTopologyMonitorImpl) SetClusterId(clusterId string) {
-	c.clusterId = clusterId
 }
 
 func (c *ClusterTopologyMonitorImpl) loadConn(conn atomic.Value) driver.Conn {
@@ -141,15 +126,6 @@ func (c *ClusterTopologyMonitorImpl) loadConn(conn atomic.Value) driver.Conn {
 }
 
 func (c *ClusterTopologyMonitorImpl) ForceRefreshVerifyWriter(shouldVerify bool, timeoutMs int) ([]*host_info_util.HostInfo, error) {
-	if c.ignoreNewTopologyRequestsEndTimeInNanos.Load() > 0 && time.Now().Before(time.Unix(0, c.ignoreNewTopologyRequestsEndTimeInNanos.Load())) {
-		// Previous failover has just completed. We can use results of it without triggering a new topology update.
-		mapEntry, ok := c.topologyMap.Get(c.clusterId)
-		slog.Debug(utils.LogTopology(mapEntry.topology, error_util.GetMessage("ClusterTopologyMonitorImpl.ignoringTopologyRequest")))
-		if ok && len(mapEntry.topology) > 0 {
-			return mapEntry.topology, nil
-		}
-	}
-
 	if shouldVerify {
 		monitoringConn := c.loadConn(c.monitoringConn)
 		c.monitoringConn.Store(emptyContainer)
@@ -157,52 +133,76 @@ func (c *ClusterTopologyMonitorImpl) ForceRefreshVerifyWriter(shouldVerify bool,
 		c.closeConnection(monitoringConn)
 	}
 
-	return c.waitTillTopologyGetsUpdated(timeoutMs)
+	return c.waitForTopologyUpdate(timeoutMs)
+}
+
+func (c *ClusterTopologyMonitorImpl) getStoredHosts() []*host_info_util.HostInfo {
+	topology := c.getStoredTopology()
+	if topology == nil {
+		return nil
+	}
+	return topology.GetHosts()
+}
+
+func (c *ClusterTopologyMonitorImpl) getStoredTopology() *Topology {
+	topology, found := TopologyStorage.Get(c.servicesContainer.GetStorageService(), c.clusterId)
+	if !found {
+		return nil
+	}
+	return topology
 }
 
 func (c *ClusterTopologyMonitorImpl) ForceRefreshUsingConn(conn driver.Conn, timeoutMs int) ([]*host_info_util.HostInfo, error) {
 	if c.isVerifiedWriterConn {
 		// Push monitoring thread to refresh topology with a verified connection.
-		return c.waitTillTopologyGetsUpdated(timeoutMs)
+		return c.waitForTopologyUpdate(timeoutMs)
 	}
 
 	// Otherwise use provided unverified connection to update topology.
 	return c.fetchTopologyAndUpdateCache(conn), nil
 }
 
-func (c *ClusterTopologyMonitorImpl) waitTillTopologyGetsUpdated(timeoutMs int) ([]*host_info_util.HostInfo, error) {
-	mapEntry, ok := c.topologyMap.Get(c.clusterId)
+func (c *ClusterTopologyMonitorImpl) waitForTopologyUpdate(timeoutMs int) ([]*host_info_util.HostInfo, error) {
+	currentTopology := c.getStoredTopology()
 
 	// Notify monitoring routines that topology should be refreshed immediately.
 	c.requestToUpdateTopology.Store(true)
 	c.notifyChannel(c.requestToUpdateTopologyChannel)
 
-	if timeoutMs == 0 && ok && len(mapEntry.topology) > 0 {
-		slog.Debug(utils.LogTopology(mapEntry.topology, error_util.GetMessage("ClusterTopologyMonitorImpl.timeoutSetToZero")))
-		return mapEntry.topology, nil
+	currentHosts := c.getStoredHosts()
+	if timeoutMs == 0 {
+		slog.Debug(utils.LogTopology(currentHosts, error_util.GetMessage("ClusterTopologyMonitorImpl.timeoutSetToZero")))
+		return currentHosts, nil
 	}
 
-	if timeoutMs == 0 {
-		timeoutMs = FallbackTopologyRefreshTimeoutMs
-	}
 	end := time.Now().Add(time.Millisecond * time.Duration(timeoutMs))
-	latestMapEntry := mapEntry
-	exit := false
-	for mapEntry.id == latestMapEntry.id && time.Now().Before(end) && !exit {
+
+	// Note: we are checking reference equality instead of value equality.
+	// We will break out of the loop if there is a new entry in the topology cache,
+	// even if the value of the hosts in latestTopology is the same as currentTopology.
+	var latestTopology *Topology
+	for {
+		latestTopology = c.getStoredTopology()
+		if currentTopology != latestTopology || time.Now().After(end) {
+			break
+		}
+
 		select {
 		case <-c.topologyUpdatedChannel:
-			exit = true
-		default:
-			time.Sleep(topologyUpdateWaitTime)
+			// Topology was updated, check again
+		case <-time.After(topologyUpdateWaitTime):
+			// Timeout on wait, check again
 		}
-		latestMapEntry, _ = c.topologyMap.Get(c.clusterId)
 	}
 
 	if time.Now().After(end) {
 		return nil, error_util.NewTimeoutError(error_util.GetMessage("ClusterTopologyMonitorImpl.topologyNotUpdated", timeoutMs))
 	}
 
-	return latestMapEntry.topology, nil
+	if latestTopology == nil {
+		return nil, nil
+	}
+	return latestTopology.GetHosts(), nil
 }
 
 func (c *ClusterTopologyMonitorImpl) fetchTopologyAndUpdateCache(conn driver.Conn) []*host_info_util.HostInfo {
@@ -228,14 +228,13 @@ func (c *ClusterTopologyMonitorImpl) queryForTopology(conn driver.Conn) ([]*host
 }
 
 func (c *ClusterTopologyMonitorImpl) updateTopologyCache(hosts []*host_info_util.HostInfo) {
-	c.topologyMap.Put(c.clusterId, topologyMapEntry{uuid.New().String(), hosts}, c.topologyCacheExpirationNano)
+	// c.topologyMap.Put(c.clusterId, topologyMapEntry{uuid.New().String(), hosts}, c.topologyCacheExpirationNano)
+	TopologyStorage.Set(c.servicesContainer.GetStorageService(), c.clusterId, NewTopology(hosts))
 	c.requestToUpdateTopology.Store(false)
 	c.notifyChannel(c.topologyUpdatedChannel)
 }
 
 func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*host_info_util.HostInfo, error) {
-	writerVerifiedByThisRoutine := false
-
 	if c.loadConn(c.monitoringConn) == nil {
 		// Open a new connection.
 		conn, err := c.pluginService.ForceConnect(c.initialHostInfo, c.monitoringProps)
@@ -250,13 +249,11 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 			isWriterInstance, getWriterNameErr := c.topologyUtils.IsWriterInstance(conn)
 			if getWriterNameErr == nil && isWriterInstance {
 				c.isVerifiedWriterConn = true
-				writerVerifiedByThisRoutine = true
 
 				if utils.IsRdsInstance(c.initialHostInfo.GetHost()) {
 					c.writerHostInfo.Store(c.initialHostInfo)
 					slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.writerMonitoringConnection", c.writerHostInfo.Load().GetHost()))
 				} else {
-
 					hostId, hostName := c.topologyUtils.GetInstanceId(conn)
 					if hostId != "" || hostName != "" {
 						c.writerHostInfo.Store(c.topologyUtils.CreateHost(hostId, hostName, true, 0, time.Time{}, c.initialHostInfo, c.clusterInstanceTemplate))
@@ -271,14 +268,6 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 	}
 
 	hosts := c.fetchTopologyAndUpdateCache(c.loadConn(c.monitoringConn))
-	if writerVerifiedByThisRoutine {
-		// We verify the writer on initial connection and on failover, but we only want to ignore new topology
-		// requests after failover. To accomplish this, the first time we verify the writer we set the ignore end
-		// time to 0. Any future writer verifications will set it to a positive value.
-		if !c.ignoreNewTopologyRequestsEndTimeInNanos.CompareAndSwap(-1, 0) {
-			c.ignoreNewTopologyRequestsEndTimeInNanos.Store(time.Now().Add(ignoreTopologyRequestNano).Unix())
-		}
-	}
 
 	if len(hosts) == 0 {
 		// Can't get topology, there might be something wrong with a connection. Close connection.
@@ -376,8 +365,8 @@ func (c *ClusterTopologyMonitorImpl) Run(wg *sync.WaitGroup) {
 				c.hostRoutinesWriterHostInfo.Store(nil)
 				c.hostRoutinesLatestTopology.Store(map[string][]*host_info_util.HostInfo{})
 
-				mapEntry, ok := c.topologyMap.Get(c.clusterId)
-				hosts := mapEntry.topology
+				topology, ok := TopologyStorage.Get(c.servicesContainer.GetStorageService(), c.clusterId)
+				hosts := topology.GetHosts()
 				if !ok || len(hosts) == 0 {
 					// Need any connection to get topology.
 					hosts, _ = c.openAnyConnectionAndUpdateTopology()
@@ -410,13 +399,6 @@ func (c *ClusterTopologyMonitorImpl) Run(wg *sync.WaitGroup) {
 					c.writerHostInfo.Store(writerConnHostInfo)
 					c.isVerifiedWriterConn = true
 					c.highRefreshRateEndTimeInNanos = time.Now().Add(highRefreshPeriodAfterPanicNano).Unix()
-
-					// We verify the writer on initial connection and on failover, but we only want to ignore new topology
-					// requests after failover. To accomplish this, the first time we verify the writer we set the ignore end
-					// time to 0. Any future writer verifications will set it to a positive value.
-					if !c.ignoreNewTopologyRequestsEndTimeInNanos.CompareAndSwap(-1, 0) {
-						c.ignoreNewTopologyRequestsEndTimeInNanos.Store(time.Now().Add(ignoreTopologyRequestNano).Unix())
-					}
 
 					c.hostRoutinesStop.Store(true)
 					c.hostRoutinesWg.Wait()
@@ -470,9 +452,9 @@ func (c *ClusterTopologyMonitorImpl) Run(wg *sync.WaitGroup) {
 
 			// Do not log topology while in high refresh rate.
 			if c.highRefreshRateEndTimeInNanos == 0 {
-				mapEntry, ok := c.topologyMap.Get(c.clusterId)
+				topology, ok := TopologyStorage.Get(c.servicesContainer.GetStorageService(), c.clusterId)
 				if ok {
-					slog.Debug(utils.LogTopology(mapEntry.topology, ""))
+					slog.Debug(utils.LogTopology(topology.GetHosts(), ""))
 				}
 			}
 
@@ -530,14 +512,13 @@ func (h *HostMonitoringRoutine) run() {
 				} else {
 					// Writer connection is successfully set to writerConn
 					slog.Debug(error_util.GetMessage("HostMonitoringRoutine.detectedWriter"))
-					// When hostRoutinesWriterConn and hostRoutinesWriterHostInfo are both set, the topology monitor may
-					// set ignoreNewTopologyRequestsEndTimeInNanos, in which case other routines will use the cached topology
-					// for the ignore duration, so we need to update the topology before setting hostRoutinesWriterHostInfo.
+					// We need to update the topology before setting hostRoutinesWriterHostInfo
+					// so that the topology is available when the monitor picks up the writer.
 					h.monitor.fetchTopologyAndUpdateCache(conn)
 					h.monitor.hostRoutinesWriterHostInfo.Store(h.hostInfo)
 					h.monitor.hostRoutinesStop.Store(true)
-					mapEntry, _ := h.monitor.topologyMap.Get(h.monitor.clusterId)
-					slog.Debug(utils.LogTopology(mapEntry.topology, ""))
+					hosts := h.monitor.getStoredHosts()
+					slog.Debug(utils.LogTopology(hosts, ""))
 				}
 
 				// Setting the connection to nil here prevents the defer from closing hostRoutinesWriterConn.

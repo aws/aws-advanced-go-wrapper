@@ -48,9 +48,9 @@ type monitorItem struct {
 
 // cacheContainer holds a cache of monitors with related settings.
 type cacheContainer struct {
-	settings          *driver_infrastructure.MonitorSettings
-	cache             *utils.RWMap[any, *monitorItem]
-	producedDataClass string // The type key of data produced by this monitor type
+	settings         *driver_infrastructure.MonitorSettings
+	cache            *utils.RWMap[any, *monitorItem]
+	producedDataType string // The type key of data produced by this monitor type
 }
 
 // MonitorManager manages background monitors with expiration and health checks.
@@ -92,7 +92,7 @@ func (m *MonitorManager) ProcessEvent(event driver_infrastructure.Event) {
 
 		// Extend expiration for monitors that produce this data type
 		m.monitorCaches.ForEach(func(_ string, container *cacheContainer) {
-			if container.producedDataClass == "" || container.producedDataClass != accessEvent.TypeKey {
+			if container.producedDataType == "" || container.producedDataType != accessEvent.TypeKey {
 				return
 			}
 			// Extend expiration for the monitor with this key
@@ -115,12 +115,12 @@ func (m *MonitorManager) ProcessEvent(event driver_infrastructure.Event) {
 func (m *MonitorManager) RegisterMonitorType(
 	monitorType string,
 	settings *driver_infrastructure.MonitorSettings,
-	producedDataClass string,
+	producedDataType string,
 ) {
 	m.monitorCaches.PutIfAbsent(monitorType, &cacheContainer{
-		settings:          settings,
-		cache:             utils.NewRWMap[any, *monitorItem](),
-		producedDataClass: producedDataClass,
+		settings:         settings,
+		cache:            utils.NewRWMap[any, *monitorItem](),
+		producedDataType: producedDataType,
 	})
 }
 

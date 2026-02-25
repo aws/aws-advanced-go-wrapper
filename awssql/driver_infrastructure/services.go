@@ -55,6 +55,13 @@ type EventPublisher interface {
 // Storage Service
 // =============================================================================
 
+// Predefined storage type keys.
+const (
+	TopologyStorageType              = "Topology"
+	AllowedAndBlockedHostStorageType = "AllowedAndBlockedHosts"
+	BlueGreenStatusStorageType       = "BlueGreenStatus"
+)
+
 // ShouldDisposeFunc determines whether an expired item should be disposed.
 type ShouldDisposeFunc func(value any) bool
 
@@ -127,7 +134,7 @@ type MonitorSettings struct {
 // MonitorService manages background monitors with expiration and health checks.
 type MonitorService interface {
 	// RegisterMonitorType registers a new monitor type with the service.
-	RegisterMonitorType(monitorType string, settings *MonitorSettings, producedDataClass string)
+	RegisterMonitorType(monitorType string, settings *MonitorSettings, producedDataType string)
 	// RunIfAbsent starts a monitor if it doesn't exist, or extends its expiration if it does.
 	RunIfAbsent(monitorType string, key any, container ServicesContainer, initializer MonitorInitializer) (Monitor, error)
 	// Get retrieves a monitor by type and key.

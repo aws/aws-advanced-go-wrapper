@@ -313,7 +313,7 @@ func (b *BlueGreenStatusMonitor) CollectTopology() error {
 	if conn == nil || b.pluginService.GetTargetDriverDialect().IsClosed(*conn) {
 		return nil
 	}
-	hosts, err := b.hostListProvider.ForceRefresh(*conn)
+	hosts, err := b.hostListProvider.ForceRefresh()
 	if err != nil {
 		slog.Warn(err.Error())
 		return err
