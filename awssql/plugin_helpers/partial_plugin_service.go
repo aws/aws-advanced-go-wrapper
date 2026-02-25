@@ -247,6 +247,7 @@ func (p *PartialPluginService) Connect(
 func (p *PartialPluginService) SetDialect(dialect driver_infrastructure.DatabaseDialect) {
 	panic("Method not implemented.")
 }
+func (p *PartialPluginService) IsDialectConfirmed() bool       { panic("Method not implemented.") }
 func (p *PartialPluginService) UpdateDialect(conn driver.Conn) { panic("Method not implemented.") }
 func (p *PartialPluginService) IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error) {
 	panic("Method not implemented.")

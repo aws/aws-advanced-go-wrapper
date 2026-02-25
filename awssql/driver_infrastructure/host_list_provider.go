@@ -18,21 +18,18 @@ package driver_infrastructure
 
 import (
 	"database/sql/driver"
-	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 type HostListProvider interface {
-	// GetCurrentTopology(conn driver.Conn, initialHostInfo *host_info_util.HostInfo) []*host_info_util.HostInfo
-	Refresh(conn driver.Conn) ([]*host_info_util.HostInfo, error)
-	ForceRefresh(conn driver.Conn) ([]*host_info_util.HostInfo, error)
+	Refresh() ([]*host_info_util.HostInfo, error)
+	ForceRefresh() ([]*host_info_util.HostInfo, error)
+	ForceRefreshWithOptions(verifyTopology bool, timeoutMs int) ([]*host_info_util.HostInfo, error)
 	GetHostRole(conn driver.Conn) host_info_util.HostRole
 	IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error)
 	GetClusterId() (string, error)
-	IsStaticHostListProvider() bool
-	CreateHost(hostName string, role host_info_util.HostRole, lag float64, cpu float64, lastUpdateTime time.Time) *host_info_util.HostInfo
 	StopMonitor()
 }
 

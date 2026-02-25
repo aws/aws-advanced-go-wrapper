@@ -75,6 +75,7 @@ type PluginService interface {
 	GetDialect() DatabaseDialect
 	SetDialect(dialect DatabaseDialect)
 	UpdateDialect(conn driver.Conn)
+	IsDialectConfirmed() bool
 	GetTargetDriverDialect() DriverDialect
 	IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error)
 	FillAliases(conn driver.Conn, hostInfo *host_info_util.HostInfo)
@@ -142,13 +143,8 @@ func ClearCaches() {
 	if knownEndpointDialectsCache != nil {
 		knownEndpointDialectsCache.Clear()
 	}
-	if primaryClusterIdCache != nil {
-		primaryClusterIdCache.Clear()
-	}
-	if suggestedPrimaryClusterCache != nil {
-		suggestedPrimaryClusterCache.Clear()
-	}
-	if TopologyCache != nil {
-		TopologyCache.Clear()
-	}
+
+	// if TopologyCache != nil {
+	// 	TopologyCache.Clear()
+	// }
 }

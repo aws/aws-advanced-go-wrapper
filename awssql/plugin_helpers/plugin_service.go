@@ -49,6 +49,7 @@ type PluginServiceImpl struct {
 	currentHostInfo        *host_info_util.HostInfo
 	dialect                driver_infrastructure.DatabaseDialect
 	dialectProvider        driver_infrastructure.DialectProvider
+	isDialectConfirmed     bool
 	originalDsn            string
 	AllHosts               []*host_info_util.HostInfo
 	allHostsLock           *sync.RWMutex
@@ -85,7 +86,8 @@ func NewPluginServiceImpl(
 }
 
 func (p *PluginServiceImpl) IsStaticHostListProvider() bool {
-	return p.GetHostListProvider().IsStaticHostListProvider()
+	_, ok := p.GetHostListProvider().(driver_infrastructure.StaticHostListProvider)
+	return ok
 }
 
 func (p *PluginServiceImpl) SetHostListProvider(hostListProvider driver_infrastructure.HostListProvider) {
@@ -104,21 +106,19 @@ func (p *PluginServiceImpl) SetDialect(dialect driver_infrastructure.DatabaseDia
 	p.dialect = dialect
 }
 
+func (p *PluginServiceImpl) IsDialectConfirmed() bool {
+	return p.isDialectConfirmed
+}
+
 func (p *PluginServiceImpl) UpdateDialect(conn driver.Conn) {
-	if p.initialHostInfo.IsNil() {
-		slog.Warn(error_util.GetMessage("PluginServiceImpl.initialHostNotSet"))
+	originalDialect := p.dialect
+	p.dialect = p.dialectProvider.GetDialectForUpdate(conn, p.originalDsn, p.initialHostInfo.GetHost())
+	p.isDialectConfirmed = true
+	if originalDialect == p.dialect {
 		return
 	}
-	currentHost := p.currentHostInfo
-	if currentHost.IsNil() {
-		currentHost = p.initialHostInfo
-	}
-	newDialect := p.dialectProvider.GetDialectForUpdate(conn, p.originalDsn, currentHost.Host)
-	if p.dialect == newDialect {
-		return
-	}
-	p.dialect = newDialect
 	p.SetHostListProvider(p.CreateHostListProvider(p.props))
+	_ = p.RefreshHostList(conn)
 }
 
 func (p *PluginServiceImpl) GetCurrentConnection() driver.Conn {
@@ -392,7 +392,7 @@ func (p *PluginServiceImpl) GetHostListProvider() driver_infrastructure.HostList
 }
 
 func (p *PluginServiceImpl) RefreshHostList(conn driver.Conn) error {
-	updatedHostList, err := p.GetHostListProvider().Refresh(conn)
+	updatedHostList, err := p.GetHostListProvider().Refresh()
 	if err != nil {
 		return err
 	}
@@ -400,7 +400,7 @@ func (p *PluginServiceImpl) RefreshHostList(conn driver.Conn) error {
 }
 
 func (p *PluginServiceImpl) ForceRefreshHostList(conn driver.Conn) error {
-	updatedHostList, err := p.GetHostListProvider().ForceRefresh(conn)
+	updatedHostList, err := p.GetHostListProvider().ForceRefresh()
 	if err != nil {
 		return err
 	}
