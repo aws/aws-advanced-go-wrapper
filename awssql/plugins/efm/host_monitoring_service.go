@@ -27,40 +27,39 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 )
 
-var EFM_MONITORS *utils.SlidingExpirationCache[Monitor]
+// HostMonitorType is the type descriptor for host monitors.
+// Used with MonitorService to manage HostMonitor instances.
+var HostMonitorType = &driver_infrastructure.MonitorType{Name: "HostMonitor"}
 
-type MonitorService interface {
+type HostMonitoringService interface {
 	StartMonitoring(conn *driver.Conn, hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string]) (*MonitorConnectionState, error)
 	StopMonitoring(state *MonitorConnectionState, connToAbort driver.Conn)
+	ReleaseResources()
 }
 
-type MonitorServiceImpl struct {
-	pluginService             	driver_infrastructure.PluginService
-	abortedConnectionsCounter 	telemetry.TelemetryCounter
-	failureDetectionTimeMillis 	int
-	failureDetectionIntervalMillis 	int
-	failureDetectionCount 		int
-	monitorDisposalTimeMillis	int
-	monitorKey			*MonitorKey
+type HostMonitoringServiceImpl struct {
+	servicesContainer              driver_infrastructure.ServicesContainer
+	pluginService                  driver_infrastructure.PluginService
+	monitorService                 driver_infrastructure.MonitorService
+	abortedConnectionsCounter      telemetry.TelemetryCounter
+	failureDetectionTimeMillis     int
+	failureDetectionIntervalMillis int
+	failureDetectionCount          int
+	monitorDisposalTimeMillis      int
+	monitorKey                     *MonitorKey
 }
 
-func NewMonitorServiceImpl(pluginService driver_infrastructure.PluginService, properties *utils.RWMap[string, string]) (*MonitorServiceImpl, error) {
-	if EFM_MONITORS == nil {
-		EFM_MONITORS = utils.NewSlidingExpirationCache(
-			"efm_monitors",
-			func(monitor Monitor) bool {
-				monitor.Close()
-				return false
-			},
-			func(monitor Monitor) bool {
-				return monitor.CanDispose()
-			})
-	}
+func NewHostMonitoringServiceImpl(
+	servicesContainer driver_infrastructure.ServicesContainer,
+	properties *utils.RWMap[string, string],
+) (*HostMonitoringServiceImpl, error) {
+	pluginService := servicesContainer.GetPluginService()
+	monitorService := servicesContainer.GetMonitorService()
 
 	abortedConnectionsCounter, err := pluginService.GetTelemetryFactory().CreateCounter("efm.connections.aborted")
 	if err != nil {
@@ -82,66 +81,113 @@ func NewMonitorServiceImpl(pluginService driver_infrastructure.PluginService, pr
 	if err != nil {
 		return nil, err
 	}
-	return &MonitorServiceImpl{
-		pluginService: pluginService,
-		abortedConnectionsCounter: abortedConnectionsCounter,
-		failureDetectionTimeMillis: failureDetectionTimeMillis,
+
+	// Register the monitor type with the monitor service
+	monitorService.RegisterMonitorType(
+		HostMonitorType,
+		&driver_infrastructure.MonitorSettings{
+			ExpirationTimeout: time.Millisecond * time.Duration(monitorDisposalTimeMillis),
+			InactiveTimeout:   3 * time.Minute,
+			ErrorResponses:    nil,
+		},
+		"", // No produced data type for host monitors
+	)
+
+	return &HostMonitoringServiceImpl{
+		servicesContainer:              servicesContainer,
+		pluginService:                  pluginService,
+		monitorService:                 monitorService,
+		abortedConnectionsCounter:      abortedConnectionsCounter,
+		failureDetectionTimeMillis:     failureDetectionTimeMillis,
 		failureDetectionIntervalMillis: failureDetectionIntervalMillis,
-		failureDetectionCount: failureDetectionCount,
-		monitorDisposalTimeMillis: monitorDisposalTimeMillis,
-		monitorKey: nil,
+		failureDetectionCount:          failureDetectionCount,
+		monitorDisposalTimeMillis:      monitorDisposalTimeMillis,
+		monitorKey:                     nil,
 	}, nil
 }
 
-func (m *MonitorServiceImpl) StartMonitoring(conn *driver.Conn, hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string]) (*MonitorConnectionState, error) {
+// CloseAllMonitors stops and removes all host monitors.
+func CloseAllMonitors(monitorService driver_infrastructure.MonitorService) {
+	monitorService.StopAndRemoveByType(HostMonitorType)
+}
+
+func (m *HostMonitoringServiceImpl) StartMonitoring(conn *driver.Conn, hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string]) (*MonitorConnectionState, error) {
 	if conn == nil {
-		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("MonitorServiceImpl.illegalArgumentError", "conn"))
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("HostMonitoringServiceImpl.illegalArgumentError", "conn"))
 	}
 	if hostInfo.IsNil() {
-		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("MonitorServiceImpl.illegalArgumentError", "hostInfo"))
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("HostMonitoringServiceImpl.illegalArgumentError", "hostInfo"))
 	}
-	monitor := m.getMonitor(hostInfo, props)
+	monitor, err := m.getMonitor(hostInfo, props)
+	if err != nil {
+		return nil, err
+	}
 	state := NewMonitorConnectionState(conn)
 	monitor.StartMonitoring(state)
 	return state, nil
 }
 
-func (m *MonitorServiceImpl) StopMonitoring(state *MonitorConnectionState, connToAbort driver.Conn) {
+func (m *HostMonitoringServiceImpl) StopMonitoring(state *MonitorConnectionState, connToAbort driver.Conn) {
 	if state.ShouldAbort() {
 		state.SetInactive()
 		err := connToAbort.Close()
 		if err != nil {
-			slog.Debug(error_util.GetMessage("MonitorServiceImpl.errorAbortingConn", err.Error()))
+			slog.Debug(error_util.GetMessage("HostMonitoringServiceImpl.errorAbortingConn", err.Error()))
 		}
 	} else {
 		state.SetInactive()
 	}
 }
 
-func (m *MonitorServiceImpl) getMonitor(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string]) Monitor {
+func (m *HostMonitoringServiceImpl) ReleaseResources() {
+	// Nothing to do - monitors are managed by the MonitorService
+}
+
+func (m *HostMonitoringServiceImpl) getMonitor(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string]) (HostMonitor, error) {
 	hostUrl := hostInfo.GetUrl()
 	if m.monitorKey == nil || hostUrl != m.monitorKey.GetUrl() {
 		m.monitorKey = NewMonitorKey(hostUrl, fmt.Sprintf("%d:%d:%d:%s", m.failureDetectionTimeMillis, m.failureDetectionIntervalMillis, m.failureDetectionCount, hostInfo.GetUrl()))
 	}
-	cacheExpirationNano := time.Millisecond * time.Duration(m.monitorDisposalTimeMillis)
-	return EFM_MONITORS.ComputeIfAbsent(
+
+	// Capture values for the initializer closure
+	failureDetectionTimeMillis := m.failureDetectionTimeMillis
+	failureDetectionIntervalMillis := m.failureDetectionIntervalMillis
+	failureDetectionCount := m.failureDetectionCount
+	abortedConnectionsCounter := m.abortedConnectionsCounter
+	hostInfoCopy := hostInfo
+	propsCopy := props
+
+	monitor, err := m.monitorService.RunIfAbsent(
+		HostMonitorType,
 		m.monitorKey.GetKeyValue(),
-		func() Monitor {
-			return NewMonitorImpl(
-				m.pluginService,
-				hostInfo,
-				props,
-				m.failureDetectionTimeMillis,
-				m.failureDetectionIntervalMillis,
-				m.failureDetectionCount,
-				m.abortedConnectionsCounter)
+		m.servicesContainer,
+		func(container driver_infrastructure.ServicesContainer) (driver_infrastructure.Monitor, error) {
+			return NewHostMonitorImpl(
+				container,
+				hostInfoCopy,
+				propsCopy,
+				failureDetectionTimeMillis,
+				failureDetectionIntervalMillis,
+				failureDetectionCount,
+				abortedConnectionsCounter,
+			), nil
 		},
-		cacheExpirationNano)
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Type assert to HostMonitor
+	hostMonitor, ok := monitor.(HostMonitor)
+	if !ok {
+		return nil, error_util.NewGenericAwsWrapperError("monitor is not a HostMonitor")
+	}
+	return hostMonitor, nil
 }
 
 type MonitorKey struct {
-	url 		string
-	keyValue 	string
+	url      string
+	keyValue string
 }
 
 func NewMonitorKey(url string, keyValue string) *MonitorKey {
