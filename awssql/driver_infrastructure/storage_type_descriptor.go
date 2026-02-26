@@ -57,7 +57,12 @@ func (d *StorageTypeDescriptor[T]) Register(s StorageService) {
 // Get retrieves a value from storage with full type safety.
 // Returns the zero value and false if not found or expired.
 func (d *StorageTypeDescriptor[T]) Get(s StorageService, key any) (T, bool) {
-	v, ok := s.Get(d.TypeKey, key)
+	raw, ok := s.(RawStorageAccess)
+	if !ok {
+		var zero T
+		return zero, false
+	}
+	v, ok := raw.Get(d.TypeKey, key)
 	if !ok || v == nil {
 		var zero T
 		return zero, false
@@ -72,7 +77,11 @@ func (d *StorageTypeDescriptor[T]) Get(s StorageService, key any) (T, bool) {
 
 // Set stores a value in storage with full type safety.
 func (d *StorageTypeDescriptor[T]) Set(s StorageService, key any, value T) {
-	s.Set(d.TypeKey, key, value)
+	raw, ok := s.(RawStorageAccess)
+	if !ok {
+		return
+	}
+	raw.Set(d.TypeKey, key, value)
 }
 
 // Exists checks if a non-expired value exists at the given key.
@@ -103,9 +112,9 @@ type StorageRegistrar interface {
 // DefaultStorageTypes contains all built-in storage type descriptors.
 // These are registered automatically when RegisterDefaultStorageTypes is called.
 var DefaultStorageTypes = []StorageRegistrar{
-	TopologyStorage,
-	AllowedAndBlockedHostsStorage,
-	// BlueGreenStatusStorage can be added here when defined
+	TopologyStorageType,
+	AllowedAndBlockedHostsStorageType,
+	BlueGreenStatusStorageType,
 }
 
 // RegisterDefaultStorageTypes registers all built-in storage types with the given service.

@@ -24,10 +24,10 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
-// Event type keys.
-const (
-	DataAccessEventType  = "DataAccess"
-	MonitorStopEventType = "MonitorStop"
+// Event type descriptors.
+var (
+	DataAccessEventType  = &driver_infrastructure.EventType{Name: "DataAccess"}
+	MonitorStopEventType = &driver_infrastructure.EventType{Name: "MonitorStop"}
 )
 
 const DefaultMessageInterval = 30 * time.Second
@@ -42,16 +42,18 @@ type DataAccessEvent struct {
 	Key     any
 }
 
-func (e DataAccessEvent) EventType() string         { return DataAccessEventType }
-func (e DataAccessEvent) IsImmediateDelivery() bool { return false }
+func (e DataAccessEvent) GetEventType() *driver_infrastructure.EventType { return DataAccessEventType }
+func (e DataAccessEvent) IsImmediateDelivery() bool                      { return false }
 
 // MonitorStopEvent is published to request stopping a specific monitor.
 type MonitorStopEvent struct {
-	MonitorType string
+	MonitorType *driver_infrastructure.MonitorType
 	Key         any
 }
 
-func (e MonitorStopEvent) EventType() string         { return MonitorStopEventType }
+func (e MonitorStopEvent) GetEventType() *driver_infrastructure.EventType {
+	return MonitorStopEventType
+}
 func (e MonitorStopEvent) IsImmediateDelivery() bool { return true }
 
 // =============================================================================
@@ -128,9 +130,9 @@ func NewBatchingEventPublisher(messageInterval time.Duration) *BatchingEventPubl
 }
 
 // Subscribe registers a subscriber for the given event types.
-func (p *BatchingEventPublisher) Subscribe(subscriber driver_infrastructure.EventSubscriber, eventTypes []string) {
+func (p *BatchingEventPublisher) Subscribe(subscriber driver_infrastructure.EventSubscriber, eventTypes []*driver_infrastructure.EventType) {
 	for _, eventType := range eventTypes {
-		set := p.subscribers.ComputeIfAbsent(eventType, func() *subscriberSet {
+		set := p.subscribers.ComputeIfAbsent(eventType.Name, func() *subscriberSet {
 			return newSubscriberSet()
 		})
 		set.add(subscriber)
@@ -138,15 +140,15 @@ func (p *BatchingEventPublisher) Subscribe(subscriber driver_infrastructure.Even
 }
 
 // Unsubscribe removes a subscriber from the given event types.
-func (p *BatchingEventPublisher) Unsubscribe(subscriber driver_infrastructure.EventSubscriber, eventTypes []string) {
+func (p *BatchingEventPublisher) Unsubscribe(subscriber driver_infrastructure.EventSubscriber, eventTypes []*driver_infrastructure.EventType) {
 	for _, eventType := range eventTypes {
-		set, ok := p.subscribers.Get(eventType)
+		set, ok := p.subscribers.Get(eventType.Name)
 		if !ok {
 			continue
 		}
 		set.remove(subscriber)
 		if set.isEmpty() {
-			p.subscribers.Remove(eventType)
+			p.subscribers.Remove(eventType.Name)
 		}
 	}
 }
@@ -156,12 +158,12 @@ func (p *BatchingEventPublisher) Publish(event driver_infrastructure.Event) {
 	if event.IsImmediateDelivery() {
 		p.deliverEvent(event)
 	} else {
-		p.pendingEvents.Put(event.EventType(), event)
+		p.pendingEvents.Put(event.GetEventType().Name, event)
 	}
 }
 
 func (p *BatchingEventPublisher) deliverEvent(event driver_infrastructure.Event) {
-	set, ok := p.subscribers.Get(event.EventType())
+	set, ok := p.subscribers.Get(event.GetEventType().Name)
 	if !ok {
 		return
 	}

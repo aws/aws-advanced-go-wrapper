@@ -21,11 +21,19 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
+
+// BlueGreenStatusStorageType is the type-safe descriptor for storing BlueGreenStatus.
+var BlueGreenStatusStorageType = &StorageTypeDescriptor[*BlueGreenStatus]{
+	TypeKey:       "BlueGreenStatus",
+	TTL:           5 * time.Minute,
+	RenewOnAccess: false,
+}
 
 type BlueGreenIntervalRate int
 

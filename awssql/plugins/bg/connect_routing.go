@@ -140,8 +140,14 @@ func NewSubstituteConnectRouting(hostAndPort string, role driver_infrastructure.
 }
 
 type SuspendConnectRouting struct {
-	bgId string
+	bgId           string
+	storageService driver_infrastructure.StorageService
 	BaseRouting
+}
+
+func (r *SuspendConnectRouting) getBgStatus() *driver_infrastructure.BlueGreenStatus {
+	status, _ := driver_infrastructure.BlueGreenStatusStorageType.Get(r.storageService, r.bgId+"::BlueGreenStatus")
+	return status
 }
 
 func (r *SuspendConnectRouting) Apply(_ driver_infrastructure.ConnectionPlugin, _ *host_info_util.HostInfo, props *utils.RWMap[string, string],
@@ -157,19 +163,19 @@ func (r *SuspendConnectRouting) Apply(_ driver_infrastructure.ConnectionPlugin, 
 		pluginService.SetTelemetryContext(parentCtx)
 	}()
 
-	bgStatus, ok := pluginService.GetBgStatus(r.bgId)
+	bgStatus := r.getBgStatus()
 
 	timeoutMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.BG_CONNECT_TIMEOUT_MS)
 	holdStartTime := time.Now()
 	endTime := holdStartTime.Add(time.Millisecond * time.Duration(timeoutMs))
 
-	for time.Now().Before(endTime) && ok && !bgStatus.IsZero() && bgStatus.GetCurrentPhase() == driver_infrastructure.IN_PROGRESS {
-		r.Delay(SLEEP_TIME_DURATION, bgStatus, pluginService, r.bgId)
+	for time.Now().Before(endTime) && bgStatus != nil && bgStatus.GetCurrentPhase() == driver_infrastructure.IN_PROGRESS {
+		r.Delay(SLEEP_TIME_DURATION, *bgStatus, pluginService, r.bgId, r.storageService)
 	}
 
-	bgStatus, ok = pluginService.GetBgStatus(r.bgId)
+	bgStatus = r.getBgStatus()
 
-	if ok && !bgStatus.IsZero() && bgStatus.GetCurrentPhase() == driver_infrastructure.IN_PROGRESS {
+	if bgStatus != nil && bgStatus.GetCurrentPhase() == driver_infrastructure.IN_PROGRESS {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("BlueGreenDeployment.inProgressTryConnectLater", timeoutMs))
 	}
 	message := error_util.GetMessage("BlueGreenDeployment.switchoverCompleteContinueWithConnect", time.Since(holdStartTime))
@@ -178,13 +184,19 @@ func (r *SuspendConnectRouting) Apply(_ driver_infrastructure.ConnectionPlugin, 
 	return nil, error_util.NewGenericAwsWrapperError(message)
 }
 
-func NewSuspendConnectRouting(hostAndPort string, role driver_infrastructure.BlueGreenRole, bgId string) *SuspendConnectRouting {
-	return &SuspendConnectRouting{bgId, NewBaseRouting(hostAndPort, role)}
+func NewSuspendConnectRouting(hostAndPort string, role driver_infrastructure.BlueGreenRole, bgId string, storageService driver_infrastructure.StorageService) *SuspendConnectRouting {
+	return &SuspendConnectRouting{bgId, storageService, NewBaseRouting(hostAndPort, role)}
 }
 
 type SuspendUntilCorrespondingHostFoundConnectRouting struct {
-	bgId string
+	bgId           string
+	storageService driver_infrastructure.StorageService
 	BaseRouting
+}
+
+func (r *SuspendUntilCorrespondingHostFoundConnectRouting) getBgStatus() *driver_infrastructure.BlueGreenStatus {
+	status, _ := driver_infrastructure.BlueGreenStatusStorageType.Get(r.storageService, r.bgId+"::BlueGreenStatus")
+	return status
 }
 
 func (r *SuspendUntilCorrespondingHostFoundConnectRouting) Apply(
@@ -204,9 +216,9 @@ func (r *SuspendUntilCorrespondingHostFoundConnectRouting) Apply(
 		pluginService.SetTelemetryContext(parentCtx)
 	}()
 
-	bgStatus, ok := pluginService.GetBgStatus(r.bgId)
+	bgStatus := r.getBgStatus()
 	var correspondingPair utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]
-	if ok && !bgStatus.IsZero() {
+	if bgStatus != nil {
 		correspondingPair = bgStatus.GetCorrespondingHosts()[hostInfo.Host]
 	}
 
@@ -214,16 +226,16 @@ func (r *SuspendUntilCorrespondingHostFoundConnectRouting) Apply(
 	holdStartTime := time.Now()
 	endTime := holdStartTime.Add(time.Millisecond * time.Duration(timeoutMs))
 
-	for time.Now().Before(endTime) && ok && !bgStatus.IsZero() && bgStatus.GetCurrentPhase() != driver_infrastructure.COMPLETED &&
+	for time.Now().Before(endTime) && bgStatus != nil && bgStatus.GetCurrentPhase() != driver_infrastructure.COMPLETED &&
 		correspondingPair.GetRight().IsNil() {
-		r.Delay(SLEEP_TIME_DURATION, bgStatus, pluginService, r.bgId)
-		bgStatus, ok = pluginService.GetBgStatus(r.bgId)
-		if ok && !bgStatus.IsZero() {
+		r.Delay(SLEEP_TIME_DURATION, *bgStatus, pluginService, r.bgId, r.storageService)
+		bgStatus = r.getBgStatus()
+		if bgStatus != nil {
 			correspondingPair = bgStatus.GetCorrespondingHosts()[hostInfo.Host]
 		}
 	}
 
-	if bgStatus.IsZero() || bgStatus.GetCurrentPhase() == driver_infrastructure.COMPLETED {
+	if bgStatus == nil || bgStatus.GetCurrentPhase() == driver_infrastructure.COMPLETED {
 		message := error_util.GetMessage("BlueGreenDeployment.completedContinueWithConnect", time.Since(holdStartTime))
 		slog.Debug(message)
 		return nil, error_util.NewGenericAwsWrapperError(message)
@@ -238,6 +250,6 @@ func (r *SuspendUntilCorrespondingHostFoundConnectRouting) Apply(
 }
 
 func NewSuspendUntilCorrespondingHostFoundConnectRouting(hostAndPort string, role driver_infrastructure.BlueGreenRole,
-	bgId string) *SuspendUntilCorrespondingHostFoundConnectRouting {
-	return &SuspendUntilCorrespondingHostFoundConnectRouting{bgId, NewBaseRouting(hostAndPort, role)}
+	bgId string, storageService driver_infrastructure.StorageService) *SuspendUntilCorrespondingHostFoundConnectRouting {
+	return &SuspendUntilCorrespondingHostFoundConnectRouting{bgId, storageService, NewBaseRouting(hostAndPort, role)}
 }

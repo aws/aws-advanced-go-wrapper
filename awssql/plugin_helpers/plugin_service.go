@@ -19,12 +19,9 @@ package plugin_helpers
 import (
 	"context"
 	"database/sql/driver"
-	"fmt"
 	"log/slog"
 	"slices"
-	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
@@ -41,23 +38,22 @@ var DEFAULT_HOST_AVAILABILITY_CACHE_EXPIRE_NANO = 5 * time.Minute
 var DEFAULT_STATUS_CACHE_EXPIRE_NANO = 60 * time.Minute
 
 type PluginServiceImpl struct {
-	servicesContainer      driver_infrastructure.ServicesContainer
-	driverDialect          driver_infrastructure.DriverDialect
-	props                  *utils.RWMap[string, string]
-	currentConnection      *driver.Conn
-	hostListProvider       driver_infrastructure.HostListProvider
-	currentHostInfo        *host_info_util.HostInfo
-	dialect                driver_infrastructure.DatabaseDialect
-	dialectProvider        driver_infrastructure.DialectProvider
-	isDialectConfirmed     bool
-	originalDsn            string
-	AllHosts               []*host_info_util.HostInfo
-	allHostsLock           *sync.RWMutex
-	initialHostInfo        *host_info_util.HostInfo
-	isInTransaction        bool
-	currentTx              driver.Tx
-	sessionStateService    driver_infrastructure.SessionStateService
-	allowedAndBlockedHosts atomic.Pointer[driver_infrastructure.AllowedAndBlockedHosts]
+	servicesContainer   driver_infrastructure.ServicesContainer
+	driverDialect       driver_infrastructure.DriverDialect
+	props               *utils.RWMap[string, string]
+	currentConnection   *driver.Conn
+	hostListProvider    driver_infrastructure.HostListProvider
+	currentHostInfo     *host_info_util.HostInfo
+	dialect             driver_infrastructure.DatabaseDialect
+	dialectProvider     driver_infrastructure.DialectProvider
+	isDialectConfirmed  bool
+	originalDsn         string
+	AllHosts            []*host_info_util.HostInfo
+	allHostsLock        *sync.RWMutex
+	initialHostInfo     *host_info_util.HostInfo
+	isInTransaction     bool
+	currentTx           driver.Tx
+	sessionStateService driver_infrastructure.SessionStateService
 }
 
 func NewPluginServiceImpl(
@@ -279,8 +275,8 @@ func (p *PluginServiceImpl) GetHosts() []*host_info_util.HostInfo {
 	p.allHostsLock.RLock()
 	defer p.allHostsLock.RUnlock()
 
-	hostPermissions := p.allowedAndBlockedHosts.Load()
-	if hostPermissions == nil {
+	hostPermissions, found := driver_infrastructure.AllowedAndBlockedHostsStorageType.Get(p.servicesContainer.GetStorageService(), p.initialHostInfo.GetUrl())
+	if !found {
 		return p.AllHosts
 	}
 
@@ -307,10 +303,6 @@ func (p *PluginServiceImpl) GetHosts() []*host_info_util.HostInfo {
 
 func (p *PluginServiceImpl) GetInitialConnectionHostInfo() *host_info_util.HostInfo {
 	return p.initialHostInfo
-}
-
-func (p *PluginServiceImpl) SetAllowedAndBlockedHosts(allowedAndBlockedHosts *driver_infrastructure.AllowedAndBlockedHosts) {
-	p.allowedAndBlockedHosts.Store(allowedAndBlockedHosts)
 }
 
 func (p *PluginServiceImpl) AcceptsStrategy(strategy string) bool {
@@ -638,26 +630,6 @@ func (p *PluginServiceImpl) ResetSession() {
 	p.sessionStateService.Reset()
 }
 
-func (p *PluginServiceImpl) GetBgStatus(id string) (driver_infrastructure.BlueGreenStatus, bool) {
-	return statusesExpiringCache.Get(p.getStatusCacheKey(id))
-}
-
-func (p *PluginServiceImpl) SetBgStatus(status driver_infrastructure.BlueGreenStatus, id string) {
-	cacheKey := p.getStatusCacheKey(id)
-	if status.IsZero() {
-		statusesExpiringCache.Remove(cacheKey)
-	} else {
-		statusesExpiringCache.Put(cacheKey, status, DEFAULT_STATUS_CACHE_EXPIRE_NANO)
-	}
-}
-
-func (p *PluginServiceImpl) getStatusCacheKey(id string) string {
-	if id != "" {
-		id = strings.ToLower(strings.TrimSpace(id))
-	}
-	return fmt.Sprintf("%s::%s", id, "BlueGreenStatus")
-}
-
 func (p *PluginServiceImpl) IsPluginInUse(pluginName string) bool {
 	return p.servicesContainer.GetPluginManager().IsPluginInUse(pluginName)
 }
@@ -667,13 +639,10 @@ func ClearCaches() {
 	if hostAvailabilityExpiringCache != nil {
 		hostAvailabilityExpiringCache.Clear()
 	}
-	if statusesExpiringCache != nil {
-		statusesExpiringCache.Clear()
-	}
 }
 
 func (p *PluginServiceImpl) CreatePartialPluginService() driver_infrastructure.PluginService {
 	p.allHostsLock.RLock()
 	defer p.allHostsLock.RUnlock()
-	return NewPartialPluginService(p.servicesContainer, p.props, p.originalDsn, p.hostListProvider, p.dialect, p.driverDialect, p.AllHosts, p.allHostsLock, &p.allowedAndBlockedHosts)
+	return NewPartialPluginService(p.servicesContainer, p.props, p.originalDsn, p.hostListProvider, p.dialect, p.driverDialect, p.AllHosts, p.allHostsLock, p.initialHostInfo)
 }

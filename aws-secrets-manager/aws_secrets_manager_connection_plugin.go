@@ -43,10 +43,10 @@ var fetchCredentialsCounterName = "secretsManager.fetchCredentials.count"
 
 type AwsSecretsManagerPluginFactory struct{}
 
-func (factory AwsSecretsManagerPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
+func (factory AwsSecretsManagerPluginFactory) GetInstance(servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string],
 ) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewAwsSecretsManagerPlugin(pluginService, props, NewAwsSecretsManagerClient)
+	return NewAwsSecretsManagerPlugin(servicesContainer.GetPluginService(), props, NewAwsSecretsManagerClient)
 }
 
 func (factory AwsSecretsManagerPluginFactory) ClearCaches() {
