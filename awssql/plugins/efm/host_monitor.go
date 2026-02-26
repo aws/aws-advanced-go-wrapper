@@ -37,21 +37,25 @@ import (
 
 var EFM_ROUTINE_SLEEP_DURATION = 100 * time.Millisecond
 
-type Monitor interface {
+// MonitorResetEventType reference for subscribing to reset events.
+// The actual event type is defined in services/events.go.
+var MonitorResetEventType = &driver_infrastructure.EventType{Name: "MonitorReset"}
+
+type HostMonitor interface {
+	driver_infrastructure.Monitor
+	driver_infrastructure.EventSubscriber
 	StartMonitoring(state *MonitorConnectionState)
-	CanDispose() bool
-	Close()
 }
 
-func NewMonitorImpl(
-	pluginService driver_infrastructure.PluginService,
+func NewHostMonitorImpl(
+	servicesContainer driver_infrastructure.ServicesContainer,
 	hostInfo *host_info_util.HostInfo,
 	props *utils.RWMap[string, string],
 	failureDetectionTimeMillis int,
 	failureDetectionIntervalMillis int,
 	failureDetectionCount int,
 	abortedConnectionsCounter telemetry.TelemetryCounter,
-) *MonitorImpl {
+) *HostMonitorImpl {
 	copyProps := props.GetAllEntries()
 	monitoringConnectionProps := utils.NewRWMapFromMap(copyProps)
 	for propKey, propValue := range copyProps {
@@ -60,10 +64,11 @@ func NewMonitorImpl(
 			monitoringConnectionProps.Remove(propKey)
 		}
 	}
-	monitor := &MonitorImpl{
+	monitor := &HostMonitorImpl{
+		servicesContainer:             servicesContainer,
 		hostInfo:                      hostInfo,
 		monitoringProps:               monitoringConnectionProps,
-		pluginService:                 pluginService,
+		pluginService:                 servicesContainer.GetPluginService(),
 		failureDetectionTimeNanos:     time.Millisecond * time.Duration(failureDetectionTimeMillis),
 		failureDetectionIntervalNanos: time.Millisecond * time.Duration(failureDetectionIntervalMillis),
 		failureDetectionCount:         failureDetectionCount,
@@ -72,14 +77,11 @@ func NewMonitorImpl(
 		abortedConnectionsCounter:     abortedConnectionsCounter,
 	}
 
-	monitor.wg.Add(2)
-	go monitor.newStateRun()
-	go monitor.run()
-
 	return monitor
 }
 
-type MonitorImpl struct {
+type HostMonitorImpl struct {
+	servicesContainer             driver_infrastructure.ServicesContainer
 	hostInfo                      *host_info_util.HostInfo
 	MonitoringConn                driver.Conn
 	pluginService                 driver_infrastructure.PluginService
@@ -95,31 +97,58 @@ type MonitorImpl struct {
 	HostUnhealthy                 atomic.Bool
 	wg                            sync.WaitGroup
 	abortedConnectionsCounter     telemetry.TelemetryCounter
+	state                         atomic.Value // driver_infrastructure.MonitorState
+	lastActivityTimestampNano     atomic.Int64
 }
 
-func (m *MonitorImpl) CanDispose() bool {
+func (m *HostMonitorImpl) CanDispose() bool {
 	return m.ActiveStates.IsEmpty() && m.NewStates.Size() == 0
 }
 
-func (m *MonitorImpl) Close() {
-	m.Stopped.Store(true)
-
-	m.wg.Wait()
-
-	slog.Debug(error_util.GetMessage("MonitorImpl.stopped", m.hostInfo.Host))
+func (m *HostMonitorImpl) Start() {
+	m.state.Store(driver_infrastructure.MonitorStateRunning)
+	m.lastActivityTimestampNano.Store(time.Now().UnixNano())
+	m.wg.Add(2)
+	go m.newStateRun()
+	go m.Monitor()
 }
 
-func (m *MonitorImpl) StartMonitoring(state *MonitorConnectionState) {
+func (m *HostMonitorImpl) Stop() {
+	m.Stopped.Store(true)
+	m.wg.Wait()
+	m.Close()
+	m.state.Store(driver_infrastructure.MonitorStateStopped)
+}
+
+func (m *HostMonitorImpl) Close() {
+	if m.MonitoringConn != nil {
+		_ = m.MonitoringConn.Close()
+	}
+	slog.Debug(error_util.GetMessage("HostMonitorImpl.stopped", m.hostInfo.Host))
+}
+
+func (m *HostMonitorImpl) GetLastActivityTimestampNanos() int64 {
+	return m.lastActivityTimestampNano.Load()
+}
+
+func (m *HostMonitorImpl) GetState() driver_infrastructure.MonitorState {
+	if state := m.state.Load(); state != nil {
+		return state.(driver_infrastructure.MonitorState)
+	}
+	return driver_infrastructure.MonitorStateStopped
+}
+
+func (m *HostMonitorImpl) StartMonitoring(state *MonitorConnectionState) {
 	if m.isStopped() {
-		slog.Warn(error_util.GetMessage("MonitorImpl.monitorIsStopped", m.hostInfo.Host))
+		slog.Warn(error_util.GetMessage("HostMonitorImpl.monitorIsStopped", m.hostInfo.Host))
 	}
 
 	startMonitoringTimeNano := time.Now().Add(m.failureDetectionTimeNanos)
 	m.NewStates.Put(startMonitoringTimeNano, []weak.Pointer[MonitorConnectionState]{weak.Make(state)})
 }
 
-func (m *MonitorImpl) newStateRun() {
-	slog.Debug(error_util.GetMessage("MonitorImpl.startMonitoringRoutineNewState", m.hostInfo.Host))
+func (m *HostMonitorImpl) newStateRun() {
+	slog.Debug(error_util.GetMessage("HostMonitorImpl.startMonitoringRoutineNewState", m.hostInfo.Host))
 	defer m.wg.Done()
 
 	for !m.isStopped() {
@@ -140,14 +169,21 @@ func (m *MonitorImpl) newStateRun() {
 		time.Sleep(time.Second)
 	}
 
-	slog.Debug(error_util.GetMessage("MonitorImpl.stopMonitoringRoutineNewState", m.hostInfo.Host))
+	slog.Debug(error_util.GetMessage("HostMonitorImpl.stopMonitoringRoutineNewState", m.hostInfo.Host))
 }
 
-func (m *MonitorImpl) run() {
-	slog.Debug(error_util.GetMessage("MonitorImpl.startMonitoringRoutine", m.hostInfo.Host))
+func (m *HostMonitorImpl) Monitor() {
+	slog.Debug(error_util.GetMessage("HostMonitorImpl.startMonitoringRoutine", m.hostInfo.Host))
 	defer m.wg.Done()
 
+	// Subscribe to MonitorResetEvent
+	if eventPublisher := m.servicesContainer.GetEventPublisher(); eventPublisher != nil {
+		eventPublisher.Subscribe(m, []*driver_infrastructure.EventType{MonitorResetEventType})
+		defer eventPublisher.Unsubscribe(m, []*driver_infrastructure.EventType{MonitorResetEventType})
+	}
+
 	for !m.isStopped() {
+		m.lastActivityTimestampNano.Store(time.Now().UnixNano())
 		activeStatesEmpty := m.ActiveStates.IsEmpty()
 
 		if activeStatesEmpty && !m.HostUnhealthy.Load() {
@@ -196,7 +232,7 @@ func (m *MonitorImpl) run() {
 		activeStatesSize := m.ActiveStates.Size()
 		tmpActiveStatesSize := tmpActiveStates.Size()
 		if activeStatesSize != 0 || tmpActiveStatesSize != 0 {
-			slog.Debug(error_util.GetMessage("MonitorImpl.updatingActiveStates", m.hostInfo.Host, activeStatesSize, tmpActiveStatesSize))
+			slog.Debug(error_util.GetMessage("HostMonitorImpl.updatingActiveStates", m.hostInfo.Host, activeStatesSize, tmpActiveStatesSize))
 		}
 		m.ActiveStates = tmpActiveStates
 		delayDurationNanos := m.failureDetectionIntervalNanos - (statusCheckEndTime.Sub(statusCheckStartTime))
@@ -205,13 +241,10 @@ func (m *MonitorImpl) run() {
 		}
 		time.Sleep(delayDurationNanos)
 	}
-	if m.MonitoringConn != nil {
-		_ = m.MonitoringConn.Close()
-	}
-	slog.Debug(error_util.GetMessage("MonitorImpl.stopMonitoringRoutine", m.hostInfo.Host))
+	slog.Debug(error_util.GetMessage("HostMonitorImpl.stopMonitoringRoutine", m.hostInfo.Host))
 }
 
-func (m *MonitorImpl) UpdateHostHealthStatus(connIsValid bool, statusCheckStartTime time.Time, statusCheckEndTime time.Time) {
+func (m *HostMonitorImpl) UpdateHostHealthStatus(connIsValid bool, statusCheckStartTime time.Time, statusCheckEndTime time.Time) {
 	if !connIsValid {
 		m.FailureCount.Add(1)
 
@@ -223,18 +256,18 @@ func (m *MonitorImpl) UpdateHostHealthStatus(connIsValid bool, statusCheckStartT
 		maxInvalidDurationTimeNanos := m.failureDetectionIntervalNanos * time.Duration(math.Max(0, float64(m.failureDetectionCount-1)))
 
 		if invalidHostDurationTimeNanos >= maxInvalidDurationTimeNanos {
-			slog.Debug(error_util.GetMessage("MonitorImpl.hostDead", m.hostInfo.Host))
+			slog.Debug(error_util.GetMessage("HostMonitorImpl.hostDead", m.hostInfo.Host))
 			m.HostUnhealthy.Store(true)
 			return
 		}
 
-		slog.Debug(error_util.GetMessage("MonitorImpl.hostNotResponding", m.hostInfo.Host))
+		slog.Debug(error_util.GetMessage("HostMonitorImpl.hostNotResponding", m.hostInfo.Host))
 		return
 	}
 
 	if m.FailureCount.Load() > 0 {
 		// Host is back alive.
-		slog.Debug(error_util.GetMessage("MonitorImpl.hostAlive", m.hostInfo.Host))
+		slog.Debug(error_util.GetMessage("HostMonitorImpl.hostAlive", m.hostInfo.Host))
 	}
 
 	m.FailureCount.Store(0)
@@ -242,7 +275,7 @@ func (m *MonitorImpl) UpdateHostHealthStatus(connIsValid bool, statusCheckStartT
 	m.HostUnhealthy.Store(false)
 }
 
-func (m *MonitorImpl) CheckConnectionStatus() bool {
+func (m *HostMonitorImpl) CheckConnectionStatus() bool {
 	parentCtx := m.pluginService.GetTelemetryContext()
 	telemetryCtx, ctx := m.pluginService.GetTelemetryFactory().OpenTelemetryContext(telemetry.TELEMETRY_CONN_STATUS_CHECK, telemetry.FORCE_TOP_LEVEL, nil)
 	telemetryCtx.SetAttribute(telemetry.TELEMETRY_ATTRIBUTE_URL, m.hostInfo.Host)
@@ -254,13 +287,13 @@ func (m *MonitorImpl) CheckConnectionStatus() bool {
 
 	if m.MonitoringConn == nil || m.pluginService.GetTargetDriverDialect().IsClosed(m.MonitoringConn) {
 		// Open a new connection.
-		slog.Debug(error_util.GetMessage("MonitorImpl.openingMonitoringConnection", m.hostInfo.Host))
+		slog.Debug(error_util.GetMessage("HostMonitorImpl.openingMonitoringConnection", m.hostInfo.Host))
 		newMonitoringConn, err := m.pluginService.ForceConnect(m.hostInfo, m.monitoringProps)
 		if err != nil || newMonitoringConn == nil {
 			return false
 		}
 		m.MonitoringConn = newMonitoringConn
-		slog.Debug(error_util.GetMessage("MonitorImpl.openedMonitoringConnection", m.hostInfo.Host))
+		slog.Debug(error_util.GetMessage("HostMonitorImpl.openedMonitoringConnection", m.hostInfo.Host))
 		return true
 	}
 
@@ -276,6 +309,39 @@ func (m *MonitorImpl) CheckConnectionStatus() bool {
 	return utils.IsReachable(m.MonitoringConn, ctx)
 }
 
-func (m *MonitorImpl) isStopped() bool {
+func (m *HostMonitorImpl) isStopped() bool {
 	return m.Stopped.Load()
+}
+
+// ProcessEvent handles events from the EventPublisher.
+// Implements EventSubscriber interface.
+func (m *HostMonitorImpl) ProcessEvent(event driver_infrastructure.Event) {
+	// Check if this is a MonitorResetEvent by checking the event type name
+	if event.GetEventType().Name == MonitorResetEventType.Name {
+		slog.Debug(error_util.GetMessage("HostMonitorImpl.resetEventReceived", m.hostInfo.Host))
+		// Use type assertion to get the endpoints
+		if resetEvent, ok := event.(interface{ GetEndpoints() map[string]struct{} }); ok {
+			endpoints := resetEvent.GetEndpoints()
+			if _, found := endpoints[m.hostInfo.Host]; found {
+				m.reset()
+			}
+		}
+	}
+}
+
+// reset resets the monitor state, clearing the monitoring connection and failure tracking.
+// This is called when a MonitorResetEvent is received for this host.
+func (m *HostMonitorImpl) reset() {
+	slog.Debug(error_util.GetMessage("HostMonitorImpl.reset", m.hostInfo.Host))
+
+	// Close and clear monitoring connection
+	if m.MonitoringConn != nil {
+		_ = m.MonitoringConn.Close()
+		m.MonitoringConn = nil
+	}
+
+	// Reset failure tracking
+	m.InvalidHostStartTime = time.Time{}
+	m.FailureCount.Store(0)
+	m.HostUnhealthy.Store(false)
 }

@@ -43,9 +43,8 @@ func (h HostMonitoringPluginFactory) GetInstance(servicesContainer driver_infras
 }
 
 func (h HostMonitoringPluginFactory) ClearCaches() {
-	if EFM_MONITORS != nil {
-		EFM_MONITORS.Clear()
-	}
+	// Monitors are now managed by the MonitorService, so we don't need to clear them here.
+	// The MonitorService will handle cleanup when ReleaseResources is called.
 }
 
 func NewHostMonitoringPluginFactory() driver_infrastructure.ConnectionPluginFactory {
@@ -57,7 +56,7 @@ type HostMonitorConnectionPlugin struct {
 	pluginService      driver_infrastructure.PluginService
 	props              *utils.RWMap[string, string]
 	monitoringHostInfo *host_info_util.HostInfo
-	monitorService     MonitorService
+	monitorService     HostMonitoringService
 	plugins.BaseConnectionPlugin
 }
 
@@ -139,7 +138,7 @@ func (b *HostMonitorConnectionPlugin) Execute(
 
 func (b *HostMonitorConnectionPlugin) initMonitorService() error {
 	if b.monitorService == nil {
-		monitorService, err := NewMonitorServiceImpl(b.pluginService, b.props)
+		monitorService, err := NewHostMonitoringServiceImpl(b.servicesContainer, b.props)
 		if err != nil {
 			return err
 		}
