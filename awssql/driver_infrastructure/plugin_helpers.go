@@ -51,7 +51,6 @@ type PluginService interface {
 	GetCurrentHostInfo() (*host_info_util.HostInfo, error)
 	GetAllHosts() []*host_info_util.HostInfo
 	GetHosts() []*host_info_util.HostInfo
-	SetAllowedAndBlockedHosts(allowedAndBlockedHosts *AllowedAndBlockedHosts)
 	AcceptsStrategy(strategy string) bool
 	GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error)
 	GetHostSelectorStrategy(strategy string) (hostSelector HostSelector, err error)
@@ -87,8 +86,6 @@ type PluginService interface {
 	GetTelemetryFactory() telemetry.TelemetryFactory
 	SetTelemetryContext(ctx context.Context)
 	UpdateState(sql string, methodArgs ...any)
-	GetBgStatus(id string) (BlueGreenStatus, bool)
-	SetBgStatus(status BlueGreenStatus, id string)
 	IsPluginInUse(pluginName string) bool
 	ResetSession()
 	CreatePartialPluginService() PluginService

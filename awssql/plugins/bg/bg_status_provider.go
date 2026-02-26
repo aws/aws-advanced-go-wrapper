@@ -36,10 +36,11 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
-type BlueGreenProviderSupplier = func(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string, string], bgdId string) *BlueGreenStatusProvider
+type BlueGreenProviderSupplier = func(pluginService driver_infrastructure.PluginService, storageService driver_infrastructure.StorageService, props *utils.RWMap[string, string], bgdId string) *BlueGreenStatusProvider
 
 type BlueGreenStatusProvider struct {
 	pluginService                           driver_infrastructure.PluginService
+	storageService                          driver_infrastructure.StorageService
 	props                                   *utils.RWMap[string, string]
 	bgdId                                   string
 	statusCheckIntervalMap                  map[driver_infrastructure.BlueGreenIntervalRate]int
@@ -66,7 +67,7 @@ type BlueGreenStatusProvider struct {
 	processStatusLock                       sync.Mutex
 }
 
-func NewBlueGreenStatusProvider(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string, string], bgId string) *BlueGreenStatusProvider {
+func NewBlueGreenStatusProvider(pluginService driver_infrastructure.PluginService, storageService driver_infrastructure.StorageService, props *utils.RWMap[string, string], bgId string) *BlueGreenStatusProvider {
 	statusCheckIntervalMap := map[driver_infrastructure.BlueGreenIntervalRate]int{
 		driver_infrastructure.BASELINE:  property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.BG_INTERVAL_BASELINE_MS),
 		driver_infrastructure.INCREASED: property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.BG_INTERVAL_INCREASED_MS),
@@ -77,6 +78,7 @@ func NewBlueGreenStatusProvider(pluginService driver_infrastructure.PluginServic
 
 	provider := &BlueGreenStatusProvider{
 		pluginService:                           pluginService,
+		storageService:                          storageService,
 		props:                                   props,
 		bgdId:                                   bgId,
 		statusCheckIntervalMap:                  statusCheckIntervalMap,
@@ -229,7 +231,12 @@ func (b *BlueGreenStatusProvider) UpdatePhase(role driver_infrastructure.BlueGre
 }
 
 func (b *BlueGreenStatusProvider) updateStatusCache() {
-	b.pluginService.SetBgStatus(b.summaryStatus, b.bgdId)
+	cacheKey := b.bgdId + "::BlueGreenStatus"
+	if b.summaryStatus.IsZero() {
+		driver_infrastructure.BlueGreenStatusStorageType.Remove(b.storageService, cacheKey)
+	} else {
+		driver_infrastructure.BlueGreenStatusStorageType.Set(b.storageService, cacheKey, &b.summaryStatus)
+	}
 	b.StorePhaseTime(b.summaryStatus.GetCurrentPhase())
 }
 
@@ -512,13 +519,13 @@ func (b *BlueGreenStatusProvider) GetStatusOfInProgress() driver_infrastructure.
 	var connectRoutings []driver_infrastructure.ConnectRouting
 	if b.suspendNewBlueConnectionsWhenInProgress {
 		// All blue and green connect calls should be suspended.
-		connectRoutings = []driver_infrastructure.ConnectRouting{NewSuspendConnectRouting("", driver_infrastructure.SOURCE, b.bgdId)}
+		connectRoutings = []driver_infrastructure.ConnectRouting{NewSuspendConnectRouting("", driver_infrastructure.SOURCE, b.bgdId, b.storageService)}
 	} else {
 		// If we're not suspending new connections then, at least, we need to use IP addresses.
 		connectRoutings = b.AddSubstituteBlueWithIpAddressConnectRouting()
 	}
 
-	connectRoutings = append(connectRoutings, NewSuspendConnectRouting("", driver_infrastructure.TARGET, b.bgdId))
+	connectRoutings = append(connectRoutings, NewSuspendConnectRouting("", driver_infrastructure.TARGET, b.bgdId, b.storageService))
 
 	// All connect calls with IP address that belongs to blue or green host should be suspended.
 	uniqueIpAddresses := b.getUniqueIpAddresses()
@@ -540,8 +547,8 @@ func (b *BlueGreenStatusProvider) GetStatusOfInProgress() driver_infrastructure.
 	}
 
 	executeRoutings := []driver_infrastructure.ExecuteRouting{
-		NewSuspendExecuteRouting("", driver_infrastructure.SOURCE, b.bgdId),
-		NewSuspendExecuteRouting("", driver_infrastructure.TARGET, b.bgdId),
+		NewSuspendExecuteRouting("", driver_infrastructure.SOURCE, b.bgdId, b.storageService),
+		NewSuspendExecuteRouting("", driver_infrastructure.TARGET, b.bgdId, b.storageService),
 	}
 
 	// All traffic through connections with IP addresses that belong to blue or green hosts should be on hold.
@@ -585,11 +592,11 @@ func (b *BlueGreenStatusProvider) getUniqueIpAddresses() map[string]bool {
 }
 
 func (b *BlueGreenStatusProvider) appendSuspendConnectRouting(connectRoutings []driver_infrastructure.ConnectRouting, host string) []driver_infrastructure.ConnectRouting {
-	return append(connectRoutings, NewSuspendConnectRouting(host, driver_infrastructure.BlueGreenRole{}, b.bgdId))
+	return append(connectRoutings, NewSuspendConnectRouting(host, driver_infrastructure.BlueGreenRole{}, b.bgdId, b.storageService))
 }
 
 func (b *BlueGreenStatusProvider) appendSuspendExecuteRouting(executeRoutings []driver_infrastructure.ExecuteRouting, host string) []driver_infrastructure.ExecuteRouting {
-	return append(executeRoutings, NewSuspendExecuteRouting(host, driver_infrastructure.BlueGreenRole{}, b.bgdId))
+	return append(executeRoutings, NewSuspendExecuteRouting(host, driver_infrastructure.BlueGreenRole{}, b.bgdId, b.storageService))
 }
 
 func (b *BlueGreenStatusProvider) GetStatusOfPost() driver_infrastructure.BlueGreenStatus {
@@ -627,6 +634,7 @@ func (b *BlueGreenStatusProvider) CreatePostRouting() (connectRoutings []driver_
 				host,
 				role,
 				b.bgdId,
+				b.storageService,
 			))
 			interimStatus := b.interimStatuses[role.GetValue()]
 			if !interimStatus.IsZero() {
@@ -634,6 +642,7 @@ func (b *BlueGreenStatusProvider) CreatePostRouting() (connectRoutings []driver_
 					host_info_util.GetHostAndPort(host, interimStatus.port),
 					role,
 					b.bgdId,
+					b.storageService,
 				))
 			}
 		} else {

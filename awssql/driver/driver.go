@@ -165,15 +165,17 @@ func GetUnderlyingDriver(name string) driver.Driver {
 
 // This cleans up all long-standing caches. To be called at the end of program, not each time a Conn is closed.
 func ClearCaches() {
+	// Get the core services to access the monitor service
+	coreServices := services.GetCoreServiceContainer()
+
 	// This needs to be first, or else it may add items to other caches.
-	driver_infrastructure.ClearAllRdsHostListProviderCaches()
+	driver_infrastructure.ClearAllRdsHostListProviderCaches(coreServices.Monitor)
 
 	driver_infrastructure.ClearCaches()
 	plugin_helpers.ClearCaches()
 	for _, pluginFactory := range pluginFactoryByCode {
 		pluginFactory.ClearCaches()
 	}
-	driver_infrastructure.ClearAllRdsHostListProviderCaches()
 }
 
 type AwsWrapperConn struct {

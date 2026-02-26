@@ -30,16 +30,11 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
-// Monitor-related constants and package-level state
+// Monitor-related constants
 var (
-	MONITOR_EXPIRATION_NANOS          = time.Minute
 	TOPOLOGY_CACHE_EXPIRATION_NANO    = time.Minute * 5
 	DEFAULT_TOPOLOGY_QUERY_TIMEOUT_MS = 5000
 )
-
-var clusterTopologyMonitors *utils.SlidingExpirationCache[ClusterTopologyMonitor]
-var clusterTopologyMonitorsMutex sync.Mutex
-var clusterTopologyMonitorWg = &sync.WaitGroup{}
 
 type RdsHostListProvider struct {
 	hostListProviderService HostListProviderService
@@ -65,18 +60,6 @@ func NewRdsHostListProvider(
 	properties *utils.RWMap[string, string],
 	servicesContainer ServicesContainer,
 ) *RdsHostListProvider {
-	// Initialize monitor cache if needed
-	clusterTopologyMonitorsMutex.Lock()
-	if clusterTopologyMonitors == nil {
-		var disposalFunc utils.DisposalFunc[ClusterTopologyMonitor] = func(item ClusterTopologyMonitor) bool {
-			item.Close()
-			return true
-		}
-		clusterTopologyMonitors = utils.NewSlidingExpirationCache("cluster-topology-monitors", disposalFunc)
-		clusterTopologyMonitors.SetCleanupIntervalNanos(MONITOR_EXPIRATION_NANOS)
-	}
-	clusterTopologyMonitorsMutex.Unlock()
-
 	return &RdsHostListProvider{
 		hostListProviderService:       hostListProviderService,
 		topologyUtils:                 topologyUtils,
@@ -131,17 +114,13 @@ func (r *RdsHostListProvider) init() {
 	r.isInitialized = true
 }
 
-func (r *RdsHostListProvider) getMonitor() ClusterTopologyMonitor {
-	monitor, ok := clusterTopologyMonitors.Get(r.clusterId, MONITOR_EXPIRATION_NANOS)
-	if ok {
-		return monitor
-	}
-
+func (r *RdsHostListProvider) getOrCreateMonitor() ClusterTopologyMonitor {
+	r.init()
 	highRefreshRateNano := time.Millisecond * time.Duration(property_util.GetRefreshRateValue(r.properties, property_util.CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS))
 
-	computeFunc := func() ClusterTopologyMonitor {
-		monitor = NewClusterTopologyMonitorImpl(
-			r.servicesContainer,
+	initializer := func(container ServicesContainer) (Monitor, error) {
+		monitor := NewClusterTopologyMonitorImpl(
+			container,
 			r.topologyUtils,
 			r.clusterId,
 			highRefreshRateNano,
@@ -151,33 +130,23 @@ func (r *RdsHostListProvider) getMonitor() ClusterTopologyMonitor {
 			r.initialHostInfo,
 			r.clusterInstanceTemplate,
 			r.pluginService)
-		monitor.Start(clusterTopologyMonitorWg)
-		return monitor
+		return monitor, nil
 	}
-	return clusterTopologyMonitors.ComputeIfAbsent(r.clusterId, computeFunc, MONITOR_EXPIRATION_NANOS)
-}
 
-func (r *RdsHostListProvider) queryForTopology(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
-	monitor := r.getMonitor()
-	return monitor.ForceRefreshUsingConn(conn, r.defaultTopologyQueryTimeoutMs)
+	monitor, err := r.servicesContainer.GetMonitorService().RunIfAbsent(
+		ClusterTopologyMonitorType,
+		r.clusterId,
+		r.servicesContainer,
+		initializer)
+	if err != nil {
+		return nil
+	}
+	return monitor.(ClusterTopologyMonitor)
 }
 
 // =============================================================================
 // HostListProvider Interface Implementation
 // =============================================================================
-
-// func (r *RdsHostListProvider) ForceRefresh(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
-// 	r.init()
-// 	if conn == nil {
-// 		conn = r.hostListProviderService.GetCurrentConnection()
-// 	}
-// 	hosts, _, err := r.getTopology(conn, true)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	slog.Debug(utils.LogTopology(hosts, "From ForceRefresh"))
-// 	return hosts, nil
-// }
 
 func (r *RdsHostListProvider) ForceRefresh() ([]*host_info_util.HostInfo, error) {
 	return r.ForceRefreshWithOptions(false, DEFAULT_TOPOLOGY_QUERY_TIMEOUT_MS)
@@ -192,7 +161,7 @@ func (r *RdsHostListProvider) forceRefreshMonitor(verifyTopology bool, timemoutM
 	if !r.pluginService.IsDialectConfirmed() {
 		return r.initialHostList, nil
 	}
-	monitor := r.getMonitor()
+	monitor := r.getOrCreateMonitor()
 	return monitor.ForceRefreshVerifyWriter(verifyTopology, timemoutMs)
 }
 
@@ -247,6 +216,7 @@ func (r *RdsHostListProvider) Refresh() ([]*host_info_util.HostInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	msgPrefix := "From SQL Query"
 	if isCachedData {
 		msgPrefix = "From cache"
@@ -279,9 +249,7 @@ func (r *RdsHostListProvider) CreateHost(host string, hostRole host_info_util.Ho
 }
 
 func (r *RdsHostListProvider) StopMonitor() {
-	monitor := r.getMonitor()
-	monitor.Close()
-	clusterTopologyMonitors.Remove(r.clusterId)
+	r.servicesContainer.GetMonitorService().StopAndRemove(ClusterTopologyMonitorType, r.clusterId)
 }
 
 // =============================================================================
@@ -289,10 +257,10 @@ func (r *RdsHostListProvider) StopMonitor() {
 // =============================================================================
 
 func (r *RdsHostListProvider) ForceRefreshHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) ([]*host_info_util.HostInfo, error) {
-	monitor := r.getMonitor()
+	monitor := r.getOrCreateMonitor()
 	updatedHosts, err := monitor.ForceRefreshVerifyWriter(shouldVerifyWriter, timeoutMs)
 	if err == nil && len(updatedHosts) > 0 {
-		TopologyStorage.Set(r.servicesContainer.GetStorageService(), r.clusterId, NewTopology(updatedHosts))
+		TopologyStorageType.Set(r.servicesContainer.GetStorageService(), r.clusterId, NewTopology(updatedHosts))
 	}
 	return updatedHosts, err
 }
@@ -305,8 +273,19 @@ func (r *RdsHostListProvider) getTopology() ([]*host_info_util.HostInfo, bool, e
 	hosts := r.getStoredHosts()
 
 	if !r.pluginService.IsDialectConfirmed() {
+		// We need to confirm the dialect before creating a topology monitor so that it uses the correct SQL queries.
+		// We will return the original hosts parsed from the connection string until the dialect has been confirmed.
 		return r.initialHostList, false, nil
 	}
+
+	if len(hosts) == 0 {
+		// We need to re-fetch topology - start the monitor and get topology
+		refreshedHosts, err := r.forceRefreshMonitor(false, DEFAULT_TOPOLOGY_QUERY_TIMEOUT_MS)
+		if err == nil && len(refreshedHosts) > 0 {
+			return refreshedHosts, false, nil
+		}
+	}
+
 	if len(hosts) > 0 {
 		// Return the cached hosts.
 		return hosts, true, nil
@@ -321,7 +300,7 @@ func (r *RdsHostListProvider) getTopology() ([]*host_info_util.HostInfo, bool, e
 
 func (r *RdsHostListProvider) getStoredHosts() []*host_info_util.HostInfo {
 	r.init()
-	topology, found := TopologyStorage.Get(r.servicesContainer.GetStorageService(), r.clusterId)
+	topology, found := TopologyStorageType.Get(r.servicesContainer.GetStorageService(), r.clusterId)
 	if !found {
 		return nil
 	}
@@ -337,9 +316,11 @@ func (r *RdsHostListProvider) getHostEndpoint(hostName string) string {
 // Cache Management
 // =============================================================================
 
-func ClearAllRdsHostListProviderCaches() {
-	if clusterTopologyMonitors != nil {
-		clusterTopologyMonitors.Clear()
-		clusterTopologyMonitorWg.Wait()
+// ClearAllRdsHostListProviderCaches clears all cluster topology monitors.
+// Note: This requires access to a ServicesContainer to clear monitors via MonitorService.
+// For global cleanup, use MonitorService.StopAndRemoveByType(ClusterTopologyMonitorType) directly.
+func ClearAllRdsHostListProviderCaches(monitorService MonitorService) {
+	if monitorService != nil {
+		monitorService.StopAndRemoveByType(ClusterTopologyMonitorType)
 	}
 }

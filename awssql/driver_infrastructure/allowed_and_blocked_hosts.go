@@ -18,9 +18,9 @@ package driver_infrastructure
 
 import "time"
 
-// AllowedAndBlockedHostsStorage is the type-safe descriptor for storing AllowedAndBlockedHosts.
-var AllowedAndBlockedHostsStorage = &StorageTypeDescriptor[*AllowedAndBlockedHosts]{
-	TypeKey:       AllowedAndBlockedHostStorageType,
+// AllowedAndBlockedHostsStorageType is the type-safe descriptor for storing AllowedAndBlockedHosts.
+var AllowedAndBlockedHostsStorageType = &StorageTypeDescriptor[*AllowedAndBlockedHosts]{
+	TypeKey:       "AllowedAndBlockedHosts",
 	TTL:           5 * time.Minute,
 	RenewOnAccess: false,
 }

@@ -22,7 +22,6 @@ import (
 	"log/slog"
 	"slices"
 	"sync"
-	"sync/atomic"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -35,15 +34,15 @@ import (
 // To keep it light, some fields/methods are not implemented. `panic()` is used to ensure that these methods not used and are caught during development/testing.
 // If the PartialPluginService fits your usecase but doesn't implement the field/method you need, feel free to add it.
 type PartialPluginService struct {
-	servicesContainer      driver_infrastructure.ServicesContainer
-	props                  *utils.RWMap[string, string]
-	originalDsn            string
-	hostListProvider       driver_infrastructure.HostListProvider
-	dialect                driver_infrastructure.DatabaseDialect
-	driverDialect          driver_infrastructure.DriverDialect
-	AllHosts               []*host_info_util.HostInfo
-	allHostsLock           *sync.RWMutex
-	allowedAndBlockedHosts *atomic.Pointer[driver_infrastructure.AllowedAndBlockedHosts]
+	servicesContainer driver_infrastructure.ServicesContainer
+	props             *utils.RWMap[string, string]
+	originalDsn       string
+	hostListProvider  driver_infrastructure.HostListProvider
+	dialect           driver_infrastructure.DatabaseDialect
+	driverDialect     driver_infrastructure.DriverDialect
+	AllHosts          []*host_info_util.HostInfo
+	allHostsLock      *sync.RWMutex
+	initialHostInfo   *host_info_util.HostInfo
 }
 
 func NewPartialPluginService(
@@ -55,17 +54,16 @@ func NewPartialPluginService(
 	driverDialect driver_infrastructure.DriverDialect,
 	AllHosts []*host_info_util.HostInfo,
 	allHostsLock *sync.RWMutex,
-	allowedAndBlockedHosts *atomic.Pointer[driver_infrastructure.AllowedAndBlockedHosts]) driver_infrastructure.PluginService {
+	initialHostInfo *host_info_util.HostInfo) driver_infrastructure.PluginService {
 	return &PartialPluginService{
-		servicesContainer:      servicesContainer,
-		props:                  props,
-		originalDsn:            originalDsn,
-		hostListProvider:       hostListProvider,
-		dialect:                dialect,
-		driverDialect:          driverDialect,
-		AllHosts:               AllHosts,
-		allHostsLock:           allHostsLock,
-		allowedAndBlockedHosts: allowedAndBlockedHosts,
+		servicesContainer: servicesContainer,
+		props:             props,
+		originalDsn:       originalDsn,
+		hostListProvider:  hostListProvider,
+		dialect:           dialect,
+		driverDialect:     driverDialect,
+		AllHosts:          AllHosts,
+		allHostsLock:      allHostsLock,
 	}
 }
 
@@ -99,10 +97,6 @@ func (p *PartialPluginService) GetTelemetryContext() context.Context {
 
 func (p *PartialPluginService) SetTelemetryContext(ctx context.Context) {
 	p.servicesContainer.GetPluginManager().SetTelemetryContext(ctx)
-}
-
-func (p *PartialPluginService) SetAllowedAndBlockedHosts(allowedAndBlockedHosts *driver_infrastructure.AllowedAndBlockedHosts) {
-	p.allowedAndBlockedHosts.Store(allowedAndBlockedHosts)
 }
 
 func (p *PartialPluginService) SetAvailability(hostAliases map[string]bool, availability host_info_util.HostAvailability) {
@@ -161,8 +155,8 @@ func (p *PartialPluginService) GetHosts() []*host_info_util.HostInfo {
 	p.allHostsLock.RLock()
 	defer p.allHostsLock.RUnlock()
 
-	hostPermissions := p.allowedAndBlockedHosts.Load()
-	if hostPermissions == nil {
+	hostPermissions, found := driver_infrastructure.AllowedAndBlockedHostsStorageType.Get(p.servicesContainer.GetStorageService(), p.initialHostInfo)
+	if !found {
 		return p.AllHosts
 	}
 
@@ -267,12 +261,6 @@ func (p *PartialPluginService) GetTelemetryFactory() telemetry.TelemetryFactory 
 	panic("Method not implemented.")
 }
 func (p *PartialPluginService) UpdateState(sql string, methodArgs ...any) {
-	panic("Method not implemented.")
-}
-func (p *PartialPluginService) GetBgStatus(id string) (driver_infrastructure.BlueGreenStatus, bool) {
-	panic("Method not implemented.")
-}
-func (p *PartialPluginService) SetBgStatus(status driver_infrastructure.BlueGreenStatus, id string) {
 	panic("Method not implemented.")
 }
 func (p *PartialPluginService) IsPluginInUse(pluginName string) bool {

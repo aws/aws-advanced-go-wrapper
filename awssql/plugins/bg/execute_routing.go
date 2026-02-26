@@ -28,8 +28,14 @@ import (
 )
 
 type SuspendExecuteRouting struct {
-	bgId string
+	bgId           string
+	storageService driver_infrastructure.StorageService
 	BaseRouting
+}
+
+func (r *SuspendExecuteRouting) getBgStatus() *driver_infrastructure.BlueGreenStatus {
+	status, _ := driver_infrastructure.BlueGreenStatusStorageType.Get(r.storageService, r.bgId+"::BlueGreenStatus")
+	return status
 }
 
 func (r *SuspendExecuteRouting) Apply(_ driver_infrastructure.ConnectionPlugin, props *utils.RWMap[string, string],
@@ -46,19 +52,19 @@ func (r *SuspendExecuteRouting) Apply(_ driver_infrastructure.ConnectionPlugin, 
 		pluginService.SetTelemetryContext(parentCtx)
 	}()
 
-	bgStatus, ok := pluginService.GetBgStatus(r.bgId)
+	bgStatus := r.getBgStatus()
 
 	timeoutMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.BG_CONNECT_TIMEOUT_MS)
 	holdStartTime := time.Now()
 	endTime := holdStartTime.Add(time.Millisecond * time.Duration(timeoutMs))
 
-	for time.Now().Before(endTime) && ok && !bgStatus.IsZero() && bgStatus.GetCurrentPhase() == driver_infrastructure.IN_PROGRESS {
-		r.Delay(SLEEP_TIME_DURATION, bgStatus, pluginService, r.bgId)
+	for time.Now().Before(endTime) && bgStatus != nil && bgStatus.GetCurrentPhase() == driver_infrastructure.IN_PROGRESS {
+		r.Delay(SLEEP_TIME_DURATION, *bgStatus, pluginService, r.bgId, r.storageService)
 	}
 
-	bgStatus, ok = pluginService.GetBgStatus(r.bgId)
+	bgStatus = r.getBgStatus()
 
-	if ok && !bgStatus.IsZero() && bgStatus.GetCurrentPhase() == driver_infrastructure.IN_PROGRESS {
+	if bgStatus != nil && bgStatus.GetCurrentPhase() == driver_infrastructure.IN_PROGRESS {
 		return driver_infrastructure.RoutingResultHolder{WrappedErr: error_util.NewGenericAwsWrapperError(
 			error_util.GetMessage("BlueGreenDeployment.inProgressTryMethodLater", timeoutMs, methodName))}
 	}
@@ -67,6 +73,6 @@ func (r *SuspendExecuteRouting) Apply(_ driver_infrastructure.ConnectionPlugin, 
 	return driver_infrastructure.EMPTY_ROUTING_RESULT_HOLDER
 }
 
-func NewSuspendExecuteRouting(hostAndPort string, role driver_infrastructure.BlueGreenRole, bgId string) *SuspendExecuteRouting {
-	return &SuspendExecuteRouting{bgId, NewBaseRouting(hostAndPort, role)}
+func NewSuspendExecuteRouting(hostAndPort string, role driver_infrastructure.BlueGreenRole, bgId string, storageService driver_infrastructure.StorageService) *SuspendExecuteRouting {
+	return &SuspendExecuteRouting{bgId, storageService, NewBaseRouting(hostAndPort, role)}
 }

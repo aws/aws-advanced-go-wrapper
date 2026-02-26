@@ -44,6 +44,7 @@ var customEndpointInfoCache *utils.CacheMap[*CustomEndpointInfo] = utils.NewCach
 const CUSTOM_ENDPOINT_INFO_EXPIRATION_NANO = time.Minute * 5
 
 type CustomEndpointMonitorImpl struct {
+	servicesContainer      driver_infrastructure.ServicesContainer
 	pluginService          driver_infrastructure.PluginService
 	customEndpointHostInfo *host_info_util.HostInfo
 	endpointIdentifier     string
@@ -55,6 +56,7 @@ type CustomEndpointMonitorImpl struct {
 }
 
 func NewCustomEndpointMonitorImpl(
+	servicesContainer driver_infrastructure.ServicesContainer,
 	pluginService driver_infrastructure.PluginService,
 	customEndpointHostInfo *host_info_util.HostInfo,
 	endpointIdentifier string,
@@ -63,6 +65,7 @@ func NewCustomEndpointMonitorImpl(
 	infoChangedCounter telemetry.TelemetryCounter,
 	rdsClient *rds.Client) *CustomEndpointMonitorImpl {
 	monitor := &CustomEndpointMonitorImpl{
+		servicesContainer:      servicesContainer,
 		pluginService:          pluginService,
 		customEndpointHostInfo: customEndpointHostInfo,
 		endpointIdentifier:     endpointIdentifier,
@@ -152,7 +155,7 @@ func (monitor *CustomEndpointMonitorImpl) run() {
 			allowedAndBlockedHosts = driver_infrastructure.NewAllowedAndBlockedHosts(nil, endpointInfo.GetExcludedMembers())
 		}
 
-		monitor.pluginService.SetAllowedAndBlockedHosts(allowedAndBlockedHosts)
+		driver_infrastructure.AllowedAndBlockedHostsStorageType.Set(monitor.servicesContainer.GetStorageService(), monitor.customEndpointHostInfo.GetUrl(), allowedAndBlockedHosts)
 
 		customEndpointInfoCache.Put(monitor.getCustomEndpointInfoCacheKey(), endpointInfo, CUSTOM_ENDPOINT_INFO_EXPIRATION_NANO)
 		monitor.infoChangedCounter.Inc(monitor.pluginService.GetTelemetryContext())

@@ -23,10 +23,10 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 )
 
-// TopologyStorage is the type-safe descriptor for storing Topology in StorageService.
+// TopologyStorageType is the type-safe descriptor for storing Topology in StorageService.
 // Use this instead of raw StorageService.Get/Set for type safety.
-var TopologyStorage = &StorageTypeDescriptor[*Topology]{
-	TypeKey:       TopologyStorageType,
+var TopologyStorageType = &StorageTypeDescriptor[*Topology]{
+	TypeKey:       "Topology",
 	TTL:           5 * time.Minute,
 	RenewOnAccess: false,
 }
