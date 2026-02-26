@@ -28,6 +28,10 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
+// MonitorResetEventType is defined in services/events.go but we need a reference here
+// to avoid circular imports. The actual event type is services.MonitorResetEventType.
+var MonitorResetEventType = &EventType{Name: "MonitorReset"}
+
 var highRefreshPeriodAfterPanicNano = time.Second * 30
 var FallbackTopologyRefreshTimeoutMs = 1100
 var topologyUpdateWaitTime = time.Millisecond * 1000
@@ -40,8 +44,8 @@ var emptyContainer = ConnectionContainer{}
 
 type ClusterTopologyMonitor interface {
 	Monitor
-	ForceRefreshVerifyWriter(writerImportant bool, timeoutMs int) ([]*host_info_util.HostInfo, error)
-	ForceRefreshUsingConn(conn driver.Conn, timeoutMs int) ([]*host_info_util.HostInfo, error)
+	EventSubscriber
+	ForceRefresh(verifyTopology bool, timeoutMs int) ([]*host_info_util.HostInfo, error)
 }
 
 // ClusterTopologyMonitorType is the type descriptor for cluster topology monitors.
@@ -115,6 +119,12 @@ func (c *ClusterTopologyMonitorImpl) Start() {
 	c.hostRoutinesReaderConn.Store(emptyContainer)
 	c.wg.Add(1)
 	c.lastActivityTimestampNano.Store(time.Now().UnixNano())
+
+	// Subscribe to MonitorResetEvent
+	if eventPublisher := c.servicesContainer.GetEventPublisher(); eventPublisher != nil {
+		eventPublisher.Subscribe(c, []*EventType{MonitorResetEventType})
+	}
+
 	go func() {
 		defer c.wg.Done()
 		c.Monitor()
@@ -257,6 +267,12 @@ func (c *ClusterTopologyMonitorImpl) Close() {
 	c.hostRoutinesWg.Wait()
 	c.hostRoutines.Clear()
 	c.closeConnection(c.loadConn(c.monitoringConn))
+
+	// Unsubscribe from events
+	if eventPublisher := c.servicesContainer.GetEventPublisher(); eventPublisher != nil {
+		eventPublisher.Unsubscribe(c, []*EventType{MonitorResetEventType})
+	}
+
 	// Close channels safely - they may already be closed
 	defer func() { recover() }()
 	close(c.requestToUpdateTopologyChannel)
@@ -278,6 +294,58 @@ func (c *ClusterTopologyMonitorImpl) CanDispose() bool {
 	return true
 }
 
+// ProcessEvent handles events from the EventPublisher.
+// Implements EventSubscriber interface.
+func (c *ClusterTopologyMonitorImpl) ProcessEvent(event Event) {
+	// Check if this is a MonitorResetEvent by checking the event type name
+	if event.GetEventType().Name == MonitorResetEventType.Name {
+		slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.resetEventReceived"))
+		// Use type assertion to get the clusterId
+		// The event is from services package, so we need to check the fields via interface
+		if resetEvent, ok := event.(interface{ GetClusterId() string }); ok {
+			if resetEvent.GetClusterId() == c.clusterId {
+				c.reset()
+			}
+		}
+	}
+}
+
+// reset resets the monitor state, clearing all connections and cached data.
+// This is called when a MonitorResetEvent is received for this cluster.
+func (c *ClusterTopologyMonitorImpl) reset() {
+	slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.reset", c.clusterId, c.initialHostInfo.GetHost()))
+
+	// Stop host routines
+	c.hostRoutinesStop.Store(true)
+	c.hostRoutinesWg.Wait()
+	c.hostRoutines.Clear()
+
+	// Clean up host routine connections
+	c.closeConnection(c.loadConn(c.hostRoutinesWriterConn))
+	c.closeConnection(c.loadConn(c.hostRoutinesReaderConn))
+	c.hostRoutinesWriterConn.Store(emptyContainer)
+	c.hostRoutinesReaderConn.Store(emptyContainer)
+	c.hostRoutinesStop.Store(false)
+
+	c.hostRoutinesWriterHostInfo.Store(nil)
+	c.hostRoutinesLatestTopology.Store(map[string][]*host_info_util.HostInfo{})
+
+	// Reset monitoring connection
+	c.closeConnection(c.loadConn(c.monitoringConn))
+	c.monitoringConn.Store(emptyContainer)
+	c.isVerifiedWriterConn = false
+	c.writerHostInfo.Store(nil)
+	c.highRefreshRateEndTimeInNanos = 0
+	c.requestToUpdateTopology.Store(false)
+
+	// Clear topology cache
+	c.servicesContainer.GetStorageService().Remove(TopologyStorageType.TypeKey, c.clusterId)
+
+	// Signal to break any waiting/sleeping cycles in the monitoring thread
+	c.requestToUpdateTopology.Store(true)
+	c.notifyChannel(c.requestToUpdateTopologyChannel)
+}
+
 func (c *ClusterTopologyMonitorImpl) loadConn(conn atomic.Value) driver.Conn {
 	value := conn.Load()
 	if value == nil {
@@ -292,8 +360,8 @@ func (c *ClusterTopologyMonitorImpl) loadConn(conn atomic.Value) driver.Conn {
 	return connContainer.Conn
 }
 
-func (c *ClusterTopologyMonitorImpl) ForceRefreshVerifyWriter(shouldVerify bool, timeoutMs int) ([]*host_info_util.HostInfo, error) {
-	if shouldVerify {
+func (c *ClusterTopologyMonitorImpl) ForceRefresh(verifyTopology bool, timeoutMs int) ([]*host_info_util.HostInfo, error) {
+	if verifyTopology {
 		monitoringConn := c.loadConn(c.monitoringConn)
 		c.monitoringConn.Store(emptyContainer)
 		c.isVerifiedWriterConn = false
@@ -319,7 +387,7 @@ func (c *ClusterTopologyMonitorImpl) getStoredTopology() *Topology {
 	return topology
 }
 
-func (c *ClusterTopologyMonitorImpl) ForceRefreshUsingConn(conn driver.Conn, timeoutMs int) ([]*host_info_util.HostInfo, error) {
+func (c *ClusterTopologyMonitorImpl) forceRefreshUsingConn(conn driver.Conn, timeoutMs int) ([]*host_info_util.HostInfo, error) {
 	if c.isVerifiedWriterConn {
 		// Push monitoring thread to refresh topology with a verified connection.
 		return c.waitForTopologyUpdate(timeoutMs)

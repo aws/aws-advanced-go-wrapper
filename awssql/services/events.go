@@ -26,8 +26,9 @@ import (
 
 // Event type descriptors.
 var (
-	DataAccessEventType  = &driver_infrastructure.EventType{Name: "DataAccess"}
-	MonitorStopEventType = &driver_infrastructure.EventType{Name: "MonitorStop"}
+	DataAccessEventType   = &driver_infrastructure.EventType{Name: "DataAccess"}
+	MonitorStopEventType  = &driver_infrastructure.EventType{Name: "MonitorStop"}
+	MonitorResetEventType = &driver_infrastructure.EventType{Name: "MonitorReset"}
 )
 
 const DefaultMessageInterval = 30 * time.Second
@@ -55,6 +56,22 @@ func (e MonitorStopEvent) GetEventType() *driver_infrastructure.EventType {
 	return MonitorStopEventType
 }
 func (e MonitorStopEvent) IsImmediateDelivery() bool { return true }
+
+// MonitorResetEvent is published to request resetting a specific monitor.
+// This is used when topology changes are detected and the monitor needs to refresh its state.
+type MonitorResetEvent struct {
+	ClusterId string
+	Endpoints map[string]struct{} // Set of endpoint strings
+}
+
+func (e MonitorResetEvent) GetEventType() *driver_infrastructure.EventType {
+	return MonitorResetEventType
+}
+func (e MonitorResetEvent) IsImmediateDelivery() bool { return true }
+func (e MonitorResetEvent) GetClusterId() string      { return e.ClusterId }
+func (e MonitorResetEvent) GetEndpoints() map[string]struct{} {
+	return e.Endpoints
+}
 
 // =============================================================================
 // Event Publisher Implementation
