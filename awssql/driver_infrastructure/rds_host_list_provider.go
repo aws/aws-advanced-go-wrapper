@@ -162,7 +162,7 @@ func (r *RdsHostListProvider) forceRefreshMonitor(verifyTopology bool, timemoutM
 		return r.initialHostList, nil
 	}
 	monitor := r.getOrCreateMonitor()
-	return monitor.ForceRefreshVerifyWriter(verifyTopology, timemoutMs)
+	return monitor.ForceRefresh(verifyTopology, timemoutMs)
 }
 
 func (r *RdsHostListProvider) GetClusterId() (string, error) {
@@ -258,7 +258,7 @@ func (r *RdsHostListProvider) StopMonitor() {
 
 func (r *RdsHostListProvider) ForceRefreshHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) ([]*host_info_util.HostInfo, error) {
 	monitor := r.getOrCreateMonitor()
-	updatedHosts, err := monitor.ForceRefreshVerifyWriter(shouldVerifyWriter, timeoutMs)
+	updatedHosts, err := monitor.ForceRefresh(shouldVerifyWriter, timeoutMs)
 	if err == nil && len(updatedHosts) > 0 {
 		TopologyStorageType.Set(r.servicesContainer.GetStorageService(), r.clusterId, NewTopology(updatedHosts))
 	}
