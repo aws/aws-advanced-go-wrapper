@@ -24,14 +24,13 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
+const DefaultMessageInterval = 30 * time.Second
+
 // Event type descriptors.
 var (
-	DataAccessEventType   = &driver_infrastructure.EventType{Name: "DataAccess"}
-	MonitorStopEventType  = &driver_infrastructure.EventType{Name: "MonitorStop"}
-	MonitorResetEventType = &driver_infrastructure.EventType{Name: "MonitorReset"}
+	DataAccessEventType  = &driver_infrastructure.EventType{Name: "DataAccess"}
+	MonitorStopEventType = &driver_infrastructure.EventType{Name: "MonitorStop"}
 )
-
-const DefaultMessageInterval = 30 * time.Second
 
 // =============================================================================
 // Event Types (concrete implementations of driver_infrastructure.Event)
@@ -43,8 +42,10 @@ type DataAccessEvent struct {
 	Key     any
 }
 
-func (e DataAccessEvent) GetEventType() *driver_infrastructure.EventType { return DataAccessEventType }
-func (e DataAccessEvent) IsImmediateDelivery() bool                      { return false }
+func (e DataAccessEvent) GetEventType() *driver_infrastructure.EventType {
+	return DataAccessEventType
+}
+func (e DataAccessEvent) IsImmediateDelivery() bool { return false }
 
 // MonitorStopEvent is published to request stopping a specific monitor.
 type MonitorStopEvent struct {
@@ -65,7 +66,7 @@ type MonitorResetEvent struct {
 }
 
 func (e MonitorResetEvent) GetEventType() *driver_infrastructure.EventType {
-	return MonitorResetEventType
+	return driver_infrastructure.MonitorResetEventType
 }
 func (e MonitorResetEvent) IsImmediateDelivery() bool { return true }
 func (e MonitorResetEvent) GetClusterId() string      { return e.ClusterId }

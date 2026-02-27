@@ -111,6 +111,7 @@ type StorageRegistrar interface {
 
 // DefaultStorageTypes contains all built-in storage type descriptors.
 // These are registered automatically when RegisterDefaultStorageTypes is called.
+// Each instance is defined next to its corresponding struct.
 var DefaultStorageTypes = []StorageRegistrar{
 	TopologyStorageType,
 	AllowedAndBlockedHostsStorageType,

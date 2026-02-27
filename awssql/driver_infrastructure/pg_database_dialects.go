@@ -21,11 +21,44 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_info"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
+
+// PgRowParser is the singleton row parser for PostgreSQL.
+var PgRowParser RowParser = &pgRowParser{}
+
+// pgRowParser handles PostgreSQL-specific type conversions.
+// pgx driver returns native Go types directly.
+type pgRowParser struct{}
+
+func (p *pgRowParser) ParseString(val driver.Value) (string, bool) {
+	s, ok := val.(string)
+	return s, ok
+}
+
+func (p *pgRowParser) ParseBool(val driver.Value) (bool, bool) {
+	b, ok := val.(bool)
+	return b, ok
+}
+
+func (p *pgRowParser) ParseFloat64(val driver.Value) (float64, bool) {
+	f, ok := val.(float64)
+	return f, ok
+}
+
+func (p *pgRowParser) ParseTime(val driver.Value) (time.Time, bool) {
+	t, ok := val.(time.Time)
+	return t, ok
+}
+
+func (p *pgRowParser) ParseInt64(val driver.Value) (int64, bool) {
+	i, ok := val.(int64)
+	return i, ok
+}
 
 type PgDatabaseDialect struct {
 }

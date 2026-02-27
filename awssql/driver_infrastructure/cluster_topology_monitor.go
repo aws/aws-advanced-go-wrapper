@@ -28,10 +28,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
-// MonitorResetEventType is defined in services/events.go but we need a reference here
-// to avoid circular imports. The actual event type is services.MonitorResetEventType.
-var MonitorResetEventType = &EventType{Name: "MonitorReset"}
-
 var highRefreshPeriodAfterPanicNano = time.Second * 30
 var FallbackTopologyRefreshTimeoutMs = 1100
 var topologyUpdateWaitTime = time.Millisecond * 1000

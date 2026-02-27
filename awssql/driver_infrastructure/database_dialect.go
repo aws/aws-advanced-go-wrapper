@@ -18,7 +18,23 @@ package driver_infrastructure
 
 import (
 	"database/sql/driver"
+	"time"
 )
+
+// RowParser handles database-specific type conversions from driver.Value to Go types.
+// This abstracts the differences between how PG and MySQL drivers return data.
+type RowParser interface {
+	// ParseString extracts a string from a driver.Value
+	ParseString(val driver.Value) (string, bool)
+	// ParseBool extracts a boolean from a driver.Value
+	ParseBool(val driver.Value) (bool, bool)
+	// ParseFloat64 extracts a float64 from a driver.Value
+	ParseFloat64(val driver.Value) (float64, bool)
+	// ParseTime extracts a time.Time from a driver.Value
+	ParseTime(val driver.Value) (time.Time, bool)
+	// ParseInt64 extracts an int64 from a driver.Value
+	ParseInt64(val driver.Value) (int64, bool)
+}
 
 type DatabaseDialect interface {
 	GetDefaultPort() int

@@ -154,33 +154,33 @@ func queryHostRole(conn driver.Conn, query string, parser RowParser) host_info_u
 }
 
 // queryInstanceId executes the instance ID query and returns (id, name).
-// For databases where id and name are the same (Aurora), pass singleColumn=true.
+// Automatically handles single-column queries (returns id, id) and
+// two-column queries (returns id, name) based on the result set.
 // Returns empty strings if unable to determine.
-func queryInstanceId(conn driver.Conn, query string, parser RowParser, singleColumn bool) (string, string) {
+func queryInstanceId(conn driver.Conn, query string, parser RowParser) (string, string) {
 	rows, err := executeQuery(conn, query)
 	if err != nil {
 		return "", ""
 	}
 	defer rows.Close()
 
-	if singleColumn {
-		row := make([]driver.Value, 1)
-		if rows.Next(row) == nil {
-			if instanceId, ok := parser.ParseString(row[0]); ok {
-				return instanceId, instanceId
-			}
-		}
-	} else {
-		row := make([]driver.Value, 2)
-		if rows.Next(row) == nil {
-			instanceId, ok1 := parser.ParseString(row[0])
-			instanceName, _ := parser.ParseString(row[1])
-			if ok1 {
-				return instanceId, instanceName
-			}
-		}
+	numCols := len(rows.Columns())
+	row := make([]driver.Value, numCols)
+	if rows.Next(row) != nil {
+		return "", ""
 	}
-	return "", ""
+
+	instanceId, ok := parser.ParseString(row[0])
+	if !ok {
+		return "", ""
+	}
+
+	if numCols < 2 {
+		return instanceId, instanceId
+	}
+
+	instanceName, _ := parser.ParseString(row[1])
+	return instanceId, instanceName
 }
 
 // queryIsWriter executes the writer ID query and checks if connected to writer.
@@ -299,7 +299,7 @@ func (a *AuroraTopologyUtils) GetHostRole(conn driver.Conn) host_info_util.HostR
 }
 
 func (a *AuroraTopologyUtils) GetInstanceId(conn driver.Conn) (string, string) {
-	return queryInstanceId(conn, a.dialect.GetInstanceIdQuery(), a.dialect.GetRowParser(), false)
+	return queryInstanceId(conn, a.dialect.GetInstanceIdQuery(), a.dialect.GetRowParser())
 }
 
 func (a *AuroraTopologyUtils) IsWriterInstance(conn driver.Conn) (bool, error) {
@@ -427,7 +427,7 @@ func (m *MultiAzTopologyUtils) GetHostRole(conn driver.Conn) host_info_util.Host
 }
 
 func (m *MultiAzTopologyUtils) GetInstanceId(conn driver.Conn) (string, string) {
-	return queryInstanceId(conn, m.dialect.GetInstanceIdQuery(), m.dialect.GetRowParser(), false)
+	return queryInstanceId(conn, m.dialect.GetInstanceIdQuery(), m.dialect.GetRowParser())
 }
 
 func (m *MultiAzTopologyUtils) IsWriterInstance(conn driver.Conn) (bool, error) {
@@ -545,7 +545,7 @@ func (g *GlobalAuroraTopologyUtils) GetHostRole(conn driver.Conn) host_info_util
 }
 
 func (g *GlobalAuroraTopologyUtils) GetInstanceId(conn driver.Conn) (string, string) {
-	return queryInstanceId(conn, g.dialect.GetInstanceIdQuery(), g.dialect.GetRowParser(), true)
+	return queryInstanceId(conn, g.dialect.GetInstanceIdQuery(), g.dialect.GetRowParser())
 }
 
 func (g *GlobalAuroraTopologyUtils) IsWriterInstance(conn driver.Conn) (bool, error) {

@@ -22,10 +22,65 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
+
+// MySQLRowParser is the singleton row parser for MySQL.
+var MySQLRowParser RowParser = &mySQLRowParser{}
+
+// mySQLRowParser handles MySQL-specific type conversions.
+// go-sql-driver/mysql returns []uint8 for strings and int64 for booleans.
+type mySQLRowParser struct{}
+
+func (m *mySQLRowParser) ParseString(val driver.Value) (string, bool) {
+	switch v := val.(type) {
+	case string:
+		return v, true
+	case []uint8:
+		return string(v), true
+	default:
+		return "", false
+	}
+}
+
+func (m *mySQLRowParser) ParseBool(val driver.Value) (bool, bool) {
+	switch v := val.(type) {
+	case bool:
+		return v, true
+	case int64:
+		return v == 1, true
+	default:
+		return false, false
+	}
+}
+
+func (m *mySQLRowParser) ParseFloat64(val driver.Value) (float64, bool) {
+	f, ok := val.(float64)
+	return f, ok
+}
+
+func (m *mySQLRowParser) ParseTime(val driver.Value) (time.Time, bool) {
+	switch v := val.(type) {
+	case time.Time:
+		return v, true
+	case []uint8:
+		t, err := time.Parse("2006-01-02 15:04:05.999999", string(v))
+		if err != nil {
+			return time.Time{}, false
+		}
+		return t, true
+	default:
+		return time.Time{}, false
+	}
+}
+
+func (m *mySQLRowParser) ParseInt64(val driver.Value) (int64, bool) {
+	i, ok := val.(int64)
+	return i, ok
+}
 
 type MySQLDatabaseDialect struct {
 }

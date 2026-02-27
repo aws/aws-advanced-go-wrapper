@@ -37,10 +37,6 @@ import (
 
 var EFM_ROUTINE_SLEEP_DURATION = 100 * time.Millisecond
 
-// MonitorResetEventType reference for subscribing to reset events.
-// The actual event type is defined in services/events.go.
-var MonitorResetEventType = &driver_infrastructure.EventType{Name: "MonitorReset"}
-
 type HostMonitor interface {
 	driver_infrastructure.Monitor
 	driver_infrastructure.EventSubscriber
@@ -178,8 +174,8 @@ func (m *HostMonitorImpl) Monitor() {
 
 	// Subscribe to MonitorResetEvent
 	if eventPublisher := m.servicesContainer.GetEventPublisher(); eventPublisher != nil {
-		eventPublisher.Subscribe(m, []*driver_infrastructure.EventType{MonitorResetEventType})
-		defer eventPublisher.Unsubscribe(m, []*driver_infrastructure.EventType{MonitorResetEventType})
+		eventPublisher.Subscribe(m, []*driver_infrastructure.EventType{driver_infrastructure.MonitorResetEventType})
+		defer eventPublisher.Unsubscribe(m, []*driver_infrastructure.EventType{driver_infrastructure.MonitorResetEventType})
 	}
 
 	for !m.isStopped() {
@@ -317,7 +313,7 @@ func (m *HostMonitorImpl) isStopped() bool {
 // Implements EventSubscriber interface.
 func (m *HostMonitorImpl) ProcessEvent(event driver_infrastructure.Event) {
 	// Check if this is a MonitorResetEvent by checking the event type name
-	if event.GetEventType().Name == MonitorResetEventType.Name {
+	if event.GetEventType().Name == driver_infrastructure.MonitorResetEventType.Name {
 		slog.Debug(error_util.GetMessage("HostMonitorImpl.resetEventReceived", m.hostInfo.Host))
 		// Use type assertion to get the endpoints
 		if resetEvent, ok := event.(interface{ GetEndpoints() map[string]struct{} }); ok {

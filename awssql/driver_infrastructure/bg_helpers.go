@@ -28,7 +28,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
-// BlueGreenStatusStorageType is the type-safe descriptor for storing BlueGreenStatus.
+// BlueGreenStatusStorageType is the storage type descriptor for blue/green deployment status data.
 var BlueGreenStatusStorageType = &StorageTypeDescriptor[*BlueGreenStatus]{
 	TypeKey:       "BlueGreenStatus",
 	TTL:           5 * time.Minute,
