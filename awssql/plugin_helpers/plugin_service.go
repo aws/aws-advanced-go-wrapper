@@ -33,7 +33,6 @@ import (
 )
 
 var hostAvailabilityExpiringCache = utils.NewCache[host_info_util.HostAvailability]()
-var statusesExpiringCache = utils.NewCache[driver_infrastructure.BlueGreenStatus]()
 var DEFAULT_HOST_AVAILABILITY_CACHE_EXPIRE_NANO = 5 * time.Minute
 var DEFAULT_STATUS_CACHE_EXPIRE_NANO = 60 * time.Minute
 
