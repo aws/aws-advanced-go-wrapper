@@ -972,11 +972,12 @@ func (mr *MockBlueGreenDialectMockRecorder) DoesStatementSetTransactionIsolation
 }
 
 // GetBlueGreenStatus mocks base method.
-func (m *MockBlueGreenDialect) GetBlueGreenStatus(arg0 driver.Conn) []driver_infrastructure.BlueGreenResult {
+func (m *MockBlueGreenDialect) GetBlueGreenStatus(arg0 driver.Conn) ([]driver_infrastructure.BlueGreenResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetBlueGreenStatus", arg0)
 	ret0, _ := ret[0].([]driver_infrastructure.BlueGreenResult)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GetBlueGreenStatus indicates an expected call of GetBlueGreenStatus.

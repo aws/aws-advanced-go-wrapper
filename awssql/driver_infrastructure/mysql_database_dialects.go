@@ -192,7 +192,7 @@ func (m *RdsMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	return false
 }
 
-func (m *RdsMySQLDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) []BlueGreenResult {
+func (m *RdsMySQLDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) ([]BlueGreenResult, error) {
 	bgStatusQuery := "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
 	return mySqlGetBlueGreenStatus(conn, bgStatusQuery)
 }
@@ -361,7 +361,7 @@ func (m *AuroraMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider Host
 	return hosts, nil
 }
 
-func (m *AuroraMySQLDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) []BlueGreenResult {
+func (m *AuroraMySQLDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) ([]BlueGreenResult, error) {
 	bgStatusQuery := "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
 	return mySqlGetBlueGreenStatus(conn, bgStatusQuery)
 }
@@ -560,23 +560,23 @@ func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetHostListProvider(
 	return r.getTopologyAwareHostListProvider(r, props, hostListProviderService, pluginService)
 }
 
-func mySqlGetBlueGreenStatus(conn driver.Conn, query string) []BlueGreenResult {
+func mySqlGetBlueGreenStatus(conn driver.Conn, query string) ([]BlueGreenResult, error) {
 	return getBlueGreenStatus(conn, query, utils.MySqlConvertValToString)
 }
 
-func getBlueGreenStatus(conn driver.Conn, query string, convertFunc func(driver.Value) (string, bool)) []BlueGreenResult {
+func getBlueGreenStatus(conn driver.Conn, query string, convertFunc func(driver.Value) (string, bool)) ([]BlueGreenResult, error) {
 	queryerCtx, ok := conn.(driver.QueryerContext)
 	if !ok {
 		// Unable to query, conn does not implement QueryerContext.
 		slog.Warn(error_util.GetMessage("Conn.doesNotImplementRequiredInterface", "driver.QueryerContext"))
-		return nil
+		return nil, nil
 	}
 
 	rows, err := queryerCtx.QueryContext(context.Background(), query, nil)
 	if err != nil {
 		// Query failed.
 		slog.Warn(error_util.GetMessage("BlueGreenDeployment.errorQueryingStatusTable", err))
-		return nil
+		return nil, err
 	}
 	if rows != nil {
 		defer rows.Close()
@@ -605,5 +605,5 @@ func getBlueGreenStatus(conn driver.Conn, query string, convertFunc func(driver.
 		}
 	}
 
-	return statuses
+	return statuses, nil
 }

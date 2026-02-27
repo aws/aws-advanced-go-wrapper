@@ -681,7 +681,7 @@ func TestBlueGreenStatusMonitorCollectStatus(t *testing.T) {
 				Role:     "BLUE_GREEN_DEPLOYMENT_SOURCE",
 				Status:   "AVAILABLE",
 			},
-		})
+		}, nil)
 		var mockConn driver.Conn = &MockConn{}
 		monitor.SetConnection(&mockConn)
 
@@ -714,7 +714,7 @@ func TestBlueGreenStatusMonitorCollectStatus(t *testing.T) {
 				Role:     "BLUE_GREEN_DEPLOYMENT_TARGET",
 				Status:   "SWITCHOVER_IN_PROGRESS",
 			},
-		})
+		}, nil)
 		var mockConn driver.Conn = &MockConn{}
 		monitor.SetConnection(&mockConn)
 

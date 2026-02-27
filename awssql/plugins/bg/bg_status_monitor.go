@@ -302,7 +302,22 @@ func (b *BlueGreenStatusMonitor) CollectStatus() {
 		return
 	}
 
-	results := b.blueGreenDialect.GetBlueGreenStatus(conn)
+	results, err := b.blueGreenDialect.GetBlueGreenStatus(conn)
+
+	if err != nil {
+		if (!b.pluginService.GetTargetDriverDialect().IsClosed(conn)) {
+			// It's normal to get connection closed during BGD switchover.
+			// If connection isn't closed but there's an exception then let's log it.
+
+			// For PG databases
+			if strings.Contains(err.Error(), error_util.GetMessage("BlueGreenDeployment.errorFetchingSwitchoverMetadata")) {
+				b.currentPhase = driver_infrastructure.NOT_CREATED
+		  		return
+			}
+		}
+		b.CloseConnection()
+		b.panicMode.Store(true)
+	}
 
 	statusEntries := make([]StatusInfo, 0, len(results))
 	for _, result := range results {
@@ -340,8 +355,10 @@ func (b *BlueGreenStatusMonitor) CollectStatus() {
 		if len(statusEntries) == 0 {
 			// It's normal to expect that the status table has no entries after BGD is completed.
 			// Old1 cluster/instance has been separated and no longer receives updates from related green cluster/instance.
+			// Metadata at new blue cluster/instance can be removed after switchover, and it's also expected to get
+			// no records.
 			if b.role != driver_infrastructure.SOURCE {
-				slog.Warn(error_util.GetMessage("BlueGreenDeployment.noEntriesInStatusTable", b.role))
+				slog.Info(error_util.GetMessage("BlueGreenDeployment.noEntriesInStatusTable", b.role))
 			}
 			b.currentPhase = driver_infrastructure.BlueGreenPhase{}
 		}
