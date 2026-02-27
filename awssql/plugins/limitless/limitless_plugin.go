@@ -37,7 +37,9 @@ func (factory LimitlessPluginFactory) GetInstance(servicesContainer driver_infra
 	return NewLimitlessPlugin(servicesContainer, props)
 }
 
-func (factory LimitlessPluginFactory) ClearCaches() {}
+func (factory LimitlessPluginFactory) ClearCaches() {
+	ClearCache()
+}
 
 func NewLimitlessPluginFactory() driver_infrastructure.ConnectionPluginFactory {
 	return LimitlessPluginFactory{}
@@ -45,9 +47,10 @@ func NewLimitlessPluginFactory() driver_infrastructure.ConnectionPluginFactory {
 
 type LimitlessPlugin struct {
 	plugins.BaseConnectionPlugin
-	pluginService driver_infrastructure.PluginService
-	props         *utils.RWMap[string, string]
-	routerService LimitlessRouterService
+	servicesContainer driver_infrastructure.ServicesContainer
+	pluginService     driver_infrastructure.PluginService
+	props             *utils.RWMap[string, string]
+	routerService     LimitlessRouterService
 }
 
 func NewLimitlessPlugin(servicesContainer driver_infrastructure.ServicesContainer, props *utils.RWMap[string, string]) (*LimitlessPlugin, error) {
@@ -61,18 +64,23 @@ func NewLimitlessPlugin(servicesContainer driver_infrastructure.ServicesContaine
 	}
 
 	return &LimitlessPlugin{
-		pluginService: servicesContainer.GetPluginService(),
-		props:         props,
+		servicesContainer: servicesContainer,
+		pluginService:     servicesContainer.GetPluginService(),
+		props:             props,
 	}, nil
 }
 
 // Note: This method is for testing purposes.
-func NewLimitlessPluginWithRouterService(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string, string],
-	routerService LimitlessRouterService) *LimitlessPlugin {
+func NewLimitlessPluginWithRouterService(
+	servicesContainer driver_infrastructure.ServicesContainer,
+	props *utils.RWMap[string, string],
+	routerService LimitlessRouterService,
+) *LimitlessPlugin {
 	return &LimitlessPlugin{
-		pluginService: pluginService,
-		props:         props,
-		routerService: routerService,
+		servicesContainer: servicesContainer,
+		pluginService:     servicesContainer.GetPluginService(),
+		props:             props,
+		routerService:     routerService,
 	}
 }
 
@@ -132,6 +140,6 @@ func (plugin *LimitlessPlugin) Connect(
 
 func (plugin *LimitlessPlugin) initLimitlessRouterService() {
 	if plugin.routerService == nil {
-		plugin.routerService = NewLimitlessRouterServiceImpl(plugin.pluginService, plugin.props)
+		plugin.routerService = NewLimitlessRouterServiceImpl(plugin.servicesContainer, plugin.props)
 	}
 }
