@@ -173,7 +173,7 @@ func (m *MySQLDatabaseDialect) DoesStatementSetTransactionIsolation(statement st
 }
 
 func (m *MySQLDatabaseDialect) GetIsReaderQuery() string {
-	return "SELECT @@read_only"
+	return "SELECT @@innodb_read_only"
 }
 
 type RdsMySQLDatabaseDialect struct {
@@ -222,15 +222,15 @@ func (m *AuroraMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 }
 
 func (m *AuroraMySQLDatabaseDialect) GetTopologyQuery() string {
-	return "SELECT @@aurora_server_id;"
-}
-
-func (m *AuroraMySQLDatabaseDialect) GetInstanceIdQuery() string {
 	return "SELECT server_id, CASE WHEN SESSION_ID = 'MASTER_SESSION_ID' THEN TRUE ELSE FALSE END as is_writer, " +
 		"cpu, REPLICA_LAG_IN_MILLISECONDS as 'lag', LAST_UPDATE_TIMESTAMP as last_update_timestamp " +
 		"FROM information_schema.replica_host_status " +
 		// Filter out hosts that haven't been updated in the last 5 minutes.
 		"WHERE time_to_sec(timediff(now(), LAST_UPDATE_TIMESTAMP)) <= 300 OR SESSION_ID = 'MASTER_SESSION_ID' "
+}
+
+func (m *AuroraMySQLDatabaseDialect) GetInstanceIdQuery() string {
+	return "SELECT @@aurora_server_id, @@aurora_server_id;"
 }
 
 func (m *AuroraMySQLDatabaseDialect) GetWriterIdQuery() string {

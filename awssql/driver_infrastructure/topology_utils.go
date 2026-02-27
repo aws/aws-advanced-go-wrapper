@@ -51,21 +51,13 @@ type TopologyUtils interface {
 // Shared Helper Functions
 // =============================================================================
 
-func executeQueryWithTimeout(conn driver.Conn, query string, timeoutMs int) (driver.Rows, error) {
+func executeQuery(conn driver.Conn, query string) (driver.Rows, error) {
 	queryerCtx, ok := conn.(driver.QueryerContext)
 	if !ok {
 		return nil, error_util.NewGenericAwsWrapperError(
 			error_util.GetMessage("Conn.doesNotImplementRequiredInterface", "driver.QueryerContext"))
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutMs)*time.Millisecond)
-	defer cancel()
-
-	return queryerCtx.QueryContext(ctx, query, nil)
-}
-
-func executeQuery(conn driver.Conn, query string) (driver.Rows, error) {
-	return executeQueryWithTimeout(conn, query, DefaultQueryTimeoutMs)
+	return queryerCtx.QueryContext(context.Background(), query, nil)
 }
 
 func verifyWriter(hosts []*host_info_util.HostInfo) []*host_info_util.HostInfo {
@@ -307,7 +299,7 @@ func (a *AuroraTopologyUtils) GetHostRole(conn driver.Conn) host_info_util.HostR
 }
 
 func (a *AuroraTopologyUtils) GetInstanceId(conn driver.Conn) (string, string) {
-	return queryInstanceId(conn, a.dialect.GetInstanceIdQuery(), a.dialect.GetRowParser(), true)
+	return queryInstanceId(conn, a.dialect.GetInstanceIdQuery(), a.dialect.GetRowParser(), false)
 }
 
 func (a *AuroraTopologyUtils) IsWriterInstance(conn driver.Conn) (bool, error) {

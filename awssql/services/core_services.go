@@ -63,6 +63,8 @@ func Shutdown() {
 		coreServiceContainer.Monitor.ReleaseResources()
 		coreServiceContainer.Events.Stop()
 	}
+	coreServiceContainer = nil
+	coreServiceContainerOnce = sync.Once{}
 }
 
 // ResetForTesting resets the singleton for testing purposes.

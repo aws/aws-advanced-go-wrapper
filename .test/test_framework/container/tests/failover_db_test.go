@@ -214,8 +214,9 @@ func TestFailoverWriterInTransactionWithBegin(t *testing.T) {
 	environment, err = test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
 	cleanup_db, err := test_utils.OpenDb(environment.Info().Request.Engine, test_utils.GetDsn(environment, map[string]string{
-		"host": environment.Info().DatabaseInfo.WriterInstanceEndpoint(),
-		"port": strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
+		"host":      environment.Info().DatabaseInfo.WriterInstanceEndpoint(),
+		"port":      strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort),
+		"clusterId": "cleanup", // Need this since we are not connecting through proxy
 	}))
 	assert.Nil(t, err)
 	assert.NotNil(t, cleanup_db)
