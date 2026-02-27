@@ -39,6 +39,7 @@ const (
 	GET_HOST_INFO_BY_STRATEGY_METHOD = "getHostInfoByStrategy"
 	GET_HOST_SELECT_STRATEGY_METHOD  = "getHostSelectorStrategy"
 	INIT_HOST_PROVIDER_METHOD        = "initHostProvider"
+	CLEAR_WARNINGS_METHOD            = "clearWarnings"
 	NOTIFY_CONNECTION_CHANGED_METHOD = "notifyConnectionChanged"
 	NOTIFY_HOST_LIST_CHANGED_METHOD  = "notifyHostListChanged"
 )
