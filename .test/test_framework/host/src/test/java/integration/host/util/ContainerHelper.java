@@ -50,7 +50,7 @@ public class ContainerHelper {
 
   private static final String MYSQL_CONTAINER_IMAGE_NAME = "mysql:latest";
   private static final String POSTGRES_CONTAINER_IMAGE_NAME = "postgres:latest";
-  private static final DockerImageName TOXIPROXY_IMAGE = DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.9.0");
+  private static final DockerImageName TOXIPROXY_IMAGE = DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.12.0");
 
   private static final String XRAY_TELEMETRY_IMAGE_NAME = "amazon/aws-xray-daemon";
   private static final String OTLP_TELEMETRY_IMAGE_NAME = "amazon/aws-otel-collector";

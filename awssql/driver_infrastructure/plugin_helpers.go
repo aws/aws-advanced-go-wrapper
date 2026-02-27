@@ -141,7 +141,4 @@ func ClearCaches() {
 		knownEndpointDialectsCache.Clear()
 	}
 
-	// if TopologyCache != nil {
-	// 	TopologyCache.Clear()
-	// }
 }

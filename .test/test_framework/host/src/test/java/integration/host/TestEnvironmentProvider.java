@@ -117,12 +117,12 @@ public class TestEnvironmentProvider implements TestTemplateInvocationContextPro
               // Multi-AZ clusters supports only 3 instances
               continue;
             }
-            if (deployment == DatabaseEngineDeployment.AURORA && numOfInstances == 3) {
-              // Aurora supports clusters with 3 instances but running such tests is similar
-              // to running tests on 5-instance cluster.
-              // Let's save some time and skip tests for this configuration
-              continue;
-            }
+           if (deployment == DatabaseEngineDeployment.AURORA && numOfInstances == 3) {
+             // Aurora supports clusters with 3 instances but running such tests is similar
+             // to running tests on 5-instance cluster.
+             // Let's save some time and skip tests for this configuration
+             continue;
+           }
             if (deployment == DatabaseEngineDeployment.AURORA_LIMITLESS && (instances == DatabaseInstances.MULTI_INSTANCE ||  numOfInstances > 1)) {
               // Limitless clusters only support 1 instance
               continue;
