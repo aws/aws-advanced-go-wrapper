@@ -8,7 +8,7 @@ import integration.host.util.StringUtils;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.ToxiproxyContainer;
-import org.testcontainers.shaded.org.apache.commons.lang3.NotImplementedException;
+
 import software.amazon.awssdk.services.rds.model.BlueGreenDeployment;
 import software.amazon.awssdk.services.rds.model.DBCluster;
 import software.amazon.awssdk.services.rds.model.DBInstance;
@@ -126,7 +126,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
         }
         break;
       default:
-        throw new NotImplementedException(request.getDatabaseEngineDeployment().toString());
+        throw new UnsupportedOperationException(request.getDatabaseEngineDeployment().toString());
     }
 
     if (request.getFeatures().contains(TestEnvironmentFeatures.NETWORK_OUTAGES_ENABLED)) {
@@ -199,7 +199,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
         configureIamAccess(env);
         break;
       default:
-        throw new NotImplementedException(request.getDatabaseEngineDeployment().toString());
+        throw new UnsupportedOperationException(request.getDatabaseEngineDeployment().toString());
     }
 
   }
@@ -327,7 +327,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
         }
         break;
       default:
-        throw new NotImplementedException(env.info.getRequest().getDatabaseInstances().toString());
+        throw new UnsupportedOperationException(env.info.getRequest().getDatabaseInstances().toString());
     }
 
     switch (env.info.getRequest().getDatabaseEngine()) {
@@ -376,7 +376,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
         break;
 
       default:
-        throw new NotImplementedException(env.info.getRequest().getDatabaseEngine().toString());
+        throw new UnsupportedOperationException(env.info.getRequest().getDatabaseEngine().toString());
     }
   }
 
@@ -387,7 +387,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
             ? env.rdsDbRegion
             : "us-east-2");
 
-    env.reuseDb = Boolean.parseBoolean(System.getenv("REUSE_RDS_DB"));
+    env.reuseDb = true;
     env.rdsDbName = System.getenv("RDS_DB_NAME"); // "cluster-mysql", "instance-name", "cluster-multi-az-name"
     env.rdsDbDomain = System.getenv("RDS_DB_DOMAIN"); // "XYZ.us-west-2.rds.amazonaws.com"
     env.rdsEndpoint = System.getenv("RDS_ENDPOINT"); // "https://rds-int.amazon.com"
@@ -441,7 +441,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
         createDbCluster(env, env.numOfInstances);
         break;
       default:
-        throw new NotImplementedException(env.info.getRequest().getDatabaseEngine().toString());
+        throw new UnsupportedOperationException(env.info.getRequest().getDatabaseEngine().toString());
     }
   }
 
@@ -820,7 +820,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
       case RDS_MULTI_AZ_CLUSTER:
         return getEngine(request);
       default:
-        throw new NotImplementedException(request.getDatabaseEngineDeployment().toString());
+        throw new UnsupportedOperationException(request.getDatabaseEngineDeployment().toString());
     }
   }
 
@@ -835,7 +835,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
       case RDS_MULTI_AZ_CLUSTER:
         return getRdsEngineVersion(env);
       default:
-        throw new NotImplementedException(request.getDatabaseEngineDeployment().toString());
+        throw new UnsupportedOperationException(request.getDatabaseEngineDeployment().toString());
     }
   }
 
@@ -853,7 +853,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
         systemPropertyVersion = env.rdsPgDbEngineVersion;
         break;
       default:
-        throw new NotImplementedException(request.getDatabaseEngine().toString());
+        throw new UnsupportedOperationException(request.getDatabaseEngine().toString());
     }
     return findDbEngineVersion(env, engineName, systemPropertyVersion);
   }
@@ -872,7 +872,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
         systemPropertyVersion = env.auroraPgDbEngineVersion;
         break;
       default:
-        throw new NotImplementedException(request.getDatabaseEngine().toString());
+        throw new UnsupportedOperationException(request.getDatabaseEngine().toString());
     }
     return findDbEngineVersion(env, engineName, systemPropertyVersion);
   }
@@ -898,7 +898,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
       case PG:
         return "aurora-postgresql";
       default:
-        throw new NotImplementedException(request.getDatabaseEngine().toString());
+        throw new UnsupportedOperationException(request.getDatabaseEngine().toString());
     }
   }
 
@@ -909,7 +909,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
       case PG:
         return "postgres";
       default:
-        throw new NotImplementedException(request.getDatabaseEngine().toString());
+        throw new UnsupportedOperationException(request.getDatabaseEngine().toString());
     }
   }
 
@@ -922,7 +922,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
       case RDS_MULTI_AZ_CLUSTER:
         return "db.m5d.large";
       default:
-        throw new NotImplementedException(request.getDatabaseEngine().toString());
+        throw new UnsupportedOperationException(request.getDatabaseEngine().toString());
     }
   }
 
@@ -933,7 +933,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
       case PG:
         return 5432;
       default:
-        throw new NotImplementedException(request.getDatabaseEngine().toString());
+        throw new UnsupportedOperationException(request.getDatabaseEngine().toString());
     }
   }
 
@@ -1310,7 +1310,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
         deAuthorizeIP(this);
         break;
       case RDS:
-        throw new NotImplementedException(this.info.getRequest().getDatabaseEngineDeployment().toString());
+        throw new UnsupportedOperationException(this.info.getRequest().getDatabaseEngineDeployment().toString());
       default:
         // do nothing
     }
