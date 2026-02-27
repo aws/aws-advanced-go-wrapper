@@ -27,7 +27,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
@@ -50,9 +49,9 @@ type CustomEndpointPluginFactory struct{}
 type getRdsClientFunc func(*host_info_util.HostInfo, *utils.RWMap[string, string]) (*rds.Client, error)
 
 func (factory CustomEndpointPluginFactory) GetInstance(
-	pluginService driver_infrastructure.PluginService,
+	servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewCustomEndpointPlugin(pluginService, getRdsClientFuncImpl, props)
+	return NewCustomEndpointPlugin(servicesContainer, getRdsClientFuncImpl, props)
 }
 
 func getRdsClientFuncImpl(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string]) (*rds.Client, error) {
@@ -76,18 +75,20 @@ func getRdsClientFuncImpl(hostInfo *host_info_util.HostInfo, props *utils.RWMap[
 }
 
 func (factory CustomEndpointPluginFactory) ClearCaches() {
-	CUSTOM_ENDPOINT_MONITORS.CleanUp()
+	// Monitors are now managed by the MonitorService, so we don't need to clear them here.
+	// The MonitorService will handle cleanup when ReleaseResources is called.
+	ClearCache()
 }
 
 func NewCustomEndpointPluginFactory() driver_infrastructure.ConnectionPluginFactory {
 	return CustomEndpointPluginFactory{}
 }
 
-var CUSTOM_ENDPOINT_MONITORS *utils.SlidingExpirationCache[CustomEndpointMonitor]
-
 type CustomEndpointPlugin struct {
 	plugins.BaseConnectionPlugin
+	servicesContainer          driver_infrastructure.ServicesContainer
 	pluginService              driver_infrastructure.PluginService
+	monitorService             driver_infrastructure.MonitorService
 	props                      *utils.RWMap[string, string]
 	shouldWaitForInfo          bool
 	waitOnCachedInfoDurationMs int
@@ -100,29 +101,38 @@ type CustomEndpointPlugin struct {
 }
 
 func NewCustomEndpointPlugin(
-	pluginService driver_infrastructure.PluginService,
+	servicesContainer driver_infrastructure.ServicesContainer,
 	rdsClientFunc getRdsClientFunc,
 	props *utils.RWMap[string, string]) (*CustomEndpointPlugin, error) {
+	pluginService := servicesContainer.GetPluginService()
+	monitorService := servicesContainer.GetMonitorService()
+
 	waitForInfoCounter, err := pluginService.GetTelemetryFactory().CreateCounter(TELEMETRY_WAIT_FOR_INFO_COUNTER)
 	if err != nil {
 		return nil, err
 	}
 
-	if CUSTOM_ENDPOINT_MONITORS == nil {
-		CUSTOM_ENDPOINT_MONITORS = utils.NewSlidingExpirationCache(
-			"custom-endpoint-monitor",
-			func(item CustomEndpointMonitor) bool {
-				item.Close()
-				return true
-			})
-	}
+	idleMonitorExpirationMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.CUSTOM_ENDPOINT_MONITOR_IDLE_EXPIRATION_MS)
+
+	// Register the monitor type with the monitor service
+	monitorService.RegisterMonitorType(
+		CustomEndpointMonitorType,
+		&driver_infrastructure.MonitorSettings{
+			ExpirationTimeout: time.Millisecond * time.Duration(idleMonitorExpirationMs),
+			InactiveTimeout:   1 * time.Minute,
+			ErrorResponses:    map[driver_infrastructure.MonitorErrorResponse]bool{driver_infrastructure.MonitorErrorRecreate: true},
+		},
+		"", // No produced data type
+	)
 
 	return &CustomEndpointPlugin{
+		servicesContainer:          servicesContainer,
 		pluginService:              pluginService,
+		monitorService:             monitorService,
 		props:                      props,
 		shouldWaitForInfo:          property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.WAIT_FOR_CUSTOM_ENDPOINT_INFO),
 		waitOnCachedInfoDurationMs: property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.WAIT_FOR_CUSTOM_ENDPOINT_INFO_TIMEOUT_MS),
-		idleMonitorExpirationMs:    property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.CUSTOM_ENDPOINT_MONITOR_IDLE_EXPIRATION_MS),
+		idleMonitorExpirationMs:    idleMonitorExpirationMs,
 		waitForInfoCounter:         waitForInfoCounter,
 		rdsClientFunc:              rdsClientFunc,
 	}, nil
@@ -130,22 +140,25 @@ func NewCustomEndpointPlugin(
 
 // NOTE: This method is for testing purposes.
 func NewCustomEndpointPluginWithHostInfo(
-	pluginService driver_infrastructure.PluginService,
+	servicesContainer driver_infrastructure.ServicesContainer,
 	rdsClientFunc getRdsClientFunc,
 	props *utils.RWMap[string, string],
 	customEndpointHostInfo *host_info_util.HostInfo) (*CustomEndpointPlugin, error) {
-	plugin, err := NewCustomEndpointPlugin(pluginService, rdsClientFunc, props)
-	plugin.customEndpointHostInfo = customEndpointHostInfo
-
+	plugin, err := NewCustomEndpointPlugin(servicesContainer, rdsClientFunc, props)
 	if err != nil {
 		return nil, err
 	}
+	plugin.customEndpointHostInfo = customEndpointHostInfo
 	return plugin, nil
+}
+
+func (plugin *CustomEndpointPlugin) GetPluginCode() string {
+	return driver_infrastructure.CUSTOM_ENDPOINT_PLUGIN_CODE
 }
 
 func (plugin *CustomEndpointPlugin) GetSubscribedMethods() []string {
 	return append([]string{
-		plugin_helpers.CONNECT_METHOD,
+		"Connect",
 	}, utils.NETWORK_BOUND_METHODS...)
 }
 
@@ -210,35 +223,57 @@ func (plugin *CustomEndpointPlugin) Execute(
 func (plugin *CustomEndpointPlugin) createMonitorIfAbsent(
 	props *utils.RWMap[string, string]) (CustomEndpointMonitor, error) {
 	refreshRateMs := time.Millisecond * time.Duration(property_util.GetRefreshRateValue(props, property_util.CUSTOM_ENDPOINT_INFO_REFRESH_RATE_MS))
-	return CUSTOM_ENDPOINT_MONITORS.ComputeIfAbsentWithError(
-		plugin.customEndpointHostInfo.Host,
-		func() (CustomEndpointMonitor, error) {
-			rdsClient, err := plugin.rdsClientFunc(plugin.customEndpointHostInfo, plugin.props)
+
+	// Capture values for the initializer closure
+	customEndpointHostInfo := plugin.customEndpointHostInfo
+	endpointIdentifier := plugin.customEndpointId
+	region := plugin.region
+	rdsClientFunc := plugin.rdsClientFunc
+	propsCopy := plugin.props
+
+	monitor, err := plugin.monitorService.RunIfAbsent(
+		CustomEndpointMonitorType,
+		customEndpointHostInfo.Host,
+		plugin.servicesContainer,
+		func(container driver_infrastructure.ServicesContainer) (driver_infrastructure.Monitor, error) {
+			rdsClient, err := rdsClientFunc(customEndpointHostInfo, propsCopy)
 			if err != nil {
 				return nil, err
 			}
-			infoChangedCounter, err := plugin.pluginService.GetTelemetryFactory().CreateCounter(TELEMETRY_ENDPOINT_INFO_CHANGED)
+			infoChangedCounter, err := container.GetPluginService().GetTelemetryFactory().CreateCounter(TELEMETRY_ENDPOINT_INFO_CHANGED)
 			if err != nil {
 				return nil, err
 			}
 
-			partialPluginService := plugin.pluginService.CreatePartialPluginService()
 			return NewCustomEndpointMonitorImpl(
-				partialPluginService,
-				plugin.customEndpointHostInfo,
-				plugin.customEndpointId,
-				plugin.region,
+				container,
+				customEndpointHostInfo,
+				endpointIdentifier,
+				region,
 				refreshRateMs,
 				infoChangedCounter,
 				rdsClient,
 			), nil
-		}, time.Duration(plugin.idleMonitorExpirationMs)*time.Millisecond)
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Type assert to CustomEndpointMonitor
+	customEndpointMonitor, ok := monitor.(CustomEndpointMonitor)
+	if !ok {
+		return nil, errors.New("monitor is not a CustomEndpointMonitor")
+	}
+	return customEndpointMonitor, nil
 }
 
 func (plugin *CustomEndpointPlugin) waitForCustomEndpointInfo(monitor CustomEndpointMonitor) error {
 	hasCustomEndpointInfo := monitor.HasCustomEndpointInfo()
 
 	if !hasCustomEndpointInfo {
+		monitor.RequestCustomEndpointInfoUpdate()
+
 		if plugin.waitForInfoCounter != nil {
 			plugin.waitForInfoCounter.Inc(plugin.pluginService.GetTelemetryContext())
 		}
