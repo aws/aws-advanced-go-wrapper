@@ -25,7 +25,7 @@ import (
 	reflect "reflect"
 
 	host_info_util "github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
+	utils "github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	gomock "github.com/golang/mock/gomock"
 )
 
