@@ -17,32 +17,54 @@
 package test
 
 import (
+	"context"
 	"database/sql/driver"
 	"fmt"
 	"testing"
 	"time"
 
+	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
+	mock_telemetry "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/util/telemetry"
 	aws_secrets_manager "github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
+	"github.com/golang/mock/gomock"
 
+	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 )
 
-func beforeAwsSecretsManagerConnectionPluginTests(props *utils.RWMap[string, string]) driver_infrastructure.PluginService {
+func beforeAwsSecretsManagerConnectionPluginTests(t *testing.T) driver_infrastructure.PluginService {
 	aws_secrets_manager.SecretsCache.Clear()
-	mockTargetDriver := &MockTargetDriver{}
-	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
-	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.NewMySQLDriverDialect(), props, mysqlTestDsn)
-	mockPluginService := pluginServiceImpl
+
+	ctrl := gomock.NewController(t)
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockTelemetryFactory := mock_telemetry.NewMockTelemetryFactory(ctrl)
+	mockTelemetryCounter := mock_telemetry.NewMockTelemetryCounter(ctrl)
+	mockTelemetryCtx := mock_telemetry.NewMockTelemetryContext(ctrl)
+	ctxBefore := context.Background()
+
+	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory).AnyTimes()
+	mockPluginService.EXPECT().GetTelemetryContext().Return(ctxBefore).AnyTimes()
+	mockPluginService.EXPECT().SetTelemetryContext(gomock.Any()).AnyTimes()
+	mockPluginService.EXPECT().IsLoginError(gomock.Any()).DoAndReturn(func(err error) bool {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+			return string(mysqlErr.SQLState[:]) == mysql_driver.SqlStateAccessError
+		}
+		return false
+	}).AnyTimes()
+	mockTelemetryFactory.EXPECT().CreateCounter(gomock.Any()).Return(mockTelemetryCounter, nil).AnyTimes()
+	mockTelemetryFactory.EXPECT().OpenTelemetryContext(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(mockTelemetryCtx, ctxBefore).AnyTimes()
+	mockTelemetryCounter.EXPECT().Inc(gomock.Any()).AnyTimes()
+	mockTelemetryCtx.EXPECT().CloseContext().AnyTimes()
+	mockTelemetryCtx.EXPECT().SetSuccess(gomock.Any()).AnyTimes()
+	mockTelemetryCtx.EXPECT().SetError(gomock.Any()).AnyTimes()
+
 	return mockPluginService
 }
 
@@ -60,7 +82,7 @@ func TestAwsSecretsManagerConnectionPluginConnect(t *testing.T) {
 		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
-	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(t)
 
 	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
 
@@ -85,7 +107,7 @@ func TestAwsSecretsManagerConnectionPluginForceConnect(t *testing.T) {
 		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
-	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(t)
 
 	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
 
@@ -111,7 +133,7 @@ func TestAwsSecretsManagerConnectionPluginProps(t *testing.T) {
 		property_util.SECRETS_MANAGER_ENDPOINT.Name, "https://someEndpoint.com",
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
-	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(t)
 
 	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
 
@@ -127,7 +149,7 @@ func TestAwsSecretsManagerConnectionPluginMissingSecretId(t *testing.T) {
 	props := MakeMapFromKeysAndVals(
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
-	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(t)
 
 	_, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
 
@@ -142,7 +164,7 @@ func TestAwsSecretsManagerConnectionPluginInvalidRegion(t *testing.T) {
 		property_util.SECRETS_MANAGER_REGION.Name, "invalidRegion",
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
-	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(t)
 
 	_, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
 
@@ -157,7 +179,7 @@ func TestAwsSecretsManagerConnectionPluginValidRegion(t *testing.T) {
 		property_util.SECRETS_MANAGER_REGION.Name, "us-west-2",
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
-	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(t)
 
 	_, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
 
@@ -169,7 +191,7 @@ func TestAwsSecretsManagerConnectionPluginValidIdDefaultRegion(t *testing.T) {
 		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
-	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(t)
 
 	_, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
 
@@ -189,7 +211,7 @@ func TestAwsSecretsManagerConnectionPluginValidRegionThroughArn(t *testing.T) {
 		property_util.SECRETS_MANAGER_SECRET_ID.Name, "arn:aws:secretsmanager:us-west-2:account-id:secret:default",
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
-	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(t)
 
 	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
 
@@ -206,7 +228,7 @@ func TestAwsSecretsManagerConnectionPluginInvalidEndpoint(t *testing.T) {
 		property_util.SECRETS_MANAGER_ENDPOINT.Name, "NotAValidEndpoi nt?-!=",
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
-	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(t)
 
 	_, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
 
@@ -232,7 +254,7 @@ func TestAwsSecretsManagerConnectionPluginCacheSize1(t *testing.T) {
 		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
-	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(t)
 
 	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
 
@@ -262,7 +284,7 @@ func TestAwsSecretsManagerConnectionPluginUsingExpiredSecret(t *testing.T) {
 		property_util.SECRETS_MANAGER_SECRET_ID.Name, secretId,
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
-	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(t)
 
 	cacheKey := fmt.Sprintf("%s:%s", secretId, region)
 	awsRdsSecrets := aws_secrets_manager.AwsRdsSecrets{
@@ -300,7 +322,7 @@ func TestAwsSecretsManagerConnectionPluginConnectingUsingCache(t *testing.T) {
 		property_util.SECRETS_MANAGER_SECRET_ID.Name, secretId,
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
-	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(t)
 
 	cacheKey := fmt.Sprintf("%s:%s", secretId, region)
 	awsRdsSecrets := aws_secrets_manager.AwsRdsSecrets{
@@ -337,7 +359,7 @@ func TestAwsSecretsManagerConnectionPluginMultipleConnectionsCache(t *testing.T)
 			property_util.SECRETS_MANAGER_SECRET_ID.Name, secretIds[i],
 			property_util.DRIVER_PROTOCOL.Name, "mysql",
 		)
-		mockPluginServices[i] = beforeAwsSecretsManagerConnectionPluginTests(props[i])
+		mockPluginServices[i] = beforeAwsSecretsManagerConnectionPluginTests(t)
 	}
 
 	assert.Equal(t, 0, aws_secrets_manager.SecretsCache.Size())
@@ -366,7 +388,7 @@ func TestAwsSecretsManagerConnectionPluginLoginError(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
 
-	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(t)
 	awsSecretsManagerConnectionPlugin, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
 	assert.Nil(t, err)
 	connection, err := awsSecretsManagerConnectionPlugin.Connect(hostInfo, props, false, mockConnFunc)
@@ -395,7 +417,7 @@ func TestAwsSecretsManagerConnectionPluginCustomJsonKeys(t *testing.T) {
 		property_util.SECRETS_MANAGER_SECRET_PASSWORD_PROPERTY.Name, "db_pass",
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
-	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(t)
 
 	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(
 		mockPluginService,
@@ -424,7 +446,7 @@ func TestAwsSecretsManagerConnectionPluginMissingUsernameKey(t *testing.T) {
 		property_util.SECRETS_MANAGER_SECRET_PASSWORD_PROPERTY.Name, "db_pass",
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
-	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(t)
 
 	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(
 		mockPluginService,
@@ -453,7 +475,7 @@ func TestAwsSecretsManagerConnectionPluginMissingPasswordKey(t *testing.T) {
 		property_util.SECRETS_MANAGER_SECRET_USERNAME_PROPERTY.Name, "db_user",
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
-	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(t)
 
 	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(
 		mockPluginService,
@@ -480,7 +502,7 @@ func TestAwsSecretsManagerConnectionPluginEmptyStringKey(t *testing.T) {
 		property_util.SECRETS_MANAGER_SECRET_PASSWORD_PROPERTY.Name, "db_pass",
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
-	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(t)
 
 	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(
 		mockPluginService,
@@ -507,7 +529,7 @@ func TestAwsSecretsManagerConnectionPluginMixedDataTypes(t *testing.T) {
 		property_util.SECRETS_MANAGER_SECRET_ID.Name, "myId",
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
-	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(props)
+	mockPluginService := beforeAwsSecretsManagerConnectionPluginTests(t)
 
 	// Ensure the plugin can parse the JSON even if it contains different formats like integer and boolean
 	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(

@@ -28,28 +28,26 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDsnHostListProvider_Refresh_Success(t *testing.T) {
+func TestConnectionStringHostListProvider_Refresh_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockHostListService := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
-	// Construct DSN string with host
 	dsn := "postgresql://127.0.0.1:5432/db"
 	props, _ := property_util.ParseDsn(dsn)
 
-	provider := driver_infrastructure.NewDsnHostListProvider(props, mockHostListService)
+	provider := driver_infrastructure.NewConnectionStringHostListProvider(props, mockHostListService)
 
-	// `init()` should call SetInitialConnectionHostInfo with parsed host
 	mockHostListService.EXPECT().SetInitialConnectionHostInfo(gomock.Any()).Times(1)
 
-	hosts, err := provider.Refresh(nil)
+	hosts, err := provider.Refresh()
 	assert.NoError(t, err)
 	assert.Len(t, hosts, 1)
 	assert.Equal(t, "127.0.0.1", hosts[0].Host)
 	assert.Equal(t, 5432, hosts[0].Port)
 }
 
-func TestDsnHostListProvider_ForceRefresh_UsesInit(t *testing.T) {
+func TestConnectionStringHostListProvider_ForceRefresh_UsesInit(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -58,17 +56,17 @@ func TestDsnHostListProvider_ForceRefresh_UsesInit(t *testing.T) {
 	dsn := "postgresql://127.0.0.1:5432/db"
 	props, _ := property_util.ParseDsn(dsn)
 
-	provider := driver_infrastructure.NewDsnHostListProvider(props, mockHostListService)
+	provider := driver_infrastructure.NewConnectionStringHostListProvider(props, mockHostListService)
 
 	mockHostListService.EXPECT().SetInitialConnectionHostInfo(gomock.Any()).Times(1)
 
-	hosts, err := provider.ForceRefresh(nil)
+	hosts, err := provider.ForceRefresh()
 	assert.NoError(t, err)
 	assert.Len(t, hosts, 1)
 	assert.Equal(t, "127.0.0.1", hosts[0].Host)
 }
 
-func TestDsnHostListProvider_CreateHost_BuildsCorrectly(t *testing.T) {
+func TestConnectionStringHostListProvider_CreateHost_BuildsCorrectly(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -78,7 +76,7 @@ func TestDsnHostListProvider_CreateHost_BuildsCorrectly(t *testing.T) {
 
 	props, _ := property_util.ParseDsn("postgresql://127.0.0.1:5432/db")
 
-	provider := driver_infrastructure.NewDsnHostListProvider(props, mockHostListService)
+	provider := driver_infrastructure.NewConnectionStringHostListProvider(props, mockHostListService)
 
 	now := time.Now()
 	result := provider.CreateHost("", host_info_util.READER, 1.0, 0.5, now)
@@ -95,31 +93,30 @@ func TestDsnHostListProvider_CreateHost_BuildsCorrectly(t *testing.T) {
 	assert.Equal(t, 5432, result.Port)
 	assert.Equal(t, host_info_util.WRITER, result.Role)
 	assert.Equal(t, host_info_util.AVAILABLE, result.Availability)
-	assert.Equal(t, 200, result.Weight) // 2 lag * 100 + 0.3 = 200.3 → rounds to 210
+	assert.Equal(t, 200, result.Weight)
 	assert.Equal(t, now, result.LastUpdateTime)
 }
 
-func TestDsnHostListProvider_GetHostRole_ReturnsUnknown(t *testing.T) {
-	provider := driver_infrastructure.NewDsnHostListProvider(nil, nil)
-	role := provider.GetHostRole(nil)
-	assert.Equal(t, host_info_util.UNKNOWN, role)
+func TestConnectionStringHostListProvider_GetHostRole_Panics(t *testing.T) {
+	provider := driver_infrastructure.NewConnectionStringHostListProvider(nil, nil)
+	assert.Panics(t, func() { provider.GetHostRole(nil) })
 }
 
-func TestDsnHostListProvider_IdentifyConnection_Unsupported(t *testing.T) {
-	provider := driver_infrastructure.NewDsnHostListProvider(nil, nil)
+func TestConnectionStringHostListProvider_IdentifyConnection_ReturnsNil(t *testing.T) {
+	provider := driver_infrastructure.NewConnectionStringHostListProvider(nil, nil)
 	host, err := provider.IdentifyConnection(nil)
 	assert.Nil(t, host)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 }
 
-func TestDsnHostListProvider_GetClusterId_Unsupported(t *testing.T) {
-	provider := driver_infrastructure.NewDsnHostListProvider(nil, nil)
+func TestConnectionStringHostListProvider_GetClusterId_ReturnsNone(t *testing.T) {
+	provider := driver_infrastructure.NewConnectionStringHostListProvider(nil, nil)
 	id, err := provider.GetClusterId()
-	assert.Empty(t, id)
-	assert.Error(t, err)
+	assert.Equal(t, "<none>", id)
+	assert.NoError(t, err)
 }
 
-func TestDsnHostListProvider_IsStaticHostListProvider(t *testing.T) {
-	provider := driver_infrastructure.NewDsnHostListProvider(nil, nil)
+func TestConnectionStringHostListProvider_IsStaticHostListProvider(t *testing.T) {
+	provider := driver_infrastructure.NewConnectionStringHostListProvider(nil, nil)
 	assert.True(t, provider.IsStaticHostListProvider())
 }

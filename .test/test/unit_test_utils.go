@@ -22,11 +22,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 	"github.com/aws/aws-xray-sdk-go/strategy/sampling"
 	"github.com/aws/aws-xray-sdk-go/xray"
 	"github.com/aws/aws-xray-sdk-go/xraylog"
@@ -113,12 +109,4 @@ func SetupTelemetry() error {
 	}
 
 	return nil
-}
-
-func CreateMockPluginService(props *utils.RWMap[string, string]) driver_infrastructure.PluginService {
-	mockTargetDriver := &MockTargetDriver{}
-	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
-	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.NewMySQLDriverDialect(), props, mysqlTestDsn)
-	return pluginServiceImpl
 }

@@ -17,10 +17,13 @@
 package test
 
 import (
+	"context"
 	"database/sql/driver"
 	"testing"
 	"time"
 
+	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
+	mock_telemetry "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/util/telemetry"
 	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
 	awssql "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
@@ -31,14 +34,35 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/iam"
 	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
+	"github.com/golang/mock/gomock"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 )
 
-func beforeIamAuthPluginTests(props *utils.RWMap[string, string]) (driver_infrastructure.PluginService, auth_helpers.IamTokenUtility) {
+func beforeIamAuthPluginTests(t *testing.T, props *utils.RWMap[string, string]) (driver_infrastructure.PluginService, auth_helpers.IamTokenUtility) {
 	awssql.ClearCaches()
-	return CreateMockPluginService(props), &MockIamTokenUtility{}
+
+	ctrl := gomock.NewController(t)
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockTelemetryFactory := mock_telemetry.NewMockTelemetryFactory(ctrl)
+	mockTelemetryCounter := mock_telemetry.NewMockTelemetryCounter(ctrl)
+	mockDatabaseDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
+
+	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory).AnyTimes()
+	mockPluginService.EXPECT().GetTelemetryContext().Return(context.Background()).AnyTimes()
+	mockPluginService.EXPECT().GetDialect().Return(mockDatabaseDialect).AnyTimes()
+	mockPluginService.EXPECT().IsLoginError(gomock.Any()).DoAndReturn(func(err error) bool {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+			return string(mysqlErr.SQLState[:]) == mysql_driver.SqlStateAccessError
+		}
+		return false
+	}).AnyTimes()
+	mockTelemetryFactory.EXPECT().CreateCounter(gomock.Any()).Return(mockTelemetryCounter, nil).AnyTimes()
+	mockTelemetryCounter.EXPECT().Inc(gomock.Any()).AnyTimes()
+	mockDatabaseDialect.EXPECT().GetDefaultPort().Return(3306).AnyTimes()
+
+	return mockPluginService, &MockIamTokenUtility{}
 }
 
 func TestIamAuthPluginConnect(t *testing.T) {
@@ -54,7 +78,7 @@ func TestIamAuthPluginConnect(t *testing.T) {
 		property_util.USER.Name, "someUser",
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
-	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
+	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(t, props)
 
 	iamAuthPlugin, _ := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
 
@@ -86,7 +110,7 @@ func TestIamAuthPluginConnectWithIamProps(t *testing.T) {
 		property_util.IAM_REGION.Name, string(region_util.US_EAST_1),
 		property_util.IAM_DEFAULT_PORT.Name, "9999",
 	)
-	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
+	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(t, props)
 
 	iamAuthPlugin, _ := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
 
@@ -112,7 +136,7 @@ func TestIamAuthPluginConnectInvalidRegionError(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 		property_util.IAM_REGION.Name, "someUnknownRegion",
 	)
-	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
+	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(t, props)
 
 	iamAuthPlugin, _ := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
 
@@ -131,7 +155,7 @@ func TestIamAuthPluginConnectPopulatesEmptyTokenCache(t *testing.T) {
 		property_util.USER.Name, "someUser",
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
-	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
+	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(t, props)
 
 	iamAuthPlugin, _ := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
 
@@ -156,7 +180,7 @@ func TestIamAuthPluginConnectUsesCachedToken(t *testing.T) {
 		property_util.IAM_DEFAULT_PORT.Name, "9999",
 	)
 
-	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
+	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(t, props)
 
 	cacheExpirationDuration := time.Duration(180) * time.Second
 	cachedToken := "someCachedToken"
@@ -194,7 +218,7 @@ func TestIamAuthPluginConnectCacheExpiredToken(t *testing.T) {
 		property_util.IAM_DEFAULT_PORT.Name, "9999",
 	)
 
-	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
+	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(t, props)
 
 	expiredCacheExpirationDuration := -(time.Duration(180) * time.Second)
 	cachedToken := "someCachedToken"
@@ -247,7 +271,7 @@ func TestIamAuthPluginConnectTtlExpiredCachedToken(t *testing.T) {
 		property_util.IAM_DEFAULT_PORT.Name, "9999",
 	)
 
-	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
+	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(t, props)
 
 	expiredCacheExpirationDuration := time.Duration(180) * time.Second
 	cachedToken := "someCachedToken"
@@ -289,7 +313,7 @@ func TestIamAuthPluginConnectLoginError(t *testing.T) {
 		property_util.USER.Name, "someUser",
 		property_util.DRIVER_PROTOCOL.Name, "mysql",
 	)
-	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(props)
+	mockPluginService, mockIamTokenUtility := beforeIamAuthPluginTests(t, props)
 
 	iamAuthPlugin, _ := iam.NewIamAuthPlugin(mockPluginService, mockIamTokenUtility, props)
 

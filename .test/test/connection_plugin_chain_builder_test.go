@@ -34,17 +34,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSortPlugins(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
+func setupChainBuilderMocks(ctrl *gomock.Controller) *mock_driver_infrastructure.MockServicesContainer {
 	mockPluginManager := mock_driver_infrastructure.NewMockPluginManager(ctrl)
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
 
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	mockContainer.EXPECT().GetPluginManager().Return(mockPluginManager).AnyTimes()
+	mockContainer.EXPECT().GetTelemetryFactory().Return(telemetry.NewNilTelemetryFactory()).AnyTimes()
 	mockPluginService.EXPECT().GetTelemetryFactory().Return(telemetry.NewNilTelemetryFactory()).AnyTimes()
 	mockPluginManager.EXPECT().GetDefaultConnectionProvider().Return(nil).AnyTimes()
 	mockPluginManager.EXPECT().GetEffectiveConnectionProvider().Return(nil).AnyTimes()
 	mockPluginManager.EXPECT().GetConnectionProviderManager().Return(driver_infrastructure.ConnectionProviderManager{}).AnyTimes()
+
+	return mockContainer
+}
+
+func TestSortPlugins(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockContainer := setupChainBuilderMocks(ctrl)
 
 	builder := &awsDriver.ConnectionPluginChainBuilder{}
 	props := MakeMapFromKeysAndVals(property_util.PLUGINS.Name, "iam,efm,failover")
@@ -55,7 +65,7 @@ func TestSortPlugins(t *testing.T) {
 		"executionTime": plugins.NewExecutionTimePluginFactory(),
 		"iam":           iam.NewIamAuthPluginFactory(),
 	}
-	pluginList, err := builder.GetPlugins(mockPluginService, mockPluginManager, props, availablePlugins)
+	pluginList, err := builder.GetPlugins(mockContainer, props, availablePlugins)
 	require.Nil(t, err)
 
 	assert.Equal(t, 4, len(pluginList), "Expected 4 plugins.")
@@ -69,13 +79,7 @@ func TestPreservePluginOrder(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginManager := mock_driver_infrastructure.NewMockPluginManager(ctrl)
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-
-	mockPluginService.EXPECT().GetTelemetryFactory().Return(telemetry.NewNilTelemetryFactory()).AnyTimes()
-	mockPluginManager.EXPECT().GetDefaultConnectionProvider().Return(nil).AnyTimes()
-	mockPluginManager.EXPECT().GetEffectiveConnectionProvider().Return(nil).AnyTimes()
-	mockPluginManager.EXPECT().GetConnectionProviderManager().Return(driver_infrastructure.ConnectionProviderManager{}).AnyTimes()
+	mockContainer := setupChainBuilderMocks(ctrl)
 
 	builder := &awsDriver.ConnectionPluginChainBuilder{}
 	props := MakeMapFromKeysAndVals(property_util.PLUGINS.Name, "iam,efm,failover", property_util.AUTO_SORT_PLUGIN_ORDER.Name, "false")
@@ -86,7 +90,7 @@ func TestPreservePluginOrder(t *testing.T) {
 		"executionTime": plugins.NewExecutionTimePluginFactory(),
 		"iam":           iam.NewIamAuthPluginFactory(),
 	}
-	pluginList, err := builder.GetPlugins(mockPluginService, mockPluginManager, props, availablePlugins)
+	pluginList, err := builder.GetPlugins(mockContainer, props, availablePlugins)
 	require.Nil(t, err)
 
 	assert.Equal(t, 4, len(pluginList), "Expected 4 plugins.")
@@ -100,13 +104,7 @@ func TestSortAllPlugins(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginManager := mock_driver_infrastructure.NewMockPluginManager(ctrl)
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-
-	mockPluginService.EXPECT().GetTelemetryFactory().Return(telemetry.NewNilTelemetryFactory()).AnyTimes()
-	mockPluginManager.EXPECT().GetDefaultConnectionProvider().Return(nil).AnyTimes()
-	mockPluginManager.EXPECT().GetEffectiveConnectionProvider().Return(nil).AnyTimes()
-	mockPluginManager.EXPECT().GetConnectionProviderManager().Return(driver_infrastructure.ConnectionProviderManager{}).AnyTimes()
+	mockContainer := setupChainBuilderMocks(ctrl)
 
 	builder := &awsDriver.ConnectionPluginChainBuilder{}
 	props := MakeMapFromKeysAndVals(property_util.PLUGINS.Name, "iam,executionTime,limitless,efm,failover", property_util.LIMITLESS_USE_SHARD_GROUP_URL.Name, "false")
@@ -117,7 +115,7 @@ func TestSortAllPlugins(t *testing.T) {
 		"executionTime": plugins.NewExecutionTimePluginFactory(),
 		"iam":           iam.NewIamAuthPluginFactory(),
 	}
-	pluginList, err := builder.GetPlugins(mockPluginService, mockPluginManager, props, availablePlugins)
+	pluginList, err := builder.GetPlugins(mockContainer, props, availablePlugins)
 	require.Nil(t, err)
 
 	assert.Equal(t, 6, len(pluginList), "Expected 6 plugins.")
@@ -133,13 +131,7 @@ func TestNoPlugins(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginManager := mock_driver_infrastructure.NewMockPluginManager(ctrl)
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-
-	mockPluginService.EXPECT().GetTelemetryFactory().Return(telemetry.NewNilTelemetryFactory()).AnyTimes()
-	mockPluginManager.EXPECT().GetDefaultConnectionProvider().Return(nil).AnyTimes()
-	mockPluginManager.EXPECT().GetEffectiveConnectionProvider().Return(nil).AnyTimes()
-	mockPluginManager.EXPECT().GetConnectionProviderManager().Return(driver_infrastructure.ConnectionProviderManager{}).AnyTimes()
+	mockContainer := setupChainBuilderMocks(ctrl)
 
 	builder := &awsDriver.ConnectionPluginChainBuilder{}
 	props := MakeMapFromKeysAndVals(property_util.PLUGINS.Name, "none")
@@ -150,7 +142,7 @@ func TestNoPlugins(t *testing.T) {
 		"executionTime": plugins.NewExecutionTimePluginFactory(),
 		"iam":           iam.NewIamAuthPluginFactory(),
 	}
-	pluginList, err := builder.GetPlugins(mockPluginService, mockPluginManager, props, availablePlugins)
+	pluginList, err := builder.GetPlugins(mockContainer, props, availablePlugins)
 	require.Nil(t, err)
 
 	assert.Equal(t, 1, len(pluginList), "Expected 1 plugin.")

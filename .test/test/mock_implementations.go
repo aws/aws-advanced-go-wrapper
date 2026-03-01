@@ -781,3 +781,34 @@ func (m *MockConnectionProvider) GetHostInfoByStrategy(
 func (m *MockConnectionProvider) Connect(_ *host_info_util.HostInfo, _ map[string]string, _ driver_infrastructure.PluginService) (driver.Conn, error) {
 	return &MockConn{}, nil
 }
+
+// multiRowMockRows supports returning multiple rows from QueryContext.
+type multiRowMockRows struct {
+	columns []string
+	rows    [][]driver.Value
+	index   int
+}
+
+func newMultiRowMockRows(columns []string, rows [][]driver.Value) *multiRowMockRows {
+	return &multiRowMockRows{columns: columns, rows: rows, index: 0}
+}
+
+func (m *multiRowMockRows) Columns() []string {
+	return m.columns
+}
+
+func (m *multiRowMockRows) Close() error {
+	return nil
+}
+
+func (m *multiRowMockRows) Next(dest []driver.Value) error {
+	if m.index >= len(m.rows) {
+		return errors.New("no more rows")
+	}
+	row := m.rows[m.index]
+	for i := range dest {
+		dest[i] = row[i]
+	}
+	m.index++
+	return nil
+}

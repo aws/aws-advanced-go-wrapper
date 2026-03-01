@@ -369,7 +369,7 @@ func TestBlueGreenStatusMonitorCollectTopology(t *testing.T) {
 		monitor.SetHostListProvider(mockHostListProvider)
 		monitor.SetConnection(&mockDriverConn)
 		mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).AnyTimes()
-		mockHostListProvider.EXPECT().ForceRefresh(gomock.Any()).Return(nil, errors.New("test-error"))
+		mockHostListProvider.EXPECT().ForceRefresh().Return(nil, errors.New("test-error"))
 		err := monitor.CollectTopology()
 		assert.Error(t, err, "Should error when ForceRefresh fails.")
 	})
@@ -379,7 +379,7 @@ func TestBlueGreenStatusMonitorCollectTopology(t *testing.T) {
 		monitor.SetHostListProvider(mockHostListProvider)
 		monitor.SetConnection(&mockDriverConn)
 		mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).AnyTimes()
-		mockHostListProvider.EXPECT().ForceRefresh(gomock.Any()).Return([]*host_info_util.HostInfo{hostInfo}, nil)
+		mockHostListProvider.EXPECT().ForceRefresh().Return([]*host_info_util.HostInfo{hostInfo}, nil)
 		_, hostInfoInHostNames := monitor.GetHostNames().Get(hostInfo.GetHost())
 		assert.False(t, hostInfoInHostNames)
 		err := monitor.CollectTopology()
@@ -394,7 +394,7 @@ func TestBlueGreenStatusMonitorCollectTopology(t *testing.T) {
 		monitor.SetConnection(&mockDriverConn)
 		monitor.SetCollectedTopology(true)
 		mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).AnyTimes()
-		mockHostListProvider.EXPECT().ForceRefresh(gomock.Any()).Return([]*host_info_util.HostInfo{hostInfo}, nil)
+		mockHostListProvider.EXPECT().ForceRefresh().Return([]*host_info_util.HostInfo{hostInfo}, nil)
 		_, hostInfoInHostNames := monitor.GetHostNames().Get(hostInfo.GetHost())
 		assert.False(t, hostInfoInHostNames)
 		err := monitor.CollectTopology()
@@ -673,16 +673,17 @@ func TestBlueGreenStatusMonitorCollectStatus(t *testing.T) {
 		mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).Times(1)
 		mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).Times(1)
 		mockDialect.EXPECT().IsBlueGreenStatusAvailable(gomock.Any()).Return(true)
-		mockDialect.EXPECT().GetBlueGreenStatus(gomock.Any()).Return([]driver_infrastructure.BlueGreenResult{
-			{
-				Version:  "1.0",
-				Endpoint: "prod-aurora-cluster.cluster-abc123def456.us-east-1.rds.amazonaws.com",
-				Port:     5432,
-				Role:     "BLUE_GREEN_DEPLOYMENT_SOURCE",
-				Status:   "AVAILABLE",
+		mockDialect.EXPECT().GetBlueGreenStatusQuery().Return("SELECT version, endpoint, port, role, status FROM bg_status").AnyTimes()
+		mockDialect.EXPECT().GetRowParser().Return(driver_infrastructure.PgRowParser).AnyTimes()
+
+		conn := &MockConn{}
+		conn.queryResult = newMultiRowMockRows(
+			[]string{"version", "endpoint", "port", "role", "status"},
+			[][]driver.Value{
+				{"1.0", "prod-aurora-cluster.cluster-abc123def456.us-east-1.rds.amazonaws.com", int64(5432), "BLUE_GREEN_DEPLOYMENT_SOURCE", "AVAILABLE"},
 			},
-		}, nil)
-		var mockConn driver.Conn = &MockConn{}
+		)
+		var mockConn driver.Conn = conn
 		monitor.SetConnection(&mockConn)
 
 		monitor.CollectStatus()
@@ -699,23 +700,18 @@ func TestBlueGreenStatusMonitorCollectStatus(t *testing.T) {
 		mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).Times(1)
 		mockDialect.EXPECT().IsBlueGreenStatusAvailable(gomock.Any()).Return(true)
 		mockPluginService.EXPECT().CreateHostListProvider(gomock.Any()).Return(&driver_infrastructure.RdsHostListProvider{})
-		mockDialect.EXPECT().GetBlueGreenStatus(gomock.Any()).Return([]driver_infrastructure.BlueGreenResult{
-			{
-				Version:  "1.0",
-				Endpoint: "prod-aurora-cluster.cluster-abc123def456.us-east-1.rds.amazonaws.com",
-				Port:     5432,
-				Role:     "BLUE_GREEN_DEPLOYMENT_SOURCE",
-				Status:   "AVAILABLE",
+		mockDialect.EXPECT().GetBlueGreenStatusQuery().Return("SELECT version, endpoint, port, role, status FROM bg_status").AnyTimes()
+		mockDialect.EXPECT().GetRowParser().Return(driver_infrastructure.PgRowParser).AnyTimes()
+
+		conn := &MockConn{}
+		conn.queryResult = newMultiRowMockRows(
+			[]string{"version", "endpoint", "port", "role", "status"},
+			[][]driver.Value{
+				{"1.0", "prod-aurora-cluster.cluster-abc123def456.us-east-1.rds.amazonaws.com", int64(5432), "BLUE_GREEN_DEPLOYMENT_SOURCE", "AVAILABLE"},
+				{"1.1", "prod-aurora-cluster-target.cluster-xyz789def456.us-east-1.rds.amazonaws.com", int64(5432), "BLUE_GREEN_DEPLOYMENT_TARGET", "SWITCHOVER_IN_PROGRESS"},
 			},
-			{
-				Version:  "1.1",
-				Endpoint: "prod-aurora-cluster-target.cluster-xyz789def456.us-east-1.rds.amazonaws.com",
-				Port:     5432,
-				Role:     "BLUE_GREEN_DEPLOYMENT_TARGET",
-				Status:   "SWITCHOVER_IN_PROGRESS",
-			},
-		}, nil)
-		var mockConn driver.Conn = &MockConn{}
+		)
+		var mockConn driver.Conn = conn
 		monitor.SetConnection(&mockConn)
 
 		monitor.CollectStatus()
