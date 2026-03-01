@@ -1,5 +1,3 @@
-//go:build disabled
-
 /*
   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
@@ -24,34 +22,53 @@ import (
 	"testing"
 	"time"
 
+	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/services"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
 
 var pgLimitlessTestDsn = "user=someUser password=somePassword host=mydb-1-db-shard-group-1.shardgrp-xyz.us-east-2.rds.amazonaws.com port=5432 database=postgres_limitless " +
 	"plugins=limitless"
 
-func beforeLimitlessPluginConnectTest(props *utils.RWMap[string, string]) *plugin_helpers.PluginServiceImpl {
+func beforeLimitlessPluginConnectTest(t *testing.T, props *utils.RWMap[string, string]) (*plugin_helpers.PluginServiceImpl, *services.FullServicesContainer) {
+	ctrl := gomock.NewController(t)
 	mockTargetDriver := &MockTargetDriver{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := plugin_helpers.NewPluginManagerImpl(
-		mockTargetDriver,
-		props, driver_infrastructure.ConnectionProviderManager{},
-		telemetryFactory)
-	pluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, pgx_driver.NewPgxDriverDialect(), props, pgLimitlessTestDsn)
+
+	storage := services.NewExpiringStorage(5*time.Minute, nil)
+	driver_infrastructure.RegisterDefaultStorageTypes(storage)
+
+	mockMonitorService := mock_driver_infrastructure.NewMockMonitorService(ctrl)
+	mockMonitorService.EXPECT().RegisterMonitorType(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockMonitorService.EXPECT().RunIfAbsent(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	mockMonitorService.EXPECT().StopAndRemove(gomock.Any(), gomock.Any()).AnyTimes()
+
+	container := &services.FullServicesContainer{
+		Storage:   storage,
+		Monitor:   mockMonitorService,
+		Telemetry: telemetryFactory,
+	}
+
+	mockPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, container, props)
+	container.PluginManager = mockPluginManager
+
+	pluginService, _ := plugin_helpers.NewPluginServiceImpl(container, pgx_driver.NewPgxDriverDialect(), props, pgLimitlessTestDsn)
 	pluginServiceImpl, _ := pluginService.(*plugin_helpers.PluginServiceImpl)
 	pluginServiceImpl.SetDialect(&driver_infrastructure.AuroraPgDatabaseDialect{})
+	container.PluginService = pluginService
 
-	return pluginServiceImpl
+	return pluginServiceImpl, container
 }
 
 func TestCreateLimitlessPluginWithNonShardGroupUrlValidateTrue(t *testing.T) {
@@ -60,9 +77,9 @@ func TestCreateLimitlessPluginWithNonShardGroupUrlValidateTrue(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name, "postgresql",
 		property_util.HOST.Name, host,
 	)
-	pluginServiceImpl := beforeLimitlessPluginConnectTest(props)
+	_, container := beforeLimitlessPluginConnectTest(t, props)
 	pluginFactory := limitless.LimitlessPluginFactory{}
-	plugin, err := pluginFactory.GetInstance(pluginServiceImpl, props)
+	plugin, err := pluginFactory.GetInstance(container, props)
 	assert.Error(t, err)
 	assert.Nil(t, plugin)
 	assert.Equal(t, err, error_util.NewGenericAwsWrapperError(error_util.GetMessage("LimitlessPlugin.expectedShardGroupUrl", host)))
@@ -75,9 +92,9 @@ func TestCreateLimitlessPluginWithNonShardGroupUrlValidateFalse(t *testing.T) {
 		property_util.HOST.Name, host,
 		property_util.LIMITLESS_USE_SHARD_GROUP_URL.Name, "false",
 	)
-	pluginServiceImpl := beforeLimitlessPluginConnectTest(props)
+	_, container := beforeLimitlessPluginConnectTest(t, props)
 	pluginFactory := limitless.LimitlessPluginFactory{}
-	plugin, err := pluginFactory.GetInstance(pluginServiceImpl, props)
+	plugin, err := pluginFactory.GetInstance(container, props)
 	assert.Nil(t, err)
 	assert.NotNil(t, plugin)
 }
@@ -88,9 +105,9 @@ func TestCreateLimitlessPluginWithShardGroupUrlValidateTrue(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name, "postgresql",
 		property_util.HOST.Name, host,
 	)
-	pluginServiceImpl := beforeLimitlessPluginConnectTest(props)
+	_, container := beforeLimitlessPluginConnectTest(t, props)
 	pluginFactory := limitless.LimitlessPluginFactory{}
-	plugin, err := pluginFactory.GetInstance(pluginServiceImpl, props)
+	plugin, err := pluginFactory.GetInstance(container, props)
 	assert.Nil(t, err)
 	assert.NotNil(t, plugin)
 }
@@ -102,9 +119,9 @@ func TestCreateLimitlessPluginWithShardGroupUrlValidateFalse(t *testing.T) {
 		property_util.HOST.Name, host,
 		property_util.LIMITLESS_USE_SHARD_GROUP_URL.Name, "false",
 	)
-	pluginServiceImpl := beforeLimitlessPluginConnectTest(props)
+	_, container := beforeLimitlessPluginConnectTest(t, props)
 	pluginFactory := limitless.LimitlessPluginFactory{}
-	plugin, err := pluginFactory.GetInstance(pluginServiceImpl, props)
+	plugin, err := pluginFactory.GetInstance(container, props)
 	assert.Nil(t, err)
 	assert.NotNil(t, plugin)
 }
@@ -114,7 +131,7 @@ func TestLimitlessPluginConnect(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name, "postgresql",
 	)
 
-	pluginServiceImpl := beforeLimitlessPluginConnectTest(props)
+	_, container := beforeLimitlessPluginConnectTest(t, props)
 
 	mockConn := &MockConn{}
 	mockLimitlessRouterService := &MockLimitlessRouterService{}
@@ -126,7 +143,7 @@ func TestLimitlessPluginConnect(t *testing.T) {
 	someHostInfo, _ := host_info_util.NewHostInfoBuilder().SetHost("test").SetPort(1234).SetRole(host_info_util.WRITER).Build()
 
 	limitlessPlugin := limitless.NewLimitlessPluginWithRouterService(
-		driver_infrastructure.PluginService(pluginServiceImpl),
+		container,
 		emptyProps,
 		mockLimitlessRouterService)
 
@@ -146,7 +163,7 @@ func TestLimitlessPluginConnectGivenDialectRecoverySuccess(t *testing.T) {
 	props := MakeMapFromKeysAndVals(
 		property_util.DRIVER_PROTOCOL.Name, "postgresql",
 	)
-	pluginServiceImpl := beforeLimitlessPluginConnectTest(props)
+	pluginServiceImpl, container := beforeLimitlessPluginConnectTest(t, props)
 	pluginServiceImpl.SetDialect(&driver_infrastructure.PgDatabaseDialect{})
 
 	mockConn := &MockConn{}
@@ -160,7 +177,7 @@ func TestLimitlessPluginConnectGivenDialectRecoverySuccess(t *testing.T) {
 	someHostInfo, _ := host_info_util.NewHostInfoBuilder().SetHost("test").SetPort(1234).SetRole(host_info_util.WRITER).Build()
 
 	limitlessPlugin := limitless.NewLimitlessPluginWithRouterService(
-		driver_infrastructure.PluginService(pluginServiceImpl),
+		container,
 		emptyProps,
 		mockLimitlessRouterService)
 
@@ -180,7 +197,7 @@ func TestLimitlessPluginConnectGivenDialectRecoveryFailure(t *testing.T) {
 	props := MakeMapFromKeysAndVals(
 		property_util.DRIVER_PROTOCOL.Name, "postgresql",
 	)
-	pluginServiceImpl := beforeLimitlessPluginConnectTest(props)
+	pluginServiceImpl, container := beforeLimitlessPluginConnectTest(t, props)
 	pluginServiceImpl.SetDialect(&driver_infrastructure.PgDatabaseDialect{})
 
 	mockConn := &MockConn{}
@@ -193,7 +210,7 @@ func TestLimitlessPluginConnectGivenDialectRecoveryFailure(t *testing.T) {
 	someHostInfo, _ := host_info_util.NewHostInfoBuilder().SetHost("test").SetPort(1234).SetRole(host_info_util.WRITER).Build()
 
 	limitlessPlugin := limitless.NewLimitlessPluginWithRouterService(
-		driver_infrastructure.PluginService(pluginServiceImpl),
+		container,
 		emptyProps,
 		mockLimitlessRouterService)
 
@@ -214,14 +231,14 @@ func TestLimitlessPluginConnectGivenContextMissingConn(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name, "postgresql",
 	)
 
-	pluginServiceImpl := beforeLimitlessPluginConnectTest(props)
+	_, container := beforeLimitlessPluginConnectTest(t, props)
 
 	mockLimitlessRouterService := &MockLimitlessRouterService{}
 
 	someHostInfo, _ := host_info_util.NewHostInfoBuilder().SetHost("test").SetPort(1234).SetRole(host_info_util.WRITER).Build()
 
 	limitlessPlugin := limitless.NewLimitlessPluginWithRouterService(
-		driver_infrastructure.PluginService(pluginServiceImpl),
+		container,
 		emptyProps,
 		mockLimitlessRouterService)
 
@@ -242,7 +259,7 @@ func TestLimitlessPluginConnectGivenStartMonitoringThrows(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name, "postgresql",
 	)
 
-	pluginServiceImpl := beforeLimitlessPluginConnectTest(props)
+	_, container := beforeLimitlessPluginConnectTest(t, props)
 
 	startMonitoringErrorString := "StartMonitoringError"
 	mockLimitlessRouterService := &MockLimitlessRouterService{}
@@ -253,7 +270,7 @@ func TestLimitlessPluginConnectGivenStartMonitoringThrows(t *testing.T) {
 	someHostInfo, _ := host_info_util.NewHostInfoBuilder().SetHost("test").SetPort(1234).SetRole(host_info_util.WRITER).Build()
 
 	limitlessPlugin := limitless.NewLimitlessPluginWithRouterService(
-		driver_infrastructure.PluginService(pluginServiceImpl),
+		container,
 		emptyProps,
 		mockLimitlessRouterService)
 
@@ -275,7 +292,7 @@ func TestLimitlessPluginConnectGivenEstablishConnectionThrows(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name, "postgresql",
 	)
 
-	pluginServiceImpl := beforeLimitlessPluginConnectTest(props)
+	_, container := beforeLimitlessPluginConnectTest(t, props)
 
 	establishConnectionErrorString := "EstablishConnectionError"
 	mockLimitlessRouterService := &MockLimitlessRouterService{}
@@ -286,7 +303,7 @@ func TestLimitlessPluginConnectGivenEstablishConnectionThrows(t *testing.T) {
 	someHostInfo, _ := host_info_util.NewHostInfoBuilder().SetHost("test").SetPort(1234).SetRole(host_info_util.WRITER).Build()
 
 	limitlessPlugin := limitless.NewLimitlessPluginWithRouterService(
-		driver_infrastructure.PluginService(pluginServiceImpl),
+		container,
 		emptyProps,
 		mockLimitlessRouterService)
 
@@ -336,33 +353,55 @@ func (m *MockLimitlessRouterService) StartMonitoring(hostInfo *host_info_util.Ho
 	return m.startMonitoringFunc(hostInfo, props, intervalMs)
 }
 
+func beforeLimitlessRouterServiceTest(t *testing.T, props *utils.RWMap[string, string], clusterId string) (*plugin_helpers.PluginServiceImpl, *services.FullServicesContainer) {
+	ctrl := gomock.NewController(t)
+	mockTargetDriver := &MockTargetDriver{}
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+
+	storage := services.NewExpiringStorage(5*time.Minute, nil)
+	driver_infrastructure.RegisterDefaultStorageTypes(storage)
+
+	mockMonitorService := mock_driver_infrastructure.NewMockMonitorService(ctrl)
+	mockMonitorService.EXPECT().RegisterMonitorType(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockMonitorService.EXPECT().RunIfAbsent(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	mockMonitorService.EXPECT().StopAndRemove(gomock.Any(), gomock.Any()).AnyTimes()
+
+	container := &services.FullServicesContainer{
+		Storage:   storage,
+		Monitor:   mockMonitorService,
+		Telemetry: telemetryFactory,
+	}
+
+	mockPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, container, props)
+	container.PluginManager = mockPluginManager
+
+	pluginService, _ := plugin_helpers.NewPluginServiceImpl(container, mysql_driver.NewMySQLDriverDialect(), props, pgLimitlessTestDsn)
+	pluginServiceImpl, _ := pluginService.(*plugin_helpers.PluginServiceImpl)
+
+	mockHostListProvider := &MockHostListProvider{}
+	mockHostListProvider.SetClusterId(clusterId)
+	pluginServiceImpl.SetHostListProvider(mockHostListProvider)
+
+	container.PluginService = pluginService
+
+	return pluginServiceImpl, container
+}
+
 func TestLimitlessMonitorServiceEstablishConnection(t *testing.T) {
 	props := MakeMapFromKeysAndVals(
 		property_util.DRIVER_PROTOCOL.Name, "postgresql",
 	)
 
 	clusterId := "someClusterId"
+	_, container := beforeLimitlessRouterServiceTest(t, props, clusterId)
 
-	mockHostListProviderService := &MockHostListProvider{}
-	mockHostListProviderService.SetClusterId(clusterId)
-
-	mockTargetDriver := &MockTargetDriver{}
-	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := plugin_helpers.NewPluginManagerImpl(
-		mockTargetDriver,
-		props, driver_infrastructure.ConnectionProviderManager{},
-		telemetryFactory)
-	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.NewMySQLDriverDialect(), props, pgLimitlessTestDsn)
-	pluginServiceImpl.SetHostListProvider(mockHostListProviderService)
-
-	limitlessRouterService := limitless.NewLimitlessRouterServiceImplInternal(pluginServiceImpl, nil, props)
+	limitlessRouterService := limitless.NewLimitlessRouterServiceImplInternal(container, nil, props)
 
 	cachedRouter0, _ := host_info_util.NewHostInfoBuilder().SetHost("host0").SetWeight(10).Build()
 	cachedRouter1, _ := host_info_util.NewHostInfoBuilder().SetHost("host1").SetWeight(9).Build()
 	cachedRouter2, _ := host_info_util.NewHostInfoBuilder().SetHost("host2").SetWeight(8).Build()
 	cachedRouterList := []*host_info_util.HostInfo{cachedRouter0, cachedRouter1, cachedRouter2}
-	limitless.LIMITLESS_ROUTER_CACHE.Put(clusterId, cachedRouterList, time.Duration(1)*time.Minute)
-	defer limitless.LIMITLESS_ROUTER_CACHE.Clear()
+	limitless.LimitlessRoutersStorageType.Set(container.GetStorageService(), clusterId, limitless.NewLimitlessRouters(cachedRouterList))
 
 	host, _ := host_info_util.NewHostInfoBuilder().SetHost("host1").SetWeight(9).Build()
 	mockConn := &MockConn{}
@@ -385,22 +424,9 @@ func TestLimitlessMonitorServiceEstablishConnect_GivenEmptyCacheAndNoWaitForRout
 	)
 
 	clusterId := "someClusterId"
+	_, container := beforeLimitlessRouterServiceTest(t, props, clusterId)
 
-	mockHostListProviderService := &MockHostListProvider{}
-	mockHostListProviderService.SetClusterId(clusterId)
-
-	mockTargetDriver := &MockTargetDriver{}
-	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := plugin_helpers.NewPluginManagerImpl(
-		mockTargetDriver,
-		props, driver_infrastructure.ConnectionProviderManager{},
-		telemetryFactory)
-	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.NewMySQLDriverDialect(), props, pgLimitlessTestDsn)
-	pluginServiceImpl.SetHostListProvider(mockHostListProviderService)
-
-	limitlessRouterService := limitless.NewLimitlessRouterServiceImplInternal(pluginServiceImpl, nil, props)
-
-	defer limitless.LIMITLESS_ROUTER_CACHE.Clear()
+	limitlessRouterService := limitless.NewLimitlessRouterServiceImplInternal(container, nil, props)
 
 	host, _ := host_info_util.NewHostInfoBuilder().SetHost("host1").SetWeight(9).Build()
 	mockConn := &MockConn{}
@@ -423,25 +449,11 @@ func TestLimitlessMonitorServiceEstablishConnect_MaxRetries(t *testing.T) {
 	)
 
 	clusterId := "someClusterId"
-
-	mockHostListProviderService := &MockHostListProvider{}
-	mockHostListProviderService.SetClusterId(clusterId)
-
-	mockTargetDriver := &MockTargetDriver{}
-	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := plugin_helpers.NewPluginManagerImpl(
-		mockTargetDriver,
-		props,
-		driver_infrastructure.ConnectionProviderManager{},
-		telemetryFactory)
-	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.NewMySQLDriverDialect(), props, pgLimitlessTestDsn)
-	pluginServiceImpl.SetHostListProvider(mockHostListProviderService)
+	_, container := beforeLimitlessRouterServiceTest(t, props, clusterId)
 
 	mockLimitlessQueryHelper := &MockLimitlessQueryHelper{}
 
-	limitlessRouterService := limitless.NewLimitlessRouterServiceImplInternal(pluginServiceImpl, mockLimitlessQueryHelper, props)
-
-	defer limitless.LIMITLESS_ROUTER_CACHE.Clear()
+	limitlessRouterService := limitless.NewLimitlessRouterServiceImplInternal(container, mockLimitlessQueryHelper, props)
 
 	host, _ := host_info_util.NewHostInfoBuilder().SetHost("host1").SetWeight(9).Build()
 	mockConn := &MockConn{}

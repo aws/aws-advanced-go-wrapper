@@ -1,5 +1,3 @@
-//go:build disabled
-
 /*
   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
@@ -61,10 +59,12 @@ func TestReadWriteSplittingPluginFactory_GetInstance(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService)
 	factory := read_write_splitting.NewReadWriteSplittingPluginFactory()
 
 	props := MakeMapFromKeysAndVals("test", "value")
-	instance, err := factory.GetInstance(mockPluginService, props)
+	instance, err := factory.GetInstance(mockContainer, props)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, instance)

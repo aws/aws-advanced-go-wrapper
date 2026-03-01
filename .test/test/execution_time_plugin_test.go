@@ -1,5 +1,3 @@
-//go:build disabled
-
 /*
   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
@@ -33,10 +31,11 @@ func TestFactoryReturnsExecutionTimePlugin(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(nil)
 
 	factory := plugins.NewExecutionTimePluginFactory()
-	plugin, err := factory.GetInstance(mockService, emptyProps)
+	plugin, err := factory.GetInstance(mockContainer, emptyProps)
 	assert.NoError(t, err)
 
 	_, ok := plugin.(*plugins.ExecutionTimePlugin)

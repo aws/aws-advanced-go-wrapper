@@ -1,5 +1,3 @@
-//go:build disabled
-
 /*
   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
@@ -27,8 +25,10 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/services"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
+	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 )
 
 var BENCHMARK_DEFAULT_NUM_PLUGINS = 10
@@ -40,24 +40,29 @@ func initPluginManagerWithPlugins(numPlugins int,
 	property_util.ENABLE_TELEMETRY.Set(props, "true")
 	property_util.TELEMETRY_TRACES_BACKEND.Set(props, "none")
 	property_util.TELEMETRY_METRICS_BACKEND.Set(props, "none")
+	property_util.DRIVER_PROTOCOL.Set(props, property_util.PGX_DRIVER_PROTOCOL)
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
 
 	benchmarkPluginFactory := BenchmarkPluginFactory{}
-	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{DefaultProvider: &MockConnectionProvider{}}
-	pluginManager := plugin_helpers.NewPluginManagerImpl(MockTargetDriver{}, props, connectionProviderManager, telemetryFactory)
-	pluginService := &MockPluginService{}
+	container := &services.FullServicesContainer{
+		Telemetry:    telemetryFactory,
+		ConnProvider: &MockConnectionProvider{},
+	}
+	pluginManager := plugin_helpers.NewPluginManagerImpl(MockTargetDriver{}, container, props)
+	container.SetPluginManager(pluginManager)
+	pluginService, _ := plugin_helpers.NewPluginServiceImpl(container, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
+	container.SetPluginService(pluginService)
 
 	pluginChainBuilder := driver.ConnectionPluginChainBuilder{}
-	plugins, _ := pluginChainBuilder.GetPlugins(pluginService, pluginManager, props, defaultPluginFactoryByCode)
+	plugins, _ := pluginChainBuilder.GetPlugins(container, props, defaultPluginFactoryByCode)
 	for i := 0; i < numPlugins; i++ {
-		plugin, _ := benchmarkPluginFactory.GetInstance(pluginService, props)
+		plugin, _ := benchmarkPluginFactory.GetInstance(container, props)
 		plugins = append([]driver_infrastructure.ConnectionPlugin{plugin}, plugins...)
 	}
-	err := pluginManager.Init(pluginService, plugins)
+	err := pluginManager.Init(plugins)
 	if err != nil {
 		return nil
 	}
-	pluginService.PluginManager = pluginManager
 	return pluginManager
 }
 
@@ -85,6 +90,10 @@ func BenchmarkConnectWithPlugins(b *testing.B) {
 	}
 }
 
+var benchmarkExecFunc = func() (any, any, bool, error) {
+	return "resultTestValue", nil, true, nil
+}
+
 func BenchmarkExecute(b *testing.B) {
 	props := utils.NewRWMap[string, string]()
 
@@ -99,7 +108,7 @@ func BenchmarkExecute(b *testing.B) {
 				_, _, _, _ = pluginManager.Execute(
 					nil,
 					"callA",
-					execFunc,
+					benchmarkExecFunc,
 					10,
 					"arg2, 3.33",
 				)

@@ -1,5 +1,3 @@
-//go:build disabled
-
 /*
   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
@@ -19,280 +17,297 @@
 package test
 
 import (
-	"database/sql/driver"
 	"strings"
 	"testing"
+	"time"
 
+	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/services"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
 
-var trueAsInt int64 = 1
-var mockHostListProviderService = &MockRdsHostListProviderService{}
-var mockPgAuroraDialect = &driver_infrastructure.AuroraPgDatabaseDialect{}
+// rdsTestSetup creates the common gomock infrastructure for RdsHostListProvider tests.
+// The caller is responsible for setting IsDialectConfirmed expectations on the returned MockPluginService.
+func rdsTestSetup(
+	ctrl *gomock.Controller,
+	dsn string,
+) (
+	*driver_infrastructure.RdsHostListProvider,
+	*mock_driver_infrastructure.MockPluginService,
+	*mock_driver_infrastructure.MockMonitorService,
+	*mock_driver_infrastructure.MockTopologyUtils,
+	*mock_driver_infrastructure.MockServicesContainer,
+	*services.ExpiringStorage,
+) {
+	props, _ := property_util.ParseDsn(dsn)
 
-func beforePgTests() *driver_infrastructure.RdsHostListProvider {
-	driver_infrastructure.ClearAllRdsHostListProviderCaches()
-	mockPgProps, _ := property_util.ParseDsn("postgres://someUser:somePassword@localhost:5432/pgx_test?sslmode=disable&foo=bar&clusterId=pg_cluster")
-	return driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, mockPgProps, nil, nil)
-}
-func beforeMySqlTests() *driver_infrastructure.RdsHostListProvider {
-	driver_infrastructure.ClearAllRdsHostListProviderCaches()
-	mockMySQLProps, _ := property_util.ParseDsn("someUser:somePassword@tcp(mydatabase.com:3306)/myDatabase?foo=bar&pop=snap&clusterId=mysql_cluster")
-	return driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, &driver_infrastructure.AuroraMySQLDatabaseDialect{}, mockMySQLProps, nil, nil)
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+
+	mockMonitorService := mock_driver_infrastructure.NewMockMonitorService(ctrl)
+	mockMonitorService.EXPECT().StopAndRemoveByType(gomock.Any()).AnyTimes()
+
+	storageService := services.NewExpiringStorage(5*time.Minute, nil)
+	driver_infrastructure.RegisterDefaultStorageTypes(storageService)
+
+	mockHLPService := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
+	mockHLPService.EXPECT().SetInitialConnectionHostInfo(gomock.Any()).AnyTimes()
+	mockHLPService.EXPECT().GetDialect().Return(nil).AnyTimes()
+
+	mockTopologyUtils := mock_driver_infrastructure.NewMockTopologyUtils(ctrl)
+
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	mockContainer.EXPECT().GetMonitorService().Return(mockMonitorService).AnyTimes()
+	mockContainer.EXPECT().GetStorageService().Return(storageService).AnyTimes()
+
+	provider := driver_infrastructure.NewRdsHostListProvider(mockHLPService, mockTopologyUtils, props, mockContainer)
+
+	return provider, mockPluginService, mockMonitorService, mockTopologyUtils, mockContainer, storageService
 }
 
 func TestGetClusterId(t *testing.T) {
-	mockPgRdsHostListProvider := beforePgTests()
-	pgClusterId, _ := mockPgRdsHostListProvider.GetClusterId()
-	if pgClusterId != "pg_cluster" {
-		t.Errorf("Init should set cluster id to the value in mockPgProps.")
-	}
-	mockMySQLRdsHostListProvider := beforeMySqlTests()
-	mysqlClusterId, _ := mockMySQLRdsHostListProvider.GetClusterId()
-	if mysqlClusterId != "mysql_cluster" {
-		t.Errorf("Init should set cluster id to the value in mockMySQLProps.")
-	}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	pgProvider, mockPS1, _, _, _, _ := rdsTestSetup(ctrl,
+		"postgres://someUser:somePassword@localhost:5432/pgx_test?sslmode=disable&foo=bar&clusterId=pg_cluster")
+	mockPS1.EXPECT().IsDialectConfirmed().Return(false).AnyTimes()
+	pgClusterId, _ := pgProvider.GetClusterId()
+	assert.Equal(t, "pg_cluster", pgClusterId)
+
+	mysqlProvider, mockPS2, _, _, _, _ := rdsTestSetup(ctrl,
+		"someUser:somePassword@tcp(mydatabase.com:3306)/myDatabase?foo=bar&pop=snap&clusterId=mysql_cluster")
+	mockPS2.EXPECT().IsDialectConfirmed().Return(false).AnyTimes()
+	mysqlClusterId, _ := mysqlProvider.GetClusterId()
+	assert.Equal(t, "mysql_cluster", mysqlClusterId)
 }
 
-func TestRefreshTopologyPg(t *testing.T) {
-	mockPgRdsHostListProvider := beforePgTests()
-	// Test that Refresh returns the initial hosts from the dsn when topology query returns an empty host list.
-	mockConn := MockConn{}
-	hosts, err := mockPgRdsHostListProvider.Refresh(&mockConn)
+func TestRefreshReturnsInitialHostsWhenDialectNotConfirmed(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	provider, mockPS, _, _, _, _ := rdsTestSetup(ctrl,
+		"postgres://someUser:somePassword@localhost:5432/pgx_test?sslmode=disable&foo=bar&clusterId=pg_cluster")
+	mockPS.EXPECT().IsDialectConfirmed().Return(false).AnyTimes()
+
+	hosts, err := provider.Refresh()
 	assert.Nil(t, err)
-	if len(hosts) == 0 {
-		t.Errorf("Refresh should return the initial hosts from the dsn if the topology query returns no hosts.")
-	}
-	if hosts[0].Host != "localhost" {
-		t.Errorf("Refresh should correctly parse the dsn to create the initial hosts.")
-	}
-
-	// Test that Refresh returns the results of the topology query.
-	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"}, []driver.Value{"new_host", true, 1.0, 2.0, 0})
-
-	hosts, err = mockPgRdsHostListProvider.Refresh(&mockConn)
-	assert.Nil(t, err)
-	if len(hosts) == 0 {
-		t.Errorf("Refresh should return the results of the topology query.")
-	}
-	if hosts[0].Host != "new_host" || hosts[0].Role != host_info_util.WRITER || hosts[0].Weight != 201 {
-		t.Errorf("Refresh should correctly parse the topology query to create the required hosts.")
-	}
-
-	// After the first topology query, topology is cached, Refresh should return results from cache instead of query when possible.
-	mockConn = MockConn{}
-	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"}, []driver.Value{"topology_query_host", true, 1.0, 2.0, 0})
-
-	hosts, err = mockPgRdsHostListProvider.Refresh(&mockConn)
-	assert.Nil(t, err)
-	if len(hosts) == 0 {
-		t.Errorf("Refresh should return the cached topology.")
-	}
-	if hosts[0].Host == "topology_query_host" {
-		t.Errorf("Refresh should return the cached topology if available.")
-	}
-
-	// ForceRefresh should run the topology query regardless of the values in the cache.
-	hosts, err = mockPgRdsHostListProvider.ForceRefresh(&mockConn)
-	assert.Nil(t, err)
-	if len(hosts) == 0 {
-		t.Errorf("ForceRefresh should return the results of the topology query.")
-	}
-	if hosts[0].Host != "topology_query_host" {
-		t.Errorf("ForceRefresh should return the hosts from the topology query not the cached topology.")
-	}
+	assert.NotEmpty(t, hosts)
+	assert.Equal(t, "localhost", hosts[0].Host)
 }
 
-func TestRefreshTopologyMySQL(t *testing.T) {
-	// Test that Refresh returns the error when a query fails.
-	mockMySQLRdsHostListProvider := beforeMySqlTests()
-	basicConn := MockDriverConn{nil}
-	_, err := mockMySQLRdsHostListProvider.Refresh(basicConn)
-	if !strings.Contains(err.Error(), "does not implement the required interface") {
-		t.Errorf("If the given connection does not implement QueryerContext it should error out.")
-	}
+func TestForceRefreshReturnsInitialHostsWhenDialectNotConfirmed(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	// Test that Refresh returns the initial hosts from the dsn when topology query returns an empty host list.
-	mockConn := MockConn{}
-	mockConn.updateQueryRowSingleUse([]string{}, []driver.Value{})
-	hosts, err := mockMySQLRdsHostListProvider.Refresh(&mockConn)
+	provider, mockPS, _, _, _, _ := rdsTestSetup(ctrl,
+		"postgres://someUser:somePassword@localhost:5432/pgx_test?sslmode=disable&foo=bar&clusterId=pg_cluster")
+	mockPS.EXPECT().IsDialectConfirmed().Return(false).AnyTimes()
+
+	hosts, err := provider.ForceRefresh()
 	assert.Nil(t, err)
-
-	if hosts[0].Host != "mydatabase.com" {
-		t.Errorf("Refresh should correctly parse the dsn to create the initial hosts.")
-	}
-
-	// Test that Refresh returns the results of the topology query.
-	mockConn = MockConn{}
-	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"},
-		[]driver.Value{[]uint8{110, 101, 119, 95, 104, 111, 115, 116}, trueAsInt, 1.0, 2.0, 0})
-
-	hosts, err = mockMySQLRdsHostListProvider.Refresh(&mockConn)
-	assert.Nil(t, err)
-	if len(hosts) == 0 {
-		t.Errorf("Refresh should return the results of the topology query.")
-	}
-	if hosts[0].Host != "new_host" || hosts[0].Role != host_info_util.WRITER || hosts[0].Weight != 201 {
-		t.Errorf("Refresh should correctly parse the topology query to create the required hosts.")
-	}
-
-	// After the first topology query, topology is cached, Refresh should return results from cache instead of query when possible.
-	mockConn = MockConn{}
-	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"},
-		[]driver.Value{[]uint8{116, 111, 112, 111, 108, 111, 103, 121, 95, 113, 117, 101, 114, 121, 95, 104, 111, 115, 116},
-			trueAsInt, 1.0, 2.0, []uint8{50, 48, 48, 48, 45, 48, 49, 45, 48, 49, 32, 48, 48, 58, 48, 48, 58, 48, 48, 46, 48, 48}})
-
-	hosts, err = mockMySQLRdsHostListProvider.Refresh(&mockConn)
-	assert.Nil(t, err)
-	if len(hosts) == 0 {
-		t.Errorf("Refresh should return the cached topology.")
-	}
-	if hosts[0].Host == "topology_query_host" {
-		t.Errorf("Refresh should return the cached topology if available.")
-	}
-
-	// ForceRefresh should run the topology query regardless of the values in the cache.
-	hosts, err = mockMySQLRdsHostListProvider.ForceRefresh(&mockConn)
-	assert.Nil(t, err)
-	if len(hosts) == 0 {
-		t.Errorf("ForceRefresh should return the results of the topology query.")
-	}
-	if hosts[0].Host != "topology_query_host" {
-		t.Errorf("ForceRefresh should return the hosts from the topology query not the cached topology.")
-	}
+	assert.NotEmpty(t, hosts)
+	assert.Equal(t, "localhost", hosts[0].Host)
 }
 
-func TestPgGetHostRole(t *testing.T) {
-	mockPgRdsHostListProvider := beforePgTests()
-	mockConn := MockConn{}
-	mockConn.updateQueryRow([]string{"isReader"}, []driver.Value{false})
-	hostRole := mockPgRdsHostListProvider.GetHostRole(&mockConn)
-	if hostRole != host_info_util.WRITER {
-		t.Errorf("When isReaderQuery returns false, getHostRole should return the WRITER HostRole.")
-	}
+func TestRefreshReturnsCachedTopologyWhenAvailable(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	provider, mockPS, _, _, _, storageService := rdsTestSetup(ctrl,
+		"postgres://someUser:somePassword@localhost:5432/pgx_test?sslmode=disable&foo=bar&clusterId=pg_cluster")
+	mockPS.EXPECT().IsDialectConfirmed().Return(true).AnyTimes()
+
+	// Pre-populate the topology cache.
+	cachedHost, _ := host_info_util.NewHostInfoBuilder().SetHost("cached_host").SetRole(host_info_util.WRITER).Build()
+	driver_infrastructure.TopologyStorageType.Set(storageService, "pg_cluster",
+		driver_infrastructure.NewTopology([]*host_info_util.HostInfo{cachedHost}))
+
+	hosts, err := provider.Refresh()
+	assert.Nil(t, err)
+	assert.NotEmpty(t, hosts)
+	assert.Equal(t, "cached_host", hosts[0].Host)
 }
 
-func TestMySQLGetHostRole(t *testing.T) {
-	mockConn := MockConn{}
-	mockConn.updateQueryRow([]string{"isReader"}, []driver.Value{trueAsInt})
-	mockMySQLRdsHostListProvider := beforeMySqlTests()
-	hostRole := mockMySQLRdsHostListProvider.GetHostRole(&mockConn)
-	if hostRole != host_info_util.READER {
-		t.Errorf("When isReaderQuery returns true, getHostRole should return the READER HostRole.")
-	}
+func TestRefreshQueriesMonitorWhenNoCachedTopology(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	provider, mockPS, mockMonitorService, _, mockContainer, _ := rdsTestSetup(ctrl,
+		"postgres://someUser:somePassword@localhost:5432/pgx_test?sslmode=disable&foo=bar&clusterId=pg_cluster")
+	mockPS.EXPECT().IsDialectConfirmed().Return(true).AnyTimes()
+
+	// Mock the monitor to return topology hosts.
+	monitorHost, _ := host_info_util.NewHostInfoBuilder().SetHost("monitor_host").SetRole(host_info_util.WRITER).Build()
+	mockMonitor := mock_driver_infrastructure.NewMockClusterTopologyMonitor(ctrl)
+	mockMonitor.EXPECT().ForceRefresh(false, driver_infrastructure.DEFAULT_TOPOLOGY_QUERY_TIMEOUT_MS).
+		Return([]*host_info_util.HostInfo{monitorHost}, nil)
+
+	mockMonitorService.EXPECT().RunIfAbsent(
+		driver_infrastructure.ClusterTopologyMonitorType,
+		"pg_cluster",
+		mockContainer,
+		gomock.Any(),
+	).Return(mockMonitor, nil)
+
+	hosts, err := provider.Refresh()
+	assert.Nil(t, err)
+	assert.NotEmpty(t, hosts)
+	assert.Equal(t, "monitor_host", hosts[0].Host)
 }
 
-func TestPgIdentifyConnection(t *testing.T) {
-	mockPgRdsHostListProvider := beforePgTests()
-	mockConn := MockConn{}
-	mockConn.updateQueryRow([]string{"hostId"}, []driver.Value{"localhost"})
-	currentConnection, err := mockPgRdsHostListProvider.IdentifyConnection(&mockConn)
-	assert.Nil(t, err)
-	if currentConnection.Host != "localhost" {
-		t.Errorf("Connection is attached to a host not in the cache, should call forceRefresh and finds host and returns it.")
-	}
+func TestForceRefreshAlwaysQueriesMonitor(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	// Load the cache.
-	mockConn = MockConn{}
-	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"}, []driver.Value{"topology_query_host", true, 1.0, 2.0, 0})
-	_, err = mockPgRdsHostListProvider.Refresh(&mockConn)
-	assert.Nil(t, err)
+	provider, mockPS, mockMonitorService, _, mockContainer, storageService := rdsTestSetup(ctrl,
+		"postgres://someUser:somePassword@localhost:5432/pgx_test?sslmode=disable&foo=bar&clusterId=pg_cluster")
+	mockPS.EXPECT().IsDialectConfirmed().Return(true).AnyTimes()
 
-	mockConn = MockConn{}
-	mockConn.updateQueryRow([]string{"hostId"}, []driver.Value{"topology_query_host"})
-	currentConnection, err = mockPgRdsHostListProvider.IdentifyConnection(&mockConn)
+	// Pre-populate cache with old data.
+	cachedHost, _ := host_info_util.NewHostInfoBuilder().SetHost("cached_host").SetRole(host_info_util.WRITER).Build()
+	driver_infrastructure.TopologyStorageType.Set(storageService, "pg_cluster",
+		driver_infrastructure.NewTopology([]*host_info_util.HostInfo{cachedHost}))
+
+	// Mock the monitor to return fresh topology.
+	freshHost, _ := host_info_util.NewHostInfoBuilder().SetHost("fresh_host").SetRole(host_info_util.WRITER).Build()
+	mockMonitor := mock_driver_infrastructure.NewMockClusterTopologyMonitor(ctrl)
+	mockMonitor.EXPECT().ForceRefresh(false, driver_infrastructure.DEFAULT_TOPOLOGY_QUERY_TIMEOUT_MS).
+		Return([]*host_info_util.HostInfo{freshHost}, nil)
+
+	mockMonitorService.EXPECT().RunIfAbsent(
+		driver_infrastructure.ClusterTopologyMonitorType,
+		"pg_cluster",
+		mockContainer,
+		gomock.Any(),
+	).Return(mockMonitor, nil)
+
+	hosts, err := provider.ForceRefresh()
 	assert.Nil(t, err)
-	if currentConnection.Host != "topology_query_host" {
-		t.Errorf("Connection is attached to a host in the cache, should return that host.")
-	}
+	assert.NotEmpty(t, hosts)
+	assert.Equal(t, "fresh_host", hosts[0].Host)
 }
 
-func TestMySQLIdentifyConnection(t *testing.T) {
-	mockMySQLRdsHostListProvider := beforeMySqlTests()
-	mockConn := MockConn{}
-	mockConn.updateQueryRow([]string{"hostId"}, []driver.Value{[]uint8{109, 121, 100, 97, 116, 97, 98, 97, 115, 101, 46, 99, 111, 109}})
-	currentConnection, err := mockMySQLRdsHostListProvider.IdentifyConnection(&mockConn)
-	assert.Nil(t, err)
-	if currentConnection.Host != "mydatabase.com" {
-		t.Errorf("Connection is attached to a host not in the cache, should call forceRefresh and finds host and returns it.")
-	}
+func TestGetHostRole(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	// Load the cache.
-	mockConn = MockConn{}
-	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"},
-		[]driver.Value{[]uint8{116, 111, 112, 111, 108, 111, 103, 121, 95, 113, 117, 101, 114, 121, 95, 104, 111, 115, 116},
-			trueAsInt, 1.0, 2.0, []uint8{50, 48, 48, 48, 45, 48, 49, 45, 48, 49, 32, 48, 48, 58, 48, 48, 58, 48, 48, 46, 48, 48}})
-	_, err = mockMySQLRdsHostListProvider.Refresh(&mockConn)
-	assert.Nil(t, err)
+	provider, mockPS, _, mockTopologyUtils, _, _ := rdsTestSetup(ctrl,
+		"postgres://someUser:somePassword@localhost:5432/pgx_test?sslmode=disable&foo=bar&clusterId=pg_cluster")
+	mockPS.EXPECT().IsDialectConfirmed().Return(false).AnyTimes()
 
-	mockConn = MockConn{}
-	mockConn.updateQueryRow([]string{"hostId"}, []driver.Value{[]uint8{116, 111, 112, 111, 108, 111, 103, 121, 95, 113, 117, 101, 114, 121, 95, 104, 111, 115, 116}})
-	currentConnection, err = mockMySQLRdsHostListProvider.IdentifyConnection(&mockConn)
+	mockConn := &MockConn{}
+
+	// GetHostRole delegates to TopologyUtils.
+	mockTopologyUtils.EXPECT().GetHostRole(mockConn).Return(host_info_util.WRITER)
+	hostRole := provider.GetHostRole(mockConn)
+	assert.Equal(t, host_info_util.WRITER, hostRole)
+
+	mockTopologyUtils.EXPECT().GetHostRole(mockConn).Return(host_info_util.READER)
+	hostRole = provider.GetHostRole(mockConn)
+	assert.Equal(t, host_info_util.READER, hostRole)
+}
+
+func TestRdsIdentifyConnection(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	provider, mockPS, _, mockTopologyUtils, _, storageService := rdsTestSetup(ctrl,
+		"postgres://someUser:somePassword@localhost:5432/pgx_test?sslmode=disable&foo=bar&clusterId=pg_cluster")
+
+	mockConn := &MockConn{}
+
+	// When dialect is not confirmed, Refresh returns initial hosts (localhost).
+	// GetInstanceId returns "localhost" so it should find it in the initial host list.
+	mockPS.EXPECT().IsDialectConfirmed().Return(false).Times(1) // Refresh in getTopology
+	mockTopologyUtils.EXPECT().GetInstanceId(mockConn).Return("localhost", "localhost")
+
+	currentConnection, err := provider.IdentifyConnection(mockConn)
 	assert.Nil(t, err)
-	if currentConnection.Host != "topology_query_host" {
-		t.Errorf("Connection is attached to a host in the cache, should return that host.")
-	}
+	assert.Equal(t, "localhost", currentConnection.Host)
+
+	// Now pre-populate cache and switch to dialect confirmed so Refresh reads from cache.
+	cachedHost, _ := host_info_util.NewHostInfoBuilder().SetHost("cached_host").SetRole(host_info_util.WRITER).Build()
+	driver_infrastructure.TopologyStorageType.Set(storageService, "pg_cluster",
+		driver_infrastructure.NewTopology([]*host_info_util.HostInfo{cachedHost}))
+
+	mockPS.EXPECT().IsDialectConfirmed().Return(true).AnyTimes()
+	mockTopologyUtils.EXPECT().GetInstanceId(mockConn).Return("cached_host", "cached_host")
+
+	currentConnection, err = provider.IdentifyConnection(mockConn)
+	assert.Nil(t, err)
+	assert.Equal(t, "cached_host", currentConnection.Host)
+}
+
+func TestRdsIdentifyConnectionNotFound(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	provider, mockPS, _, mockTopologyUtils, _, _ := rdsTestSetup(ctrl,
+		"postgres://someUser:somePassword@localhost:5432/pgx_test?sslmode=disable&foo=bar&clusterId=pg_cluster")
+	mockPS.EXPECT().IsDialectConfirmed().Return(false).AnyTimes()
+
+	mockConn := &MockConn{}
+
+	// When GetInstanceId returns empty strings, IdentifyConnection should error.
+	mockTopologyUtils.EXPECT().GetInstanceId(mockConn).Return("", "")
+
+	_, err := provider.IdentifyConnection(mockConn)
+	assert.NotNil(t, err)
+	assert.True(t, strings.Contains(err.Error(), "Unable"))
 }
 
 func TestSuggestedClusterIdForRds(t *testing.T) {
-	driver_infrastructure.ClearAllRdsHostListProviderCaches()
-	props, _ := property_util.ParseDsn("postgresql://user:password@name.cluster-xyz.us-east-2.rds.amazonaws.com:5432/database")
-	provider1 := driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, props, nil, nil)
-	mockConn := MockConn{}
-	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"},
-		[]driver.Value{"instance-a-1", true, 1.0, 2.0, 0})
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	assert.Equal(t, 0, driver_infrastructure.TopologyCache.Size())
-	hosts, err := provider1.Refresh(&mockConn)
-	assert.Nil(t, err)
-	assert.Equal(t, "instance-a-1.xyz.us-east-2.rds.amazonaws.com", hosts[0].Host)
+	// Two providers with the same clusterId should share the same cluster ID.
+	provider1, mockPS1, _, _, _, _ := rdsTestSetup(ctrl,
+		"postgresql://user:password@name.cluster-xyz.us-east-2.rds.amazonaws.com:5432/database?clusterId=shared_cluster")
+	mockPS1.EXPECT().IsDialectConfirmed().Return(false).AnyTimes()
 
-	provider2 := driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, props, nil, nil)
+	provider2, mockPS2, _, _, _, _ := rdsTestSetup(ctrl,
+		"postgresql://user:password@name.cluster-xyz.us-east-2.rds.amazonaws.com:5432/database?clusterId=shared_cluster")
+	mockPS2.EXPECT().IsDialectConfirmed().Return(false).AnyTimes()
+
 	actualClusterId1, err1 := provider1.GetClusterId()
 	actualClusterId2, err2 := provider2.GetClusterId()
-	assert.Equal(t, actualClusterId1, actualClusterId2)
 	assert.Nil(t, err1)
 	assert.Nil(t, err2)
-	assert.True(t, provider1.IsPrimaryClusterId)
-	assert.True(t, provider2.IsPrimaryClusterId)
-
-	hosts, err = provider2.Refresh(MockDriverConn{})
-	assert.Nil(t, err)
-	assert.Equal(t, "instance-a-1.xyz.us-east-2.rds.amazonaws.com", hosts[0].Host)
-	assert.Equal(t, 1, driver_infrastructure.TopologyCache.Size())
+	assert.Equal(t, actualClusterId1, actualClusterId2)
+	assert.Equal(t, "shared_cluster", actualClusterId1)
 }
 
 func TestNoSuggestedClusterId(t *testing.T) {
-	driver_infrastructure.ClearAllRdsHostListProviderCaches()
-	props, _ := property_util.ParseDsn("postgresql://user:password@name1.cluster-xyz.us-east-2.rds.amazonaws.com:5432/database")
-	provider1 := driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, props, nil, nil)
-	mockConn := MockConn{}
-	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"},
-		[]driver.Value{"instance-a-1", true, 1.0, 2.0, 0})
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	assert.Equal(t, 0, driver_infrastructure.TopologyCache.Size())
-	hosts, err := provider1.Refresh(&mockConn)
-	assert.Nil(t, err)
-	assert.Equal(t, "instance-a-1.xyz.us-east-2.rds.amazonaws.com", hosts[0].Host)
+	// Two providers with different clusterIds should have different cluster IDs.
+	provider1, mockPS1, _, _, _, _ := rdsTestSetup(ctrl,
+		"postgresql://user:password@name1.cluster-xyz.us-east-2.rds.amazonaws.com:5432/database?clusterId=cluster_1")
+	mockPS1.EXPECT().IsDialectConfirmed().Return(false).AnyTimes()
 
-	props, _ = property_util.ParseDsn("postgresql://user:password@name2.cluster-xyz.us-east-2.rds.amazonaws.com:5432/database")
-	provider2 := driver_infrastructure.NewRdsHostListProvider(mockHostListProviderService, mockPgAuroraDialect, props, nil, nil)
-	mockConn = MockConn{}
-	mockConn.updateQueryRowSingleUse([]string{"hostName", "isWriter", "cpu", "lag", "lastUpdateTime"},
-		[]driver.Value{"instance-b-1", true, 1.0, 2.0, 0})
+	provider2, mockPS2, _, _, _, _ := rdsTestSetup(ctrl,
+		"postgresql://user:password@name2.cluster-xyz.us-east-2.rds.amazonaws.com:5432/database?clusterId=cluster_2")
+	mockPS2.EXPECT().IsDialectConfirmed().Return(false).AnyTimes()
 
-	hosts, err = provider2.Refresh(&mockConn)
-	assert.Nil(t, err)
 	actualClusterId1, err1 := provider1.GetClusterId()
 	actualClusterId2, err2 := provider2.GetClusterId()
-	assert.NotEqual(t, actualClusterId1, actualClusterId2)
 	assert.Nil(t, err1)
 	assert.Nil(t, err2)
-	assert.True(t, provider1.IsPrimaryClusterId)
-	assert.True(t, provider2.IsPrimaryClusterId)
-	assert.Equal(t, "instance-b-1.xyz.us-east-2.rds.amazonaws.com", hosts[0].Host)
-	assert.Equal(t, 2, driver_infrastructure.TopologyCache.Size())
+	assert.NotEqual(t, actualClusterId1, actualClusterId2)
+}
+
+func TestClearAllRdsHostListProviderCaches(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockMonitorService := mock_driver_infrastructure.NewMockMonitorService(ctrl)
+	mockMonitorService.EXPECT().StopAndRemoveByType(driver_infrastructure.ClusterTopologyMonitorType).Times(1)
+
+	driver_infrastructure.ClearAllRdsHostListProviderCaches(mockMonitorService)
 }

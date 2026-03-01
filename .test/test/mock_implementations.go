@@ -204,7 +204,11 @@ func (m *MockHostListProvider) CreateHost(_ string, _ host_info_util.HostRole, _
 	return nil
 }
 
-func (m *MockHostListProvider) ForceRefresh(_ driver.Conn) ([]*host_info_util.HostInfo, error) {
+func (m *MockHostListProvider) ForceRefresh() ([]*host_info_util.HostInfo, error) {
+	return nil, nil
+}
+
+func (m *MockHostListProvider) ForceRefreshWithOptions(_ bool, _ int) ([]*host_info_util.HostInfo, error) {
 	return nil, nil
 }
 
@@ -229,7 +233,7 @@ func (m *MockHostListProvider) IsStaticHostListProvider() bool {
 	return false
 }
 
-func (m *MockHostListProvider) Refresh(_ driver.Conn) ([]*host_info_util.HostInfo, error) {
+func (m *MockHostListProvider) Refresh() ([]*host_info_util.HostInfo, error) {
 	hostInfo, _ := host_info_util.NewHostInfoBuilder().SetHost("hostA").Build()
 	return []*host_info_util.HostInfo{hostInfo}, nil
 }

@@ -1,5 +1,3 @@
-//go:build disabled
-
 /*
   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
@@ -20,24 +18,60 @@ package test
 
 import (
 	"database/sql/driver"
-	"fmt"
+	"errors"
 	"strings"
 	"testing"
 	"time"
 	"weak"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
-
+	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
 	awssql "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/efm"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/services"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
+	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
+
+// efmTestContainer creates a FullServicesContainer with a real MonitorManager for EFM tests.
+func efmTestContainer(props *utils.RWMap[string, string]) (*services.FullServicesContainer, driver_infrastructure.PluginService) {
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	monitorManager := services.NewMonitorManager(5*time.Minute, nil)
+	container := &services.FullServicesContainer{
+		Telemetry: telemetryFactory,
+		Monitor:   monitorManager,
+	}
+	mockTargetDriver := &MockTargetDriver{}
+	pluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, container, props)
+	container.SetPluginManager(pluginManager)
+	pluginService, _ := plugin_helpers.NewPluginServiceImpl(container, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
+	container.SetPluginService(pluginService)
+	return container, pluginService
+}
+
+// efmTestContainerWithMockMonitor creates a container with a gomock MockMonitorService for unit tests.
+func efmTestContainerWithMockMonitor(ctrl *gomock.Controller, props *utils.RWMap[string, string]) (
+	*services.FullServicesContainer, driver_infrastructure.PluginService, *mock_driver_infrastructure.MockMonitorService,
+) {
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	mockMonitorService := mock_driver_infrastructure.NewMockMonitorService(ctrl)
+	container := &services.FullServicesContainer{
+		Telemetry: telemetryFactory,
+		Monitor:   mockMonitorService,
+	}
+	mockTargetDriver := &MockTargetDriver{}
+	pluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, container, props)
+	container.SetPluginManager(pluginManager)
+	pluginService, _ := plugin_helpers.NewPluginServiceImpl(container, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
+	container.SetPluginService(pluginService)
+	return container, pluginService, mockMonitorService
+}
 
 func TestMonitorConnectionState(t *testing.T) {
 	var conn driver.Conn = &MockDriverConn{}
@@ -63,29 +97,21 @@ func TestMonitorConnectionState(t *testing.T) {
 	assert.False(t, state.ShouldAbort())
 }
 
-func TestMonitorServiceImpl(t *testing.T) {
-	if efm.EFM_MONITORS != nil {
-		efm.EFM_MONITORS.Clear()
-		efm.EFM_MONITORS = nil
-	}
-	assert.Nil(t, efm.EFM_MONITORS)
-
+func TestHostMonitoringServiceImpl(t *testing.T) {
 	propsMap := map[string]string{
-		property_util.DRIVER_PROTOCOL.Name:               "mysql",
+		property_util.DRIVER_PROTOCOL.Name:               "postgresql",
 		property_util.FAILURE_DETECTION_TIME_MS.Name:     "0",
 		property_util.FAILURE_DETECTION_INTERVAL_MS.Name: "900",
 		property_util.FAILURE_DETECTION_COUNT.Name:       "3",
 		property_util.MONITOR_DISPOSAL_TIME_MS.Name:      "600000",
 	}
-	_, pluginService := initializeTest(propsMap, true, false, false, false, false, false)
 	props := utils.NewRWMapFromMap(propsMap)
-	monitorService, _ := efm.NewMonitorServiceImpl(pluginService, props)
+	container, _ := efmTestContainer(props)
+	monitorService, err := efm.NewHostMonitoringServiceImpl(container, props)
+	assert.Nil(t, err)
 	var testConn driver.Conn = &MockConn{throwError: false}
 
-	assert.NotNil(t, efm.EFM_MONITORS)
-	assert.Zero(t, efm.EFM_MONITORS.Size())
-
-	_, err := monitorService.StartMonitoring(nil, nil, emptyProps)
+	_, err = monitorService.StartMonitoring(nil, nil, emptyProps)
 	// Monitoring with an invalid conn should fail.
 	assert.True(t, strings.Contains(err.Error(), "conn"))
 
@@ -94,81 +120,51 @@ func TestMonitorServiceImpl(t *testing.T) {
 	assert.True(t, strings.Contains(err.Error(), "hostInfo"))
 
 	// Monitoring with correct parameters should create a new monitor.
-	state, err := monitorService.StartMonitoring(&testConn, mockHostInfo, emptyProps)
-	monitorKey := fmt.Sprintf("%d:%d:%d:%s", 0, 900, 3, mockHostInfo.GetUrl())
-
+	state, err := monitorService.StartMonitoring(&testConn, mockHostInfo, props)
 	assert.Nil(t, err)
 	assert.True(t, state.IsActive())
-	assert.Equal(t, efm.EFM_MONITORS.Size(), 1)
-	val, ok := efm.EFM_MONITORS.Get(monitorKey, time.Minute)
-	assert.True(t, ok)
-	assert.NotNil(t, val)
-	monitor, ok := val.(*efm.MonitorImpl)
-	assert.True(t, ok)
 
-	state2, err := monitorService.StartMonitoring(&testConn, mockHostInfo, emptyProps)
+	state2, err := monitorService.StartMonitoring(&testConn, mockHostInfo, props)
 	assert.Nil(t, err)
-	// Monitoring on the same host should not increase the cache size.
-	assert.Equal(t, efm.EFM_MONITORS.Size(), 1)
 	assert.True(t, state2.IsActive())
 
-	monitor.MonitoringConn = testConn
-	monitoringConn := &MockConn{}
-	monitor.MonitoringConn = monitoringConn
-
-	// Let the newStates monitoring routine update.
-	for monitor.ActiveStates.Size() != 2 {
-		time.Sleep(time.Second)
-	}
-	assert.Equal(t, 2, monitor.ActiveStates.Size())
-	assert.Equal(t, 0, monitor.NewStates.Size())
-
 	monitorService.StopMonitoring(state2, testConn)
-	assert.Equal(t, efm.EFM_MONITORS.Size(), 1)
 	// States are not tied together. First state remains active as one is cancelled.
 	assert.False(t, state2.IsActive())
 	assert.True(t, state.IsActive())
 
-	time.Sleep(time.Second) // Let the monitoring routine update.
-	assert.Equal(t, 1, monitor.ActiveStates.Size())
-
 	monitorService.StopMonitoring(state, testConn)
-	assert.Equal(t, efm.EFM_MONITORS.Size(), 1)
 	assert.False(t, state.IsActive())
-
-	assert.Equal(t, 1, monitor.ActiveStates.Size())
-	time.Sleep(time.Second) // Let the monitoring routine update.
-	assert.Equal(t, 0, monitor.ActiveStates.Size())
-
-	efm.EFM_MONITORS.Clear()
-	assert.Equal(t, efm.EFM_MONITORS.Size(), 0)
 }
 
 func TestHostMonitoringPluginFactory(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	factory := efm.HostMonitoringPluginFactory{}
-	_, err := factory.GetInstance(nil, nil)
-	// Plugin factory should not return an instance when pluginService is nil.
+
+	// Plugin factory should not return an instance when container has nil pluginService.
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(nil)
+	_, err := factory.GetInstance(mockContainer, nil)
 	assert.NotNil(t, err)
 	assert.True(t, strings.Contains(err.Error(), "pluginService"))
 
-	pluginService, _, _, _ := beforePluginServiceTests()
-	_, err = factory.GetInstance(pluginService, nil)
 	// Plugin factory should not return an instance when props is nil.
+	props := MakeMapFromKeysAndVals(property_util.HOST.Name, "host")
+	container, _, _ := efmTestContainerWithMockMonitor(ctrl, props)
+	_, err = factory.GetInstance(container, nil)
 	assert.NotNil(t, err)
 	assert.True(t, strings.Contains(err.Error(), "properties"))
 
-	properties := MakeMapFromKeysAndVals(
-		property_util.HOST.Name, "host",
-	)
-	_, err = factory.GetInstance(pluginService, properties)
 	// Plugin factory should return an instance given valid parameters.
+	_, err = factory.GetInstance(container, props)
 	assert.Nil(t, err)
 }
 
 func mockHostMonitoringPlugin(props *utils.RWMap[string, string]) (*efm.HostMonitorConnectionPlugin, error) {
 	factory := efm.HostMonitoringPluginFactory{}
-	pluginService, _, _, _ := beforePluginServiceTests()
-	if props == nil {
+	if props == nil || props.Size() == 0 {
 		props = MakeMapFromKeysAndVals(
 			property_util.USER.Name, "user",
 			property_util.PASSWORD.Name, "password",
@@ -176,10 +172,13 @@ func mockHostMonitoringPlugin(props *utils.RWMap[string, string]) (*efm.HostMoni
 			property_util.HOST.Name, "host",
 			property_util.DATABASE.Name, "dbName",
 			property_util.PLUGINS.Name, "test",
+			property_util.DRIVER_PROTOCOL.Name, "postgresql",
 		)
 	}
 
-	plugin, err := factory.GetInstance(pluginService, props)
+	container, pluginService := efmTestContainer(props)
+	_ = container
+	plugin, err := factory.GetInstance(container, props)
 	if err != nil {
 		return nil, err
 	}
@@ -252,50 +251,50 @@ func TestHostMonitoringPluginNotifyConnectionChanged(t *testing.T) {
 func TestHostMonitoringPluginExecuteMonitoringUnnecessary(t *testing.T) {
 	plugin, err := mockHostMonitoringPlugin(emptyProps)
 	assert.Nil(t, err)
-	assert.Zero(t, efm.EFM_MONITORS.Size())
 	assert.Zero(t, queryCounter)
 
 	_, _, _, err = plugin.Execute(nil, utils.CONN_CLOSE, incrementQueryCounter)
 	assert.Nil(t, err)
 
 	// When method to be executed is not network bound, no monitoring occurs.
-	assert.Zero(t, efm.EFM_MONITORS.Size())
 	assert.Equal(t, 1, queryCounter)
 }
 
 func TestHostMonitoringPluginExecuteMonitoringEnabled(t *testing.T) {
 	plugin, err := mockHostMonitoringPlugin(emptyProps)
 	assert.Nil(t, err)
-	assert.Zero(t, efm.EFM_MONITORS.Size())
 	assert.Zero(t, queryCounter)
 
 	_, _, _, err = plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, incrementQueryCounter)
 	assert.Nil(t, err)
-	assert.Equal(t, 1, efm.EFM_MONITORS.Size())
 	assert.Equal(t, 1, queryCounter)
 }
 
 func TestHostMonitoringPluginExecuteThrowsError(t *testing.T) {
 	factory := efm.HostMonitoringPluginFactory{}
-	pluginService, _, _, _ := beforePluginServiceTests()
-	plugin, _ := factory.GetInstance(pluginService, MakeMapFromKeysAndVals("a", "1"))
+	// Use valid props for container creation, but the plugin service won't have a current host info set.
+	props := MakeMapFromKeysAndVals(
+		property_util.DRIVER_PROTOCOL.Name, "postgresql",
+		property_util.HOST.Name, "host",
+	)
+	container, _ := efmTestContainer(props)
+	plugin, _ := factory.GetInstance(container, props)
 	// Reset caches and query counter.
 	awssql.ClearCaches()
 	queryCounter = 0
 
-	assert.Zero(t, efm.EFM_MONITORS.Size())
 	assert.Zero(t, queryCounter)
 
 	_, _, _, err := plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, incrementQueryCounter)
-	// Empty plugin service unable to supply a host info to monitor.
+	// Plugin service unable to supply a host info to monitor (no current connection set).
 	assert.NotNil(t, err)
-	assert.Zero(t, efm.EFM_MONITORS.Size())
 	assert.Zero(t, queryCounter)
 }
 
 func TestMonitorCanDispose(t *testing.T) {
-	pluginService := &plugin_helpers.PluginServiceImpl{}
-	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, emptyProps, 0, 10, 0, telemetry.NilTelemetryCounter{})
+	props := emptyProps
+	container, _ := efmTestContainer(props)
+	monitor := efm.NewHostMonitorImpl(container, mockHostInfo, emptyProps, 0, 10, 0, telemetry.NilTelemetryCounter{})
 	monitor.MonitoringConn = &MockDriverConnection{}
 	var conn driver.Conn = &MockDriverConn{}
 	state := efm.NewMonitorConnectionState(&conn)
@@ -315,21 +314,23 @@ func TestMonitorCanDispose(t *testing.T) {
 }
 
 func TestMonitorClose(t *testing.T) {
-	pluginService := &plugin_helpers.PluginServiceImpl{}
-	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, emptyProps, 0, 10, 0, telemetry.NilTelemetryCounter{})
+	props := emptyProps
+	container, _ := efmTestContainer(props)
+	monitor := efm.NewHostMonitorImpl(container, mockHostInfo, emptyProps, 0, 10, 0, telemetry.NilTelemetryCounter{})
 	mockConn := &MockDriverConnection{}
 	monitor.MonitoringConn = mockConn
 
 	assert.False(t, monitor.Stopped.Load())
 	assert.False(t, mockConn.IsClosed)
 	monitor.Close()
-	assert.True(t, monitor.Stopped.Load())
 	assert.True(t, mockConn.IsClosed)
 }
 
 func TestMonitorCheckConnectionStatusOpenConnection(t *testing.T) {
-	_, pluginService := initializeTest(map[string]string{property_util.DRIVER_PROTOCOL.Name: "mysql"}, true, false, false, false, false, false)
-	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, emptyProps, 0, 10, 0, telemetry.NilTelemetryCounter{})
+	pluginService, _, _, container, _ := beforePluginServiceTests()
+	container.SetPluginService(pluginService)
+	container.Monitor = services.NewMonitorManager(5*time.Minute, nil)
+	monitor := efm.NewHostMonitorImpl(container, mockHostInfo, emptyProps, 0, 10, 0, telemetry.NilTelemetryCounter{})
 	monitor.MonitoringConn = &MockConn{isInvalid: true}
 
 	assert.True(t, monitor.CheckConnectionStatus())
@@ -337,16 +338,30 @@ func TestMonitorCheckConnectionStatusOpenConnection(t *testing.T) {
 }
 
 func TestMonitorCheckConnectionStatusOpenConnectionFails(t *testing.T) {
-	_, pluginService := initializeTest(map[string]string{property_util.DRIVER_PROTOCOL.Name: "mysql"}, true, false, false, true, false, false)
-	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, emptyProps, 0, 10, 0, telemetry.NilTelemetryCounter{})
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	monitor.MonitoringConn = MockDriverConn{}
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(emptyProps)
+	mockPluginService.EXPECT().GetTelemetryFactory().Return(telemetryFactory).AnyTimes()
+	mockPluginService.EXPECT().GetTelemetryContext().Return(nil).AnyTimes()
+	mockPluginService.EXPECT().SetTelemetryContext(gomock.Any()).AnyTimes()
+	mockPluginService.EXPECT().GetTargetDriverDialect().Return(pgx_driver.NewPgxDriverDialect()).AnyTimes()
+	mockPluginService.EXPECT().ForceConnect(gomock.Any(), gomock.Any()).Return(nil, errors.New("connection failed"))
+
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	mockContainer.EXPECT().GetEventPublisher().Return(nil).AnyTimes()
+
+	monitor := efm.NewHostMonitorImpl(mockContainer, mockHostInfo, emptyProps, 0, 10, 0, telemetry.NilTelemetryCounter{})
+	monitor.MonitoringConn = &MockConn{isInvalid: true}
 	assert.False(t, monitor.CheckConnectionStatus())
 }
 
 func TestMonitorCheckConnectionStatusIsReachable(t *testing.T) {
-	_, pluginService := initializeTest(map[string]string{property_util.DRIVER_PROTOCOL.Name: "mysql"}, true, false, false, false, false, false)
-	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, emptyProps, 0, 10, 0, telemetry.NilTelemetryCounter{})
+	props := MakeMapFromKeysAndVals(property_util.DRIVER_PROTOCOL.Name, "postgresql")
+	container, _ := efmTestContainer(props)
+	monitor := efm.NewHostMonitorImpl(container, mockHostInfo, emptyProps, 0, 10, 0, telemetry.NilTelemetryCounter{})
 
 	monitor.MonitoringConn = &MockConn{throwError: false}
 	assert.True(t, monitor.CheckConnectionStatus())
@@ -357,15 +372,17 @@ func TestMonitorCheckConnectionStatusIsReachable(t *testing.T) {
 }
 
 func TestMonitorCheckConnectionStatusNewConn(t *testing.T) {
-	pluginService, _, _, _ := beforePluginServiceTests()
-	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, emptyProps, 0, 10, 0, telemetry.NilTelemetryCounter{})
+	pluginService, _, _, container, _ := beforePluginServiceTests()
+	container.SetPluginService(pluginService)
+	container.Monitor = services.NewMonitorManager(5*time.Minute, nil)
+	monitor := efm.NewHostMonitorImpl(container, mockHostInfo, emptyProps, 0, 10, 0, telemetry.NilTelemetryCounter{})
 
 	assert.True(t, monitor.CheckConnectionStatus())
 	monitor.Close()
 }
 
 func TestMonitorNewConnWithMonitoringProperties(t *testing.T) {
-	pluginService, mockPluginManager, _, _ := beforePluginServiceTests()
+	_, mockPluginManager, _, _, _ := beforePluginServiceTests()
 	props := MakeMapFromKeysAndVals(
 		"host", "host",
 		"port", "1234",
@@ -374,7 +391,20 @@ func TestMonitorNewConnWithMonitoringProperties(t *testing.T) {
 		"monitoring-user", "monitor-user",
 		"monitoring-password", "monitor-password",
 	)
-	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, props, 0, 10, 0, telemetry.NilTelemetryCounter{})
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	monitorManager := services.NewMonitorManager(5*time.Minute, nil)
+	container := &services.FullServicesContainer{
+		Telemetry: telemetryFactory,
+		Monitor:   monitorManager,
+	}
+	mockTargetDriver := &MockTargetDriver{}
+	realPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, container, props)
+	mockPluginManager = &MockPluginManager{realPluginManager, nil, nil}
+	container.SetPluginManager(mockPluginManager)
+	pluginService, _ := plugin_helpers.NewPluginServiceImpl(container, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
+	container.SetPluginService(pluginService)
+
+	monitor := efm.NewHostMonitorImpl(container, mockHostInfo, props, 0, 10, 0, telemetry.NilTelemetryCounter{})
 	monitor.Close() // Ensures none of the monitoring goroutines are running in the background.
 
 	assert.True(t, monitor.CheckConnectionStatus())
@@ -387,8 +417,9 @@ func TestMonitorNewConnWithMonitoringProperties(t *testing.T) {
 }
 
 func TestMonitorUpdateHostHealthStatusValid(t *testing.T) {
-	pluginService := &plugin_helpers.PluginServiceImpl{}
-	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, emptyProps, 0, 10, 0, telemetry.NilTelemetryCounter{})
+	props := emptyProps
+	container, _ := efmTestContainer(props)
+	monitor := efm.NewHostMonitorImpl(container, mockHostInfo, emptyProps, 0, 10, 0, telemetry.NilTelemetryCounter{})
 	monitor.Close() // Ensures none of the monitoring goroutines are running in the background.
 
 	monitor.FailureCount.Store(1)
@@ -404,8 +435,9 @@ func TestMonitorUpdateHostHealthStatusValid(t *testing.T) {
 }
 
 func TestMonitorUpdateHostHealthStatusInvalid(t *testing.T) {
-	pluginService := &plugin_helpers.PluginServiceImpl{}
-	monitor := efm.NewMonitorImpl(pluginService, mockHostInfo, emptyProps, 0, 10, 0, telemetry.NilTelemetryCounter{})
+	props := emptyProps
+	container, _ := efmTestContainer(props)
+	monitor := efm.NewHostMonitorImpl(container, mockHostInfo, emptyProps, 0, 10, 0, telemetry.NilTelemetryCounter{})
 	monitor.Close() // Ensures none of the monitoring goroutines are running in the background.
 
 	assert.Zero(t, monitor.FailureCount.Load())

@@ -1,5 +1,3 @@
-//go:build disabled
-
 /*
   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
@@ -31,8 +29,10 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/efm"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/services"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
+	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 )
 
 func getDefaultProps() *utils.RWMap[string, string] {
@@ -67,17 +67,21 @@ func initResources(props *utils.RWMap[string, string]) (
 	pluginManager driver_infrastructure.PluginManager,
 	pluginService driver_infrastructure.PluginService,
 ) {
-	connectionProviderManager := driver_infrastructure.ConnectionProviderManager{DefaultProvider: &MockConnectionProvider{}}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	pluginManager = plugin_helpers.NewPluginManagerImpl(MockTargetDriver{}, props, connectionProviderManager, telemetryFactory)
-	mockPluginService := &MockPluginService{}
-	mockPluginService.PluginManager = pluginManager
-	pluginService = driver_infrastructure.PluginService(mockPluginService)
+	container := &services.FullServicesContainer{
+		Telemetry:    telemetryFactory,
+		ConnProvider: &MockConnectionProvider{},
+	}
+	pluginManager = plugin_helpers.NewPluginManagerImpl(MockTargetDriver{}, container, props)
+	container.SetPluginManager(pluginManager)
+	ps, _ := plugin_helpers.NewPluginServiceImpl(container, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
+	pluginService = ps
+	container.SetPluginService(pluginService)
 	mockConn := &MockConn{}
 	pluginChainBuilder := driver.ConnectionPluginChainBuilder{}
-	currentPlugins, _ := pluginChainBuilder.GetPlugins(pluginService, pluginManager, props, pluginFactoryByCode)
+	currentPlugins, _ := pluginChainBuilder.GetPlugins(container, props, pluginFactoryByCode)
 
-	err := pluginManager.Init(pluginService, currentPlugins)
+	err := pluginManager.Init(currentPlugins)
 	if err != nil {
 		slog.Error(fmt.Sprintf("ERROR: Could not init plugin manager. Got the following error: '%v'.", err))
 		return nil, nil

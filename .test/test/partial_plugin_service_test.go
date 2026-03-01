@@ -1,5 +1,3 @@
-//go:build disabled
-
 /*
   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
@@ -22,7 +20,6 @@ import (
 	"database/sql/driver"
 	"errors"
 	"sync"
-	"sync/atomic"
 	"testing"
 
 	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
@@ -30,6 +27,8 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/services"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -43,22 +42,26 @@ func preparePartialPluginService(t *testing.T) (*plugin_helpers.PartialPluginSer
 	)
 	mockTargetDriver := &MockTargetDriver{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(someProps)
-	mockPluginManager := &MockPluginManager{
-		plugin_helpers.NewPluginManagerImpl(mockTargetDriver, someProps, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory), nil, nil}
+	container := &services.FullServicesContainer{
+		Telemetry: telemetryFactory,
+	}
+	realPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, container, someProps)
+	mockPluginManager := &MockPluginManager{realPluginManager, nil, nil}
+	container.SetPluginManager(mockPluginManager)
 	mockHostListProvider := mock_driver_infrastructure.NewMockHostListProvider(ctrl)
 	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
 	someAllHosts := []*host_info_util.HostInfo{}
-	mockAllowedAndBlockedHosts := new(atomic.Pointer[driver_infrastructure.AllowedAndBlockedHosts])
 	partialPluginService := plugin_helpers.NewPartialPluginService(
-		mockPluginManager,
+		container,
 		someProps,
+		"",
 		mockHostListProvider,
 		mockDialect,
 		mockDriverDialect,
 		someAllHosts,
 		new(sync.RWMutex),
-		mockAllowedAndBlockedHosts)
+		nil)
 	return partialPluginService.(*plugin_helpers.PartialPluginService), mockPluginManager, host_info_util.NewHostInfoBuilder()
 }
 
@@ -67,6 +70,7 @@ func TestForceConnect_PartialPluginService(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPluginManager := mock_driver_infrastructure.NewMockPluginManager(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
 	someProps := MakeMapFromKeysAndVals(
 		"someKey", "someVal",
 	)
@@ -74,15 +78,18 @@ func TestForceConnect_PartialPluginService(t *testing.T) {
 	someHost := &host_info_util.HostInfo{}
 	expectedConn := mock_database_sql_driver.NewMockConn(ctrl)
 
+	mockContainer.EXPECT().GetPluginManager().Return(mockPluginManager).AnyTimes()
+
 	partialPluginService := plugin_helpers.NewPartialPluginService(
-		mockPluginManager,
+		mockContainer,
 		someProps,
+		"",
 		mock_driver_infrastructure.NewMockHostListProvider(ctrl),
 		mock_driver_infrastructure.NewMockDatabaseDialect(ctrl),
 		mock_driver_infrastructure.NewMockDriverDialect(ctrl),
 		[]*host_info_util.HostInfo{},
 		new(sync.RWMutex),
-		new(atomic.Pointer[driver_infrastructure.AllowedAndBlockedHosts]))
+		nil)
 
 	mockPluginManager.EXPECT().ForceConnect(someHost, someProps, true).Return(expectedConn, nil)
 	actualConn, err := partialPluginService.ForceConnect(someHost, someProps)
@@ -96,6 +103,7 @@ func TestGetHostSelectorStrategy_PartialPluginService(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPluginManager := mock_driver_infrastructure.NewMockPluginManager(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
 	someProps := MakeMapFromKeysAndVals(
 		"someKey", "someVal",
 	)
@@ -103,15 +111,18 @@ func TestGetHostSelectorStrategy_PartialPluginService(t *testing.T) {
 	someStrategy := "someStrategy"
 	expectedHostSelector := &driver_infrastructure.HighestWeightHostSelector{}
 
+	mockContainer.EXPECT().GetPluginManager().Return(mockPluginManager).AnyTimes()
+
 	partialPluginService := plugin_helpers.NewPartialPluginService(
-		mockPluginManager,
+		mockContainer,
 		someProps,
+		"",
 		mock_driver_infrastructure.NewMockHostListProvider(ctrl),
 		mock_driver_infrastructure.NewMockDatabaseDialect(ctrl),
 		mock_driver_infrastructure.NewMockDriverDialect(ctrl),
 		[]*host_info_util.HostInfo{},
 		new(sync.RWMutex),
-		new(atomic.Pointer[driver_infrastructure.AllowedAndBlockedHosts]))
+		nil)
 
 	mockPluginManager.EXPECT().GetHostSelectorStrategy(someStrategy).Return(expectedHostSelector, nil)
 	actualHostSelector, err := partialPluginService.GetHostSelectorStrategy(someStrategy)
@@ -129,21 +140,23 @@ func TestCreateHostListProvider_PartialPluginService(t *testing.T) {
 	)
 
 	mockDatabaseDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
 
 	partialPluginService := plugin_helpers.NewPartialPluginService(
-		mock_driver_infrastructure.NewMockPluginManager(ctrl),
+		mockContainer,
 		someProps,
+		"",
 		mock_driver_infrastructure.NewMockHostListProvider(ctrl),
 		mockDatabaseDialect, mock_driver_infrastructure.NewMockDriverDialect(ctrl),
 		[]*host_info_util.HostInfo{},
 		new(sync.RWMutex),
-		new(atomic.Pointer[driver_infrastructure.AllowedAndBlockedHosts]))
+		nil)
 
 	expectedHostListProvider := mock_driver_infrastructure.NewMockHostListProvider(ctrl)
-	mockDatabaseDialect.EXPECT().GetHostListProvider(
-		someProps,
-		driver_infrastructure.HostListProviderService(partialPluginService),
-		partialPluginService).Return(expectedHostListProvider)
+	mockDatabaseDialect.EXPECT().GetHostListProviderSupplier().Return(
+		driver_infrastructure.HostListProviderSupplier(func(props *utils.RWMap[string, string], dsn string, container driver_infrastructure.ServicesContainer) driver_infrastructure.HostListProvider {
+			return expectedHostListProvider
+		}))
 	actualHostListProvider := partialPluginService.CreateHostListProvider(someProps)
 
 	assert.Equal(t, expectedHostListProvider, actualHostListProvider)
@@ -438,16 +451,6 @@ func TestGetTelemetryFactory_PartialPluginService_Panics(t *testing.T) {
 func TestUpdateState_PartialPluginService_Panics(t *testing.T) {
 	target, _, _ := preparePartialPluginService(t)
 	assert.Panics(t, func() { target.UpdateState("someSql", "someMethodArgs") })
-}
-
-func TestGetBgStatus_PartialPluginService_Panics(t *testing.T) {
-	target, _, _ := preparePartialPluginService(t)
-	assert.Panics(t, func() { target.GetBgStatus("someId") })
-}
-
-func TestSetBgStatus_PartialPluginService_Panics(t *testing.T) {
-	target, _, _ := preparePartialPluginService(t)
-	assert.Panics(t, func() { target.SetBgStatus(driver_infrastructure.BlueGreenStatus{}, "someId") })
 }
 
 func TestIsPluginInUse_PartialPluginService_Panics(t *testing.T) {
