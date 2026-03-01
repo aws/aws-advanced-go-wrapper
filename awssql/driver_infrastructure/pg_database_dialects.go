@@ -213,7 +213,7 @@ func (m *RdsPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 		hasExtensions[1] == false // If aurora_stat_utils is present then it should be treated as an Aurora cluster, not an RDS cluster.
 }
 
-func (m *RdsPgDatabaseDialect) GetBlueGreenStatus() string {
+func (m *RdsPgDatabaseDialect) GetBlueGreenStatusQuery() string {
 	return "SELECT version, endpoint, port, role, status FROM rds_tools.show_topology('aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
 }
 
