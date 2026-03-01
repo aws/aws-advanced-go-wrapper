@@ -140,5 +140,4 @@ func ClearCaches() {
 	if knownEndpointDialectsCache != nil {
 		knownEndpointDialectsCache.Clear()
 	}
-
 }

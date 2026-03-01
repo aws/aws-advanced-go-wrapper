@@ -111,7 +111,10 @@ func CloseAllMonitors(monitorService driver_infrastructure.MonitorService) {
 	monitorService.StopAndRemoveByType(HostMonitorType)
 }
 
-func (m *HostMonitoringServiceImpl) StartMonitoring(conn *driver.Conn, hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string]) (*MonitorConnectionState, error) {
+func (m *HostMonitoringServiceImpl) StartMonitoring(
+	conn *driver.Conn, hostInfo *host_info_util.HostInfo,
+	props *utils.RWMap[string, string],
+) (*MonitorConnectionState, error) {
 	if conn == nil {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("HostMonitoringServiceImpl.illegalArgumentError", "conn"))
 	}

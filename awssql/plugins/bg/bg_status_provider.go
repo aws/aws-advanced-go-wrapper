@@ -36,7 +36,12 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
-type BlueGreenProviderSupplier = func(pluginService driver_infrastructure.PluginService, storageService driver_infrastructure.StorageService, props *utils.RWMap[string, string], bgdId string) *BlueGreenStatusProvider
+type BlueGreenProviderSupplier = func(
+	pluginService driver_infrastructure.PluginService,
+	storageService driver_infrastructure.StorageService,
+	props *utils.RWMap[string, string],
+	bgdId string,
+) *BlueGreenStatusProvider
 
 type BlueGreenStatusProvider struct {
 	pluginService                           driver_infrastructure.PluginService
@@ -67,7 +72,12 @@ type BlueGreenStatusProvider struct {
 	processStatusLock                       sync.Mutex
 }
 
-func NewBlueGreenStatusProvider(pluginService driver_infrastructure.PluginService, storageService driver_infrastructure.StorageService, props *utils.RWMap[string, string], bgId string) *BlueGreenStatusProvider {
+func NewBlueGreenStatusProvider(
+	pluginService driver_infrastructure.PluginService,
+	storageService driver_infrastructure.StorageService,
+	props *utils.RWMap[string, string],
+	bgId string,
+) *BlueGreenStatusProvider {
 	statusCheckIntervalMap := map[driver_infrastructure.BlueGreenIntervalRate]int{
 		driver_infrastructure.BASELINE:  property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.BG_INTERVAL_BASELINE_MS),
 		driver_infrastructure.INCREASED: property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.BG_INTERVAL_INCREASED_MS),

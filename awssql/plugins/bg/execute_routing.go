@@ -73,6 +73,9 @@ func (r *SuspendExecuteRouting) Apply(_ driver_infrastructure.ConnectionPlugin, 
 	return driver_infrastructure.EMPTY_ROUTING_RESULT_HOLDER
 }
 
-func NewSuspendExecuteRouting(hostAndPort string, role driver_infrastructure.BlueGreenRole, bgId string, storageService driver_infrastructure.StorageService) *SuspendExecuteRouting {
+func NewSuspendExecuteRouting(
+	hostAndPort string, role driver_infrastructure.BlueGreenRole,
+	bgId string, storageService driver_infrastructure.StorageService,
+) *SuspendExecuteRouting {
 	return &SuspendExecuteRouting{bgId, storageService, NewBaseRouting(hostAndPort, role)}
 }

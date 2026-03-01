@@ -44,7 +44,10 @@ type TopologyUtils interface {
 	GetInstanceId(conn driver.Conn) (string, string)
 	IsWriterInstance(conn driver.Conn) (bool, error)
 	// CreateHost creates a HostInfo from topology data. Returns nil if creation fails.
-	CreateHost(instanceId, instanceName string, isWriter bool, weight int, lastUpdateTime time.Time, initialHost, instanceTemplate *host_info_util.HostInfo) *host_info_util.HostInfo
+	CreateHost(
+		instanceId, instanceName string, isWriter bool, weight int,
+		lastUpdateTime time.Time, initialHost, instanceTemplate *host_info_util.HostInfo,
+	) *host_info_util.HostInfo
 }
 
 // =============================================================================
@@ -256,7 +259,7 @@ func (a *AuroraTopologyUtils) QueryForTopology(
 	return verifyWriter(hosts), nil
 }
 
-// createHostFromRow: server_id (0), is_writer (1), cpu (2), lag (3), last_update_timestamp (4)
+// createHostFromRow: server_id (0), is_writer (1), cpu (2), lag (3), last_update_timestamp (4).
 func (a *AuroraTopologyUtils) createHostFromRow(
 	row []driver.Value,
 	initialHost, instanceTemplate *host_info_util.HostInfo,
@@ -306,7 +309,10 @@ func (a *AuroraTopologyUtils) IsWriterInstance(conn driver.Conn) (bool, error) {
 	return queryIsWriter(conn, a.dialect.GetWriterIdQuery(), a.dialect.GetRowParser(), false)
 }
 
-func (a *AuroraTopologyUtils) CreateHost(instanceId, instanceName string, isWriter bool, weight int, lastUpdateTime time.Time, initialHost, instanceTemplate *host_info_util.HostInfo) *host_info_util.HostInfo {
+func (a *AuroraTopologyUtils) CreateHost(
+	instanceId, instanceName string, isWriter bool, weight int,
+	lastUpdateTime time.Time, initialHost, instanceTemplate *host_info_util.HostInfo,
+) *host_info_util.HostInfo {
 	return CreateHost(instanceId, instanceName, isWriter, weight, lastUpdateTime, initialHost, instanceTemplate)
 }
 
@@ -389,7 +395,7 @@ func (m *MultiAzTopologyUtils) getWriterId(conn driver.Conn) (string, error) {
 	return instanceId, nil
 }
 
-// createHostFromRow: id (0), endpoint (1)
+// createHostFromRow: id (0), endpoint (1).
 func (m *MultiAzTopologyUtils) createHostFromRow(
 	row []driver.Value,
 	initialHost, instanceTemplate *host_info_util.HostInfo,
@@ -434,7 +440,10 @@ func (m *MultiAzTopologyUtils) IsWriterInstance(conn driver.Conn) (bool, error) 
 	return queryIsWriter(conn, m.dialect.GetWriterIdQuery(), m.dialect.GetRowParser(), true)
 }
 
-func (m *MultiAzTopologyUtils) CreateHost(instanceId, instanceName string, isWriter bool, weight int, lastUpdateTime time.Time, initialHost, instanceTemplate *host_info_util.HostInfo) *host_info_util.HostInfo {
+func (m *MultiAzTopologyUtils) CreateHost(
+	instanceId, instanceName string, isWriter bool, weight int,
+	lastUpdateTime time.Time, initialHost, instanceTemplate *host_info_util.HostInfo,
+) *host_info_util.HostInfo {
 	return CreateHost(instanceId, instanceName, isWriter, weight, lastUpdateTime, initialHost, instanceTemplate)
 }
 

@@ -54,7 +54,10 @@ func TestNewServiceFactory(t *testing.T) {
 	pmFactory := func(_ driver.Driver, _ driver_infrastructure.ServicesContainer, _ *utils.RWMap[string, string]) driver_infrastructure.PluginManager {
 		return nil
 	}
-	psFactory := func(_ driver_infrastructure.ServicesContainer, _ driver_infrastructure.DriverDialect, _ *utils.RWMap[string, string], _ string) (driver_infrastructure.PluginService, error) {
+	psFactory := func(
+		_ driver_infrastructure.ServicesContainer, _ driver_infrastructure.DriverDialect,
+		_ *utils.RWMap[string, string], _ string,
+	) (driver_infrastructure.PluginService, error) {
 		return nil, nil
 	}
 	chainBuilder := &mockPluginChainBuilder{}
@@ -77,7 +80,10 @@ func TestCreateMinimalContainer(t *testing.T) {
 	pmFactory := func(_ driver.Driver, _ driver_infrastructure.ServicesContainer, _ *utils.RWMap[string, string]) driver_infrastructure.PluginManager {
 		return mockPM
 	}
-	psFactory := func(_ driver_infrastructure.ServicesContainer, _ driver_infrastructure.DriverDialect, _ *utils.RWMap[string, string], _ string) (driver_infrastructure.PluginService, error) {
+	psFactory := func(
+		_ driver_infrastructure.ServicesContainer, _ driver_infrastructure.DriverDialect,
+		_ *utils.RWMap[string, string], _ string,
+	) (driver_infrastructure.PluginService, error) {
 		return nil, nil
 	}
 	chainBuilder := &mockPluginChainBuilder{}
@@ -119,7 +125,10 @@ func TestCreateStandardContainerPluginServiceError(t *testing.T) {
 	pmFactory := func(_ driver.Driver, _ driver_infrastructure.ServicesContainer, _ *utils.RWMap[string, string]) driver_infrastructure.PluginManager {
 		return mockPM
 	}
-	psFactory := func(_ driver_infrastructure.ServicesContainer, _ driver_infrastructure.DriverDialect, _ *utils.RWMap[string, string], _ string) (driver_infrastructure.PluginService, error) {
+	psFactory := func(
+		_ driver_infrastructure.ServicesContainer, _ driver_infrastructure.DriverDialect,
+		_ *utils.RWMap[string, string], _ string,
+	) (driver_infrastructure.PluginService, error) {
 		return nil, expectedErr
 	}
 	chainBuilder := &mockPluginChainBuilder{}
@@ -159,7 +168,10 @@ func TestCreateStandardContainerPluginChainError(t *testing.T) {
 	pmFactory := func(_ driver.Driver, _ driver_infrastructure.ServicesContainer, _ *utils.RWMap[string, string]) driver_infrastructure.PluginManager {
 		return mockPM
 	}
-	psFactory := func(_ driver_infrastructure.ServicesContainer, _ driver_infrastructure.DriverDialect, _ *utils.RWMap[string, string], _ string) (driver_infrastructure.PluginService, error) {
+	psFactory := func(
+		_ driver_infrastructure.ServicesContainer, _ driver_infrastructure.DriverDialect,
+		_ *utils.RWMap[string, string], _ string,
+	) (driver_infrastructure.PluginService, error) {
 		return mockPS, nil
 	}
 	chainBuilder := &mockPluginChainBuilder{err: expectedErr}
@@ -244,7 +256,10 @@ func TestCreateMinimalContainerFrom(t *testing.T) {
 	pmFactory := func(_ driver.Driver, _ driver_infrastructure.ServicesContainer, _ *utils.RWMap[string, string]) driver_infrastructure.PluginManager {
 		return mockPM
 	}
-	psFactory := func(_ driver_infrastructure.ServicesContainer, _ driver_infrastructure.DriverDialect, _ *utils.RWMap[string, string], _ string) (driver_infrastructure.PluginService, error) {
+	psFactory := func(
+		_ driver_infrastructure.ServicesContainer, _ driver_infrastructure.DriverDialect,
+		_ *utils.RWMap[string, string], _ string,
+	) (driver_infrastructure.PluginService, error) {
 		return nil, nil
 	}
 	chainBuilder := &mockPluginChainBuilder{}
@@ -284,7 +299,10 @@ func TestCreateMinimalContainerFromWithPluginService(t *testing.T) {
 	pmFactory := func(_ driver.Driver, _ driver_infrastructure.ServicesContainer, _ *utils.RWMap[string, string]) driver_infrastructure.PluginManager {
 		return mockPM
 	}
-	psFactory := func(_ driver_infrastructure.ServicesContainer, _ driver_infrastructure.DriverDialect, _ *utils.RWMap[string, string], _ string) (driver_infrastructure.PluginService, error) {
+	psFactory := func(
+		_ driver_infrastructure.ServicesContainer, _ driver_infrastructure.DriverDialect,
+		_ *utils.RWMap[string, string], _ string,
+	) (driver_infrastructure.PluginService, error) {
 		return nil, nil
 	}
 	chainBuilder := &mockPluginChainBuilder{}

@@ -19,8 +19,6 @@ package driver_infrastructure
 import (
 	"database/sql/driver"
 	"log/slog"
-	"math"
-	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
@@ -100,18 +98,6 @@ func (c *ConnectionStringHostListProvider) IdentifyConnection(_ driver.Conn) (*h
 
 func (c *ConnectionStringHostListProvider) GetClusterId() (clusterId string, err error) {
 	return "<none>", nil
-}
-
-func (c *ConnectionStringHostListProvider) CreateHost(hostName string, hostRole host_info_util.HostRole, lag float64, cpu float64, lastUpdateTime time.Time) *host_info_util.HostInfo {
-	builder := host_info_util.NewHostInfoBuilder()
-	weight := int(math.Round(lag)*100 + math.Round(cpu))
-	port := c.hostListProviderService.GetDialect().GetDefaultPort()
-	if hostName == "" {
-		hostName = c.initialHost
-	}
-	builder.SetHost(hostName).SetPort(port).SetRole(hostRole).SetAvailability(host_info_util.AVAILABLE).SetWeight(weight).SetLastUpdateTime(lastUpdateTime)
-	hostInfo, _ := builder.Build()
-	return hostInfo
 }
 
 func (c *ConnectionStringHostListProvider) StopMonitor() {

@@ -382,7 +382,7 @@ func TestMonitorCheckConnectionStatusNewConn(t *testing.T) {
 }
 
 func TestMonitorNewConnWithMonitoringProperties(t *testing.T) {
-	_, mockPluginManager, _, _, _ := beforePluginServiceTests()
+	beforePluginServiceTests() //nolint:errcheck
 	props := MakeMapFromKeysAndVals(
 		"host", "host",
 		"port", "1234",
@@ -399,7 +399,7 @@ func TestMonitorNewConnWithMonitoringProperties(t *testing.T) {
 	}
 	mockTargetDriver := &MockTargetDriver{}
 	realPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, container, props)
-	mockPluginManager = &MockPluginManager{realPluginManager, nil, nil}
+	mockPluginManager := &MockPluginManager{realPluginManager, nil, nil}
 	container.SetPluginManager(mockPluginManager)
 	pluginService, _ := plugin_helpers.NewPluginServiceImpl(container, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
 	container.SetPluginService(pluginService)

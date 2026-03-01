@@ -184,7 +184,10 @@ func (r *SuspendConnectRouting) Apply(_ driver_infrastructure.ConnectionPlugin, 
 	return nil, error_util.NewGenericAwsWrapperError(message)
 }
 
-func NewSuspendConnectRouting(hostAndPort string, role driver_infrastructure.BlueGreenRole, bgId string, storageService driver_infrastructure.StorageService) *SuspendConnectRouting {
+func NewSuspendConnectRouting(
+	hostAndPort string, role driver_infrastructure.BlueGreenRole,
+	bgId string, storageService driver_infrastructure.StorageService,
+) *SuspendConnectRouting {
 	return &SuspendConnectRouting{bgId, storageService, NewBaseRouting(hostAndPort, role)}
 }
 

@@ -39,7 +39,7 @@ type FullServicesContainer struct {
 	ConnProvider            driver_infrastructure.ConnectionProvider
 }
 
-// Interface implementation - Getters
+// Interface implementation - Getters.
 func (c *FullServicesContainer) GetStorageService() driver_infrastructure.StorageService {
 	return c.Storage
 }
@@ -63,7 +63,7 @@ func (c *FullServicesContainer) GetConnectionProvider() driver_infrastructure.Co
 	return c.ConnProvider
 }
 
-// Interface implementation - Setters
+// Interface implementation - Setters.
 func (c *FullServicesContainer) SetPluginManager(pm driver_infrastructure.PluginManager) {
 	c.PluginManager = pm
 }

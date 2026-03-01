@@ -387,7 +387,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
             ? env.rdsDbRegion
             : "us-east-2");
 
-    env.reuseDb = true;
+    env.reuseDb = Boolean.parseBoolean(System.getenv("REUSE_RDS_DB"));;
     env.rdsDbName = System.getenv("RDS_DB_NAME"); // "cluster-mysql", "instance-name", "cluster-multi-az-name"
     env.rdsDbDomain = System.getenv("RDS_DB_DOMAIN"); // "XYZ.us-west-2.rds.amazonaws.com"
     env.rdsEndpoint = System.getenv("RDS_ENDPOINT"); // "https://rds-int.amazon.com"

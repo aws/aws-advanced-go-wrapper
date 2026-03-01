@@ -76,7 +76,6 @@ type ClusterTopologyMonitorImpl struct {
 	writerHostInfo                 atomic.Pointer[host_info_util.HostInfo]
 	state                          atomic.Value // MonitorState
 	lastActivityTimestampNano      atomic.Int64
-	stopCh                         chan struct{} // For clean shutdown
 	wg                             sync.WaitGroup
 }
 
@@ -270,7 +269,7 @@ func (c *ClusterTopologyMonitorImpl) Close() {
 	}
 
 	// Close channels safely - they may already be closed
-	defer func() { recover() }()
+	defer func() { _ = recover() }()
 	close(c.requestToUpdateTopologyChannel)
 	close(c.topologyUpdatedChannel)
 }
@@ -381,16 +380,6 @@ func (c *ClusterTopologyMonitorImpl) getStoredTopology() *Topology {
 		return nil
 	}
 	return topology
-}
-
-func (c *ClusterTopologyMonitorImpl) forceRefreshUsingConn(conn driver.Conn, timeoutMs int) ([]*host_info_util.HostInfo, error) {
-	if c.isVerifiedWriterConn {
-		// Push monitoring thread to refresh topology with a verified connection.
-		return c.waitForTopologyUpdate(timeoutMs)
-	}
-
-	// Otherwise use provided unverified connection to update topology.
-	return c.fetchTopologyAndUpdateCache(conn), nil
 }
 
 func (c *ClusterTopologyMonitorImpl) waitForTopologyUpdate(timeoutMs int) ([]*host_info_util.HostInfo, error) {

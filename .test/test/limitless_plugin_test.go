@@ -353,7 +353,9 @@ func (m *MockLimitlessRouterService) StartMonitoring(hostInfo *host_info_util.Ho
 	return m.startMonitoringFunc(hostInfo, props, intervalMs)
 }
 
-func beforeLimitlessRouterServiceTest(t *testing.T, props *utils.RWMap[string, string], clusterId string) (*plugin_helpers.PluginServiceImpl, *services.FullServicesContainer) {
+func beforeLimitlessRouterServiceTest(
+	t *testing.T, props *utils.RWMap[string, string], clusterId string,
+) (*plugin_helpers.PluginServiceImpl, *services.FullServicesContainer) {
 	ctrl := gomock.NewController(t)
 	mockTargetDriver := &MockTargetDriver{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)

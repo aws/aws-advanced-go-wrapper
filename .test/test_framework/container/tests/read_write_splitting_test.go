@@ -54,6 +54,7 @@ func setupTest(t *testing.T, minInstances int) *testSetup {
 
 	env, err := test_utils.GetCurrentTestEnvironment()
 	require.NoError(t, err)
+	test_utils.SkipForTestEnvironmentFeatures(t, env.Info().Request.Features, test_utils.LIMITLESS_DEPLOYMENT)
 	test_utils.SkipIfInsufficientInstances(t, env, minInstances)
 
 	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info())
@@ -93,6 +94,7 @@ func setupProxiedTest(t *testing.T, minInstances int) *testSetup {
 
 	env, err := test_utils.GetCurrentTestEnvironment()
 	require.NoError(t, err)
+	test_utils.SkipForTestEnvironmentFeatures(t, env.Info().Request.Features, test_utils.LIMITLESS_DEPLOYMENT)
 	test_utils.SkipIfInsufficientInstances(t, env, minInstances)
 
 	return &testSetup{env: env, auroraTestUtility: test_utils.NewAuroraTestUtility(env.Info())}

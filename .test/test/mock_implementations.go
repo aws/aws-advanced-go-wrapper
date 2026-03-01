@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"time"
 
 	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
 	aws_secrets_manager "github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager"
@@ -200,10 +199,6 @@ type MockHostListProvider struct {
 	clusterId string
 }
 
-func (m *MockHostListProvider) CreateHost(_ string, _ host_info_util.HostRole, _ float64, _ float64, _ time.Time) *host_info_util.HostInfo {
-	return nil
-}
-
 func (m *MockHostListProvider) ForceRefresh() ([]*host_info_util.HostInfo, error) {
 	return nil, nil
 }
@@ -310,11 +305,6 @@ func (m *MockConn) updateQueryRow(columns []string, row []driver.Value) {
 
 func (m *MockConn) updateThrowError(throwError bool) {
 	m.throwError = throwError
-}
-
-func (m *MockConn) updateQueryRowSingleUse(columns []string, row []driver.Value) {
-	testRow := MockRows{columns: columns, row: row, throwNextError: 1}
-	m.queryResult = &testRow
 }
 
 type MockStmt struct {

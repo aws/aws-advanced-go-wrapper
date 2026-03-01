@@ -19,7 +19,6 @@ package driver_infrastructure
 import (
 	"database/sql/driver"
 	"log/slog"
-	"math"
 	"strings"
 	"sync"
 	"time"
@@ -30,7 +29,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
-// Monitor-related constants
+// Monitor-related constants.
 var (
 	TOPOLOGY_CACHE_EXPIRATION_NANO    = time.Minute * 5
 	DEFAULT_TOPOLOGY_QUERY_TIMEOUT_MS = 5000
@@ -223,29 +222,6 @@ func (r *RdsHostListProvider) Refresh() ([]*host_info_util.HostInfo, error) {
 	}
 	slog.Info(utils.LogTopology(hosts, msgPrefix))
 	return host_info_util.CopyHostList(hosts), nil
-}
-
-func (r *RdsHostListProvider) CreateHost(host string, hostRole host_info_util.HostRole, lag float64, cpu float64, lastUpdateTime time.Time) *host_info_util.HostInfo {
-	builder := host_info_util.NewHostInfoBuilder()
-
-	weight := int(math.Round(lag)*100 + math.Round(cpu))
-	var port int
-	if r.clusterInstanceTemplate.Port != host_info_util.HOST_NO_PORT {
-		port = r.clusterInstanceTemplate.Port
-	} else {
-		if r.initialHostInfo.Port != host_info_util.HOST_NO_PORT {
-			port = r.initialHostInfo.Port
-		} else {
-			port = r.hostListProviderService.GetDialect().GetDefaultPort()
-		}
-	}
-
-	host = r.getHostEndpoint(host)
-
-	builder.SetHost(host).SetPort(port).SetRole(hostRole).SetAvailability(host_info_util.AVAILABLE).SetWeight(weight).SetLastUpdateTime(lastUpdateTime)
-
-	hostInfo, _ := builder.Build()
-	return hostInfo
 }
 
 func (r *RdsHostListProvider) StopMonitor() {
