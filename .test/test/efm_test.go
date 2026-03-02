@@ -201,13 +201,13 @@ func incrementQueryCounter() (any, any, bool, error) {
 func TestHostMonitoringPluginConnect(t *testing.T) {
 	plugin, err := mockHostMonitoringPlugin(emptyProps)
 	assert.Nil(t, err)
-	rdsHostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("instance-a-1.xyz.us-east-2.rds.amazonaws.com").Build()
+	rdsHostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("instance-a-1.cluster-xyz.us-east-2.rds.amazonaws.com").Build()
 	assert.Nil(t, err)
 	connectFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
 		return &MockDriverConnection{}, nil
 	}
 
-	assert.True(t, utils.IsRdsDns(rdsHostInfo.Host))
+	assert.True(t, utils.IdentifyRdsUrlType(rdsHostInfo.Host).IsRdsCluster)
 	rdsHostInfo.ResetAliases()
 	aliasToBeRemoved := "old-alias"
 	rdsHostInfo.AddAlias(aliasToBeRemoved)
@@ -215,7 +215,7 @@ func TestHostMonitoringPluginConnect(t *testing.T) {
 	conn, err := plugin.Connect(rdsHostInfo, emptyProps, true, connectFunc)
 	assert.Nil(t, err)
 	assert.NotNil(t, conn)
-	// Connect should update the aliases of a given Rds HostInfo.
+	// Connect should update the aliases of a given RDS cluster HostInfo.
 	_, isAlias := rdsHostInfo.AllAliases[aliasToBeRemoved]
 	assert.False(t, isAlias)
 }

@@ -77,7 +77,7 @@ func (b *HostMonitorConnectionPlugin) Connect(
 	if err != nil {
 		return nil, err
 	}
-	if utils.IdentifyRdsUrlType(hostInfo.Host).IsRds {
+	if utils.IdentifyRdsUrlType(hostInfo.Host).IsRdsCluster {
 		hostInfo.ResetAliases()
 		b.pluginService.FillAliases(conn, hostInfo)
 	}
@@ -151,7 +151,8 @@ func (b *HostMonitorConnectionPlugin) getMonitoringHostInfo() (*host_info_util.H
 	if b.monitoringHostInfo.IsNil() {
 		monitoringHostInfo, err := b.pluginService.GetCurrentHostInfo()
 		if err == nil && !monitoringHostInfo.IsNil() {
-			if utils.IsRdsDns(monitoringHostInfo.Host) {
+			rdsUrlType := utils.IdentifyRdsUrlType(monitoringHostInfo.Host)
+			if rdsUrlType.IsRdsCluster {
 				slog.Debug(error_util.GetMessage("HostMonitoringConnectionPlugin.clusterHostInfoRequired"))
 				rdsHostMonitoringInfo, err := b.pluginService.IdentifyConnection(b.pluginService.GetCurrentConnection())
 				if err != nil {
