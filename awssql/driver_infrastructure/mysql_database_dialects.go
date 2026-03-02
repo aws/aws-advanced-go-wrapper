@@ -375,6 +375,6 @@ func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetHostListProviderSupplier() Ho
 		initialDsn string,
 		servicesContainer ServicesContainer,
 	) HostListProvider {
-		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewAuroraTopologyUtils(r), props, servicesContainer)
+		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewMultiAzTopologyUtils(r), props, servicesContainer)
 	}
 }
