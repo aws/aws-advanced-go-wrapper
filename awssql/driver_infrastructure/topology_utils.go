@@ -247,7 +247,14 @@ func (a *AuroraTopologyUtils) QueryForTopology(
 			continue
 		}
 		if host != nil {
-			hostsMap[host.Host] = host
+			// Ensure newer records replace older ones if there are duplicate keys.
+			if existing, ok := hostsMap[host.Host]; ok {
+				if existing.LastUpdateTime.Before(host.LastUpdateTime) {
+					hostsMap[host.Host] = host
+				}
+			} else {
+				hostsMap[host.Host] = host
+			}
 		}
 	}
 
@@ -358,7 +365,14 @@ func (m *MultiAzTopologyUtils) QueryForTopology(
 			continue
 		}
 		if host != nil {
-			hostsMap[host.Host] = host
+			// Ensure newer records replace older ones if there are duplicate keys.
+			if existing, ok := hostsMap[host.Host]; ok {
+				if existing.LastUpdateTime.Before(host.LastUpdateTime) {
+					hostsMap[host.Host] = host
+				}
+			} else {
+				hostsMap[host.Host] = host
+			}
 		}
 	}
 
