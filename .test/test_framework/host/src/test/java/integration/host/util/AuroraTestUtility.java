@@ -1190,6 +1190,7 @@ public class AuroraTestUtility {
           } else {
             stmt.execute("GRANT ALL PRIVILEGES ON `%`.* TO '" + dbUser + "'@'%';");
           }
+          stmt.execute("GRANT REPLICATION CLIENT ON *.* TO '" + dbUser + "'@'%';");
 
           // BG switchover status and Multi AZ needs it.
           stmt.execute("GRANT SELECT ON mysql.* TO '" + dbUser + "'@'%';");
