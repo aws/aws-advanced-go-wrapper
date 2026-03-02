@@ -48,10 +48,10 @@ func TestMySQLRowParser_ParseString(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "", val)
 
-	// Non-string type
+	// int64 type (MySQL may return numeric values as int64)
 	val, ok = parser.ParseString(int64(42))
-	assert.False(t, ok)
-	assert.Equal(t, "", val)
+	assert.True(t, ok)
+	assert.Equal(t, "42", val)
 
 	// Nil
 	val, ok = parser.ParseString(nil)

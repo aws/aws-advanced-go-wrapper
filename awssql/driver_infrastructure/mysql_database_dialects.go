@@ -41,6 +41,8 @@ func (m *mySQLRowParser) ParseString(val driver.Value) (string, bool) {
 		return v, true
 	case []uint8:
 		return string(v), true
+	case int64:
+		return strconv.FormatInt(v, 10), true
 	default:
 		return "", false
 	}
