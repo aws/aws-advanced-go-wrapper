@@ -18,9 +18,7 @@ package plugins
 
 import (
 	"database/sql/driver"
-	"fmt"
 	"log/slog"
-	"net"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -59,8 +57,8 @@ func (s *StaleDnsHelper) GetVerifiedConnection(
 		return nil, err
 	}
 
-	isConnectedReader := s.pluginService.GetHostRole(conn) == host_info_util.READER
-	if isConnectedReader {
+	isConnectedToReader := s.pluginService.GetHostRole(conn) == host_info_util.READER
+	if isConnectedToReader {
 		// This if-statement is only reached if the connection url is a writer cluster endpoint.
 		// If the new connection resolves to a reader instance, this means the topology is outdated.
 		// Force refresh to update the topology.
