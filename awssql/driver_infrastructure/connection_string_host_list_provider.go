@@ -18,6 +18,7 @@ package driver_infrastructure
 
 import (
 	"database/sql/driver"
+	"log/slog"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
@@ -91,7 +92,8 @@ func (c *ConnectionStringHostListProvider) GetHostRole(conn driver.Conn) host_in
 }
 
 func (c *ConnectionStringHostListProvider) IdentifyConnection(_ driver.Conn) (*host_info_util.HostInfo, error) {
-	return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("ConnectionStringHostListProvider.unsupportedIdentifyConnection"))
+	slog.Warn(error_util.GetMessage("ConnectionStringHostListProvider.unsupportedIdentifyConnection"))
+	return nil, nil
 }
 
 func (c *ConnectionStringHostListProvider) GetClusterId() (clusterId string, err error) {

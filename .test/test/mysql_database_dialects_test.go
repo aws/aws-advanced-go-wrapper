@@ -358,7 +358,7 @@ func TestRdsMultiAzClusterMySQLDatabaseDialect_GetWriterIdColumnName(t *testing.
 
 func TestRdsMultiAzClusterMySQLDatabaseDialect_GetIsReaderQuery(t *testing.T) {
 	dialect := &driver_infrastructure.RdsMultiAzClusterMySQLDatabaseDialect{}
-	assert.Equal(t, "SELECT @@innodb_read_only", dialect.GetIsReaderQuery())
+	assert.Equal(t, "SELECT @@read_only", dialect.GetIsReaderQuery())
 }
 
 func TestMysqlDoesSetReadOnly(t *testing.T) {

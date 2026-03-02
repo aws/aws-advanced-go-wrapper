@@ -369,6 +369,10 @@ func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetWriterIdColumnName() string {
 	return "Source_Server_Id"
 }
 
+func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetIsReaderQuery() string {
+	return "SELECT @@read_only"
+}
+
 func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetHostListProviderSupplier() HostListProviderSupplier {
 	return func(
 		props *utils.RWMap[string, string],

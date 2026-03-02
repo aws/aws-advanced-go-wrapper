@@ -333,6 +333,11 @@ func (m *MultiAzTopologyUtils) QueryForTopology(
 	conn driver.Conn,
 	initialHost, instanceTemplate *host_info_util.HostInfo,
 ) ([]*host_info_util.HostInfo, error) {
+	writerId, err := m.getWriterId(conn)
+	if err != nil {
+		return nil, err
+	}
+
 	rows, err := executeQuery(conn, m.dialect.GetTopologyQuery())
 	if err != nil {
 		return nil, err
@@ -341,11 +346,6 @@ func (m *MultiAzTopologyUtils) QueryForTopology(
 
 	if len(rows.Columns()) == 0 {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("TopologyUtils.unexpectedTopologyQueryColumnCount"))
-	}
-
-	writerId, err := m.getWriterId(conn)
-	if err != nil {
-		return nil, err
 	}
 
 	hostsMap := make(map[string]*host_info_util.HostInfo)
@@ -370,30 +370,38 @@ func (m *MultiAzTopologyUtils) QueryForTopology(
 }
 
 func (m *MultiAzTopologyUtils) getWriterId(conn driver.Conn) (string, error) {
-	rows, err := executeQuery(conn, m.dialect.GetWriterIdQuery())
-	if err != nil {
-		return "", err
-	}
-	defer rows.Close()
+	writerId, err := func() (string, error) {
+		rows, err := executeQuery(conn, m.dialect.GetWriterIdQuery())
+		if err != nil {
+			return "", err
+		}
+		defer rows.Close()
 
-	row := make([]driver.Value, len(rows.Columns()))
-	if rows.Next(row) == nil {
-		columnName := m.dialect.GetWriterIdColumnName()
-		for i, col := range rows.Columns() {
-			if col == columnName {
-				if writerId, ok := m.dialect.GetRowParser().ParseString(row[i]); ok && writerId != "" {
-					return writerId, nil
+		row := make([]driver.Value, len(rows.Columns()))
+		if rows.Next(row) == nil {
+			columnName := m.dialect.GetWriterIdColumnName()
+			for i, col := range rows.Columns() {
+				if col == columnName {
+					if id, ok := m.dialect.GetRowParser().ParseString(row[i]); ok && id != "" {
+						return id, nil
+					}
 				}
 			}
 		}
+		return "", nil
+	}()
+	if err != nil {
+		return "", err
+	}
+	if writerId != "" {
+		return writerId, nil
 	}
 
-	// Connected to writer - get current instance ID
 	instanceId, _ := m.GetInstanceId(conn)
 	return instanceId, nil
 }
 
-// createHostFromRow: id (0), endpoint (1).
+// createHostFromRow: id (0), endpoint (1), port (2).
 func (m *MultiAzTopologyUtils) createHostFromRow(
 	row []driver.Value,
 	initialHost, instanceTemplate *host_info_util.HostInfo,
@@ -423,6 +431,7 @@ func (m *MultiAzTopologyUtils) createHostFromRow(
 	if host == nil {
 		return nil, error_util.NewGenericAwsWrapperError("failed to create host")
 	}
+
 	return host, nil
 }
 

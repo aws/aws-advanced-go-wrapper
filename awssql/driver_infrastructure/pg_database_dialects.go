@@ -319,8 +319,10 @@ func (r *RdsMultiAzClusterPgDatabaseDialect) GetInstanceIdQuery() string {
 }
 
 func (r *RdsMultiAzClusterPgDatabaseDialect) GetWriterIdQuery() string {
-	return "SELECT multi_az_db_cluster_source_dbi_resource_id " +
-		"FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()"
+	return "SELECT multi_az_db_cluster_source_dbi_resource_id" +
+		" FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()" +
+		" WHERE multi_az_db_cluster_source_dbi_resource_id OPERATOR(pg_catalog.!=)" +
+		" (SELECT dbi_resource_id FROM rds_tools.dbi_resource_id())"
 }
 
 func (r *RdsMultiAzClusterPgDatabaseDialect) GetHostListProviderSupplier() HostListProviderSupplier {

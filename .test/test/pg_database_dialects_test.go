@@ -463,8 +463,10 @@ func TestRdsMultiAzDbClusterPgDialect_GetInstanceIdQuery(t *testing.T) {
 
 func TestRdsMultiAzDbClusterPgDialect_GetWriterIdQuery(t *testing.T) {
 	dialect := &driver_infrastructure.RdsMultiAzClusterPgDatabaseDialect{}
-	expected := "SELECT multi_az_db_cluster_source_dbi_resource_id " +
-		"FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()"
+	expected := "SELECT multi_az_db_cluster_source_dbi_resource_id" +
+		" FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()" +
+		" WHERE multi_az_db_cluster_source_dbi_resource_id OPERATOR(pg_catalog.!=)" +
+		" (SELECT dbi_resource_id FROM rds_tools.dbi_resource_id())"
 	assert.Equal(t, expected, dialect.GetWriterIdQuery())
 }
 
