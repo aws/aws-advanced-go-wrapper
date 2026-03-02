@@ -18,7 +18,6 @@ package driver_infrastructure
 
 import (
 	"database/sql/driver"
-	"log/slog"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
@@ -60,7 +59,7 @@ func (c *ConnectionStringHostListProvider) init() error {
 	c.hostList = append(c.hostList, hosts...)
 
 	if len(c.hostList) == 0 {
-		return error_util.NewGenericAwsWrapperError(error_util.GetMessage("ConnectionStringHostListProvider.parsedListEmpty"))
+		return error_util.NewGenericAwsWrapperError(error_util.GetMessage("ConnectionStringHostListProvider.parsedListEmpty", property_util.MaskProperties(c.props)))
 	}
 
 	c.hostListProviderService.SetInitialConnectionHostInfo(c.hostList[0])
@@ -92,8 +91,7 @@ func (c *ConnectionStringHostListProvider) GetHostRole(conn driver.Conn) host_in
 }
 
 func (c *ConnectionStringHostListProvider) IdentifyConnection(_ driver.Conn) (*host_info_util.HostInfo, error) {
-	slog.Debug(error_util.GetMessage("ConnectionStringHostListProvider.unsupportedIdentifyConnection"))
-	return nil, nil
+	return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("ConnectionStringHostListProvider.unsupportedIdentifyConnection"))
 }
 
 func (c *ConnectionStringHostListProvider) GetClusterId() (clusterId string, err error) {

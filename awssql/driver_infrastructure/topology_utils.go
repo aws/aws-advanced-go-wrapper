@@ -234,8 +234,7 @@ func (a *AuroraTopologyUtils) QueryForTopology(
 	defer rows.Close()
 
 	if len(rows.Columns()) == 0 {
-		slog.Debug(error_util.GetMessage("TopologyUtils.unexpectedTopologyQueryColumnCount"))
-		return nil, nil
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("TopologyUtils.unexpectedTopologyQueryColumnCount"))
 	}
 
 	hostsMap := make(map[string]*host_info_util.HostInfo)
@@ -341,8 +340,7 @@ func (m *MultiAzTopologyUtils) QueryForTopology(
 	defer rows.Close()
 
 	if len(rows.Columns()) == 0 {
-		slog.Debug(error_util.GetMessage("TopologyUtils.unexpectedTopologyQueryColumnCount"))
-		return nil, nil
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("TopologyUtils.unexpectedTopologyQueryColumnCount"))
 	}
 
 	writerId, err := m.getWriterId(conn)

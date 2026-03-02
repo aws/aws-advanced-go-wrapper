@@ -32,25 +32,25 @@ func GetErrorSimulatorFromSqlConn(conn *sql.Conn) (error_simulator.ErrorSimulato
 		// convert to driver.conn
 		driverConn, ok := dc.(driver.Conn)
 		if !ok {
-			return error_util.NewGenericAwsWrapperError("ErrorSimulatorHelper.cannotConvertToDriverConn")
+			return error_util.NewGenericAwsWrapperError(error_util.GetMessage("ErrorSimulatorHelper.cannotConvertToDriverConn"))
 		}
 
 		// convert to AwsWrapperConn
 		driverConnWrapper, ok := driverConn.(*awsdriver.AwsWrapperConn)
 		if !ok {
-			return error_util.NewGenericAwsWrapperError("ErrorSimulatorHelper.cannotConvertToAwsWrapperConn")
+			return error_util.NewGenericAwsWrapperError(error_util.GetMessage("ErrorSimulatorHelper.cannotConvertToAwsWrapperConn"))
 		}
 
 		// get plugin instance
 		plugin := driverConnWrapper.UnwrapPlugin(driver_infrastructure.DEVELOPER_PLUGIN_CODE)
 		if plugin == nil {
-			return error_util.NewGenericAwsWrapperError("ErrorSimulatorHelper.cannotGetPluginInstance")
+			return error_util.NewGenericAwsWrapperError(error_util.GetMessage("ErrorSimulatorHelper.cannotGetPluginInstance"))
 		}
 
 		// get error simulator
 		errorSimulator, ok = plugin.(error_simulator.ErrorSimulator)
 		if !ok {
-			return error_util.NewGenericAwsWrapperError("ErrorSimulatorHelper.cannotGetErrorSimulator")
+			return error_util.NewGenericAwsWrapperError(error_util.GetMessage("ErrorSimulatorHelper.cannotGetErrorSimulator"))
 		}
 		return nil
 	})
