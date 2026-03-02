@@ -220,49 +220,24 @@ func (m *MonitorManager) StopAndRemoveByType(monitorType *driver_infrastructure.
 		return
 	}
 
-	// Collect all keys and items first to avoid deadlock (ForEach holds read lock, Remove needs write lock)
-	var keysToRemove []any
-	var itemsToStop []*monitorItem
-	cacheContainer.cache.ForEach(func(key any, item *monitorItem) {
-		keysToRemove = append(keysToRemove, key)
-		itemsToStop = append(itemsToStop, item)
-	})
-
-	// Now remove and stop outside the ForEach
-	for i, key := range keysToRemove {
-		cacheContainer.cache.Remove(key)
-		if itemsToStop[i] != nil {
-			itemsToStop[i].monitor.Stop()
+	removed := cacheContainer.cache.RemoveIf(func(_ any, _ *monitorItem) bool { return true })
+	for _, entry := range removed {
+		if entry.Value != nil {
+			entry.Value.monitor.Stop()
 		}
 	}
 }
 
 // StopAndRemoveAll stops all monitors and removes them.
 func (m *MonitorManager) StopAndRemoveAll() {
-	// Collect all containers first
-	var containers []*cacheContainer
 	m.monitorCaches.ForEach(func(_ string, container *cacheContainer) {
-		containers = append(containers, container)
-	})
-
-	// Process each container
-	for _, container := range containers {
-		// Collect keys and items
-		var keysToRemove []any
-		var itemsToStop []*monitorItem
-		container.cache.ForEach(func(key any, item *monitorItem) {
-			keysToRemove = append(keysToRemove, key)
-			itemsToStop = append(itemsToStop, item)
-		})
-
-		// Remove and stop outside ForEach
-		for i, key := range keysToRemove {
-			container.cache.Remove(key)
-			if itemsToStop[i] != nil {
-				itemsToStop[i].monitor.Stop()
+		removed := container.cache.RemoveIf(func(_ any, _ *monitorItem) bool { return true })
+		for _, entry := range removed {
+			if entry.Value != nil {
+				entry.Value.monitor.Stop()
 			}
 		}
-	}
+	})
 }
 
 // ReleaseResources stops the cleanup loop and all monitors.
@@ -285,72 +260,39 @@ func (m *MonitorManager) cleanupLoop() {
 	}
 }
 
-// monitorAction describes what to do with a monitor after inspection.
-type monitorAction int
-
-const (
-	monitorActionNone  monitorAction = iota
-	monitorActionStop                // Remove and stop
-	monitorActionError               // Remove, stop, and potentially recreate
-)
-
-// monitorActionItem holds a key/item pair and the action to take.
-type monitorActionItem struct {
-	key    any
-	item   *monitorItem
-	action monitorAction
-}
-
 func (m *MonitorManager) checkMonitors() {
 	now := time.Now()
 
 	m.monitorCaches.ForEach(func(_ string, container *cacheContainer) {
-		// Collect actions while holding the read lock via ForEach,
-		// then execute removals outside to avoid read-lock/write-lock deadlock.
-		var actions []monitorActionItem
-		container.cache.ForEach(func(key any, item *monitorItem) {
+		settings := container.settings
+
+		// Remove and stop monitors that are stopped or expired
+		stopped := container.cache.RemoveIf(func(_ any, item *monitorItem) bool {
 			if item == nil {
-				return
+				return false
 			}
-
-			monitor := item.monitor
-			settings := container.settings
-
-			// Check if monitor is stopped
-			if monitor.GetState() == driver_infrastructure.MonitorStateStopped {
-				actions = append(actions, monitorActionItem{key: key, item: item, action: monitorActionStop})
-				return
+			if item.monitor.GetState() == driver_infrastructure.MonitorStateStopped {
+				return true
 			}
-
-			// Check if monitor is in error state
-			if monitor.GetState() == driver_infrastructure.MonitorStateError {
-				actions = append(actions, monitorActionItem{key: key, item: item, action: monitorActionError})
-				return
-			}
-
-			// Check if monitor is stuck (inactive for too long)
-			lastActivity := time.Unix(0, monitor.GetLastActivityTimestampNanos())
-			if now.Sub(lastActivity) > settings.InactiveTimeout {
-				actions = append(actions, monitorActionItem{key: key, item: item, action: monitorActionError})
-				return
-			}
-
-			// Check if monitor is expired and can be disposed
-			if now.After(item.expiresAt) && monitor.CanDispose() {
-				actions = append(actions, monitorActionItem{key: key, item: item, action: monitorActionStop})
-				return
-			}
+			return now.After(item.expiresAt) && item.monitor.CanDispose()
 		})
+		for _, entry := range stopped {
+			entry.Value.monitor.Stop()
+		}
 
-		// Now process actions outside ForEach (no read lock held)
-		for _, a := range actions {
-			container.cache.Remove(a.key)
-			switch a.action {
-			case monitorActionStop:
-				a.item.monitor.Stop()
-			case monitorActionError:
-				m.handleMonitorError(container, a.key, a.item)
+		// Remove and handle monitors in error state or stuck
+		errored := container.cache.RemoveIf(func(_ any, item *monitorItem) bool {
+			if item == nil {
+				return false
 			}
+			if item.monitor.GetState() == driver_infrastructure.MonitorStateError {
+				return true
+			}
+			lastActivity := time.Unix(0, item.monitor.GetLastActivityTimestampNanos())
+			return now.Sub(lastActivity) > settings.InactiveTimeout
+		})
+		for _, entry := range errored {
+			m.handleMonitorError(container, entry.Key, entry.Value)
 		}
 	})
 }
