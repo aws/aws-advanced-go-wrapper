@@ -20,7 +20,6 @@ import "time"
 
 // StorageTypeDescriptor provides type-safe access to a specific type in StorageService.
 // It binds a Go type (via generics) to a storage type key and configuration.
-// This is similar to Java's Class<T> pattern for type-safe storage access.
 type StorageTypeDescriptor[T any] struct {
 	// TypeKey is the unique identifier for this storage type
 	TypeKey string

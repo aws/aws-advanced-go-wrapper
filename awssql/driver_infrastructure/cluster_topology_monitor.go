@@ -128,7 +128,6 @@ func (c *ClusterTopologyMonitorImpl) Start() {
 
 func (c *ClusterTopologyMonitorImpl) Monitor() {
 	slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.startMonitoringRoutine", c.initialHostInfo.GetHost()))
-	// TODO: subscribe to event publisher
 	for !c.stop.Load() {
 		c.lastActivityTimestampNano.Store(time.Now().UnixNano())
 		if c.isInPanicMode() {
@@ -448,7 +447,6 @@ func (c *ClusterTopologyMonitorImpl) queryForTopology(conn driver.Conn) ([]*host
 }
 
 func (c *ClusterTopologyMonitorImpl) updateTopologyCache(hosts []*host_info_util.HostInfo) {
-	// c.topologyMap.Put(c.clusterId, topologyMapEntry{uuid.New().String(), hosts}, c.topologyCacheExpirationNano)
 	TopologyStorageType.Set(c.servicesContainer.GetStorageService(), c.clusterId, NewTopology(hosts))
 	c.requestToUpdateTopology.Store(false)
 	c.notifyChannel(c.topologyUpdatedChannel)

@@ -50,7 +50,6 @@ func (t *Topology) GetHosts() []*host_info_util.HostInfo {
 }
 
 // HashCode returns a hash code for this Topology based on its hosts.
-// Similar to Java's Objects.hash(hosts).
 func (t *Topology) HashCode() uint64 {
 	if t == nil || len(t.hosts) == 0 {
 		return 0

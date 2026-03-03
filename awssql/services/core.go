@@ -31,6 +31,7 @@ const (
 var (
 	coreServiceContainer     *CoreServiceContainer
 	coreServiceContainerOnce sync.Once
+	coreServiceMu            sync.Mutex
 )
 
 // CoreServiceContainer holds the shared singleton services used across all connections.
@@ -42,6 +43,8 @@ type CoreServiceContainer struct {
 
 // GetCoreServiceContainer returns the shared singleton core services, initializing on first call.
 func GetCoreServiceContainer() *CoreServiceContainer {
+	coreServiceMu.Lock()
+	defer coreServiceMu.Unlock()
 	coreServiceContainerOnce.Do(func() {
 		events := NewBatchingEventPublisher(DefaultMessageInterval)
 		storage := NewExpiringStorage(DefaultStorageCleanupInterval, events)
@@ -58,18 +61,21 @@ func GetCoreServiceContainer() *CoreServiceContainer {
 // Shutdown stops all background goroutines in the core services.
 // Call this on program exit to clean up resources.
 func Shutdown() {
-	if coreServiceContainer != nil {
-		coreServiceContainer.Storage.Stop()
-		coreServiceContainer.Monitor.ReleaseResources()
-		coreServiceContainer.Events.Stop()
-	}
-	coreServiceContainer = nil
-	coreServiceContainerOnce = sync.Once{}
+	coreServiceMu.Lock()
+	defer coreServiceMu.Unlock()
+	shutdownLocked()
 }
 
 // ResetForTesting resets the singleton for testing purposes.
 // This should only be used in tests.
 func ResetForTesting() {
+	coreServiceMu.Lock()
+	defer coreServiceMu.Unlock()
+	shutdownLocked()
+}
+
+// shutdownLocked performs the actual shutdown. Caller must hold coreServiceMu.
+func shutdownLocked() {
 	if coreServiceContainer != nil {
 		coreServiceContainer.Storage.Stop()
 		coreServiceContainer.Monitor.ReleaseResources()

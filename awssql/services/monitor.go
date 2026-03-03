@@ -23,7 +23,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
-// Default timeouts matching Java implementation.
 const (
 	DefaultMonitorCleanupInterval = 1 * time.Minute
 	DefaultExpirationTimeout      = 15 * time.Minute
@@ -54,7 +53,7 @@ type cacheContainer struct {
 }
 
 // MonitorManager manages background monitors with expiration and health checks.
-// It maintains a map of monitor caches, similar to Java's MonitorServiceImpl.
+// It maintains a map of monitor caches.
 // Implements driver_infrastructure.MonitorService.
 type MonitorManager struct {
 	publisher       driver_infrastructure.EventPublisher

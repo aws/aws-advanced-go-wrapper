@@ -24,7 +24,7 @@ import (
 // FullServicesContainer holds all services needed by plugins and monitors.
 // Implements driver_infrastructure.ServicesContainer interface.
 // Note: Props/DSN are not stored here - they're passed directly to components that need them.
-// Note: Dialect/DriverDialect are not stored here - they're managed by PluginService (matches Java pattern).
+// Note: Dialect/DriverDialect are not stored here - they're managed by PluginService.
 type FullServicesContainer struct {
 	// Core services (shared across connections)
 	Storage driver_infrastructure.StorageService

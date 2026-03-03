@@ -33,7 +33,7 @@ type cacheEntry struct {
 }
 
 // ExpiringStorage provides shared, expiring key-value storage for driver components.
-// Uses ExpirationCache (non-sliding by default) to match Java's StorageServiceImpl.
+// Uses ExpirationCache.
 // Implements driver_infrastructure.StorageService.
 type ExpiringStorage struct {
 	caches          map[string]*cacheEntry

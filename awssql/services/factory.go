@@ -93,7 +93,6 @@ type PluginChainBuilder interface {
 }
 
 // ServiceFactory creates service containers with all necessary wiring.
-// This is the Go equivalent of Java's ServiceUtility.
 type ServiceFactory struct {
 	pluginManagerFactory PluginManagerFactory
 	pluginServiceFactory PluginServiceFactory
@@ -114,7 +113,6 @@ func NewServiceFactory(
 }
 
 // CreateStandardContainer creates a fully-wired service container for normal connections.
-// This is equivalent to Java's ServiceUtility.createStandardServiceContainer().
 func (f *ServiceFactory) CreateStandardContainer(
 	underlyingDriver driver.Driver,
 	cfg *StandardContainerConfig,
@@ -182,7 +180,6 @@ func (f *ServiceFactory) CreateStandardContainer(
 }
 
 // CreateMinimalContainer creates a lightweight service container for internal use.
-// This is equivalent to Java's ServiceUtility.createMinimalServiceContainer().
 func (f *ServiceFactory) CreateMinimalContainer(
 	underlyingDriver driver.Driver,
 	cfg *MinimalContainerConfig,
@@ -207,7 +204,6 @@ func (f *ServiceFactory) CreateMinimalContainer(
 }
 
 // CreateMinimalContainerFrom creates a minimal container from an existing container.
-// This is equivalent to Java's ServiceUtility.createMinimalServiceContainer(FullServicesContainer, Properties).
 func (f *ServiceFactory) CreateMinimalContainerFrom(
 	underlyingDriver driver.Driver,
 	source *FullServicesContainer,
