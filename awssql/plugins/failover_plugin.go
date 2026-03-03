@@ -263,8 +263,7 @@ func (p *FailoverPlugin) Execute(
 	conn := p.pluginService.GetCurrentConnection()
 	if conn != nil &&
 		!p.canDirectExecute(methodName) &&
-		!p.closedExplicitly &&
-		p.pluginService.GetTargetDriverDialect().IsClosed(conn) {
+		!p.closedExplicitly {
 		err := p.pickNewConnection()
 		if err != nil {
 			return nil, nil, false, err
@@ -293,7 +292,7 @@ func (p *FailoverPlugin) Execute(
 
 func (p *FailoverPlugin) pickNewConnection() error {
 	conn := p.pluginService.GetCurrentConnection()
-	if (p.pluginService.GetTargetDriverDialect().IsClosed(conn) && p.closedExplicitly) {
+	if (p.closedExplicitly) {
 		slog.Info(error_util.GetMessage("Failover.detectedError"))
 		return nil
 	}
