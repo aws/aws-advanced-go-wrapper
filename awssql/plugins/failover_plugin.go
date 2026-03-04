@@ -291,7 +291,6 @@ func (p *FailoverPlugin) Execute(
 }
 
 func (p *FailoverPlugin) pickNewConnection() error {
-	conn := p.pluginService.GetCurrentConnection()
 	if (p.closedExplicitly) {
 		slog.Info(error_util.GetMessage("Failover.detectedError"))
 		return nil
