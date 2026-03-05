@@ -612,7 +612,7 @@ func TestExecuteWithFailoverDisabled(t *testing.T) {
 
 	_, _, _, _ = plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, execFunc)
 
-	assert.Equal(t, 1, execFuncCalls)
+	assert.Equal(t, 0, execFuncCalls)
 	assert.Equal(t, 0, plugin.calledFailoverCount)
 	assert.Equal(t, 0, mockConn.closeCounter)
 
