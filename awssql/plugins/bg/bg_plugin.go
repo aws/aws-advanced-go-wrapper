@@ -62,8 +62,6 @@ type BlueGreenPlugin struct {
 	bgProviderSupplier BlueGreenProviderSupplier
 	isIamInUse         bool
 	servicesContainer  driver_infrastructure.ServicesContainer
-	pluginService      driver_infrastructure.PluginService
-	storageService     driver_infrastructure.StorageService
 	props              *utils.RWMap[string, string]
 	startTime          atomic.Int64
 	endTime            atomic.Int64
@@ -80,8 +78,6 @@ func NewBlueGreenPlugin(servicesContainer driver_infrastructure.ServicesContaine
 		bgId:               bgId,
 		props:              props,
 		servicesContainer:  servicesContainer,
-		pluginService:      servicesContainer.GetPluginService(),
-		storageService:     servicesContainer.GetStorageService(),
 		bgProviderSupplier: NewBlueGreenStatusProvider,
 	}, nil
 }
@@ -95,7 +91,7 @@ func (b *BlueGreenPlugin) GetSubscribedMethods() []string {
 }
 
 func (b *BlueGreenPlugin) getBgStatus() *driver_infrastructure.BlueGreenStatus {
-	status, _ := driver_infrastructure.BlueGreenStatusStorageType.Get(b.storageService, b.getBgStatusCacheKey())
+	status, _ := driver_infrastructure.BlueGreenStatusStorageType.Get(b.servicesContainer.GetStorageService(), b.getBgStatusCacheKey())
 	return status
 }
 
@@ -124,7 +120,7 @@ func (b *BlueGreenPlugin) Connect(
 
 	if isInitialConnection {
 		// Upon initial connection, mark whether iam is in use.
-		b.isIamInUse = b.pluginService.IsPluginInUse(driver_infrastructure.IAM_PLUGIN_CODE)
+		b.isIamInUse = b.servicesContainer.GetPluginService().IsPluginInUse(driver_infrastructure.IAM_PLUGIN_CODE)
 	}
 
 	hostRole, ok := b.bgStatus.GetRole(hostInfo)
@@ -145,7 +141,7 @@ func (b *BlueGreenPlugin) Connect(
 	b.startTime.Store(time.Now().UnixNano())
 	routing := matchingRoutes[0]
 	for routing != nil && conn == nil {
-		conn, err = routing.Apply(b, hostInfo, props, isInitialConnection, b.pluginService)
+		conn, err = routing.Apply(b, hostInfo, props, isInitialConnection, b.servicesContainer.GetPluginService())
 		if conn == nil {
 			b.bgStatus = b.getBgStatus()
 			if b.bgStatus != nil {
@@ -195,7 +191,7 @@ func (b *BlueGreenPlugin) Execute(
 	if b.bgStatus == nil {
 		return executeFunc()
 	}
-	currentHostInfo, err := b.pluginService.GetCurrentHostInfo()
+	currentHostInfo, err := b.servicesContainer.GetPluginService().GetCurrentHostInfo()
 	hostRole, ok := b.bgStatus.GetRole(currentHostInfo)
 	if err != nil || !ok || hostRole.IsZero() {
 		return executeFunc()
@@ -212,7 +208,7 @@ func (b *BlueGreenPlugin) Execute(
 	routing := matchingRoutes[0]
 	result := driver_infrastructure.EMPTY_ROUTING_RESULT_HOLDER
 	for routing != nil && !result.IsPresent() {
-		result = routing.Apply(b, b.props, b.pluginService, methodName, executeFunc, methodArgs...)
+		result = routing.Apply(b, b.props, b.servicesContainer.GetPluginService(), methodName, executeFunc, methodArgs...)
 		if !result.IsPresent() {
 			b.bgStatus = b.getBgStatus()
 			if b.bgStatus == nil {
@@ -241,7 +237,7 @@ func (b *BlueGreenPlugin) Execute(
 func (b *BlueGreenPlugin) initProvider() {
 	provider, ok := providers.Get(b.bgId)
 	if !ok || provider.isZero() {
-		provider = b.bgProviderSupplier(b.pluginService, b.storageService, b.props, b.bgId)
+		provider = b.bgProviderSupplier(b.servicesContainer.GetPluginService(), b.servicesContainer.GetStorageService(), b.props, b.bgId)
 		providers.Put(b.bgId, provider)
 	}
 }

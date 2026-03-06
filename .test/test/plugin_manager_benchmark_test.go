@@ -49,9 +49,9 @@ func initPluginManagerWithPlugins(numPlugins int,
 		ConnProvider: &MockConnectionProvider{},
 	}
 	pluginManager := plugin_helpers.NewPluginManagerImpl(MockTargetDriver{}, container, props)
-	container.SetPluginManager(pluginManager)
+	container.PluginManager = pluginManager
 	pluginService, _ := plugin_helpers.NewPluginServiceImpl(container, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
-	container.SetPluginService(pluginService)
+	container.PluginService = pluginService
 
 	pluginChainBuilder := driver.ConnectionPluginChainBuilder{}
 	plugins, _ := pluginChainBuilder.GetPlugins(container, props, defaultPluginFactoryByCode)

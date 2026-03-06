@@ -44,7 +44,7 @@ type IamAuthPluginFactory struct{}
 
 func (factory IamAuthPluginFactory) GetInstance(servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewIamAuthPlugin(servicesContainer.GetPluginService(), &auth_helpers.RegularIamTokenUtility{}, props)
+	return NewIamAuthPlugin(servicesContainer, &auth_helpers.RegularIamTokenUtility{}, props)
 }
 
 func (factory IamAuthPluginFactory) ClearCaches() {
@@ -59,7 +59,7 @@ var TokenCache = utils.NewCache[string]()
 
 type IamAuthPlugin struct {
 	plugins.BaseConnectionPlugin
-	pluginService     driver_infrastructure.PluginService
+	servicesContainer driver_infrastructure.ServicesContainer
 	iamTokenUtility   auth_helpers.IamTokenUtility
 	props             *utils.RWMap[string, string]
 	fetchTokenCounter telemetry.TelemetryCounter
@@ -70,16 +70,17 @@ func (iamAuthPlugin *IamAuthPlugin) GetPluginCode() string {
 }
 
 func NewIamAuthPlugin(
-	pluginService driver_infrastructure.PluginService,
+	servicesContainer driver_infrastructure.ServicesContainer,
 	iamTokenUtility auth_helpers.IamTokenUtility,
 	props *utils.RWMap[string, string]) (*IamAuthPlugin, error) {
+	pluginService := servicesContainer.GetPluginService()
 	fetchTokenCounter, err := pluginService.GetTelemetryFactory().CreateCounter("iam.fetchToken.count")
 	if err != nil {
 		return nil, err
 	}
 
 	return &IamAuthPlugin{
-		pluginService:     pluginService,
+		servicesContainer: servicesContainer,
 		props:             props,
 		iamTokenUtility:   iamTokenUtility,
 		fetchTokenCounter: fetchTokenCounter,
@@ -114,7 +115,7 @@ func (iamAuthPlugin *IamAuthPlugin) connectInternal(
 
 	port := auth_helpers.GetIamPort(
 		property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.IAM_DEFAULT_PORT),
-		*hostInfo, iamAuthPlugin.pluginService.GetDialect().GetDefaultPort())
+		*hostInfo, iamAuthPlugin.servicesContainer.GetPluginService().GetDialect().GetDefaultPort())
 
 	region := region_util.GetRegion(host, props, property_util.IAM_REGION)
 	if region == "" {
@@ -145,7 +146,7 @@ func (iamAuthPlugin *IamAuthPlugin) connectInternal(
 		return conn, nil
 	} else {
 		slog.Debug(error_util.GetMessage("IamAuthPlugin.connectionError", hostInfo.GetHost(), err))
-		if !iamAuthPlugin.pluginService.IsLoginError(err) || !isCachedToken {
+		if !iamAuthPlugin.servicesContainer.GetPluginService().IsLoginError(err) || !isCachedToken {
 			return nil, err
 		}
 	}
@@ -173,14 +174,14 @@ func (iamAuthPlugin *IamAuthPlugin) fetchAndSetToken(
 		slog.Error(error_util.GetMessage("IamAuthPlugin.errorGettingAwsCredentialsProvider", err))
 		return err
 	}
-	iamAuthPlugin.fetchTokenCounter.Inc(iamAuthPlugin.pluginService.GetTelemetryContext())
+	iamAuthPlugin.fetchTokenCounter.Inc(iamAuthPlugin.servicesContainer.GetPluginService().GetTelemetryContext())
 	token, err := iamAuthPlugin.iamTokenUtility.GenerateAuthenticationToken(
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.USER),
 		host,
 		port,
 		region,
 		awsCredentialsProvider,
-		iamAuthPlugin.pluginService)
+		iamAuthPlugin.servicesContainer.GetPluginService())
 	if err != nil || token == "" {
 		slog.Debug(error_util.GetMessage("IamAuthPlugin.errorGeneratingNewToken", err))
 		return err

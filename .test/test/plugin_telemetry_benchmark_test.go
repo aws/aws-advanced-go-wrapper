@@ -73,10 +73,10 @@ func initResources(props *utils.RWMap[string, string]) (
 		ConnProvider: &MockConnectionProvider{},
 	}
 	pluginManager = plugin_helpers.NewPluginManagerImpl(MockTargetDriver{}, container, props)
-	container.SetPluginManager(pluginManager)
+	container.PluginManager = pluginManager
 	ps, _ := plugin_helpers.NewPluginServiceImpl(container, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
 	pluginService = ps
-	container.SetPluginService(pluginService)
+	container.PluginService = pluginService
 	mockConn := &MockConn{}
 	pluginChainBuilder := driver.ConnectionPluginChainBuilder{}
 	currentPlugins, _ := pluginChainBuilder.GetPlugins(container, props, pluginFactoryByCode)

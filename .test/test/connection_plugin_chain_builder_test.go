@@ -42,6 +42,7 @@ func setupChainBuilderMocks(ctrl *gomock.Controller) *mock_driver_infrastructure
 	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 	mockContainer.EXPECT().GetPluginManager().Return(mockPluginManager).AnyTimes()
 	mockContainer.EXPECT().GetTelemetryFactory().Return(telemetry.NewNilTelemetryFactory()).AnyTimes()
+	mockContainer.EXPECT().GetConnectionProvider().Return(nil).AnyTimes()
 	mockPluginService.EXPECT().GetTelemetryFactory().Return(telemetry.NewNilTelemetryFactory()).AnyTimes()
 	mockPluginManager.EXPECT().GetDefaultConnectionProvider().Return(nil).AnyTimes()
 	mockPluginManager.EXPECT().GetEffectiveConnectionProvider().Return(nil).AnyTimes()

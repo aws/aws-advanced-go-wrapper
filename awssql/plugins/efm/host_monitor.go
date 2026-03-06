@@ -64,7 +64,6 @@ func NewHostMonitorImpl(
 		servicesContainer:             servicesContainer,
 		hostInfo:                      hostInfo,
 		monitoringProps:               monitoringConnectionProps,
-		pluginService:                 servicesContainer.GetPluginService(),
 		failureDetectionTimeNanos:     time.Millisecond * time.Duration(failureDetectionTimeMillis),
 		failureDetectionIntervalNanos: time.Millisecond * time.Duration(failureDetectionIntervalMillis),
 		failureDetectionCount:         failureDetectionCount,
@@ -80,7 +79,6 @@ type HostMonitorImpl struct {
 	servicesContainer             driver_infrastructure.ServicesContainer
 	hostInfo                      *host_info_util.HostInfo
 	MonitoringConn                driver.Conn
-	pluginService                 driver_infrastructure.PluginService
 	monitoringProps               *utils.RWMap[string, string]
 	failureDetectionTimeNanos     time.Duration
 	failureDetectionIntervalNanos time.Duration
@@ -193,7 +191,7 @@ func (m *HostMonitorImpl) Monitor() {
 		m.UpdateHostHealthStatus(connIsValid, statusCheckStartTime, statusCheckEndTime)
 
 		if m.HostUnhealthy.Load() {
-			m.pluginService.SetAvailability(m.hostInfo.AllAliases, host_info_util.UNAVAILABLE)
+			m.servicesContainer.GetPluginService().SetAvailability(m.hostInfo.AllAliases, host_info_util.UNAVAILABLE)
 		}
 
 		tmpActiveStates := utils.NewRWQueue[weak.Pointer[MonitorConnectionState]]()
@@ -218,7 +216,7 @@ func (m *HostMonitorImpl) Monitor() {
 				monitorState.SetInactive()
 				if connToAbort != nil {
 					_ = (*connToAbort).Close()
-					m.abortedConnectionsCounter.Inc(m.pluginService.GetTelemetryContext())
+					m.abortedConnectionsCounter.Inc(m.servicesContainer.GetPluginService().GetTelemetryContext())
 				}
 			} else if monitorState.IsActive() {
 				tmpActiveStates.Enqueue(monitorStateWeakRef)
@@ -272,19 +270,19 @@ func (m *HostMonitorImpl) UpdateHostHealthStatus(connIsValid bool, statusCheckSt
 }
 
 func (m *HostMonitorImpl) CheckConnectionStatus() bool {
-	parentCtx := m.pluginService.GetTelemetryContext()
-	telemetryCtx, ctx := m.pluginService.GetTelemetryFactory().OpenTelemetryContext(telemetry.TELEMETRY_CONN_STATUS_CHECK, telemetry.FORCE_TOP_LEVEL, nil)
+	parentCtx := m.servicesContainer.GetPluginService().GetTelemetryContext()
+	telemetryCtx, ctx := m.servicesContainer.GetPluginService().GetTelemetryFactory().OpenTelemetryContext(telemetry.TELEMETRY_CONN_STATUS_CHECK, telemetry.FORCE_TOP_LEVEL, nil)
 	telemetryCtx.SetAttribute(telemetry.TELEMETRY_ATTRIBUTE_URL, m.hostInfo.Host)
-	m.pluginService.SetTelemetryContext(ctx)
+	m.servicesContainer.GetPluginService().SetTelemetryContext(ctx)
 	defer func() {
 		telemetryCtx.CloseContext()
-		m.pluginService.SetTelemetryContext(parentCtx)
+		m.servicesContainer.GetPluginService().SetTelemetryContext(parentCtx)
 	}()
 
-	if m.MonitoringConn == nil || m.pluginService.GetTargetDriverDialect().IsClosed(m.MonitoringConn) {
+	if m.MonitoringConn == nil || m.servicesContainer.GetPluginService().GetTargetDriverDialect().IsClosed(m.MonitoringConn) {
 		// Open a new connection.
 		slog.Debug(error_util.GetMessage("HostMonitorImpl.openingMonitoringConnection", m.hostInfo.Host))
-		newMonitoringConn, err := m.pluginService.ForceConnect(m.hostInfo, m.monitoringProps)
+		newMonitoringConn, err := m.servicesContainer.GetPluginService().ForceConnect(m.hostInfo, m.monitoringProps)
 		if err != nil || newMonitoringConn == nil {
 			return false
 		}

@@ -35,6 +35,8 @@ func TestAuroraConnectionTracker_TrackNewInstanceConnections(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 	mockTracker := mock_connection_tracker.NewMockConnectionTracker(ctrl)
 	mockDriverConn := mock_database_sql_driver.NewMockConn(ctrl)
 	props := MakeMapFromKeysAndVals(
@@ -48,7 +50,7 @@ func TestAuroraConnectionTracker_TrackNewInstanceConnections(t *testing.T) {
 	mockPluginService.EXPECT().FillAliases(mockDriverConn, hostInfo)
 	mockTracker.EXPECT().PopulateOpenedConnectionQueue(hostInfo, mockDriverConn)
 
-	auroraConnectionTracker := plugins.NewAuroraConnectionTrackerPlugin(mockPluginService, nil, mockTracker)
+	auroraConnectionTracker := plugins.NewAuroraConnectionTrackerPlugin(mockContainer, nil, mockTracker)
 	conn, err := auroraConnectionTracker.Connect(hostInfo, props, true, connectFunc)
 	assert.NoError(t, err)
 	assert.Equal(t, conn, mockDriverConn)
@@ -59,6 +61,8 @@ func TestAuroraConnectionTracker_InvalidateOpenedConnectionsWhenWriterHostNotCha
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 	mockTracker := mock_connection_tracker.NewMockConnectionTracker(ctrl)
 	mockDriverConn := mock_database_sql_driver.NewMockConn(ctrl)
 
@@ -71,7 +75,7 @@ func TestAuroraConnectionTracker_InvalidateOpenedConnectionsWhenWriterHostNotCha
 
 	mockPluginService.EXPECT().GetAllHosts().Return([]*host_info_util.HostInfo{originalHost}).Times(2)
 
-	auroraConnectionTracker := plugins.NewAuroraConnectionTrackerPlugin(mockPluginService, nil, mockTracker)
+	auroraConnectionTracker := plugins.NewAuroraConnectionTrackerPlugin(mockContainer, nil, mockTracker)
 	_, _, _, err := auroraConnectionTracker.Execute(mockDriverConn, "", execFunc, "")
 	assert.Error(t, err)
 	assert.Equal(t, failoverError, err)
@@ -81,6 +85,8 @@ func TestAuroraConnectionTracker_InvalidateOpenedConnectionsWhenWriterHostChange
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 	mockTracker := mock_connection_tracker.NewMockConnectionTracker(ctrl)
 	mockDriverConn := mock_database_sql_driver.NewMockConn(ctrl)
 
@@ -97,7 +103,7 @@ func TestAuroraConnectionTracker_InvalidateOpenedConnectionsWhenWriterHostChange
 	mockTracker.EXPECT().InvalidateAllConnections(originalHost)
 	mockTracker.EXPECT().LogOpenedConnections()
 
-	auroraConnectionTracker := plugins.NewAuroraConnectionTrackerPlugin(mockPluginService, nil, mockTracker)
+	auroraConnectionTracker := plugins.NewAuroraConnectionTrackerPlugin(mockContainer, nil, mockTracker)
 	_, _, _, err := auroraConnectionTracker.Execute(mockDriverConn, "", execFunc, "")
 	assert.Error(t, err)
 	assert.Equal(t, failoverError, err)

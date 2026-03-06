@@ -48,7 +48,6 @@ func NewLimitlessPluginFactory() driver_infrastructure.ConnectionPluginFactory {
 type LimitlessPlugin struct {
 	plugins.BaseConnectionPlugin
 	servicesContainer driver_infrastructure.ServicesContainer
-	pluginService     driver_infrastructure.PluginService
 	props             *utils.RWMap[string, string]
 	routerService     LimitlessRouterService
 }
@@ -65,7 +64,6 @@ func NewLimitlessPlugin(servicesContainer driver_infrastructure.ServicesContaine
 
 	return &LimitlessPlugin{
 		servicesContainer: servicesContainer,
-		pluginService:     servicesContainer.GetPluginService(),
 		props:             props,
 	}, nil
 }
@@ -78,7 +76,6 @@ func NewLimitlessPluginWithRouterService(
 ) *LimitlessPlugin {
 	return &LimitlessPlugin{
 		servicesContainer: servicesContainer,
-		pluginService:     servicesContainer.GetPluginService(),
 		props:             props,
 		routerService:     routerService,
 	}
@@ -100,14 +97,14 @@ func (plugin *LimitlessPlugin) Connect(
 	var conn driver.Conn = nil
 
 	// Dialect check
-	dialect := plugin.pluginService.GetDialect()
+	dialect := plugin.servicesContainer.GetPluginService().GetDialect()
 	if !IsDialectLimitless(dialect) {
 		var err error
 		conn, err = connectFunc(props)
 		if err != nil {
 			return nil, err
 		}
-		refreshDialect := plugin.pluginService.GetDialect()
+		refreshDialect := plugin.servicesContainer.GetPluginService().GetDialect()
 		if !IsDialectLimitless(refreshDialect) {
 			return nil, errors.New(error_util.GetMessage("LimitlessPlugin.unsupportedDialectOrDatabase", refreshDialect))
 		}

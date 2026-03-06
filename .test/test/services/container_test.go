@@ -60,9 +60,9 @@ func TestFullServicesContainerSetters(t *testing.T) {
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 	mockHLPService := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
 
-	container.SetPluginManager(mockPluginManager)
-	container.SetPluginService(mockPluginService)
-	container.SetHostListProviderService(mockHLPService)
+	container.PluginManager = mockPluginManager
+	container.PluginService = mockPluginService
+	container.HostListProviderService = mockHLPService
 
 	assert.Equal(t, mockPluginManager, container.GetPluginManager())
 	assert.Equal(t, mockPluginService, container.GetPluginService())
@@ -90,7 +90,7 @@ func TestCreateMinimal(t *testing.T) {
 
 	// Set connection-specific services that should NOT be copied
 	mockPluginManager := mock_driver_infrastructure.NewMockPluginManager(ctrl)
-	container.SetPluginManager(mockPluginManager)
+	container.PluginManager = mockPluginManager
 
 	minimal := container.CreateMinimal()
 

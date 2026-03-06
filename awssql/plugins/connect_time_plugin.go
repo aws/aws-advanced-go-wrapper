@@ -37,7 +37,7 @@ func NewConnectTimePluginFactory() driver_infrastructure.ConnectionPluginFactory
 func (factory ConnectTimePluginFactory) GetInstance(servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string],
 ) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewConnectTimePlugin(servicesContainer.GetPluginService(), props)
+	return NewConnectTimePlugin(props)
 }
 
 func (factory ConnectTimePluginFactory) ClearCaches() {}
@@ -47,7 +47,7 @@ type ConnectTimePlugin struct {
 	connectTimeNano int64
 }
 
-func NewConnectTimePlugin(_ driver_infrastructure.PluginService,
+func NewConnectTimePlugin(
 	_ *utils.RWMap[string, string]) (*ConnectTimePlugin, error) {
 	return &ConnectTimePlugin{}, nil
 }

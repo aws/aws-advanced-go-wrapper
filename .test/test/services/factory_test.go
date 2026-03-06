@@ -319,7 +319,7 @@ func TestCreateMinimalContainerFromWithPluginService(t *testing.T) {
 		ConnProvider: mockConnProvider,
 		Telemetry:    &telemetry.NilTelemetryFactory{},
 	}
-	source.SetPluginService(mockPS)
+	source.PluginService = mockPS
 
 	props := utils.NewRWMap[string, string]()
 	container, err := factory.CreateMinimalContainerFrom(&mockDriver{}, source, props)

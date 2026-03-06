@@ -176,39 +176,3 @@ func (mr *MockServicesContainerMockRecorder) GetTelemetryFactory() *gomock.Call 
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTelemetryFactory", reflect.TypeOf((*MockServicesContainer)(nil).GetTelemetryFactory))
 }
-
-// SetHostListProviderService mocks base method.
-func (m *MockServicesContainer) SetHostListProviderService(arg0 driver_infrastructure.HostListProviderService) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetHostListProviderService", arg0)
-}
-
-// SetHostListProviderService indicates an expected call of SetHostListProviderService.
-func (mr *MockServicesContainerMockRecorder) SetHostListProviderService(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetHostListProviderService", reflect.TypeOf((*MockServicesContainer)(nil).SetHostListProviderService), arg0)
-}
-
-// SetPluginManager mocks base method.
-func (m *MockServicesContainer) SetPluginManager(arg0 driver_infrastructure.PluginManager) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetPluginManager", arg0)
-}
-
-// SetPluginManager indicates an expected call of SetPluginManager.
-func (mr *MockServicesContainerMockRecorder) SetPluginManager(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPluginManager", reflect.TypeOf((*MockServicesContainer)(nil).SetPluginManager), arg0)
-}
-
-// SetPluginService mocks base method.
-func (m *MockServicesContainer) SetPluginService(arg0 driver_infrastructure.PluginService) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetPluginService", arg0)
-}
-
-// SetPluginService indicates an expected call of SetPluginService.
-func (mr *MockServicesContainerMockRecorder) SetPluginService(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPluginService", reflect.TypeOf((*MockServicesContainer)(nil).SetPluginService), arg0)
-}

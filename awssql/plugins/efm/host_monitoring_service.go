@@ -43,8 +43,6 @@ type HostMonitoringService interface {
 
 type HostMonitoringServiceImpl struct {
 	servicesContainer              driver_infrastructure.ServicesContainer
-	pluginService                  driver_infrastructure.PluginService
-	monitorService                 driver_infrastructure.MonitorService
 	abortedConnectionsCounter      telemetry.TelemetryCounter
 	failureDetectionTimeMillis     int
 	failureDetectionIntervalMillis int
@@ -94,8 +92,6 @@ func NewHostMonitoringServiceImpl(
 
 	return &HostMonitoringServiceImpl{
 		servicesContainer:              servicesContainer,
-		pluginService:                  pluginService,
-		monitorService:                 monitorService,
 		abortedConnectionsCounter:      abortedConnectionsCounter,
 		failureDetectionTimeMillis:     failureDetectionTimeMillis,
 		failureDetectionIntervalMillis: failureDetectionIntervalMillis,
@@ -155,7 +151,7 @@ func (m *HostMonitoringServiceImpl) getMonitor(hostInfo *host_info_util.HostInfo
 	hostInfoCopy := hostInfo
 	propsCopy := props
 
-	monitor, err := m.monitorService.RunIfAbsent(
+	monitor, err := m.servicesContainer.GetMonitorService().RunIfAbsent(
 		HostMonitorType,
 		m.monitorKey.GetKeyValue(),
 		m.servicesContainer,

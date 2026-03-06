@@ -40,15 +40,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func beforeIamAuthPluginTests(t *testing.T, props *utils.RWMap[string, string]) (driver_infrastructure.PluginService, auth_helpers.IamTokenUtility) {
+func beforeIamAuthPluginTests(t *testing.T, props *utils.RWMap[string, string]) (driver_infrastructure.ServicesContainer, auth_helpers.IamTokenUtility) {
 	awssql.ClearCaches()
 
 	ctrl := gomock.NewController(t)
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockServicesContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
 	mockTelemetryFactory := mock_telemetry.NewMockTelemetryFactory(ctrl)
 	mockTelemetryCounter := mock_telemetry.NewMockTelemetryCounter(ctrl)
 	mockDatabaseDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 
+	mockServicesContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory).AnyTimes()
 	mockPluginService.EXPECT().GetTelemetryContext().Return(context.Background()).AnyTimes()
 	mockPluginService.EXPECT().GetDialect().Return(mockDatabaseDialect).AnyTimes()
@@ -62,7 +64,7 @@ func beforeIamAuthPluginTests(t *testing.T, props *utils.RWMap[string, string]) 
 	mockTelemetryCounter.EXPECT().Inc(gomock.Any()).AnyTimes()
 	mockDatabaseDialect.EXPECT().GetDefaultPort().Return(3306).AnyTimes()
 
-	return mockPluginService, &MockIamTokenUtility{}
+	return mockServicesContainer, &MockIamTokenUtility{}
 }
 
 func TestIamAuthPluginConnect(t *testing.T) {

@@ -56,10 +56,10 @@ func setup(props *utils.RWMap[string, string]) *federated_auth.FederatedAuthPlug
 		Telemetry: telemetryFactory,
 	}
 	mockPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, container, props)
-	container.SetPluginManager(mockPluginManager)
+	container.PluginManager = mockPluginManager
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(container, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
-	container.SetPluginService(pluginServiceImpl)
-	federatedAuthPlugin, _ := federated_auth.NewFederatedAuthPlugin(pluginServiceImpl, credentialsProviderFactory, mockIamTokenUtility)
+	container.PluginService = pluginServiceImpl
+	federatedAuthPlugin, _ := federated_auth.NewFederatedAuthPlugin(container, credentialsProviderFactory, mockIamTokenUtility)
 	return federatedAuthPlugin
 }
 

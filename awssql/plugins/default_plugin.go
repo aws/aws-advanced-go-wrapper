@@ -29,8 +29,7 @@ import (
 )
 
 type DefaultPlugin struct {
-	ServicesContainer   driver_infrastructure.ServicesContainer
-	ConnProviderManager driver_infrastructure.ConnectionProviderManager
+	ServicesContainer driver_infrastructure.ServicesContainer
 }
 
 func (d *DefaultPlugin) GetPluginCode() string {
@@ -82,7 +81,8 @@ func (d *DefaultPlugin) Connect(
 	isInitialConnection bool,
 	_ driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	// It's guaranteed that this plugin is always the last in plugin chain so connectFunc can be ignored.
-	connProvider := d.ConnProviderManager.GetConnectionProvider(*hostInfo, props)
+	cpm := d.ServicesContainer.GetPluginManager().GetConnectionProviderManager()
+	connProvider := cpm.GetConnectionProvider(*hostInfo, props)
 	return d.connectInternal(hostInfo, props, connProvider, isInitialConnection)
 }
 
@@ -121,7 +121,8 @@ func (d *DefaultPlugin) connectInternal(
 }
 
 func (d *DefaultPlugin) AcceptsStrategy(strategy string) bool {
-	return d.ConnProviderManager.AcceptsStrategy(strategy)
+	cpm := d.ServicesContainer.GetPluginManager().GetConnectionProviderManager()
+	return cpm.AcceptsStrategy(strategy)
 }
 
 func (d *DefaultPlugin) GetHostInfoByStrategy(
@@ -131,11 +132,13 @@ func (d *DefaultPlugin) GetHostInfoByStrategy(
 	if len(hosts) == 0 {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DefaultConnectionPlugin.noHostsAvailable"))
 	}
-	return d.ConnProviderManager.GetHostInfoByStrategy(hosts, role, strategy, d.ServicesContainer.GetPluginService().GetProperties())
+	cpm := d.ServicesContainer.GetPluginManager().GetConnectionProviderManager()
+	return cpm.GetHostInfoByStrategy(hosts, role, strategy, d.ServicesContainer.GetPluginService().GetProperties())
 }
 
 func (d *DefaultPlugin) GetHostSelectorStrategy(strategy string) (driver_infrastructure.HostSelector, error) {
-	return d.ConnProviderManager.GetHostSelectorStrategy(strategy)
+	cpm := d.ServicesContainer.GetPluginManager().GetConnectionProviderManager()
+	return cpm.GetHostSelectorStrategy(strategy)
 }
 
 func (d *DefaultPlugin) NotifyConnectionChanged(_ map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {

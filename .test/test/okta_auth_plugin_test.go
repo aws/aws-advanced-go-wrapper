@@ -52,12 +52,12 @@ func newOktaAuthPluginTest(
 		Telemetry: telemetryFactory,
 	}
 	mockPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, container, props)
-	container.SetPluginManager(mockPluginManager)
+	container.PluginManager = mockPluginManager
 	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(container, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
-	container.SetPluginService(pluginServiceImpl)
+	container.PluginService = pluginServiceImpl
 	iamTokenUtility := &MockIamTokenUtility{}
 	mockCredProviderFactory := &MockCredentialsProviderFactory{}
-	oktaPlugin, _ := okta.NewOktaAuthPlugin(pluginServiceImpl, mockCredProviderFactory, iamTokenUtility)
+	oktaPlugin, _ := okta.NewOktaAuthPlugin(container, mockCredProviderFactory, iamTokenUtility)
 	return mockCredProviderFactory, iamTokenUtility, oktaPlugin, container
 }
 

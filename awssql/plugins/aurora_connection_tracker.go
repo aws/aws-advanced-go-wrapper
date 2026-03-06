@@ -33,7 +33,7 @@ type AuroraConnectionTrackerPluginFactory struct{}
 
 func (factory AuroraConnectionTrackerPluginFactory) GetInstance(servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewAuroraConnectionTrackerPlugin(servicesContainer.GetPluginService(), props, connection_tracker.NewOpenedConnectionTracker(servicesContainer.GetPluginService())), nil
+	return NewAuroraConnectionTrackerPlugin(servicesContainer, props, connection_tracker.NewOpenedConnectionTracker(servicesContainer.GetPluginService())), nil
 }
 
 func (factory AuroraConnectionTrackerPluginFactory) ClearCaches() {}
@@ -44,7 +44,7 @@ func NewAuroraConnectionTrackerPluginFactory() driver_infrastructure.ConnectionP
 
 type AuroraConnectionTrackerPlugin struct {
 	BaseConnectionPlugin
-	pluginService           driver_infrastructure.PluginService
+	servicesContainer       driver_infrastructure.ServicesContainer
 	tracker                 connection_tracker.ConnectionTracker
 	props                   *utils.RWMap[string, string]
 	currentWriter           *host_info_util.HostInfo
@@ -52,13 +52,13 @@ type AuroraConnectionTrackerPlugin struct {
 }
 
 func NewAuroraConnectionTrackerPlugin(
-	pluginService driver_infrastructure.PluginService,
+	servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string],
 	tracker connection_tracker.ConnectionTracker) *AuroraConnectionTrackerPlugin {
 	return &AuroraConnectionTrackerPlugin{
-		pluginService: pluginService,
-		props:         props,
-		tracker:       tracker,
+		servicesContainer: servicesContainer,
+		props:             props,
+		tracker:           tracker,
 	}
 }
 
@@ -106,7 +106,7 @@ func (a *AuroraConnectionTrackerPlugin) Connect(
 
 		if rdsUrlType.IsRdsCluster || rdsUrlType == utils.OTHER || rdsUrlType == utils.IP_ADDRESS {
 			hostInfo.ResetAliases()
-			a.pluginService.FillAliases(conn, hostInfo)
+			a.servicesContainer.GetPluginService().FillAliases(conn, hostInfo)
 		}
 		a.tracker.PopulateOpenedConnectionQueue(hostInfo, conn)
 	}
@@ -130,14 +130,14 @@ func (a *AuroraConnectionTrackerPlugin) NotifyHostListChanged(changes map[string
 
 func (a *AuroraConnectionTrackerPlugin) rememberWriter() {
 	if a.currentWriter == nil || a.needUpdateCurrentWriter {
-		a.currentWriter = host_info_util.GetWriter(a.pluginService.GetAllHosts())
+		a.currentWriter = host_info_util.GetWriter(a.servicesContainer.GetPluginService().GetAllHosts())
 		a.needUpdateCurrentWriter = false
 	}
 }
 
 func (a *AuroraConnectionTrackerPlugin) checkWriterChanged() {
 	fmt.Println("Check if writer changed!!")
-	hostInfoAfterFailover := host_info_util.GetWriter(a.pluginService.GetAllHosts())
+	hostInfoAfterFailover := host_info_util.GetWriter(a.servicesContainer.GetPluginService().GetAllHosts())
 	if hostInfoAfterFailover == nil {
 		return
 	}

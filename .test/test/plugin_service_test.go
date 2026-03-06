@@ -41,7 +41,7 @@ func beforePluginServiceTests() (*plugin_helpers.PluginServiceImpl, *MockPluginM
 	}
 	realPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, container, props)
 	mockPluginManager := &MockPluginManager{realPluginManager, nil, nil}
-	container.SetPluginManager(mockPluginManager)
+	container.PluginManager = mockPluginManager
 	target, err := plugin_helpers.NewPluginServiceImpl(container, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
 	impl, _ := target.(*plugin_helpers.PluginServiceImpl)
 	return impl, mockPluginManager, host_info_util.NewHostInfoBuilder(), container, err

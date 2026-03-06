@@ -39,9 +39,6 @@ type LimitlessRouterService interface {
 
 type LimitlessRouterServiceImpl struct {
 	servicesContainer driver_infrastructure.ServicesContainer
-	pluginService     driver_infrastructure.PluginService
-	storageService    driver_infrastructure.StorageService
-	monitorService    driver_infrastructure.MonitorService
 	queryHelper       LimitlessQueryHelper
 	props             *utils.RWMap[string, string]
 }
@@ -62,7 +59,6 @@ func NewLimitlessRouterServiceImplInternal(
 	queryHelper LimitlessQueryHelper,
 	props *utils.RWMap[string, string],
 ) *LimitlessRouterServiceImpl {
-	pluginService := servicesContainer.GetPluginService()
 	storageService := servicesContainer.GetStorageService()
 	monitorService := servicesContainer.GetMonitorService()
 
@@ -85,21 +81,14 @@ func NewLimitlessRouterServiceImplInternal(
 
 	return &LimitlessRouterServiceImpl{
 		servicesContainer: servicesContainer,
-		pluginService:     pluginService,
-		storageService:    storageService,
-		monitorService:    monitorService,
 		queryHelper:       queryHelper,
 		props:             props,
 	}
 }
 
-func (routerService *LimitlessRouterServiceImpl) SetPluginService(pluginService driver_infrastructure.PluginService) {
-	routerService.pluginService = pluginService
-}
-
 func (routerService *LimitlessRouterServiceImpl) EstablishConnection(context *LimitlessConnectionContext) error {
 	// Get Current Routers
-	clusterId, err := routerService.pluginService.GetHostListProvider().GetClusterId()
+	clusterId, err := routerService.servicesContainer.GetPluginService().GetHostListProvider().GetClusterId()
 	if err != nil {
 		return err
 	}
@@ -132,7 +121,7 @@ func (routerService *LimitlessRouterServiceImpl) EstablishConnection(context *Li
 			if context.GetConnection() == nil {
 				conn, err := context.ConnectFunc(routerService.props)
 				if err != nil || conn == nil {
-					if routerService.pluginService.IsLoginError(err) {
+					if routerService.servicesContainer.GetPluginService().IsLoginError(err) {
 						return err
 					}
 					return routerService.retryConnectWithLeastLoadedRouters(context)
@@ -144,7 +133,7 @@ func (routerService *LimitlessRouterServiceImpl) EstablishConnection(context *Li
 	}
 
 	// Select Host and Connect
-	selectedRouter, err := routerService.pluginService.GetHostInfoByStrategy(
+	selectedRouter, err := routerService.servicesContainer.GetPluginService().GetHostInfoByStrategy(
 		host_info_util.WRITER,
 		driver_infrastructure.SELECTOR_WEIGHTED_RANDOM,
 		context.LimitlessRouters)
@@ -153,11 +142,11 @@ func (routerService *LimitlessRouterServiceImpl) EstablishConnection(context *Li
 	}
 	slog.Debug(error_util.GetMessage("LimitlessRouterServiceImpl.selectedHost", selectedRouter.Host))
 
-	conn, err := routerService.pluginService.Connect(selectedRouter, context.Props, context.plugin)
+	conn, err := routerService.servicesContainer.GetPluginService().Connect(selectedRouter, context.Props, context.plugin)
 	if err != nil || conn == nil {
 		selectedRouter.Availability = host_info_util.UNAVAILABLE
 		slog.Debug(error_util.GetMessage("LimitlessRouterServiceImpl.failedToConnectToHost", selectedRouter.Host))
-		if routerService.pluginService.IsLoginError(err) {
+		if routerService.servicesContainer.GetPluginService().IsLoginError(err) {
 			return err
 		}
 		return routerService.retryConnectWithLeastLoadedRouters(context)
@@ -167,7 +156,7 @@ func (routerService *LimitlessRouterServiceImpl) EstablishConnection(context *Li
 }
 
 func (routerService *LimitlessRouterServiceImpl) getLimitlessRouters(routerCacheKey string) []*host_info_util.HostInfo {
-	routers, ok := LimitlessRoutersStorageType.Get(routerService.storageService, routerCacheKey)
+	routers, ok := LimitlessRoutersStorageType.Get(routerService.servicesContainer.GetStorageService(), routerCacheKey)
 	if ok && routers != nil {
 		return routers.GetHosts()
 	}
@@ -198,7 +187,7 @@ func (routerService *LimitlessRouterServiceImpl) synchronousGetLimitlessRoutersW
 
 func (routerService *LimitlessRouterServiceImpl) synchronousGetLimitlessRouter(context *LimitlessConnectionContext) error {
 	// Get lock
-	routerCacheKey, err := routerService.pluginService.GetHostListProvider().GetClusterId()
+	routerCacheKey, err := routerService.servicesContainer.GetPluginService().GetHostListProvider().GetClusterId()
 	if err != nil {
 		return err
 	}
@@ -223,7 +212,7 @@ func (routerService *LimitlessRouterServiceImpl) synchronousGetLimitlessRouter(c
 	if context.connection == nil {
 		conn, err := context.ConnectFunc(routerService.props)
 		if err != nil {
-			if routerService.pluginService.IsLoginError(err) {
+			if routerService.servicesContainer.GetPluginService().IsLoginError(err) {
 				return err
 			}
 			return err
@@ -239,8 +228,8 @@ func (routerService *LimitlessRouterServiceImpl) synchronousGetLimitlessRouter(c
 		return errors.New(error_util.GetMessage("LimitlessRouterServiceImpl.fetchedEmptyRouterList"))
 	} else {
 		context.LimitlessRouters = newLimitlessRouters
-		LimitlessRoutersStorageType.Set(routerService.storageService, routerCacheKey, NewLimitlessRouters(newLimitlessRouters))
-		hostSelector, err := routerService.pluginService.GetHostSelectorStrategy(driver_infrastructure.SELECTOR_WEIGHTED_RANDOM)
+		LimitlessRoutersStorageType.Set(routerService.servicesContainer.GetStorageService(), routerCacheKey, NewLimitlessRouters(newLimitlessRouters))
+		hostSelector, err := routerService.servicesContainer.GetPluginService().GetHostSelectorStrategy(driver_infrastructure.SELECTOR_WEIGHTED_RANDOM)
 		if err != nil {
 			slog.Warn(err.Error())
 		}
@@ -287,7 +276,7 @@ func (routerService *LimitlessRouterServiceImpl) retryConnectWithLeastLoadedRout
 				} else {
 					conn, err := context.ConnectFunc(routerService.props)
 					if err != nil || conn == nil {
-						if routerService.pluginService.IsLoginError(err) {
+						if routerService.servicesContainer.GetPluginService().IsLoginError(err) {
 							return err
 						}
 						return errors.New(error_util.GetMessage("LimitlessRouterServiceImpl.unableToConnectNoRoutersAvailable", context.Host.Host))
@@ -299,7 +288,7 @@ func (routerService *LimitlessRouterServiceImpl) retryConnectWithLeastLoadedRout
 		}
 
 		// Select least loaded router
-		selectedRouter, err := routerService.pluginService.GetHostInfoByStrategy(
+		selectedRouter, err := routerService.servicesContainer.GetPluginService().GetHostInfoByStrategy(
 			host_info_util.WRITER,
 			driver_infrastructure.SELECTOR_HIGHEST_WEIGHT,
 			context.LimitlessRouters)
@@ -309,11 +298,11 @@ func (routerService *LimitlessRouterServiceImpl) retryConnectWithLeastLoadedRout
 		}
 
 		// Connect to selected router
-		conn, err := routerService.pluginService.Connect(selectedRouter, context.Props, context.plugin)
+		conn, err := routerService.servicesContainer.GetPluginService().Connect(selectedRouter, context.Props, context.plugin)
 		if err != nil || conn == nil {
 			slog.Debug(error_util.GetMessage("LimitlessRouterServiceImpl.failedToConnectToRouter", selectedRouter.Host))
 			selectedRouter.Availability = host_info_util.UNAVAILABLE
-			if routerService.pluginService.IsLoginError(err) {
+			if routerService.servicesContainer.GetPluginService().IsLoginError(err) {
 				return err
 			}
 			continue
@@ -325,7 +314,7 @@ func (routerService *LimitlessRouterServiceImpl) retryConnectWithLeastLoadedRout
 }
 
 func (routerService *LimitlessRouterServiceImpl) StartMonitoring(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string], intervalMs int) error {
-	cacheKey, err := routerService.pluginService.GetHostListProvider().GetClusterId()
+	cacheKey, err := routerService.servicesContainer.GetPluginService().GetHostListProvider().GetClusterId()
 	if err != nil {
 		slog.Warn(error_util.GetMessage("LimitlessRouterServiceImpl.errorStartingMonitor", err.Error()))
 		return err
@@ -337,7 +326,7 @@ func (routerService *LimitlessRouterServiceImpl) StartMonitoring(hostInfo *host_
 	propsCopy := props
 	intervalMsCopy := intervalMs
 
-	_, err = routerService.monitorService.RunIfAbsent(
+	_, err = routerService.servicesContainer.GetMonitorService().RunIfAbsent(
 		LimitlessRouterMonitorType,
 		limitlessRouterCacheKey,
 		routerService.servicesContainer,

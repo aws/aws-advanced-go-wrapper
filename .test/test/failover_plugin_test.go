@@ -283,8 +283,7 @@ func initializeFailoverTest(
 		connectFails:       connectFails,
 		acceptedStrategies: []string{"random"},
 		DefaultPlugin: plugins.DefaultPlugin{
-			ServicesContainer:   container,
-			ConnProviderManager: mockPluginManager.GetConnectionProviderManager(),
+			ServicesContainer: container,
 		},
 	}
 	failoverPlugin, _ := plugins.NewFailoverPlugin(container, props)

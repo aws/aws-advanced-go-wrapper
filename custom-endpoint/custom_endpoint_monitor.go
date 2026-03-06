@@ -50,7 +50,6 @@ const CUSTOM_ENDPOINT_INFO_EXPIRATION_NANO = time.Minute * 5
 
 type CustomEndpointMonitorImpl struct {
 	servicesContainer      driver_infrastructure.ServicesContainer
-	pluginService          driver_infrastructure.PluginService
 	customEndpointHostInfo *host_info_util.HostInfo
 	endpointIdentifier     string
 	region                 region_util.Region
@@ -82,7 +81,6 @@ func NewCustomEndpointMonitorImpl(
 ) *CustomEndpointMonitorImpl {
 	monitor := &CustomEndpointMonitorImpl{
 		servicesContainer:      servicesContainer,
-		pluginService:          servicesContainer.GetPluginService(),
 		customEndpointHostInfo: customEndpointHostInfo,
 		endpointIdentifier:     endpointIdentifier,
 		region:                 region,
@@ -204,7 +202,7 @@ func (monitor *CustomEndpointMonitorImpl) Monitor() {
 
 		customEndpointInfoCache.Put(monitor.getCustomEndpointInfoCacheKey(), endpointInfo, CUSTOM_ENDPOINT_INFO_EXPIRATION_NANO)
 		monitor.refreshRequired.Store(false)
-		monitor.infoChangedCounter.Inc(monitor.pluginService.GetTelemetryContext())
+		monitor.infoChangedCounter.Inc(monitor.servicesContainer.GetPluginService().GetTelemetryContext())
 
 		elapsedTime := time.Since(start)
 		sleepDuration := monitor.refreshRateMs - elapsedTime

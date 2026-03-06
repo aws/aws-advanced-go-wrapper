@@ -46,7 +46,6 @@ type LimitlessRouterMonitorImpl struct {
 	hostInfo                *host_info_util.HostInfo
 	limitlessRouterCacheKey string
 	intervalMs              int
-	pluginService           driver_infrastructure.PluginService
 	props                   *utils.RWMap[string, string]
 	queryHelper             LimitlessQueryHelper
 	monitoringConn          driver.Conn
@@ -76,16 +75,13 @@ func NewLimitlessRouterMonitorImpl(
 	}
 	property_util.LIMITLESS_WAIT_FOR_ROUTER_INFO.Set(monitoringProps, "false")
 
-	pluginService := servicesContainer.GetPluginService()
-
 	monitor := &LimitlessRouterMonitorImpl{
 		servicesContainer:       servicesContainer,
 		hostInfo:                hostInfo,
 		limitlessRouterCacheKey: limitlessRouterCacheKey,
 		intervalMs:              intervalMs,
-		pluginService:           pluginService,
 		props:                   monitoringProps,
-		queryHelper:             NewLimitlessQueryHelperImpl(pluginService),
+		queryHelper:             NewLimitlessQueryHelperImpl(servicesContainer.GetPluginService()),
 	}
 
 	return monitor
@@ -145,7 +141,7 @@ func (monitor *LimitlessRouterMonitorImpl) Monitor() {
 		LimitlessRoutersStorageType.Set(storageService, monitor.limitlessRouterCacheKey, NewLimitlessRouters(newLimitlessRouters))
 
 		// Update host selector weights
-		hostSelector, err := monitor.pluginService.GetHostSelectorStrategy(driver_infrastructure.SELECTOR_WEIGHTED_RANDOM)
+		hostSelector, err := monitor.servicesContainer.GetPluginService().GetHostSelectorStrategy(driver_infrastructure.SELECTOR_WEIGHTED_RANDOM)
 		if err != nil {
 			slog.Warn(err.Error())
 			slog.Warn(error_util.GetMessage("LimitlessRouterMonitorImpl.hostSelectorStrategyNotFound"))
@@ -201,7 +197,7 @@ func (monitor *LimitlessRouterMonitorImpl) openConnection() error {
 	if monitor.monitoringConn == nil {
 		// open a new connection
 		slog.Info(error_util.GetMessage("LimitlessRouterMonitorImpl.openingConnection", monitor.hostInfo.Host))
-		newConn, err := monitor.pluginService.ForceConnect(monitor.hostInfo, monitor.props)
+		newConn, err := monitor.servicesContainer.GetPluginService().ForceConnect(monitor.hostInfo, monitor.props)
 		if err != nil {
 			if newConn != nil {
 				_ = newConn.Close()

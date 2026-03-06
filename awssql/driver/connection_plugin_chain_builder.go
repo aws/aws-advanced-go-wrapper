@@ -111,10 +111,8 @@ func (builder *ConnectionPluginChainBuilder) GetPlugins(
 		}
 	}
 
-	pluginManager := servicesContainer.GetPluginManager()
 	defaultPlugin := &plugins.DefaultPlugin{
-		ServicesContainer:   servicesContainer,
-		ConnProviderManager: pluginManager.GetConnectionProviderManager(),
+		ServicesContainer: servicesContainer,
 	}
 	resultPlugins = append(resultPlugins, defaultPlugin)
 	if pluginsSorted {

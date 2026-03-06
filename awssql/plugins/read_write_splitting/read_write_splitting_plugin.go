@@ -34,7 +34,7 @@ type ReadWriteSplittingPluginFactory struct{}
 
 func (factory ReadWriteSplittingPluginFactory) GetInstance(servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewReadWriteSplittingPlugin(servicesContainer.GetPluginService(), props), nil
+	return NewReadWriteSplittingPlugin(servicesContainer, props), nil
 }
 
 func (factory ReadWriteSplittingPluginFactory) ClearCaches() {
@@ -46,7 +46,7 @@ func NewReadWriteSplittingPluginFactory() driver_infrastructure.ConnectionPlugin
 
 type ReadWriteSplittingPlugin struct {
 	plugins.BaseConnectionPlugin
-	pluginService           driver_infrastructure.PluginService
+	servicesContainer       driver_infrastructure.ServicesContainer
 	props                   *utils.RWMap[string, string]
 	readerSelectorStrategy  string
 	hostListProviderService driver_infrastructure.HostListProviderService
@@ -57,11 +57,11 @@ type ReadWriteSplittingPlugin struct {
 	readerHostInfo          *host_info_util.HostInfo
 }
 
-func NewReadWriteSplittingPlugin(pluginService driver_infrastructure.PluginService,
+func NewReadWriteSplittingPlugin(servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string]) *ReadWriteSplittingPlugin {
 	return &ReadWriteSplittingPlugin{
-		pluginService: pluginService,
-		props:         props,
+		servicesContainer: servicesContainer,
+		props:             props,
 		readerSelectorStrategy: property_util.GetVerifiedWrapperPropertyValue[string](props,
 			property_util.READER_HOST_SELECTOR_STRATEGY),
 	}
@@ -85,7 +85,7 @@ func (r *ReadWriteSplittingPlugin) Connect(
 	props *utils.RWMap[string, string],
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-	if !r.pluginService.AcceptsStrategy(r.readerSelectorStrategy) {
+	if !r.servicesContainer.GetPluginService().AcceptsStrategy(r.readerSelectorStrategy) {
 		msg := error_util.GetMessage("ReadWriteSplittingPlugin.unsupportedHostSelectorStrategy",
 			r.readerSelectorStrategy, property_util.READER_HOST_SELECTOR_STRATEGY.Name)
 		return nil, error_util.NewGenericAwsWrapperError(msg)
@@ -101,13 +101,13 @@ func (r *ReadWriteSplittingPlugin) Connect(
 		return result, err
 	}
 
-	currentRole := r.pluginService.GetHostRole(result)
+	currentRole := r.servicesContainer.GetPluginService().GetHostRole(result)
 	if currentRole == host_info_util.UNKNOWN {
 		return nil, error_util.NewGenericAwsWrapperError(
 			error_util.GetMessage("ReadWriteSplittingPlugin.errorVerifyingInitialHostRole"))
 	}
 
-	currentHost := r.pluginService.GetInitialConnectionHostInfo()
+	currentHost := r.servicesContainer.GetPluginService().GetInitialConnectionHostInfo()
 
 	if currentHost != nil {
 		if currentRole == currentHost.Role {
@@ -143,8 +143,8 @@ func (r *ReadWriteSplittingPlugin) NotifyConnectionChanged(
 }
 
 func (r *ReadWriteSplittingPlugin) updateInternalConnectionInfo() error {
-	currentConn := r.pluginService.GetCurrentConnection()
-	currentHost, err := r.pluginService.GetCurrentHostInfo()
+	currentConn := r.servicesContainer.GetPluginService().GetCurrentConnection()
+	currentHost, err := r.servicesContainer.GetPluginService().GetCurrentHostInfo()
 
 	if err != nil {
 		return err
@@ -170,7 +170,7 @@ func (r *ReadWriteSplittingPlugin) Execute(
 	methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
 	query := utils.GetQueryFromSqlOrMethodArgs("", methodArgs)
 	readOnly, found := utils.DoesSetReadOnly(query,
-		r.pluginService.GetDialect().DoesStatementSetReadOnly)
+		r.servicesContainer.GetPluginService().GetDialect().DoesStatementSetReadOnly)
 
 	if found {
 		err := r.switchConnectionIfRequired(readOnly)
@@ -201,34 +201,34 @@ func (r *ReadWriteSplittingPlugin) ReleaseResources() {
 }
 
 func (r *ReadWriteSplittingPlugin) switchConnectionIfRequired(readOnly bool) error {
-	currentConn := r.pluginService.GetCurrentConnection()
-	if currentConn != nil && r.pluginService.GetTargetDriverDialect().IsClosed(currentConn) {
+	currentConn := r.servicesContainer.GetPluginService().GetCurrentConnection()
+	if currentConn != nil && r.servicesContainer.GetPluginService().GetTargetDriverDialect().IsClosed(currentConn) {
 		return error_util.NewGenericAwsWrapperError(
 			error_util.GetMessage("ReadWriteSplittingPlugin.setReadOnlyOnClosedConnection"))
 	}
 
 	if r.isConnectionUsable(currentConn) {
-		err := r.pluginService.RefreshHostList(currentConn)
+		err := r.servicesContainer.GetPluginService().RefreshHostList(currentConn)
 		if err != nil {
 			// ignore
 			slog.Debug(error_util.GetMessage("ReadWriteSplittingPlugin.couldNotRefreshHostlist"))
 		}
 	}
 
-	hosts := r.pluginService.GetHosts()
+	hosts := r.servicesContainer.GetPluginService().GetHosts()
 
 	if len(hosts) == 0 {
 		return error_util.NewGenericAwsWrapperError(
 			error_util.GetMessage("ReadWriteSplittingPlugin.emptyHostList"))
 	}
 
-	currentHost, err := r.pluginService.GetCurrentHostInfo()
+	currentHost, err := r.servicesContainer.GetPluginService().GetCurrentHostInfo()
 	if err != nil {
 		return err
 	}
 
 	if readOnly {
-		if !r.pluginService.IsInTransaction() && !r.isReader(currentHost) {
+		if !r.servicesContainer.GetPluginService().IsInTransaction() && !r.isReader(currentHost) {
 			err := r.switchToReaderConnection(hosts)
 			if err != nil {
 				if !r.isConnectionUsable(currentConn) {
@@ -244,7 +244,7 @@ func (r *ReadWriteSplittingPlugin) switchConnectionIfRequired(readOnly bool) err
 	}
 
 	// Not readOnly
-	if !r.isWriter(currentHost) && r.pluginService.IsInTransaction() {
+	if !r.isWriter(currentHost) && r.servicesContainer.GetPluginService().IsInTransaction() {
 		return error_util.NewGenericAwsWrapperError(
 			error_util.GetMessage("ReadWriteSplittingPlugin.setReadOnlyFalseInTransaction"))
 	}
@@ -260,8 +260,8 @@ func (r *ReadWriteSplittingPlugin) switchConnectionIfRequired(readOnly bool) err
 }
 
 func (r *ReadWriteSplittingPlugin) switchToReaderConnection(hosts []*host_info_util.HostInfo) error {
-	currentConn := r.pluginService.GetCurrentConnection()
-	currentHost, err := r.pluginService.GetCurrentHostInfo()
+	currentConn := r.servicesContainer.GetPluginService().GetCurrentConnection()
+	currentHost, err := r.servicesContainer.GetPluginService().GetCurrentHostInfo()
 	if err != nil {
 		return err
 	}
@@ -293,8 +293,8 @@ func (r *ReadWriteSplittingPlugin) switchToReaderConnection(hosts []*host_info_u
 }
 
 func (r *ReadWriteSplittingPlugin) switchToWriterConnection(hosts []*host_info_util.HostInfo) error {
-	currentConn := r.pluginService.GetCurrentConnection()
-	currentHost, err := r.pluginService.GetCurrentHostInfo()
+	currentConn := r.servicesContainer.GetPluginService().GetCurrentConnection()
+	currentHost, err := r.servicesContainer.GetPluginService().GetCurrentHostInfo()
 	if err != nil {
 		return err
 	}
@@ -325,13 +325,13 @@ func (r *ReadWriteSplittingPlugin) switchToWriterConnection(hosts []*host_info_u
 }
 
 func (r *ReadWriteSplittingPlugin) switchCurrentConnectionTo(newConn driver.Conn, newConnHost *host_info_util.HostInfo) error {
-	currentConn := r.pluginService.GetCurrentConnection()
+	currentConn := r.servicesContainer.GetPluginService().GetCurrentConnection()
 	if currentConn == newConn {
 		return nil
 	}
 
 	slog.Debug(error_util.GetMessage("ReadWriteSplittingPlugin.settingCurrentConnection", newConnHost.GetUrl()))
-	return r.pluginService.SetCurrentConnection(newConn, newConnHost, nil)
+	return r.servicesContainer.GetPluginService().SetCurrentConnection(newConn, newConnHost, nil)
 }
 
 func (r *ReadWriteSplittingPlugin) initializeReaderConnection(hosts []*host_info_util.HostInfo) error {
@@ -355,7 +355,7 @@ func (r *ReadWriteSplittingPlugin) initializeReaderConnection(hosts []*host_info
 }
 
 func (r *ReadWriteSplittingPlugin) getNewWriterConnection(writerHost *host_info_util.HostInfo) error {
-	conn, err := r.pluginService.Connect(writerHost, r.props, r)
+	conn, err := r.servicesContainer.GetPluginService().Connect(writerHost, r.props, r)
 	if err != nil {
 		return err
 	}
@@ -364,12 +364,12 @@ func (r *ReadWriteSplittingPlugin) getNewWriterConnection(writerHost *host_info_
 }
 
 func (r *ReadWriteSplittingPlugin) getNewReaderConnection() error {
-	hosts := r.pluginService.GetHosts()
+	hosts := r.servicesContainer.GetPluginService().GetHosts()
 	connAttempts := len(hosts) * 2
 	var readerHost *host_info_util.HostInfo = nil
 	var conn driver.Conn = nil
 	for range connAttempts {
-		hostInfo, err := r.pluginService.GetHostInfoByStrategy(host_info_util.READER, r.readerSelectorStrategy, hosts)
+		hostInfo, err := r.servicesContainer.GetPluginService().GetHostInfoByStrategy(host_info_util.READER, r.readerSelectorStrategy, hosts)
 		if err != nil {
 			if hostInfo != nil {
 				slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.failedToConnectToReader", hostInfo.GetUrl()))
@@ -379,7 +379,7 @@ func (r *ReadWriteSplittingPlugin) getNewReaderConnection() error {
 			continue
 		}
 
-		conn, err = r.pluginService.Connect(hostInfo, r.props, r)
+		conn, err = r.servicesContainer.GetPluginService().Connect(hostInfo, r.props, r)
 
 		if err == nil {
 			readerHost = hostInfo
@@ -401,11 +401,11 @@ func (r *ReadWriteSplittingPlugin) closeIdleConnections() {
 }
 
 func (r *ReadWriteSplittingPlugin) closeConnectionIfIdle(conn driver.Conn) {
-	currentConn := r.pluginService.GetCurrentConnection()
+	currentConn := r.servicesContainer.GetPluginService().GetCurrentConnection()
 
 	if conn != nil &&
 		currentConn != conn {
-		if !r.pluginService.GetTargetDriverDialect().IsClosed(conn) {
+		if !r.servicesContainer.GetPluginService().GetTargetDriverDialect().IsClosed(conn) {
 			_ = conn.Close()
 		}
 		switch conn {
@@ -420,7 +420,7 @@ func (r *ReadWriteSplittingPlugin) closeConnectionIfIdle(conn driver.Conn) {
 }
 
 func (r *ReadWriteSplittingPlugin) isConnectionUsable(conn driver.Conn) bool {
-	return conn != nil && !r.pluginService.GetTargetDriverDialect().IsClosed(conn)
+	return conn != nil && !r.servicesContainer.GetPluginService().GetTargetDriverDialect().IsClosed(conn)
 }
 
 func (r *ReadWriteSplittingPlugin) isWriter(hostInfo *host_info_util.HostInfo) bool {

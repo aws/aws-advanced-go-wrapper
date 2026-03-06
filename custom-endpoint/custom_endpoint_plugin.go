@@ -87,8 +87,6 @@ func NewCustomEndpointPluginFactory() driver_infrastructure.ConnectionPluginFact
 type CustomEndpointPlugin struct {
 	plugins.BaseConnectionPlugin
 	servicesContainer          driver_infrastructure.ServicesContainer
-	pluginService              driver_infrastructure.PluginService
-	monitorService             driver_infrastructure.MonitorService
 	props                      *utils.RWMap[string, string]
 	shouldWaitForInfo          bool
 	waitOnCachedInfoDurationMs int
@@ -127,8 +125,6 @@ func NewCustomEndpointPlugin(
 
 	return &CustomEndpointPlugin{
 		servicesContainer:          servicesContainer,
-		pluginService:              pluginService,
-		monitorService:             monitorService,
 		props:                      props,
 		shouldWaitForInfo:          property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.WAIT_FOR_CUSTOM_ENDPOINT_INFO),
 		waitOnCachedInfoDurationMs: property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.WAIT_FOR_CUSTOM_ENDPOINT_INFO_TIMEOUT_MS),
@@ -231,7 +227,7 @@ func (plugin *CustomEndpointPlugin) createMonitorIfAbsent(
 	rdsClientFunc := plugin.rdsClientFunc
 	propsCopy := plugin.props
 
-	monitor, err := plugin.monitorService.RunIfAbsent(
+	monitor, err := plugin.servicesContainer.GetMonitorService().RunIfAbsent(
 		CustomEndpointMonitorType,
 		customEndpointHostInfo.Host,
 		plugin.servicesContainer,
@@ -275,7 +271,7 @@ func (plugin *CustomEndpointPlugin) waitForCustomEndpointInfo(monitor CustomEndp
 		monitor.RequestCustomEndpointInfoUpdate()
 
 		if plugin.waitForInfoCounter != nil {
-			plugin.waitForInfoCounter.Inc(plugin.pluginService.GetTelemetryContext())
+			plugin.waitForInfoCounter.Inc(plugin.servicesContainer.GetPluginService().GetTelemetryContext())
 		}
 
 		waitForEndpointInfoTimeout := time.Now().Add(time.Millisecond * time.Duration(plugin.waitOnCachedInfoDurationMs))

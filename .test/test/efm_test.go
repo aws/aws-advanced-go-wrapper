@@ -49,9 +49,9 @@ func efmTestContainer(props *utils.RWMap[string, string]) (*services.FullService
 	}
 	mockTargetDriver := &MockTargetDriver{}
 	pluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, container, props)
-	container.SetPluginManager(pluginManager)
+	container.PluginManager = pluginManager
 	pluginService, _ := plugin_helpers.NewPluginServiceImpl(container, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
-	container.SetPluginService(pluginService)
+	container.PluginService = pluginService
 	return container, pluginService
 }
 
@@ -67,9 +67,9 @@ func efmTestContainerWithMockMonitor(ctrl *gomock.Controller, props *utils.RWMap
 	}
 	mockTargetDriver := &MockTargetDriver{}
 	pluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, container, props)
-	container.SetPluginManager(pluginManager)
+	container.PluginManager = pluginManager
 	pluginService, _ := plugin_helpers.NewPluginServiceImpl(container, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
-	container.SetPluginService(pluginService)
+	container.PluginService = pluginService
 	return container, pluginService, mockMonitorService
 }
 
@@ -328,7 +328,7 @@ func TestMonitorClose(t *testing.T) {
 
 func TestMonitorCheckConnectionStatusOpenConnection(t *testing.T) {
 	pluginService, _, _, container, _ := beforePluginServiceTests()
-	container.SetPluginService(pluginService)
+	container.PluginService = pluginService
 	container.Monitor = services.NewMonitorManager(5*time.Minute, nil)
 	monitor := efm.NewHostMonitorImpl(container, mockHostInfo, emptyProps, 0, 10, 0, telemetry.NilTelemetryCounter{})
 	monitor.MonitoringConn = &MockConn{isInvalid: true}
@@ -373,7 +373,7 @@ func TestMonitorCheckConnectionStatusIsReachable(t *testing.T) {
 
 func TestMonitorCheckConnectionStatusNewConn(t *testing.T) {
 	pluginService, _, _, container, _ := beforePluginServiceTests()
-	container.SetPluginService(pluginService)
+	container.PluginService = pluginService
 	container.Monitor = services.NewMonitorManager(5*time.Minute, nil)
 	monitor := efm.NewHostMonitorImpl(container, mockHostInfo, emptyProps, 0, 10, 0, telemetry.NilTelemetryCounter{})
 
@@ -400,9 +400,9 @@ func TestMonitorNewConnWithMonitoringProperties(t *testing.T) {
 	mockTargetDriver := &MockTargetDriver{}
 	realPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, container, props)
 	mockPluginManager := &MockPluginManager{realPluginManager, nil, nil}
-	container.SetPluginManager(mockPluginManager)
+	container.PluginManager = mockPluginManager
 	pluginService, _ := plugin_helpers.NewPluginServiceImpl(container, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
-	container.SetPluginService(pluginService)
+	container.PluginService = pluginService
 
 	monitor := efm.NewHostMonitorImpl(container, mockHostInfo, props, 0, 10, 0, telemetry.NilTelemetryCounter{})
 	monitor.Close() // Ensures none of the monitoring goroutines are running in the background.

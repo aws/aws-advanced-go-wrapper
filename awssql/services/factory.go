@@ -128,14 +128,14 @@ func (f *ServiceFactory) CreateStandardContainer(
 
 	// Create plugin manager and set it on the container
 	pluginManager := f.pluginManagerFactory(underlyingDriver, container, cfg.Props)
-	container.SetPluginManager(pluginManager)
+	container.PluginManager = pluginManager
 
 	// Create plugin service and set it on the container
 	pluginService, err := f.pluginServiceFactory(container, cfg.DriverDialect, cfg.Props, cfg.OriginalURL)
 	if err != nil {
 		return nil, err
 	}
-	container.SetPluginService(pluginService)
+	container.PluginService = pluginService
 
 	// Build plugin chain
 	plugins, err := f.pluginChainBuilder.GetPlugins(
@@ -158,7 +158,7 @@ func (f *ServiceFactory) CreateStandardContainer(
 
 	// Set up host list provider service
 	if hlpService, ok := pluginService.(driver_infrastructure.HostListProviderService); ok {
-		container.SetHostListProviderService(hlpService)
+		container.HostListProviderService = hlpService
 
 		// Initialize host provider through the plugin chain
 		if err := pluginManager.InitHostProvider(cfg.Props, hlpService); err != nil {
@@ -195,7 +195,7 @@ func (f *ServiceFactory) CreateMinimalContainer(
 
 	// Create plugin manager and set it on the container
 	pluginManager := f.pluginManagerFactory(underlyingDriver, container, cfg.Props)
-	container.SetPluginManager(pluginManager)
+	container.PluginManager = pluginManager
 
 	// For minimal containers, we create a partial plugin service
 	// The caller is responsible for setting up the plugin service if needed

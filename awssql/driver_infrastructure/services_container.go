@@ -33,11 +33,6 @@ type ServicesContainer interface {
 	GetHostListProviderService() HostListProviderService
 	GetConnectionProvider() ConnectionProvider
 
-	// Setters for mutable fields
-	SetPluginManager(PluginManager)
-	SetPluginService(PluginService)
-	SetHostListProviderService(HostListProviderService)
-
 	// Factory method
 	CreateMinimal() ServicesContainer
 }

@@ -47,7 +47,7 @@ func preparePartialPluginService(t *testing.T) (*plugin_helpers.PartialPluginSer
 	}
 	realPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, container, someProps)
 	mockPluginManager := &MockPluginManager{realPluginManager, nil, nil}
-	container.SetPluginManager(mockPluginManager)
+	container.PluginManager = mockPluginManager
 	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
 	someAllHosts := []*host_info_util.HostInfo{}

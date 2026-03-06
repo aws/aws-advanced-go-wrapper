@@ -32,7 +32,6 @@ func TestFactoryReturnsExecutionTimePlugin(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
-	mockContainer.EXPECT().GetPluginService().Return(nil)
 
 	factory := plugins.NewExecutionTimePluginFactory()
 	plugin, err := factory.GetInstance(mockContainer, emptyProps)

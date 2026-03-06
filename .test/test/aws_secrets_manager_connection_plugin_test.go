@@ -38,16 +38,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func beforeAwsSecretsManagerConnectionPluginTests(t *testing.T) driver_infrastructure.PluginService {
+func beforeAwsSecretsManagerConnectionPluginTests(t *testing.T) driver_infrastructure.ServicesContainer {
 	aws_secrets_manager.SecretsCache.Clear()
 
 	ctrl := gomock.NewController(t)
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockServicesContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
 	mockTelemetryFactory := mock_telemetry.NewMockTelemetryFactory(ctrl)
 	mockTelemetryCounter := mock_telemetry.NewMockTelemetryCounter(ctrl)
 	mockTelemetryCtx := mock_telemetry.NewMockTelemetryContext(ctrl)
 	ctxBefore := context.Background()
 
+	mockServicesContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory).AnyTimes()
 	mockPluginService.EXPECT().GetTelemetryContext().Return(ctxBefore).AnyTimes()
 	mockPluginService.EXPECT().SetTelemetryContext(gomock.Any()).AnyTimes()
@@ -65,7 +67,7 @@ func beforeAwsSecretsManagerConnectionPluginTests(t *testing.T) driver_infrastru
 	mockTelemetryCtx.EXPECT().SetSuccess(gomock.Any()).AnyTimes()
 	mockTelemetryCtx.EXPECT().SetError(gomock.Any()).AnyTimes()
 
-	return mockPluginService
+	return mockServicesContainer
 }
 
 func TestAwsSecretsManagerConnectionPluginConnect(t *testing.T) {
@@ -350,7 +352,7 @@ func TestAwsSecretsManagerConnectionPluginMultipleConnectionsCache(t *testing.T)
 	region := [4]string{"us-west-2", "us-west-1", "us-west-2", "us-west-2"}
 
 	var props [4]*utils.RWMap[string, string]
-	var mockPluginServices [4]driver_infrastructure.PluginService
+	var mockPluginServices [4]driver_infrastructure.ServicesContainer
 
 	// setup props map and mock plugin services
 	for i := 0; i < 4; i++ {
