@@ -92,7 +92,6 @@ type FailoverPlugin struct {
 	failoverReaderSuccessCounter               telemetry.TelemetryCounter
 	failoverReaderFailedCounter                telemetry.TelemetryCounter
 	telemetryFailoverAdditionalTopTraceSetting bool
-	closedExplicitly                           bool
 	BaseConnectionPlugin
 }
 
@@ -146,7 +145,6 @@ func NewFailoverPlugin(pluginService driver_infrastructure.PluginService, props 
 		failoverReaderSuccessCounter:               failoverReaderSuccessCounter,
 		failoverReaderFailedCounter:                failoverReaderFailedCounter,
 		telemetryFailoverAdditionalTopTraceSetting: property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.TELEMETRY_FAILOVER_ADDITIONAL_TOP_TRACE),
-		closedExplicitly:         false,
 	}, nil
 }
 
@@ -157,7 +155,6 @@ func (p *FailoverPlugin) GetPluginCode() string {
 func (p *FailoverPlugin) GetSubscribedMethods() []string {
 	return append([]string{
 		plugin_helpers.CONNECT_METHOD,
-		plugin_helpers.CLEAR_WARNINGS_METHOD,
 		plugin_helpers.INIT_HOST_PROVIDER_METHOD,
 	}, utils.NETWORK_BOUND_METHODS...)
 }
@@ -260,21 +257,7 @@ func (p *FailoverPlugin) Execute(
 	methodName string,
 	executeFunc driver_infrastructure.ExecuteFunc,
 	_ ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
-	conn := p.pluginService.GetCurrentConnection()
-	if conn != nil &&
-		!p.canDirectExecute(methodName) &&
-		!p.closedExplicitly &&
-		p.pluginService.GetTargetDriverDialect().IsClosed(conn) {
-		err := p.pickNewConnection()
-		if err != nil {
-			return nil, nil, false, err
-		}
-	}
-
 	if p.canDirectExecute(methodName) {
-		if methodName == utils.CONN_CLOSE {
-			p.closedExplicitly = true
-		}
 		return executeFunc()
 	}
 
@@ -289,16 +272,6 @@ func (p *FailoverPlugin) Execute(
 	}
 
 	return wrappedReturnValue, wrappedReturnValue2, wrappedOk, wrappedErr
-}
-
-func (p *FailoverPlugin) pickNewConnection() error {
-	conn := p.pluginService.GetCurrentConnection()
-	if (p.pluginService.GetTargetDriverDialect().IsClosed(conn) && p.closedExplicitly) {
-		slog.Info(error_util.GetMessage("Failover.detectedError"))
-		return nil
-	}
-
-	return p.Failover()
 }
 
 func (p *FailoverPlugin) DealWithError(err error) error {
