@@ -21,12 +21,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMySQLRowParser_ParseString(t *testing.T) {
-	parser := driver_infrastructure.MySQLRowParser
+	parser := mysql_driver.MySQLDriverDialect{}.GetRowParser()
 
 	// Native string
 	val, ok := parser.ParseString("hello")
@@ -55,12 +55,12 @@ func TestMySQLRowParser_ParseString(t *testing.T) {
 
 	// Nil
 	val, ok = parser.ParseString(nil)
-	assert.False(t, ok)
+	assert.True(t, ok)
 	assert.Equal(t, "", val)
 }
 
 func TestMySQLRowParser_ParseBool(t *testing.T) {
-	parser := driver_infrastructure.MySQLRowParser
+	parser := mysql_driver.MySQLDriverDialect{}.GetRowParser()
 
 	// Native bool true
 	val, ok := parser.ParseBool(true)
@@ -94,7 +94,7 @@ func TestMySQLRowParser_ParseBool(t *testing.T) {
 }
 
 func TestMySQLRowParser_ParseFloat64(t *testing.T) {
-	parser := driver_infrastructure.MySQLRowParser
+	parser := mysql_driver.MySQLDriverDialect{}.GetRowParser()
 
 	// Valid float
 	val, ok := parser.ParseFloat64(3.14)
@@ -113,7 +113,7 @@ func TestMySQLRowParser_ParseFloat64(t *testing.T) {
 }
 
 func TestMySQLRowParser_ParseTime(t *testing.T) {
-	parser := driver_infrastructure.MySQLRowParser
+	parser := mysql_driver.MySQLDriverDialect{}.GetRowParser()
 
 	// Native time.Time
 	now := time.Now()
@@ -144,12 +144,12 @@ func TestMySQLRowParser_ParseTime(t *testing.T) {
 
 	// Nil
 	val, ok = parser.ParseTime(nil)
-	assert.False(t, ok)
+	assert.True(t, ok)
 	assert.True(t, val.IsZero())
 }
 
 func TestMySQLRowParser_ParseInt64(t *testing.T) {
-	parser := driver_infrastructure.MySQLRowParser
+	parser := mysql_driver.MySQLDriverDialect{}.GetRowParser()
 
 	// Valid int64
 	val, ok := parser.ParseInt64(int64(42))
@@ -167,16 +167,16 @@ func TestMySQLRowParser_ParseInt64(t *testing.T) {
 	assert.Equal(t, int64(0), val)
 }
 
-func TestMySQLDatabaseDialect_GetRowParser(t *testing.T) {
-	dialect := &driver_infrastructure.MySQLDatabaseDialect{}
+func TestMySQLDriverDialect_GetRowParser(t *testing.T) {
+	dialect := &mysql_driver.MySQLDriverDialect{}
 	parser := dialect.GetRowParser()
 	assert.NotNil(t, parser)
-	assert.Equal(t, driver_infrastructure.MySQLRowParser, parser)
+	assert.Equal(t, mysql_driver.MySQLDriverDialect{}.GetRowParser(), parser)
 }
 
 // Test MySQL row parser with mock rows to simulate Aurora MySQL topology query parsing.
 func TestMySQLRowParser_AuroraTopologyRowParsing(t *testing.T) {
-	parser := driver_infrastructure.MySQLRowParser
+	parser := mysql_driver.MySQLDriverDialect{}.GetRowParser()
 
 	// Aurora MySQL topology row: server_id ([]uint8), is_writer (int64), cpu (float64), lag (float64), last_update_timestamp ([]uint8)
 	row := []driver.Value{
@@ -210,7 +210,7 @@ func TestMySQLRowParser_AuroraTopologyRowParsing(t *testing.T) {
 
 // Test MySQL row parser with reader row.
 func TestMySQLRowParser_ReaderRowParsing(t *testing.T) {
-	parser := driver_infrastructure.MySQLRowParser
+	parser := mysql_driver.MySQLDriverDialect{}.GetRowParser()
 
 	row := []driver.Value{
 		[]uint8("reader-instance"),
@@ -243,7 +243,7 @@ func TestMySQLRowParser_ReaderRowParsing(t *testing.T) {
 
 // Test MySQL row parser with Multi-AZ topology row (id, endpoint).
 func TestMySQLRowParser_MultiAzTopologyRowParsing(t *testing.T) {
-	parser := driver_infrastructure.MySQLRowParser
+	parser := mysql_driver.MySQLDriverDialect{}.GetRowParser()
 
 	row := []driver.Value{
 		[]uint8("db-ABCDEFGHIJKLMN"),
@@ -261,7 +261,7 @@ func TestMySQLRowParser_MultiAzTopologyRowParsing(t *testing.T) {
 
 // Test MySQL ParseTime with various timestamp formats.
 func TestMySQLRowParser_ParseTime_Formats(t *testing.T) {
-	parser := driver_infrastructure.MySQLRowParser
+	parser := mysql_driver.MySQLDriverDialect{}.GetRowParser()
 
 	// Full precision
 	val, ok := parser.ParseTime([]uint8("2024-12-25 23:59:59.999999"))

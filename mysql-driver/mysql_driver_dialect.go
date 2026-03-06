@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
@@ -139,4 +140,8 @@ func (m MySQLDriverDialect) PrepareDsn(properties map[string]string, hostInfo *h
 
 func (m MySQLDriverDialect) GetDriverRegistrationName() string {
 	return MYSQL_DRIVER_REGISTRATION_NAME
+}
+
+func (m MySQLDriverDialect) GetRowParser() driver_infrastructure.RowParser {
+	return defaultRowParser
 }

@@ -24,6 +24,7 @@ import (
 	driver "database/sql/driver"
 	reflect "reflect"
 
+	driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	host_info_util "github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -77,6 +78,20 @@ func (m *MockDriverDialect) GetDriverRegistrationName() string {
 func (mr *MockDriverDialectMockRecorder) GetDriverRegistrationName() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDriverRegistrationName", reflect.TypeOf((*MockDriverDialect)(nil).GetDriverRegistrationName))
+}
+
+// GetRowParser mocks base method.
+func (m *MockDriverDialect) GetRowParser() driver_infrastructure.RowParser {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRowParser")
+	ret0, _ := ret[0].(driver_infrastructure.RowParser)
+	return ret0
+}
+
+// GetRowParser indicates an expected call of GetRowParser.
+func (mr *MockDriverDialectMockRecorder) GetRowParser() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRowParser", reflect.TypeOf((*MockDriverDialect)(nil).GetRowParser))
 }
 
 // IsClosed mocks base method.

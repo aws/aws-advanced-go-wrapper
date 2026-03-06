@@ -269,7 +269,7 @@ func initializeFailoverTest(
 	hostListProviderService := driver_infrastructure.HostListProviderService(pluginServiceImpl)
 	container.HostListProviderService = hostListProviderService
 
-	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(dialect)
+	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(dialect, mysql_driver.MySQLDriverDialect{}.GetRowParser())
 	failoverRdsHostListProvider = driver_infrastructure.NewRdsHostListProvider(
 		hostListProviderService,
 		topologyUtils,

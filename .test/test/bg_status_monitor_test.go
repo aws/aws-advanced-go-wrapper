@@ -27,6 +27,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/bg"
+	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
@@ -670,11 +671,11 @@ func TestBlueGreenStatusMonitorCollectStatus(t *testing.T) {
 	t.Run("StatusAvailableNilStatusInfo", func(t *testing.T) {
 		monitor.SetCollectedTopology(true)
 		mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
-		mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).Times(1)
+		mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).Times(2)
 		mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).Times(1)
 		mockDialect.EXPECT().IsBlueGreenStatusAvailable(gomock.Any()).Return(true)
 		mockDialect.EXPECT().GetBlueGreenStatusQuery().Return("SELECT version, endpoint, port, role, status FROM bg_status").AnyTimes()
-		mockDialect.EXPECT().GetRowParser().Return(driver_infrastructure.PgRowParser).AnyTimes()
+		mockDriverDialect.EXPECT().GetRowParser().Return(pgx_driver.PgxDriverDialect{}.GetRowParser()).AnyTimes()
 
 		conn := &MockConn{}
 		conn.queryResult = newMultiRowMockRows(
@@ -696,12 +697,12 @@ func TestBlueGreenStatusMonitorCollectStatus(t *testing.T) {
 	t.Run("StatusAvailable", func(t *testing.T) {
 		monitor.SetCollectedTopology(true)
 		mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
-		mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).Times(1)
+		mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).Times(2)
 		mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).Times(1)
 		mockDialect.EXPECT().IsBlueGreenStatusAvailable(gomock.Any()).Return(true)
 		mockPluginService.EXPECT().CreateHostListProvider(gomock.Any()).Return(&driver_infrastructure.RdsHostListProvider{})
 		mockDialect.EXPECT().GetBlueGreenStatusQuery().Return("SELECT version, endpoint, port, role, status FROM bg_status").AnyTimes()
-		mockDialect.EXPECT().GetRowParser().Return(driver_infrastructure.PgRowParser).AnyTimes()
+		mockDriverDialect.EXPECT().GetRowParser().Return(pgx_driver.PgxDriverDialect{}.GetRowParser()).AnyTimes()
 
 		conn := &MockConn{}
 		conn.queryResult = newMultiRowMockRows(

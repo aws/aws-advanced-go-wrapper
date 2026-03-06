@@ -217,10 +217,11 @@ func queryIsWriter(conn driver.Conn, query string, parser RowParser, writerWhenE
 
 type AuroraTopologyUtils struct {
 	dialect TopologyDialect
+	parser  RowParser
 }
 
-func NewAuroraTopologyUtils(dialect TopologyDialect) *AuroraTopologyUtils {
-	return &AuroraTopologyUtils{dialect: dialect}
+func NewAuroraTopologyUtils(dialect TopologyDialect, parser RowParser) *AuroraTopologyUtils {
+	return &AuroraTopologyUtils{dialect: dialect, parser: parser}
 }
 
 func (a *AuroraTopologyUtils) QueryForTopology(
@@ -274,7 +275,7 @@ func (a *AuroraTopologyUtils) createHostFromRow(
 		return nil, error_util.NewGenericAwsWrapperError("insufficient columns in topology row")
 	}
 
-	parser := a.dialect.GetRowParser()
+	parser := a.parser
 	hostName, ok := parser.ParseString(row[0])
 	if !ok {
 		return nil, error_util.NewGenericAwsWrapperError("failed to parse host name")
@@ -304,15 +305,15 @@ func (a *AuroraTopologyUtils) createHostFromRow(
 }
 
 func (a *AuroraTopologyUtils) GetHostRole(conn driver.Conn) host_info_util.HostRole {
-	return queryHostRole(conn, a.dialect.GetIsReaderQuery(), a.dialect.GetRowParser())
+	return queryHostRole(conn, a.dialect.GetIsReaderQuery(), a.parser)
 }
 
 func (a *AuroraTopologyUtils) GetInstanceId(conn driver.Conn) (string, string) {
-	return queryInstanceId(conn, a.dialect.GetInstanceIdQuery(), a.dialect.GetRowParser())
+	return queryInstanceId(conn, a.dialect.GetInstanceIdQuery(), a.parser)
 }
 
 func (a *AuroraTopologyUtils) IsWriterInstance(conn driver.Conn) (bool, error) {
-	return queryIsWriter(conn, a.dialect.GetWriterIdQuery(), a.dialect.GetRowParser(), false)
+	return queryIsWriter(conn, a.dialect.GetWriterIdQuery(), a.parser, false)
 }
 
 func (a *AuroraTopologyUtils) CreateHost(
@@ -330,10 +331,11 @@ var _ TopologyUtils = (*AuroraTopologyUtils)(nil)
 
 type MultiAzTopologyUtils struct {
 	dialect MultiAzTopologyDialect
+	parser  RowParser
 }
 
-func NewMultiAzTopologyUtils(dialect MultiAzTopologyDialect) *MultiAzTopologyUtils {
-	return &MultiAzTopologyUtils{dialect: dialect}
+func NewMultiAzTopologyUtils(dialect MultiAzTopologyDialect, parser RowParser) *MultiAzTopologyUtils {
+	return &MultiAzTopologyUtils{dialect: dialect, parser: parser}
 }
 
 func (m *MultiAzTopologyUtils) QueryForTopology(
@@ -396,7 +398,7 @@ func (m *MultiAzTopologyUtils) getWriterId(conn driver.Conn) (string, error) {
 			columnName := m.dialect.GetWriterIdColumnName()
 			for i, col := range rows.Columns() {
 				if col == columnName {
-					if id, ok := m.dialect.GetRowParser().ParseString(row[i]); ok && id != "" {
+					if id, ok := m.parser.ParseString(row[i]); ok && id != "" {
 						return id, nil
 					}
 				}
@@ -425,7 +427,7 @@ func (m *MultiAzTopologyUtils) createHostFromRow(
 		return nil, error_util.NewGenericAwsWrapperError("insufficient columns in topology row")
 	}
 
-	parser := m.dialect.GetRowParser()
+	parser := m.parser
 	hostId, ok := parser.ParseString(row[0])
 	if !ok {
 		return nil, error_util.NewGenericAwsWrapperError("failed to parse host id")
@@ -450,15 +452,15 @@ func (m *MultiAzTopologyUtils) createHostFromRow(
 }
 
 func (m *MultiAzTopologyUtils) GetHostRole(conn driver.Conn) host_info_util.HostRole {
-	return queryHostRole(conn, m.dialect.GetIsReaderQuery(), m.dialect.GetRowParser())
+	return queryHostRole(conn, m.dialect.GetIsReaderQuery(), m.parser)
 }
 
 func (m *MultiAzTopologyUtils) GetInstanceId(conn driver.Conn) (string, string) {
-	return queryInstanceId(conn, m.dialect.GetInstanceIdQuery(), m.dialect.GetRowParser())
+	return queryInstanceId(conn, m.dialect.GetInstanceIdQuery(), m.parser)
 }
 
 func (m *MultiAzTopologyUtils) IsWriterInstance(conn driver.Conn) (bool, error) {
-	return queryIsWriter(conn, m.dialect.GetWriterIdQuery(), m.dialect.GetRowParser(), true)
+	return queryIsWriter(conn, m.dialect.GetWriterIdQuery(), m.parser, true)
 }
 
 func (m *MultiAzTopologyUtils) CreateHost(

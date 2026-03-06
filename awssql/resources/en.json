@@ -263,6 +263,7 @@
   "RdsHostListProvider.unableToGatherTopology": "Unable to gather topology, no hosts identified from query, cache, or initial host list.",
   "RdsHostListProvider.unableToGetHostName": "Unable to retrieve host name from given connection.",
   "RdsHostListProvider.unknownHostRole": "Query to gather host role failed, unable to determine role of current host.",
+  "mySQLRowParser.unexpectedStringValue": "Unexpected value received when parsing string: '%v'.",
   "ReadWriteSplittingPlugin.couldNotRefreshHostlist": "Could not refresh host list",
   "ReadWriteSplittingPlugin.emptyHostList": "Host list is empty",
   "ReadWriteSplittingPlugin.errorSwitchingToCachedReader": "An error occurred while trying to switch to a cached reader connection: '%s'. The driver will attempt to establish a new reader connection.",

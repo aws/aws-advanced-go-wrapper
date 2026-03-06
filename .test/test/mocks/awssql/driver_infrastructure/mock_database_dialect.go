@@ -196,20 +196,6 @@ func (mr *MockDatabaseDialectMockRecorder) GetIsReaderQuery() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIsReaderQuery", reflect.TypeOf((*MockDatabaseDialect)(nil).GetIsReaderQuery))
 }
 
-// GetRowParser mocks base method.
-func (m *MockDatabaseDialect) GetRowParser() driver_infrastructure.RowParser {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRowParser")
-	ret0, _ := ret[0].(driver_infrastructure.RowParser)
-	return ret0
-}
-
-// GetRowParser indicates an expected call of GetRowParser.
-func (mr *MockDatabaseDialectMockRecorder) GetRowParser() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRowParser", reflect.TypeOf((*MockDatabaseDialect)(nil).GetRowParser))
-}
-
 // GetServerVersionQuery mocks base method.
 func (m *MockDatabaseDialect) GetServerVersionQuery() string {
 	m.ctrl.T.Helper()
@@ -493,20 +479,6 @@ func (m *MockTopologyDialect) GetIsReaderQuery() string {
 func (mr *MockTopologyDialectMockRecorder) GetIsReaderQuery() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIsReaderQuery", reflect.TypeOf((*MockTopologyDialect)(nil).GetIsReaderQuery))
-}
-
-// GetRowParser mocks base method.
-func (m *MockTopologyDialect) GetRowParser() driver_infrastructure.RowParser {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRowParser")
-	ret0, _ := ret[0].(driver_infrastructure.RowParser)
-	return ret0
-}
-
-// GetRowParser indicates an expected call of GetRowParser.
-func (mr *MockTopologyDialectMockRecorder) GetRowParser() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRowParser", reflect.TypeOf((*MockTopologyDialect)(nil).GetRowParser))
 }
 
 // GetServerVersionQuery mocks base method.
@@ -820,20 +792,6 @@ func (m *MockMultiAzTopologyDialect) GetIsReaderQuery() string {
 func (mr *MockMultiAzTopologyDialectMockRecorder) GetIsReaderQuery() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIsReaderQuery", reflect.TypeOf((*MockMultiAzTopologyDialect)(nil).GetIsReaderQuery))
-}
-
-// GetRowParser mocks base method.
-func (m *MockMultiAzTopologyDialect) GetRowParser() driver_infrastructure.RowParser {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRowParser")
-	ret0, _ := ret[0].(driver_infrastructure.RowParser)
-	return ret0
-}
-
-// GetRowParser indicates an expected call of GetRowParser.
-func (mr *MockMultiAzTopologyDialectMockRecorder) GetRowParser() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRowParser", reflect.TypeOf((*MockMultiAzTopologyDialect)(nil).GetRowParser))
 }
 
 // GetServerVersionQuery mocks base method.
@@ -1177,20 +1135,6 @@ func (mr *MockGlobalAuroraTopologyDialectMockRecorder) GetRegionByInstanceIdQuer
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRegionByInstanceIdQuery", reflect.TypeOf((*MockGlobalAuroraTopologyDialect)(nil).GetRegionByInstanceIdQuery))
 }
 
-// GetRowParser mocks base method.
-func (m *MockGlobalAuroraTopologyDialect) GetRowParser() driver_infrastructure.RowParser {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRowParser")
-	ret0, _ := ret[0].(driver_infrastructure.RowParser)
-	return ret0
-}
-
-// GetRowParser indicates an expected call of GetRowParser.
-func (mr *MockGlobalAuroraTopologyDialectMockRecorder) GetRowParser() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRowParser", reflect.TypeOf((*MockGlobalAuroraTopologyDialect)(nil).GetRowParser))
-}
-
 // GetServerVersionQuery mocks base method.
 func (m *MockGlobalAuroraTopologyDialect) GetServerVersionQuery() string {
 	m.ctrl.T.Helper()
@@ -1504,20 +1448,6 @@ func (mr *MockAuroraLimitlessDialectMockRecorder) GetLimitlessRouterEndpointQuer
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLimitlessRouterEndpointQuery", reflect.TypeOf((*MockAuroraLimitlessDialect)(nil).GetLimitlessRouterEndpointQuery))
 }
 
-// GetRowParser mocks base method.
-func (m *MockAuroraLimitlessDialect) GetRowParser() driver_infrastructure.RowParser {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRowParser")
-	ret0, _ := ret[0].(driver_infrastructure.RowParser)
-	return ret0
-}
-
-// GetRowParser indicates an expected call of GetRowParser.
-func (mr *MockAuroraLimitlessDialectMockRecorder) GetRowParser() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRowParser", reflect.TypeOf((*MockAuroraLimitlessDialect)(nil).GetRowParser))
-}
-
 // GetServerVersionQuery mocks base method.
 func (m *MockAuroraLimitlessDialect) GetServerVersionQuery() string {
 	m.ctrl.T.Helper()
@@ -1801,20 +1731,6 @@ func (m *MockBlueGreenDialect) GetIsReaderQuery() string {
 func (mr *MockBlueGreenDialectMockRecorder) GetIsReaderQuery() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIsReaderQuery", reflect.TypeOf((*MockBlueGreenDialect)(nil).GetIsReaderQuery))
-}
-
-// GetRowParser mocks base method.
-func (m *MockBlueGreenDialect) GetRowParser() driver_infrastructure.RowParser {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRowParser")
-	ret0, _ := ret[0].(driver_infrastructure.RowParser)
-	return ret0
-}
-
-// GetRowParser indicates an expected call of GetRowParser.
-func (mr *MockBlueGreenDialectMockRecorder) GetRowParser() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRowParser", reflect.TypeOf((*MockBlueGreenDialect)(nil).GetRowParser))
 }
 
 // GetServerVersionQuery mocks base method.

@@ -211,7 +211,9 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) updateSecrets(
 	props *utils.RWMap[string, string],
 	forceReFetch bool) (bool, error) {
 	parentCtx := awsSecretsManagerPlugin.servicesContainer.GetPluginService().GetTelemetryContext()
-	telemetryCtx, ctx := awsSecretsManagerPlugin.servicesContainer.GetPluginService().GetTelemetryFactory().OpenTelemetryContext(telemetry.TELEMETRY_UPDATE_SECRETS, telemetry.NESTED, parentCtx)
+	telemetryFactory := awsSecretsManagerPlugin.servicesContainer.GetPluginService().GetTelemetryFactory()
+	telemetryCtx, ctx := telemetryFactory.OpenTelemetryContext(
+		telemetry.TELEMETRY_UPDATE_SECRETS, telemetry.NESTED, parentCtx)
 	awsSecretsManagerPlugin.servicesContainer.GetPluginService().SetTelemetryContext(ctx)
 	defer func() {
 		telemetryCtx.CloseContext()

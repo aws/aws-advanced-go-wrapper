@@ -21,12 +21,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPgRowParser_ParseString(t *testing.T) {
-	parser := driver_infrastructure.PgRowParser
+	parser := pgx_driver.PgxDriverDialect{}.GetRowParser()
 
 	// Valid string
 	val, ok := parser.ParseString("hello")
@@ -50,7 +50,7 @@ func TestPgRowParser_ParseString(t *testing.T) {
 }
 
 func TestPgRowParser_ParseBool(t *testing.T) {
-	parser := driver_infrastructure.PgRowParser
+	parser := pgx_driver.PgxDriverDialect{}.GetRowParser()
 
 	// True
 	val, ok := parser.ParseBool(true)
@@ -74,7 +74,7 @@ func TestPgRowParser_ParseBool(t *testing.T) {
 }
 
 func TestPgRowParser_ParseFloat64(t *testing.T) {
-	parser := driver_infrastructure.PgRowParser
+	parser := pgx_driver.PgxDriverDialect{}.GetRowParser()
 
 	// Valid float
 	val, ok := parser.ParseFloat64(3.14)
@@ -93,7 +93,7 @@ func TestPgRowParser_ParseFloat64(t *testing.T) {
 }
 
 func TestPgRowParser_ParseTime(t *testing.T) {
-	parser := driver_infrastructure.PgRowParser
+	parser := pgx_driver.PgxDriverDialect{}.GetRowParser()
 
 	// Valid time
 	now := time.Now()
@@ -108,7 +108,7 @@ func TestPgRowParser_ParseTime(t *testing.T) {
 }
 
 func TestPgRowParser_ParseInt64(t *testing.T) {
-	parser := driver_infrastructure.PgRowParser
+	parser := pgx_driver.PgxDriverDialect{}.GetRowParser()
 
 	// Valid int64
 	val, ok := parser.ParseInt64(int64(42))
@@ -126,16 +126,16 @@ func TestPgRowParser_ParseInt64(t *testing.T) {
 	assert.Equal(t, int64(0), val)
 }
 
-func TestPgDatabaseDialect_GetRowParser(t *testing.T) {
-	dialect := &driver_infrastructure.PgDatabaseDialect{}
+func TestPgxDriverDialect_GetRowParser(t *testing.T) {
+	dialect := &pgx_driver.PgxDriverDialect{}
 	parser := dialect.GetRowParser()
 	assert.NotNil(t, parser)
-	assert.Equal(t, driver_infrastructure.PgRowParser, parser)
+	assert.Equal(t, pgx_driver.PgxDriverDialect{}.GetRowParser(), parser)
 }
 
 // Test PG row parser with mock rows to simulate topology query parsing.
 func TestPgRowParser_TopologyRowParsing(t *testing.T) {
-	parser := driver_infrastructure.PgRowParser
+	parser := pgx_driver.PgxDriverDialect{}.GetRowParser()
 
 	// Simulate a topology row: server_id (string), is_writer (bool), cpu (float64), lag (float64), last_update_timestamp (time.Time)
 	now := time.Now()
@@ -164,7 +164,7 @@ func TestPgRowParser_TopologyRowParsing(t *testing.T) {
 
 // Test PG row parser with reader row.
 func TestPgRowParser_ReaderRowParsing(t *testing.T) {
-	parser := driver_infrastructure.PgRowParser
+	parser := pgx_driver.PgxDriverDialect{}.GetRowParser()
 
 	now := time.Now()
 	row := []driver.Value{"reader-instance", false, 10.0, 2.5, now}

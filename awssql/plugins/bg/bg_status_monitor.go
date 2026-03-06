@@ -181,7 +181,7 @@ func (b *BlueGreenStatusMonitor) Delay() {
 
 func (b *BlueGreenStatusMonitor) getBlueGreenStatus(conn driver.Conn) ([]driver_infrastructure.BlueGreenResult, error) {
 	query := b.blueGreenDialect.GetBlueGreenStatusQuery()
-	parser := b.blueGreenDialect.GetRowParser()
+	parser := b.pluginService.GetTargetDriverDialect().GetRowParser()
 	queryerCtx, ok := conn.(driver.QueryerContext)
 	if !ok {
 		// Unable to query, conn does not implement QueryerContext.
