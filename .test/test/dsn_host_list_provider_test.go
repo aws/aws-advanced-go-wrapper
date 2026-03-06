@@ -26,7 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestConnectionStringHostListProvider_Refresh_Success(t *testing.T) {
+func TestDsnHostListProvider_Refresh_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -34,7 +34,7 @@ func TestConnectionStringHostListProvider_Refresh_Success(t *testing.T) {
 	dsn := "postgresql://127.0.0.1:5432/db"
 	props, _ := property_util.ParseDsn(dsn)
 
-	provider := driver_infrastructure.NewConnectionStringHostListProvider(props, mockHostListService)
+	provider := driver_infrastructure.NewDsnHostListProvider(props, mockHostListService)
 
 	mockHostListService.EXPECT().SetInitialConnectionHostInfo(gomock.Any()).Times(1)
 
@@ -45,7 +45,7 @@ func TestConnectionStringHostListProvider_Refresh_Success(t *testing.T) {
 	assert.Equal(t, 5432, hosts[0].Port)
 }
 
-func TestConnectionStringHostListProvider_ForceRefresh_UsesInit(t *testing.T) {
+func TestDsnHostListProvider_ForceRefresh_UsesInit(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -54,7 +54,7 @@ func TestConnectionStringHostListProvider_ForceRefresh_UsesInit(t *testing.T) {
 	dsn := "postgresql://127.0.0.1:5432/db"
 	props, _ := property_util.ParseDsn(dsn)
 
-	provider := driver_infrastructure.NewConnectionStringHostListProvider(props, mockHostListService)
+	provider := driver_infrastructure.NewDsnHostListProvider(props, mockHostListService)
 
 	mockHostListService.EXPECT().SetInitialConnectionHostInfo(gomock.Any()).Times(1)
 
@@ -64,28 +64,28 @@ func TestConnectionStringHostListProvider_ForceRefresh_UsesInit(t *testing.T) {
 	assert.Equal(t, "127.0.0.1", hosts[0].Host)
 }
 
-// CreateHost was removed from ConnectionStringHostListProvider as it was dead code.
+// CreateHost was removed from DsnHostListProvider as it was dead code.
 
-func TestConnectionStringHostListProvider_GetHostRole_Panics(t *testing.T) {
-	provider := driver_infrastructure.NewConnectionStringHostListProvider(nil, nil)
+func TestDsnHostListProvider_GetHostRole_Panics(t *testing.T) {
+	provider := driver_infrastructure.NewDsnHostListProvider(nil, nil)
 	assert.Panics(t, func() { provider.GetHostRole(nil) })
 }
 
-func TestConnectionStringHostListProvider_IdentifyConnection_ReturnsNil(t *testing.T) {
-	provider := driver_infrastructure.NewConnectionStringHostListProvider(nil, nil)
+func TestDsnHostListProvider_IdentifyConnection_ReturnsNil(t *testing.T) {
+	provider := driver_infrastructure.NewDsnHostListProvider(nil, nil)
 	host, err := provider.IdentifyConnection(nil)
 	assert.Nil(t, host)
 	assert.NoError(t, err)
 }
 
-func TestConnectionStringHostListProvider_GetClusterId_ReturnsNone(t *testing.T) {
-	provider := driver_infrastructure.NewConnectionStringHostListProvider(nil, nil)
+func TestDsnHostListProvider_GetClusterId_ReturnsNone(t *testing.T) {
+	provider := driver_infrastructure.NewDsnHostListProvider(nil, nil)
 	id, err := provider.GetClusterId()
 	assert.Equal(t, "<none>", id)
 	assert.NoError(t, err)
 }
 
-func TestConnectionStringHostListProvider_IsStaticHostListProvider(t *testing.T) {
-	provider := driver_infrastructure.NewConnectionStringHostListProvider(nil, nil)
+func TestDsnHostListProvider_IsStaticHostListProvider(t *testing.T) {
+	provider := driver_infrastructure.NewDsnHostListProvider(nil, nil)
 	assert.True(t, provider.IsStaticHostListProvider())
 }

@@ -97,7 +97,7 @@ func (p *PgDatabaseDialect) GetHostListProviderSupplier() HostListProviderSuppli
 		initialDsn string,
 		servicesContainer ServicesContainer,
 	) HostListProvider {
-		return NewConnectionStringHostListProvider(props, servicesContainer.GetHostListProviderService())
+		return NewDsnHostListProvider(props, servicesContainer.GetHostListProviderService())
 	}
 }
 

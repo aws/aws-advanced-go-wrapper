@@ -26,7 +26,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
-type ConnectionStringHostListProvider struct {
+type DsnHostListProvider struct {
 	isSingleWriterConnectionString bool
 	props                          *utils.RWMap[string, string]
 	hostListProviderService        HostListProviderService
@@ -35,10 +35,10 @@ type ConnectionStringHostListProvider struct {
 	initialHost                    string
 }
 
-func NewConnectionStringHostListProvider(props *utils.RWMap[string, string], hostListProviderService HostListProviderService) *ConnectionStringHostListProvider {
+func NewDsnHostListProvider(props *utils.RWMap[string, string], hostListProviderService HostListProviderService) *DsnHostListProvider {
 	isSingleWriterConnectionString := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.SINGLE_WRITER_DSN)
 	initialHost := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.HOST)
-	return &ConnectionStringHostListProvider{
+	return &DsnHostListProvider{
 		isSingleWriterConnectionString,
 		props,
 		hostListProviderService,
@@ -48,7 +48,7 @@ func NewConnectionStringHostListProvider(props *utils.RWMap[string, string], hos
 	}
 }
 
-func (c *ConnectionStringHostListProvider) init() error {
+func (c *DsnHostListProvider) init() error {
 	if c.isInitialized {
 		return nil
 	}
@@ -60,7 +60,7 @@ func (c *ConnectionStringHostListProvider) init() error {
 	c.hostList = append(c.hostList, hosts...)
 
 	if len(c.hostList) == 0 {
-		return error_util.NewGenericAwsWrapperError(error_util.GetMessage("ConnectionStringHostListProvider.parsedListEmpty", property_util.MaskProperties(c.props)))
+		return error_util.NewGenericAwsWrapperError(error_util.GetMessage("DsnHostListProvider.parsedListEmpty", property_util.MaskProperties(c.props)))
 	}
 
 	c.hostListProviderService.SetInitialConnectionHostInfo(c.hostList[0])
@@ -68,33 +68,33 @@ func (c *ConnectionStringHostListProvider) init() error {
 	return nil
 }
 
-func (c *ConnectionStringHostListProvider) IsStaticHostListProvider() bool {
+func (c *DsnHostListProvider) IsStaticHostListProvider() bool {
 	return true
 }
 
-func (c *ConnectionStringHostListProvider) Refresh() ([]*host_info_util.HostInfo, error) {
+func (c *DsnHostListProvider) Refresh() ([]*host_info_util.HostInfo, error) {
 	err := c.init()
 	return host_info_util.CopyHostList(c.hostList), err
 }
 
-func (c *ConnectionStringHostListProvider) ForceRefresh() ([]*host_info_util.HostInfo, error) {
+func (c *DsnHostListProvider) ForceRefresh() ([]*host_info_util.HostInfo, error) {
 	err := c.init()
 	return host_info_util.CopyHostList(c.hostList), err
 }
 
-func (c *ConnectionStringHostListProvider) GetHostRole(conn driver.Conn) host_info_util.HostRole {
-	panic("ConnectionStringHostListProvider does not support getHostRole")
+func (c *DsnHostListProvider) GetHostRole(conn driver.Conn) host_info_util.HostRole {
+	panic("DsnHostListProvider does not support getHostRole")
 }
 
-func (c *ConnectionStringHostListProvider) IdentifyConnection(_ driver.Conn) (*host_info_util.HostInfo, error) {
-	slog.Warn(error_util.GetMessage("ConnectionStringHostListProvider.unsupportedIdentifyConnection"))
+func (c *DsnHostListProvider) IdentifyConnection(_ driver.Conn) (*host_info_util.HostInfo, error) {
+	slog.Warn(error_util.GetMessage("DsnHostListProvider.unsupportedIdentifyConnection"))
 	return nil, nil
 }
 
-func (c *ConnectionStringHostListProvider) GetClusterId() (clusterId string, err error) {
+func (c *DsnHostListProvider) GetClusterId() (clusterId string, err error) {
 	return "<none>", nil
 }
 
-func (c *ConnectionStringHostListProvider) StopMonitor() {
+func (c *DsnHostListProvider) StopMonitor() {
 	// do nothing since this provider doesn't implement active monitoring
 }

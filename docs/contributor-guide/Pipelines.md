@@ -61,7 +61,7 @@ setting a host list provider would override any previously set host list provide
 The host list providers are used to retrieve host information about the database server,
 either from the connection string or by querying the database server.
 For simple use cases where having up-to-date information on all existing database replicas is not necessary,
-using a simple host list provider such as the [connection string host list provider](../../awssql/driver_infrastructure/connection_string_host_list_provider.go) would be necessary.
+using a simple host list provider such as the [DSN host list provider](../../awssql/driver_infrastructure/dsn_host_list_provider.go) would be necessary.
 The DSN host list provider simply parses the host and port information from the connection string during initialization,
 it does not perform any additional work.
 
