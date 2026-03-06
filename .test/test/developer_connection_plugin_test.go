@@ -39,9 +39,11 @@ var (
 func setupPlugin(ctrl *gomock.Controller) (*plugins.DeveloperConnectionPlugin, *utils.RWMap[string, string]) {
 	error_simulator.ResetErrorSimulatorManager()
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 	properties := utils.NewRWMap[string, string]()
 	properties.Put("plugins", "dev")
-	plugin := plugins.NewDeveloperConnectionPlugin(mockPluginService, properties)
+	plugin := plugins.NewDeveloperConnectionPlugin(mockContainer, properties)
 	return plugin.(*plugins.DeveloperConnectionPlugin), properties
 }
 

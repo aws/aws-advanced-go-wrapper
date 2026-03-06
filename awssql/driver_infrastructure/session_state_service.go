@@ -471,7 +471,7 @@ func (sss *SessionStateServiceImpl) Begin() error {
 	}
 
 	if sss.copySessionState != nil {
-		return error_util.NewGenericAwsWrapperError("SessionStateService.transferIncomplete")
+		return error_util.NewGenericAwsWrapperError(error_util.GetMessage("SessionStateService.transferIncomplete"))
 	}
 
 	sss.copySessionState = sss.SessionState.Copy()

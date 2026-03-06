@@ -18,32 +18,38 @@ package test
 
 import (
 	"database/sql/driver"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/services"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
-
 	"github.com/stretchr/testify/assert"
 )
 
-func beforePluginServiceTests() (*plugin_helpers.PluginServiceImpl, *MockPluginManager, *host_info_util.HostInfoBuilder, error) {
+func beforePluginServiceTests() (*plugin_helpers.PluginServiceImpl, *MockPluginManager, *host_info_util.HostInfoBuilder, *services.FullServicesContainer, error) {
 	props := MakeMapFromKeysAndVals("protocol", "postgresql")
 	mockTargetDriver := &MockTargetDriver{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := &MockPluginManager{
-		plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory), nil, nil}
-	target, err := plugin_helpers.NewPluginServiceImpl(mockPluginManager, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
+	container := &services.FullServicesContainer{
+		Telemetry: telemetryFactory,
+	}
+	realPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, container, props)
+	mockPluginManager := &MockPluginManager{realPluginManager, nil, nil}
+	container.PluginManager = mockPluginManager
+	target, err := plugin_helpers.NewPluginServiceImpl(container, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
 	impl, _ := target.(*plugin_helpers.PluginServiceImpl)
-	return impl, mockPluginManager, host_info_util.NewHostInfoBuilder(), err
+	return impl, mockPluginManager, host_info_util.NewHostInfoBuilder(), container, err
 }
 
 func TestGetCurrentHostInfo(t *testing.T) {
 	// If currentHostInfo is set returns it.
-	target, _, hostInfoBuilder, err := beforePluginServiceTests()
+	target, _, hostInfoBuilder, _, err := beforePluginServiceTests()
 	assert.Nil(t, err)
 	currentHost, err := hostInfoBuilder.SetHost("currentHost").SetRole(host_info_util.READER).
 		SetAvailability(host_info_util.AVAILABLE).Build()
@@ -56,7 +62,7 @@ func TestGetCurrentHostInfo(t *testing.T) {
 	assert.Equal(t, hostInfo.Host, "currentHost")
 
 	// Given an initialHostInfo but no currentHostInfo returns that.
-	target, _, _, err = beforePluginServiceTests()
+	target, _, _, _, err = beforePluginServiceTests()
 	assert.Nil(t, err)
 	initialHost, err := hostInfoBuilder.SetHost("initialHost").SetRole(host_info_util.READER).
 		SetAvailability(host_info_util.AVAILABLE).Build()
@@ -68,7 +74,7 @@ func TestGetCurrentHostInfo(t *testing.T) {
 	assert.Equal(t, hostInfo.Host, "initialHost")
 
 	// Given readers and writers only in AllHosts, returns the writer.
-	target, _, _, err = beforePluginServiceTests()
+	target, _, _, _, err = beforePluginServiceTests()
 	assert.Nil(t, err)
 	reader, err := hostInfoBuilder.SetHost("reader").SetRole(host_info_util.READER).SetAvailability(host_info_util.AVAILABLE).Build()
 	assert.Nil(t, err)
@@ -82,7 +88,7 @@ func TestGetCurrentHostInfo(t *testing.T) {
 	assert.Equal(t, hostInfo.Host, "writer")
 
 	// Given only readers in AllHosts, returns the first reader.
-	target, _, _, err = beforePluginServiceTests()
+	target, _, _, _, err = beforePluginServiceTests()
 	assert.Nil(t, err)
 	singleReader, err := hostInfoBuilder.SetHost("singleReader").SetRole(host_info_util.READER).SetAvailability(host_info_util.AVAILABLE).Build()
 	assert.Nil(t, err)
@@ -92,14 +98,14 @@ func TestGetCurrentHostInfo(t *testing.T) {
 	assert.Equal(t, hostInfo.Host, "singleReader")
 
 	// No hosts given at all, should return an error.
-	target, _, _, err = beforePluginServiceTests()
+	target, _, _, _, err = beforePluginServiceTests()
 	assert.Nil(t, err)
 	_, err = target.GetCurrentHostInfo()
 	assert.NotEqual(t, err, nil)
 }
 
 func TestSetCurrentConnection(t *testing.T) {
-	target, _, hostInfoBuilder, err := beforePluginServiceTests()
+	target, _, hostInfoBuilder, _, err := beforePluginServiceTests()
 	assert.Nil(t, err)
 
 	_, oldConnectionImplementsQueryer := target.GetCurrentConnection().(driver.QueryerContext)
@@ -124,7 +130,7 @@ func TestSetCurrentConnection(t *testing.T) {
 }
 
 func TestSetHostListAdd(t *testing.T) {
-	target, mockPluginManager, _, err := beforePluginServiceTests()
+	target, mockPluginManager, _, _, err := beforePluginServiceTests()
 	assert.Nil(t, err)
 
 	target.SetHostListProvider(&MockHostListProvider{})
@@ -144,7 +150,7 @@ func TestSetHostListAdd(t *testing.T) {
 }
 
 func TestSetHostListDelete(t *testing.T) {
-	target, mockPluginManager, hostInfoBuilder, err := beforePluginServiceTests()
+	target, mockPluginManager, hostInfoBuilder, _, err := beforePluginServiceTests()
 	assert.Nil(t, err)
 
 	target.SetHostListProvider(&MockHostListProvider{})
@@ -172,7 +178,7 @@ func TestSetHostListDelete(t *testing.T) {
 }
 
 func TestSetHostListChange(t *testing.T) {
-	target, mockPluginManager, hostInfoBuilder, err := beforePluginServiceTests()
+	target, mockPluginManager, hostInfoBuilder, _, err := beforePluginServiceTests()
 	assert.Nil(t, err)
 
 	target.SetHostListProvider(&MockHostListProvider{})
@@ -203,7 +209,7 @@ func TestSetHostListChange(t *testing.T) {
 }
 
 func TestHostAvailabilityWentUp(t *testing.T) {
-	target, mockPluginManager, hostInfoBuilder, err := beforePluginServiceTests()
+	target, mockPluginManager, hostInfoBuilder, _, err := beforePluginServiceTests()
 	assert.Nil(t, err)
 
 	hostA, err := hostInfoBuilder.SetHost("hostA").SetRole(host_info_util.WRITER).SetAvailability(host_info_util.UNAVAILABLE).Build()
@@ -225,7 +231,7 @@ func TestHostAvailabilityWentUp(t *testing.T) {
 }
 
 func TestHostAvailabilityWentDown(t *testing.T) {
-	target, mockPluginManager, hostInfoBuilder, err := beforePluginServiceTests()
+	target, mockPluginManager, hostInfoBuilder, _, err := beforePluginServiceTests()
 	assert.Nil(t, err)
 
 	hostA, err := hostInfoBuilder.SetHost("hostA").SetRole(host_info_util.WRITER).SetAvailability(host_info_util.AVAILABLE).Build()
@@ -247,7 +253,7 @@ func TestHostAvailabilityWentDown(t *testing.T) {
 }
 
 func TestHostAvailabilityWentUpByAlias(t *testing.T) {
-	target, mockPluginManager, hostInfoBuilder, err := beforePluginServiceTests()
+	target, mockPluginManager, hostInfoBuilder, _, err := beforePluginServiceTests()
 	assert.Nil(t, err)
 
 	hostA, err := hostInfoBuilder.SetHost("hostA").SetRole(host_info_util.READER).SetAvailability(host_info_util.UNAVAILABLE).Build()
@@ -279,7 +285,7 @@ func TestHostAvailabilityWentUpByAlias(t *testing.T) {
 }
 
 func TestHostAvailabilityWentUpMultipleHostsByAlias(t *testing.T) {
-	target, mockPluginManager, hostInfoBuilder, err := beforePluginServiceTests()
+	target, mockPluginManager, hostInfoBuilder, _, err := beforePluginServiceTests()
 	assert.Nil(t, err)
 
 	hostA, err := hostInfoBuilder.SetHost("hostA").SetRole(host_info_util.READER).SetAvailability(host_info_util.UNAVAILABLE).Build()
@@ -316,7 +322,7 @@ func TestHostAvailabilityWentUpMultipleHostsByAlias(t *testing.T) {
 }
 
 func TestIdentifyConnection(t *testing.T) {
-	target, _, _, err := beforePluginServiceTests()
+	target, _, _, _, err := beforePluginServiceTests()
 	assert.Nil(t, err)
 	target.SetHostListProvider(&MockHostListProvider{})
 
@@ -326,7 +332,7 @@ func TestIdentifyConnection(t *testing.T) {
 }
 
 func TestFillAliases(t *testing.T) {
-	target, _, hostInfoBuilder, err := beforePluginServiceTests()
+	target, _, hostInfoBuilder, _, err := beforePluginServiceTests()
 	assert.Nil(t, err)
 	target.SetHostListProvider(&MockHostListProvider{})
 
@@ -339,7 +345,7 @@ func TestFillAliases(t *testing.T) {
 }
 
 func TestFillAliasesNonEmptyAliases(t *testing.T) {
-	target, _, hostInfoBuilder, err := beforePluginServiceTests()
+	target, _, hostInfoBuilder, _, err := beforePluginServiceTests()
 	assert.Nil(t, err)
 
 	hostA, err := hostInfoBuilder.SetHost("hostA").SetRole(host_info_util.READER).SetAvailability(host_info_util.UNAVAILABLE).Build()
@@ -352,80 +358,92 @@ func TestFillAliasesNonEmptyAliases(t *testing.T) {
 }
 
 func TestGetStatusEmptyCache(t *testing.T) {
-	target, _, _, err := beforePluginServiceTests()
-	assert.Nil(t, err)
+	storage := services.NewExpiringStorage(5*time.Minute, nil)
+	driver_infrastructure.RegisterDefaultStorageTypes(storage)
+	defer storage.Stop()
 
-	plugin_helpers.ClearCaches()
-
-	status, found := target.GetBgStatus("test-id")
+	cacheKey := "test-id::BlueGreenStatus"
+	status, found := driver_infrastructure.BlueGreenStatusStorageType.Get(storage, cacheKey)
 	assert.False(t, found, "Should return false when status not found in cache")
-	assert.True(t, status.IsZero(), "Should return zero BlueGreenStatus when not found")
+	assert.Nil(t, status, "Should return nil when not found")
 }
 
 func TestGetSetStatus(t *testing.T) {
-	target, _, _, err := beforePluginServiceTests()
-	assert.Nil(t, err)
+	storage := services.NewExpiringStorage(5*time.Minute, nil)
+	driver_infrastructure.RegisterDefaultStorageTypes(storage)
+	defer storage.Stop()
 
-	plugin_helpers.ClearCaches()
-
-	target.SetBgStatus(driver_infrastructure.NewBgStatus(
+	bgStatus := driver_infrastructure.NewBgStatus(
 		"test-id",
 		driver_infrastructure.IN_PROGRESS,
 		[]driver_infrastructure.ConnectRouting{},
 		[]driver_infrastructure.ExecuteRouting{},
 		utils.NewRWMap[string, driver_infrastructure.BlueGreenRole](),
 		utils.NewRWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]](),
-	), "test-bg")
+	)
 
-	// Try to retrieve with different formats
-	testCases := []string{
-		"test-bg",
-		"TEST-BG",
-		"Test-Bg",
-		"TeSt-Bg",
-		"  test-bg",
-		"test-bg  ",
-		"  test-bg  ",
-		"\ttest-bg\t",
-		"\ntest-bg\n",
+	cacheKey := "test-bg::BlueGreenStatus"
+	driver_infrastructure.BlueGreenStatusStorageType.Set(storage, cacheKey, &bgStatus)
+
+	// Try to retrieve with the exact key
+	retrievedStatus, found := driver_infrastructure.BlueGreenStatusStorageType.Get(storage, cacheKey)
+	assert.True(t, found, "Should find status with exact key")
+	assert.NotNil(t, retrievedStatus, "Status should not be nil")
+	assert.Equal(t, driver_infrastructure.IN_PROGRESS, retrievedStatus.GetCurrentPhase(), "Should retrieve correct phase")
+
+	// Verify that normalized keys also work (matching bg_status_provider behavior with lowercase+trim)
+	testCases := []struct {
+		input    string
+		expected string
+	}{
+		{"test-bg", "test-bg"},
+		{"TEST-BG", "test-bg"},
+		{"Test-Bg", "test-bg"},
+		{"TeSt-Bg", "test-bg"},
+		{"  test-bg", "test-bg"},
+		{"test-bg  ", "test-bg"},
+		{"  test-bg  ", "test-bg"},
+		{"\ttest-bg\t", "test-bg"},
+		{"\ntest-bg\n", "test-bg"},
 	}
 
-	for _, testId := range testCases {
-		retrievedStatus, found := target.GetBgStatus(testId)
-		assert.True(t, found, "Should find status regardless of case for ID: %s", testId)
-		assert.False(t, retrievedStatus.IsZero(), "Status should not be zero for ID: %s", testId)
-		assert.Equal(t, driver_infrastructure.IN_PROGRESS, retrievedStatus.GetCurrentPhase(), "Should retrieve correct phase for ID: %s", testId)
+	for _, tc := range testCases {
+		normalizedKey := strings.ToLower(strings.TrimSpace(tc.input)) + "::BlueGreenStatus"
+		retrievedStatus, found := driver_infrastructure.BlueGreenStatusStorageType.Get(storage, normalizedKey)
+		assert.True(t, found, "Should find status for normalized ID: %s -> %s", tc.input, normalizedKey)
+		assert.NotNil(t, retrievedStatus, "Status should not be nil for ID: %s", tc.input)
+		assert.Equal(t, driver_infrastructure.IN_PROGRESS, retrievedStatus.GetCurrentPhase(), "Should retrieve correct phase for ID: %s", tc.input)
 	}
 }
 
 func TestSetStatusUpdateExistingStatus(t *testing.T) {
-	target, _, _, err := beforePluginServiceTests()
-	assert.Nil(t, err)
-
-	plugin_helpers.ClearCaches()
+	storage := services.NewExpiringStorage(5*time.Minute, nil)
+	driver_infrastructure.RegisterDefaultStorageTypes(storage)
+	defer storage.Stop()
 
 	testId := "deployment-update-test"
+	cacheKey := testId + "::BlueGreenStatus"
 	connectRoutings := []driver_infrastructure.ConnectRouting{}
 	executeRoutings := []driver_infrastructure.ExecuteRouting{}
 	roleByHost := utils.NewRWMap[string, driver_infrastructure.BlueGreenRole]()
 	correspondingHosts := utils.NewRWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]()
 
 	initialStatus := driver_infrastructure.NewBgStatus(testId, driver_infrastructure.CREATED, connectRoutings, executeRoutings, roleByHost, correspondingHosts)
-	target.SetBgStatus(initialStatus, testId)
+	driver_infrastructure.BlueGreenStatusStorageType.Set(storage, cacheKey, &initialStatus)
 
-	retrievedStatus, found := target.GetBgStatus(testId)
+	retrievedStatus, found := driver_infrastructure.BlueGreenStatusStorageType.Get(storage, cacheKey)
 	assert.True(t, found, "Should find initial status")
 	assert.Equal(t, driver_infrastructure.CREATED, retrievedStatus.GetCurrentPhase(), "Should have initial phase")
 
 	updatedStatus := driver_infrastructure.NewBgStatus(testId, driver_infrastructure.COMPLETED, connectRoutings, executeRoutings, roleByHost, correspondingHosts)
-	target.SetBgStatus(updatedStatus, testId)
+	driver_infrastructure.BlueGreenStatusStorageType.Set(storage, cacheKey, &updatedStatus)
 
-	retrievedStatus, found = target.GetBgStatus(testId)
+	retrievedStatus, found = driver_infrastructure.BlueGreenStatusStorageType.Get(storage, cacheKey)
 	assert.True(t, found, "Should find updated status")
 	assert.Equal(t, driver_infrastructure.COMPLETED, retrievedStatus.GetCurrentPhase(), "Should have updated phase")
 
-	target.SetBgStatus(driver_infrastructure.BlueGreenStatus{}, testId)
+	driver_infrastructure.BlueGreenStatusStorageType.Remove(storage, cacheKey)
 
-	_, found = target.GetBgStatus(testId)
+	_, found = driver_infrastructure.BlueGreenStatusStorageType.Get(storage, cacheKey)
 	assert.False(t, found, "Should remove status")
 }

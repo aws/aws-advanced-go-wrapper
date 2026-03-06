@@ -43,10 +43,10 @@ var fetchCredentialsCounterName = "secretsManager.fetchCredentials.count"
 
 type AwsSecretsManagerPluginFactory struct{}
 
-func (factory AwsSecretsManagerPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
+func (factory AwsSecretsManagerPluginFactory) GetInstance(servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string],
 ) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewAwsSecretsManagerPlugin(pluginService, props, NewAwsSecretsManagerClient)
+	return NewAwsSecretsManagerPlugin(servicesContainer, props, NewAwsSecretsManagerClient)
 }
 
 func (factory AwsSecretsManagerPluginFactory) ClearCaches() {
@@ -61,7 +61,7 @@ var SecretsCache = utils.NewCache[AwsRdsSecrets]()
 
 type AwsSecretsManagerPlugin struct {
 	plugins.BaseConnectionPlugin
-	pluginService                   driver_infrastructure.PluginService
+	servicesContainer               driver_infrastructure.ServicesContainer
 	props                           *utils.RWMap[string, string]
 	secret                          AwsRdsSecrets
 	SecretsCacheKey                 string
@@ -74,10 +74,11 @@ type AwsSecretsManagerPlugin struct {
 	secretPasswordKey               string
 }
 
-func NewAwsSecretsManagerPlugin(pluginService driver_infrastructure.PluginService,
+func NewAwsSecretsManagerPlugin(servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string],
 	awsSecretsManagerClientProvider NewAwsSecretsManagerClientProvider,
 ) (*AwsSecretsManagerPlugin, error) {
+	pluginService := servicesContainer.GetPluginService()
 	// Validate Secret ID
 	secretId := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.SECRETS_MANAGER_SECRET_ID)
 
@@ -123,8 +124,8 @@ func NewAwsSecretsManagerPlugin(pluginService driver_infrastructure.PluginServic
 	secretExpirationTimeSec := property_util.GetExpirationValue(props, property_util.SECRETS_MANAGER_EXPIRATION_SEC)
 
 	return &AwsSecretsManagerPlugin{
-		pluginService: pluginService,
-		props:         props,
+		servicesContainer: servicesContainer,
+		props:             props,
 		SecretsCacheKey: getCacheKey(
 			property_util.SECRETS_MANAGER_SECRET_ID.Get(props), string(region),
 		),
@@ -184,7 +185,7 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectInternal(
 		return conn, err
 	}
 
-	if awsSecretsManagerPlugin.pluginService.IsLoginError(err) && !secretsWasFetched {
+	if awsSecretsManagerPlugin.servicesContainer.GetPluginService().IsLoginError(err) && !secretsWasFetched {
 		// Login unsuccessful with cached credentials
 		// Try to re-fetch credentials and try again
 		secretsWasFetched, err = awsSecretsManagerPlugin.updateSecrets(hostInfo, props, true)
@@ -209,14 +210,16 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) updateSecrets(
 	hostInfo *host_info_util.HostInfo,
 	props *utils.RWMap[string, string],
 	forceReFetch bool) (bool, error) {
-	parentCtx := awsSecretsManagerPlugin.pluginService.GetTelemetryContext()
-	telemetryCtx, ctx := awsSecretsManagerPlugin.pluginService.GetTelemetryFactory().OpenTelemetryContext(telemetry.TELEMETRY_UPDATE_SECRETS, telemetry.NESTED, parentCtx)
-	awsSecretsManagerPlugin.pluginService.SetTelemetryContext(ctx)
+	parentCtx := awsSecretsManagerPlugin.servicesContainer.GetPluginService().GetTelemetryContext()
+	telemetryFactory := awsSecretsManagerPlugin.servicesContainer.GetPluginService().GetTelemetryFactory()
+	telemetryCtx, ctx := telemetryFactory.OpenTelemetryContext(
+		telemetry.TELEMETRY_UPDATE_SECRETS, telemetry.NESTED, parentCtx)
+	awsSecretsManagerPlugin.servicesContainer.GetPluginService().SetTelemetryContext(ctx)
 	defer func() {
 		telemetryCtx.CloseContext()
-		awsSecretsManagerPlugin.pluginService.SetTelemetryContext(parentCtx)
+		awsSecretsManagerPlugin.servicesContainer.GetPluginService().SetTelemetryContext(parentCtx)
 	}()
-	awsSecretsManagerPlugin.fetchCredentialsCounter.Inc(awsSecretsManagerPlugin.pluginService.GetTelemetryContext())
+	awsSecretsManagerPlugin.fetchCredentialsCounter.Inc(awsSecretsManagerPlugin.servicesContainer.GetPluginService().GetTelemetryContext())
 
 	fetched := false
 	var err error

@@ -34,9 +34,11 @@ func TestConnectTimeFactoryReturnsConnectTimePlugin(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockService).AnyTimes()
 
 	factory := plugins.NewConnectTimePluginFactory()
-	plugin, err := factory.GetInstance(mockService, emptyProps)
+	plugin, err := factory.GetInstance(mockContainer, emptyProps)
 	assert.NoError(t, err)
 
 	_, ok := plugin.(*plugins.ConnectTimePlugin)

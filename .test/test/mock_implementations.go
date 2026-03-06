@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"time"
 
 	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
 	aws_secrets_manager "github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager"
@@ -200,11 +199,7 @@ type MockHostListProvider struct {
 	clusterId string
 }
 
-func (m *MockHostListProvider) CreateHost(_ string, _ host_info_util.HostRole, _ float64, _ float64, _ time.Time) *host_info_util.HostInfo {
-	return nil
-}
-
-func (m *MockHostListProvider) ForceRefresh(_ driver.Conn) ([]*host_info_util.HostInfo, error) {
+func (m *MockHostListProvider) ForceRefresh() ([]*host_info_util.HostInfo, error) {
 	return nil, nil
 }
 
@@ -229,7 +224,7 @@ func (m *MockHostListProvider) IsStaticHostListProvider() bool {
 	return false
 }
 
-func (m *MockHostListProvider) Refresh(_ driver.Conn) ([]*host_info_util.HostInfo, error) {
+func (m *MockHostListProvider) Refresh() ([]*host_info_util.HostInfo, error) {
 	hostInfo, _ := host_info_util.NewHostInfoBuilder().SetHost("hostA").Build()
 	return []*host_info_util.HostInfo{hostInfo}, nil
 }
@@ -306,11 +301,6 @@ func (m *MockConn) updateQueryRow(columns []string, row []driver.Value) {
 
 func (m *MockConn) updateThrowError(throwError bool) {
 	m.throwError = throwError
-}
-
-func (m *MockConn) updateQueryRowSingleUse(columns []string, row []driver.Value) {
-	testRow := MockRows{columns: columns, row: row, throwNextError: 1}
-	m.queryResult = &testRow
 }
 
 type MockStmt struct {
@@ -780,4 +770,35 @@ func (m *MockConnectionProvider) GetHostInfoByStrategy(
 
 func (m *MockConnectionProvider) Connect(_ *host_info_util.HostInfo, _ map[string]string, _ driver_infrastructure.PluginService) (driver.Conn, error) {
 	return &MockConn{}, nil
+}
+
+// multiRowMockRows supports returning multiple rows from QueryContext.
+type multiRowMockRows struct {
+	columns []string
+	rows    [][]driver.Value
+	index   int
+}
+
+func newMultiRowMockRows(columns []string, rows [][]driver.Value) *multiRowMockRows {
+	return &multiRowMockRows{columns: columns, rows: rows, index: 0}
+}
+
+func (m *multiRowMockRows) Columns() []string {
+	return m.columns
+}
+
+func (m *multiRowMockRows) Close() error {
+	return nil
+}
+
+func (m *multiRowMockRows) Next(dest []driver.Value) error {
+	if m.index >= len(m.rows) {
+		return errors.New("no more rows")
+	}
+	row := m.rows[m.index]
+	for i := range dest {
+		dest[i] = row[i]
+	}
+	m.index++
+	return nil
 }

@@ -32,12 +32,14 @@ import (
 type LimitlessPluginFactory struct {
 }
 
-func (factory LimitlessPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
+func (factory LimitlessPluginFactory) GetInstance(servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewLimitlessPlugin(pluginService, props)
+	return NewLimitlessPlugin(servicesContainer, props)
 }
 
-func (factory LimitlessPluginFactory) ClearCaches() {}
+func (factory LimitlessPluginFactory) ClearCaches() {
+	ClearCache()
+}
 
 func NewLimitlessPluginFactory() driver_infrastructure.ConnectionPluginFactory {
 	return LimitlessPluginFactory{}
@@ -45,12 +47,12 @@ func NewLimitlessPluginFactory() driver_infrastructure.ConnectionPluginFactory {
 
 type LimitlessPlugin struct {
 	plugins.BaseConnectionPlugin
-	pluginService driver_infrastructure.PluginService
-	props         *utils.RWMap[string, string]
-	routerService LimitlessRouterService
+	servicesContainer driver_infrastructure.ServicesContainer
+	props             *utils.RWMap[string, string]
+	routerService     LimitlessRouterService
 }
 
-func NewLimitlessPlugin(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string, string]) (*LimitlessPlugin, error) {
+func NewLimitlessPlugin(servicesContainer driver_infrastructure.ServicesContainer, props *utils.RWMap[string, string]) (*LimitlessPlugin, error) {
 	validateShardGroupUrl := property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.LIMITLESS_USE_SHARD_GROUP_URL)
 	if validateShardGroupUrl {
 		host := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.HOST)
@@ -61,18 +63,21 @@ func NewLimitlessPlugin(pluginService driver_infrastructure.PluginService, props
 	}
 
 	return &LimitlessPlugin{
-		pluginService: pluginService,
-		props:         props,
+		servicesContainer: servicesContainer,
+		props:             props,
 	}, nil
 }
 
 // Note: This method is for testing purposes.
-func NewLimitlessPluginWithRouterService(pluginService driver_infrastructure.PluginService, props *utils.RWMap[string, string],
-	routerService LimitlessRouterService) *LimitlessPlugin {
+func NewLimitlessPluginWithRouterService(
+	servicesContainer driver_infrastructure.ServicesContainer,
+	props *utils.RWMap[string, string],
+	routerService LimitlessRouterService,
+) *LimitlessPlugin {
 	return &LimitlessPlugin{
-		pluginService: pluginService,
-		props:         props,
-		routerService: routerService,
+		servicesContainer: servicesContainer,
+		props:             props,
+		routerService:     routerService,
 	}
 }
 
@@ -92,14 +97,14 @@ func (plugin *LimitlessPlugin) Connect(
 	var conn driver.Conn = nil
 
 	// Dialect check
-	dialect := plugin.pluginService.GetDialect()
+	dialect := plugin.servicesContainer.GetPluginService().GetDialect()
 	if !IsDialectLimitless(dialect) {
 		var err error
 		conn, err = connectFunc(props)
 		if err != nil {
 			return nil, err
 		}
-		refreshDialect := plugin.pluginService.GetDialect()
+		refreshDialect := plugin.servicesContainer.GetPluginService().GetDialect()
 		if !IsDialectLimitless(refreshDialect) {
 			return nil, errors.New(error_util.GetMessage("LimitlessPlugin.unsupportedDialectOrDatabase", refreshDialect))
 		}
@@ -132,6 +137,6 @@ func (plugin *LimitlessPlugin) Connect(
 
 func (plugin *LimitlessPlugin) initLimitlessRouterService() {
 	if plugin.routerService == nil {
-		plugin.routerService = NewLimitlessRouterServiceImpl(plugin.pluginService, plugin.props)
+		plugin.routerService = NewLimitlessRouterServiceImpl(plugin.servicesContainer, plugin.props)
 	}
 }

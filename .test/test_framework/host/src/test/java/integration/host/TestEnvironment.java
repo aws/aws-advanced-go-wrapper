@@ -27,7 +27,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
-import org.testcontainers.shaded.org.apache.commons.lang3.NotImplementedException;
+
 
 public class TestEnvironment {
 
@@ -180,7 +180,7 @@ public class TestEnvironment {
         disabledByFeature = features.contains(TestEnvironmentFeatures.SKIP_MYSQL_DRIVER_TESTS);
         break;
       default:
-        throw new NotImplementedException(testDriver.toString());
+        throw new UnsupportedOperationException(testDriver.toString());
     }
 
     if (disabledByFeature || !driverCompatibleToDatabaseEngine) {

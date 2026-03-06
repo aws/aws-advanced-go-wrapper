@@ -20,7 +20,6 @@ import (
 	"database/sql/driver"
 	"errors"
 	"testing"
-	"time"
 
 	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
 	mock_telemetry "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/util/telemetry"
@@ -35,15 +34,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func createMocks(ctrl *gomock.Controller) (
+func createMocksForCustomEndpointPluginTest(ctrl *gomock.Controller) (
+	mockContainer *mock_driver_infrastructure.MockServicesContainer,
 	mockPluginService *mock_driver_infrastructure.MockPluginService,
+	mockMonitorService *mock_driver_infrastructure.MockMonitorService,
 	mockTelemetryFactory *mock_telemetry.MockTelemetryFactory,
 	mockTelemetryCounter *mock_telemetry.MockTelemetryCounter,
 	mockMonitor *mock_custom_endpoint.MockCustomEndpointMonitor) {
 	mockPluginService = mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockMonitorService = mock_driver_infrastructure.NewMockMonitorService(ctrl)
 	mockTelemetryFactory = mock_telemetry.NewMockTelemetryFactory(ctrl)
 	mockTelemetryCounter = mock_telemetry.NewMockTelemetryCounter(ctrl)
 	mockMonitor = mock_custom_endpoint.NewMockCustomEndpointMonitor(ctrl)
+	mockContainer = mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	mockContainer.EXPECT().GetMonitorService().Return(mockMonitorService).AnyTimes()
+	mockMonitorService.EXPECT().RegisterMonitorType(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	return
 }
 
@@ -51,15 +57,15 @@ func TestCustomEndpointPluginConnect_InvalidUrl(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService, mockTelemetryFactory, mockTelemetryCounter, _ := createMocks(ctrl)
+	mockContainer, mockPluginService, _, mockTelemetryFactory, mockTelemetryCounter, _ := createMocksForCustomEndpointPluginTest(ctrl)
 
-	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory)
+	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory).AnyTimes()
 	mockTelemetryFactory.EXPECT().CreateCounter(custom_endpoint.TELEMETRY_WAIT_FOR_INFO_COUNTER).Return(mockTelemetryCounter, nil)
 
 	props := utils.NewRWMap[string, string]()
 	rdsClientFunc := func(*host_info_util.HostInfo, *utils.RWMap[string, string]) (*rds.Client, error) { return nil, nil }
 
-	plugin, err := custom_endpoint.NewCustomEndpointPlugin(mockPluginService, rdsClientFunc, props)
+	plugin, err := custom_endpoint.NewCustomEndpointPlugin(mockContainer, rdsClientFunc, props)
 	assert.NoError(t, err)
 
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.invalid-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
@@ -79,16 +85,16 @@ func TestCustomEndpointPluginConnect_InvalidRegion(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService, mockTelemetryFactory, mockTelemetryCounter, _ := createMocks(ctrl)
+	mockContainer, mockPluginService, _, mockTelemetryFactory, mockTelemetryCounter, _ := createMocksForCustomEndpointPluginTest(ctrl)
 
-	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory)
+	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory).AnyTimes()
 	mockTelemetryFactory.EXPECT().CreateCounter(custom_endpoint.TELEMETRY_WAIT_FOR_INFO_COUNTER).Return(mockTelemetryCounter, nil)
 
 	props := utils.NewRWMap[string, string]()
 	props.Put(property_util.CUSTOM_ENDPOINT_REGION_PROPERTY.Name, "invalid-region")
 	rdsClientFunc := func(*host_info_util.HostInfo, *utils.RWMap[string, string]) (*rds.Client, error) { return nil, nil }
 
-	plugin, err := custom_endpoint.NewCustomEndpointPlugin(mockPluginService, rdsClientFunc, props)
+	plugin, err := custom_endpoint.NewCustomEndpointPlugin(mockContainer, rdsClientFunc, props)
 	assert.NoError(t, err)
 
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-custom-XYZ.invalid-region.rds.amazonaws.com").SetPort(1234).Build()
@@ -109,26 +115,25 @@ func TestCustomEndpointPluginConnect_DontWaitForCustomEndpointInfo(t *testing.T)
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService, mockTelemetryFactory, mockTelemetryCounter, mockMonitor := createMocks(ctrl)
+	mockContainer, mockPluginService, mockMonitorService, mockTelemetryFactory, mockTelemetryCounter, mockMonitor := createMocksForCustomEndpointPluginTest(ctrl)
 
-	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory)
+	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory).AnyTimes()
 	mockTelemetryFactory.EXPECT().CreateCounter(custom_endpoint.TELEMETRY_WAIT_FOR_INFO_COUNTER).Return(mockTelemetryCounter, nil)
 
 	mockMonitor.EXPECT().HasCustomEndpointInfo().Return(true).Times(0)
-	mockMonitor.EXPECT().Close()
 
 	props := utils.NewRWMap[string, string]()
 	props.Put(property_util.WAIT_FOR_CUSTOM_ENDPOINT_INFO.Name, "false")
 	rdsClientFunc := func(*host_info_util.HostInfo, *utils.RWMap[string, string]) (*rds.Client, error) { return nil, nil }
 
-	plugin, err := custom_endpoint.NewCustomEndpointPlugin(mockPluginService, rdsClientFunc, props)
+	plugin, err := custom_endpoint.NewCustomEndpointPlugin(mockContainer, rdsClientFunc, props)
 	assert.NoError(t, err)
 	defer custom_endpoint.CustomEndpointPluginFactory{}.ClearCaches()
 
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-custom-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
 
-	custom_endpoint.CUSTOM_ENDPOINT_MONITORS.Put(hostInfo.Host, mockMonitor, time.Minute*1)
+	mockMonitorService.EXPECT().RunIfAbsent(gomock.Any(), gomock.Eq(hostInfo.Host), gomock.Any(), gomock.Any()).Return(mockMonitor, nil)
 
 	expectedConn := &MockConn{}
 	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
@@ -145,30 +150,30 @@ func TestCustomEndpointPluginConnect_WaitForCustomEndpointInfo(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService, mockTelemetryFactory, mockTelemetryCounter, mockMonitor := createMocks(ctrl)
+	mockContainer, mockPluginService, mockMonitorService, mockTelemetryFactory, mockTelemetryCounter, mockMonitor := createMocksForCustomEndpointPluginTest(ctrl)
 
-	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory)
+	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory).AnyTimes()
 	mockPluginService.EXPECT().GetTelemetryContext().Return(nil)
 	mockTelemetryFactory.EXPECT().CreateCounter(custom_endpoint.TELEMETRY_WAIT_FOR_INFO_COUNTER).Return(mockTelemetryCounter, nil)
 	mockTelemetryCounter.EXPECT().Inc(gomock.Any())
 
-	mockMonitor.EXPECT().Close()
 	mockedHasCustomEndpointInfoCalls0 := mockMonitor.EXPECT().HasCustomEndpointInfo().Return(false).Times(5)
 	mockedHasCustomEndpointInfoCalls1 := mockMonitor.EXPECT().HasCustomEndpointInfo().Return(true).Times(1)
 	gomock.InOrder(mockedHasCustomEndpointInfoCalls0, mockedHasCustomEndpointInfoCalls1)
+	mockMonitor.EXPECT().RequestCustomEndpointInfoUpdate().AnyTimes()
 
 	props := utils.NewRWMap[string, string]()
 	props.Put(property_util.WAIT_FOR_CUSTOM_ENDPOINT_INFO.Name, "true")
 	rdsClientFunc := func(*host_info_util.HostInfo, *utils.RWMap[string, string]) (*rds.Client, error) { return nil, nil }
 
-	plugin, err := custom_endpoint.NewCustomEndpointPlugin(mockPluginService, rdsClientFunc, props)
+	plugin, err := custom_endpoint.NewCustomEndpointPlugin(mockContainer, rdsClientFunc, props)
 	assert.NoError(t, err)
 	defer custom_endpoint.CustomEndpointPluginFactory{}.ClearCaches()
 
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-custom-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
 
-	custom_endpoint.CUSTOM_ENDPOINT_MONITORS.Put(hostInfo.Host, mockMonitor, time.Minute*1)
+	mockMonitorService.EXPECT().RunIfAbsent(gomock.Any(), gomock.Eq(hostInfo.Host), gomock.Any(), gomock.Any()).Return(mockMonitor, nil)
 
 	expectedConn := &MockConn{}
 	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
@@ -185,16 +190,16 @@ func TestCustomEndpointPluginExecute_CustomEndpointHostNotSet(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService, mockTelemetryFactory, mockTelemetryCounter, _ := createMocks(ctrl)
+	mockContainer, mockPluginService, _, mockTelemetryFactory, mockTelemetryCounter, _ := createMocksForCustomEndpointPluginTest(ctrl)
 
-	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory)
+	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory).AnyTimes()
 	mockTelemetryFactory.EXPECT().CreateCounter(custom_endpoint.TELEMETRY_WAIT_FOR_INFO_COUNTER).Return(mockTelemetryCounter, nil)
 
 	props := utils.NewRWMap[string, string]()
 	props.Put(property_util.CUSTOM_ENDPOINT_REGION_PROPERTY.Name, "invalid-region")
 	rdsClientFunc := func(*host_info_util.HostInfo, *utils.RWMap[string, string]) (*rds.Client, error) { return nil, nil }
 
-	plugin, err := custom_endpoint.NewCustomEndpointPlugin(mockPluginService, rdsClientFunc, props)
+	plugin, err := custom_endpoint.NewCustomEndpointPlugin(mockContainer, rdsClientFunc, props)
 	assert.NoError(t, err)
 
 	expectedResult0 := "result0"
@@ -216,26 +221,25 @@ func TestCustomEndpointPluginExecute_DontWaitForCustomEndpointInfo(t *testing.T)
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService, mockTelemetryFactory, mockTelemetryCounter, mockMonitor := createMocks(ctrl)
+	mockContainer, mockPluginService, mockMonitorService, mockTelemetryFactory, mockTelemetryCounter, mockMonitor := createMocksForCustomEndpointPluginTest(ctrl)
 
-	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory)
+	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory).AnyTimes()
 	mockTelemetryFactory.EXPECT().CreateCounter(custom_endpoint.TELEMETRY_WAIT_FOR_INFO_COUNTER).Return(mockTelemetryCounter, nil)
 
-	mockMonitor.EXPECT().Close()
 	mockMonitor.EXPECT().HasCustomEndpointInfo().Return(true).Times(0)
 
 	props := utils.NewRWMap[string, string]()
 	props.Put(property_util.WAIT_FOR_CUSTOM_ENDPOINT_INFO.Name, "false")
 	rdsClientFunc := func(*host_info_util.HostInfo, *utils.RWMap[string, string]) (*rds.Client, error) { return nil, nil }
 
-	plugin, err := custom_endpoint.NewCustomEndpointPlugin(mockPluginService, rdsClientFunc, props)
-	assert.NoError(t, err)
-	defer custom_endpoint.CustomEndpointPluginFactory{}.ClearCaches()
-
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-custom-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
 
-	custom_endpoint.CUSTOM_ENDPOINT_MONITORS.Put(hostInfo.Host, mockMonitor, time.Minute*1)
+	mockMonitorService.EXPECT().RunIfAbsent(gomock.Any(), gomock.Eq(hostInfo.Host), gomock.Any(), gomock.Any()).Return(mockMonitor, nil)
+
+	plugin, err := custom_endpoint.NewCustomEndpointPluginWithHostInfo(mockContainer, rdsClientFunc, props, hostInfo)
+	assert.NoError(t, err)
+	defer custom_endpoint.CustomEndpointPluginFactory{}.ClearCaches()
 
 	expectedResult0 := "result0"
 	expectedResult1 := "result1"
@@ -256,17 +260,17 @@ func TestCustomEndpointPluginExecute_WaitForCustomEndpointInfo(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService, mockTelemetryFactory, mockTelemetryCounter, mockMonitor := createMocks(ctrl)
+	mockContainer, mockPluginService, mockMonitorService, mockTelemetryFactory, mockTelemetryCounter, mockMonitor := createMocksForCustomEndpointPluginTest(ctrl)
 
-	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory)
+	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory).AnyTimes()
 	mockPluginService.EXPECT().GetTelemetryContext().Return(nil)
 	mockTelemetryFactory.EXPECT().CreateCounter(custom_endpoint.TELEMETRY_WAIT_FOR_INFO_COUNTER).Return(mockTelemetryCounter, nil)
 	mockTelemetryCounter.EXPECT().Inc(gomock.Any())
 
-	mockMonitor.EXPECT().Close()
 	mockedHasCustomEndpointInfoCalls0 := mockMonitor.EXPECT().HasCustomEndpointInfo().Return(false).Times(5)
 	mockedHasCustomEndpointInfoCalls1 := mockMonitor.EXPECT().HasCustomEndpointInfo().Return(true).Times(1)
 	gomock.InOrder(mockedHasCustomEndpointInfoCalls0, mockedHasCustomEndpointInfoCalls1)
+	mockMonitor.EXPECT().RequestCustomEndpointInfoUpdate().AnyTimes()
 
 	props := utils.NewRWMap[string, string]()
 	props.Put(property_util.WAIT_FOR_CUSTOM_ENDPOINT_INFO.Name, "true")
@@ -275,11 +279,11 @@ func TestCustomEndpointPluginExecute_WaitForCustomEndpointInfo(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-custom-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
 
-	plugin, err := custom_endpoint.NewCustomEndpointPluginWithHostInfo(mockPluginService, rdsClientFunc, props, hostInfo)
+	mockMonitorService.EXPECT().RunIfAbsent(gomock.Any(), gomock.Eq(hostInfo.Host), gomock.Any(), gomock.Any()).Return(mockMonitor, nil)
+
+	plugin, err := custom_endpoint.NewCustomEndpointPluginWithHostInfo(mockContainer, rdsClientFunc, props, hostInfo)
 	assert.NoError(t, err)
 	defer custom_endpoint.CustomEndpointPluginFactory{}.ClearCaches()
-
-	custom_endpoint.CUSTOM_ENDPOINT_MONITORS.Put(hostInfo.Host, mockMonitor, time.Minute*1)
 
 	expectedResult0 := "result0"
 	expectedResult1 := "result1"

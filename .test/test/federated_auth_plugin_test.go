@@ -22,12 +22,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/services"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	federated_auth "github.com/aws/aws-advanced-go-wrapper/federated-auth"
@@ -38,7 +38,6 @@ import (
 )
 
 var federatedAuthTestToken = "someToken"
-var federatedAuthDbUser = "iamUser"
 var federatedAuthHost = "pg.testdb.us-east-2.rds.amazonaws.com"
 var federatedAuthIamHost = "pg.testdb.us-east-2.rds.amazonaws.com"
 var federatedAuthRegion = region_util.US_EAST_1
@@ -53,10 +52,14 @@ func setup(props *utils.RWMap[string, string]) *federated_auth.FederatedAuthPlug
 	federated_auth.TokenCache.Clear()
 	mockTargetDriver := &MockTargetDriver{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
-	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
-	mockPluginService := pluginServiceImpl
-	federatedAuthPlugin, _ := federated_auth.NewFederatedAuthPlugin(mockPluginService, credentialsProviderFactory, mockIamTokenUtility)
+	container := &services.FullServicesContainer{
+		Telemetry: telemetryFactory,
+	}
+	mockPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, container, props)
+	container.PluginManager = mockPluginManager
+	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(container, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
+	container.PluginService = pluginServiceImpl
+	federatedAuthPlugin, _ := federated_auth.NewFederatedAuthPlugin(container, credentialsProviderFactory, mockIamTokenUtility)
 	return federatedAuthPlugin
 }
 

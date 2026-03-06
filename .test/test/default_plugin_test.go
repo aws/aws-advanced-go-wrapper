@@ -33,6 +33,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func setupDefaultPluginMocks(ctrl *gomock.Controller) (*mock_driver_infrastructure.MockPluginService, *mock_driver_infrastructure.MockServicesContainer) {
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	return mockPluginService, mockContainer
+}
+
 func TestDefaultPlugin_InitHostProvider(t *testing.T) {
 	dp := &plugins.DefaultPlugin{}
 	err := dp.InitHostProvider(emptyProps, nil, nil)
@@ -49,14 +56,14 @@ func TestDefaultPlugin_Execute_OpenTransaction(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockPluginService, mockContainer := setupDefaultPluginMocks(ctrl)
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 
 	mockPluginService.EXPECT().GetCurrentConnection().Return(mockConn).Times(1)
 	mockPluginService.EXPECT().SetInTransaction(true).Times(1)
 
 	dp := &plugins.DefaultPlugin{
-		PluginService: mockPluginService,
+		ServicesContainer: mockContainer,
 	}
 
 	methodName := "Conn.Begin" // matches open transaction
@@ -76,14 +83,14 @@ func TestDefaultPlugin_Execute_CloseTransaction(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockPluginService, mockContainer := setupDefaultPluginMocks(ctrl)
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 
 	mockPluginService.EXPECT().GetCurrentConnection().Return(mockConn).Times(1)
 	mockPluginService.EXPECT().SetInTransaction(false).Times(1)
 
 	dp := &plugins.DefaultPlugin{
-		PluginService: mockPluginService,
+		ServicesContainer: mockContainer,
 	}
 
 	methodName := "Tx.Commit"
@@ -102,10 +109,10 @@ func TestDefaultPlugin_Execute_WithError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	_, mockContainer := setupDefaultPluginMocks(ctrl)
 
 	dp := &plugins.DefaultPlugin{
-		PluginService: mockPluginService,
+		ServicesContainer: mockContainer,
 	}
 
 	executeFunc := func() (any, any, bool, error) {
@@ -120,14 +127,14 @@ func TestDefaultPlugin_Execute_WithOldConnection(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockPluginService, mockContainer := setupDefaultPluginMocks(ctrl)
 	mockConnCurrent := mock_database_sql_driver.NewMockConn(ctrl)
 	mockConnOld := mock_database_sql_driver.NewMockConn(ctrl)
 
 	mockPluginService.EXPECT().GetCurrentConnection().Return(mockConnCurrent).Times(1)
 
 	dp := &plugins.DefaultPlugin{
-		PluginService: mockPluginService,
+		ServicesContainer: mockContainer,
 	}
 
 	executeFunc := func() (any, any, bool, error) {
@@ -146,19 +153,17 @@ func TestDefaultPlugin_Connect_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	// Mocks
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockPluginService, mockContainer := setupDefaultPluginMocks(ctrl)
 	mockTelemetry := mock_telemetry.NewMockTelemetryFactory(ctrl)
 	mockTelemetryCtx := mock_telemetry.NewMockTelemetryContext(ctrl)
 	mockConnProvider := mock_driver_infrastructure.NewMockConnectionProvider(ctrl)
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockPluginManager := mock_driver_infrastructure.NewMockPluginManager(ctrl)
 
-	// Real connection provider manager using mocked ConnectionProvider
-	connProviderManager := &driver_infrastructure.ConnectionProviderManager{
+	connProviderManager := driver_infrastructure.ConnectionProviderManager{
 		DefaultProvider: mockConnProvider,
 	}
 
-	// HostInfo with valid alias map
 	hostInfo := &host_info_util.HostInfo{
 		Host:       "localhost",
 		Port:       5432,
@@ -166,11 +171,12 @@ func TestDefaultPlugin_Connect_Success(t *testing.T) {
 	}
 	props := emptyProps
 
-	// Create dummy contexts
 	ctxBefore := context.Background()
 	ctxDuring := context.Background()
 
-	// Telemetry expectations
+	mockContainer.EXPECT().GetPluginManager().Return(mockPluginManager).AnyTimes()
+	mockPluginManager.EXPECT().GetConnectionProviderManager().Return(connProviderManager).AnyTimes()
+
 	mockPluginService.EXPECT().GetTelemetryContext().Return(ctxBefore).Times(1)
 	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetry).Times(1)
 	mockTelemetry.EXPECT().
@@ -181,19 +187,15 @@ func TestDefaultPlugin_Connect_Success(t *testing.T) {
 	mockPluginService.EXPECT().SetTelemetryContext(ctxBefore).Times(1)
 	mockTelemetryCtx.EXPECT().CloseContext().Times(1)
 
-	// Connection expectation
 	mockConnProvider.EXPECT().
 		Connect(hostInfo, gomock.Any(), mockPluginService).
 		Return(mockConn, nil).Times(1)
 
-	// Post-connection behaviors
 	mockPluginService.EXPECT().SetAvailability(hostInfo.AllAliases, host_info_util.AVAILABLE).Times(1)
 	mockPluginService.EXPECT().UpdateDialect(mockConn).Times(1)
 
-	// Test subject
 	dp := &plugins.DefaultPlugin{
-		PluginService:       mockPluginService,
-		ConnProviderManager: *connProviderManager,
+		ServicesContainer: mockContainer,
 	}
 
 	conn, err := dp.Connect(hostInfo, props, true, nil)
@@ -205,13 +207,12 @@ func TestDefaultPlugin_ForceConnect_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockPluginService, mockContainer := setupDefaultPluginMocks(ctrl)
 	mockTelemetry := mock_telemetry.NewMockTelemetryFactory(ctrl)
 	mockTelemetryCtx := mock_telemetry.NewMockTelemetryContext(ctrl)
 	mockConnProvider := mock_driver_infrastructure.NewMockConnectionProvider(ctrl)
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 
-	// Use a valid HostInfo with map[string]bool for AllAliases
 	hostInfo := &host_info_util.HostInfo{
 		Host:       "primary",
 		Port:       5432,
@@ -219,11 +220,11 @@ func TestDefaultPlugin_ForceConnect_Success(t *testing.T) {
 	}
 	props := emptyProps
 
-	// Proper context objects
 	ctxBefore := context.Background()
 	ctxDuring := context.Background()
 
-	// Telemetry expectations
+	mockContainer.EXPECT().GetConnectionProvider().Return(mockConnProvider).AnyTimes()
+
 	mockPluginService.EXPECT().GetTelemetryContext().Return(ctxBefore).Times(1)
 	mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetry).Times(1)
 	mockTelemetry.EXPECT().
@@ -234,7 +235,6 @@ func TestDefaultPlugin_ForceConnect_Success(t *testing.T) {
 	mockPluginService.EXPECT().SetTelemetryContext(ctxBefore).Times(1)
 	mockTelemetryCtx.EXPECT().CloseContext().Times(1)
 
-	// Connection expectation
 	mockConnProvider.EXPECT().
 		Connect(hostInfo, gomock.Any(), mockPluginService).
 		Return(mockConn, nil).Times(1)
@@ -243,8 +243,7 @@ func TestDefaultPlugin_ForceConnect_Success(t *testing.T) {
 	mockPluginService.EXPECT().UpdateDialect(mockConn).Times(1)
 
 	dp := &plugins.DefaultPlugin{
-		PluginService:       mockPluginService,
-		DefaultConnProvider: mockConnProvider,
+		ServicesContainer: mockContainer,
 	}
 
 	conn, err := dp.ForceConnect(hostInfo, props, true, nil)
@@ -256,19 +255,23 @@ func TestDefaultPlugin_AcceptsStrategy(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	// Mock ConnectionProvider to respond to AcceptsStrategy
 	mockConnProvider := mock_driver_infrastructure.NewMockConnectionProvider(ctrl)
 	mockConnProvider.EXPECT().
 		AcceptsStrategy("rr").
 		Return(true).Times(1)
 
-	// Use real struct with mocked DefaultProvider
-	connProviderManager := &driver_infrastructure.ConnectionProviderManager{
+	connProviderManager := driver_infrastructure.ConnectionProviderManager{
 		DefaultProvider: mockConnProvider,
 	}
 
+	mockPluginManager := mock_driver_infrastructure.NewMockPluginManager(ctrl)
+	mockPluginManager.EXPECT().GetConnectionProviderManager().Return(connProviderManager).AnyTimes()
+
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginManager().Return(mockPluginManager).AnyTimes()
+
 	dp := &plugins.DefaultPlugin{
-		ConnProviderManager: *connProviderManager,
+		ServicesContainer: mockContainer,
 	}
 
 	assert.True(t, dp.AcceptsStrategy("rr"))
@@ -278,10 +281,11 @@ func TestDefaultPlugin_GetHostInfoByStrategy_NoHosts(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockPluginService, mockContainer := setupDefaultPluginMocks(ctrl)
+	mockPluginService.EXPECT().GetProperties().Return(emptyProps).AnyTimes()
 
 	dp := &plugins.DefaultPlugin{
-		PluginService: mockPluginService,
+		ServicesContainer: mockContainer,
 	}
 
 	host, err := dp.GetHostInfoByStrategy(host_info_util.READER, "xyz", []*host_info_util.HostInfo{})

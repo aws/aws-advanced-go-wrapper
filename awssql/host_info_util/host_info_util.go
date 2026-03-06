@@ -101,3 +101,12 @@ func IsHostInList(host *HostInfo, hosts []*HostInfo) bool {
 	}
 	return false
 }
+
+func CopyHostList(hosts []*HostInfo) []*HostInfo {
+	if hosts == nil {
+		return nil
+	}
+	result := make([]*HostInfo, len(hosts))
+	copy(result, hosts)
+	return result
+}

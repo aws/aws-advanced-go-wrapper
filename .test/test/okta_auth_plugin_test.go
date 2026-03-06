@@ -24,12 +24,12 @@ import (
 	"time"
 
 	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/services"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	"github.com/aws/aws-advanced-go-wrapper/okta"
@@ -44,24 +44,28 @@ func newOktaAuthPluginTest(
 	*MockCredentialsProviderFactory,
 	*MockIamTokenUtility,
 	*okta.OktaAuthPlugin,
-	driver_infrastructure.PluginService) {
+	*services.FullServicesContainer) {
 	okta.OktaTokenCache.Clear()
 	mockTargetDriver := &MockTargetDriver{}
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
-	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
-	mockPluginService := pluginServiceImpl
+	container := &services.FullServicesContainer{
+		Telemetry: telemetryFactory,
+	}
+	mockPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, container, props)
+	container.PluginManager = mockPluginManager
+	pluginServiceImpl, _ := plugin_helpers.NewPluginServiceImpl(container, pgx_driver.NewPgxDriverDialect(), props, pgTestDsn)
+	container.PluginService = pluginServiceImpl
 	iamTokenUtility := &MockIamTokenUtility{}
 	mockCredProviderFactory := &MockCredentialsProviderFactory{}
-	oktaPlugin, _ := okta.NewOktaAuthPlugin(mockPluginService, mockCredProviderFactory, iamTokenUtility)
-	return mockCredProviderFactory, iamTokenUtility, oktaPlugin, pluginServiceImpl
+	oktaPlugin, _ := okta.NewOktaAuthPlugin(container, mockCredProviderFactory, iamTokenUtility)
+	return mockCredProviderFactory, iamTokenUtility, oktaPlugin, container
 }
 
 func TestGetOktaAuthPlugin(t *testing.T) {
 	props := MakeMapFromKeysAndVals(property_util.DRIVER_PROTOCOL.Name, "postgresql")
-	_, _, _, pluginService := newOktaAuthPluginTest(props)
+	_, _, _, container := newOktaAuthPluginTest(props)
 	pluginFactory := okta.NewOktaAuthPluginFactory()
-	_, err := pluginFactory.GetInstance(pluginService, props)
+	_, err := pluginFactory.GetInstance(container, props)
 	assert.NoError(t, err)
 }
 
@@ -437,11 +441,11 @@ func TestOktaAuthPluginGetAwsCredentialsProviderError(t *testing.T) {
 		return &MockConn{throwError: true}, nil
 	}
 
-	mockCredFactory, _, plugin, _ := newOktaAuthPluginTest(props)
+	mockCredFactory, localIamTokenUtility, plugin, _ := newOktaAuthPluginTest(props)
 	mockCredFactory.getAwsCredentialsProviderError = errors.New("getAwsCredentialsProviderError")
 	_, err := plugin.Connect(federatedAuthHostInfo1, props, true, connectFunc)
 
-	assert.Equal(t, 0, mockIamTokenUtility.GenerateAuthenticationTokenCallCounter)
+	assert.Equal(t, 0, localIamTokenUtility.GenerateAuthenticationTokenCallCounter)
 	assert.Equal(t, mockCredFactory.getAwsCredentialsProviderError.Error(), err.Error())
 }
 

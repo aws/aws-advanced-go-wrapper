@@ -16,6 +16,15 @@
 
 package driver_infrastructure
 
+import "time"
+
+// AllowedAndBlockedHostsStorageType is the storage type descriptor for allowed/blocked host data.
+var AllowedAndBlockedHostsStorageType = &StorageTypeDescriptor[*AllowedAndBlockedHosts]{
+	TypeKey:       "AllowedAndBlockedHosts",
+	TTL:           5 * time.Minute,
+	RenewOnAccess: false,
+}
+
 type AllowedAndBlockedHosts struct {
 	allowedHostIds map[string]bool
 	blockedHostIds map[string]bool

@@ -21,25 +21,28 @@ import (
 	"errors"
 	"slices"
 	"testing"
+	"time"
 
+	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/services"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
-
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
 
-var execFuncCalls = 0
-var builder = host_info_util.NewHostInfoBuilder()
-var host1, _ = builder.SetHost("mydatabase-instance-1.xyz.us-east-2.rds.amazonaws.com").SetPort(3306).SetRole(host_info_util.WRITER).Build()
-var host2, _ = builder.SetHost("mydatabase-instance-2.xyz.us-east-2.rds.amazonaws.com").SetPort(3306).SetRole(host_info_util.READER).Build()
-var mockConn = &MockConn{}
+var failoverExecFuncCalls = 0
+var failoverBuilder = host_info_util.NewHostInfoBuilder()
+var failoverHost1, _ = failoverBuilder.SetHost("mydatabase-instance-1.xyz.us-east-2.rds.amazonaws.com").SetPort(3306).SetRole(host_info_util.WRITER).Build()
+var failoverHost2, _ = failoverBuilder.SetHost("mydatabase-instance-2.xyz.us-east-2.rds.amazonaws.com").SetPort(3306).SetRole(host_info_util.READER).Build()
+var failoverMockConn = &MockConn{}
 
 type MockFailoverPlugin struct {
 	calledFailoverCount       int
@@ -73,122 +76,99 @@ func (p *MockFailoverPlugin) DealWithError(err error) error {
 	return p.FailoverPlugin.DealWithError(err)
 }
 
-type MockMonitoringRdsHostListProvider struct {
-	*driver_infrastructure.MonitoringRdsHostListProvider
-}
-
-func newTestMockMonitoringRdsHostListProvider(
-	hostListProviderService driver_infrastructure.HostListProviderService,
-	databaseDialect driver_infrastructure.TopologyAwareDialect,
-	properties *utils.RWMap[string, string],
-	pluginService driver_infrastructure.PluginService) *MockMonitoringRdsHostListProvider {
-	provider := &MockMonitoringRdsHostListProvider{
-		MonitoringRdsHostListProvider: driver_infrastructure.NewMonitoringRdsHostListProvider(
-			hostListProviderService,
-			databaseDialect,
-			properties,
-			pluginService,
-		),
-	}
-	_, _ = provider.RdsHostListProvider.GetClusterId()
-	return provider
-}
-
-var mockMonitoringRdsHostListProvider *MockMonitoringRdsHostListProvider
-
-type MockPluginServiceImpl struct {
-	inTransactionResult    bool
-	isCurrentHostNil       bool
-	isInTransactionCounter int
-	forceRefreshFails      bool
-	isCurrentConnNil       bool
-	*plugin_helpers.PluginServiceImpl
-}
-
-func newMockPluginServiceImpl(
-	pluginManager driver_infrastructure.PluginManager,
-	driverDialect driver_infrastructure.DriverDialect,
-	props *utils.RWMap[string, string],
-	dsn string,
-	inTransactionResult bool,
-	isCurrentHostNil bool,
-	forceRefreshFails bool,
-	isCurrentConnNil bool) *MockPluginServiceImpl {
-	pluginService, _ := plugin_helpers.NewPluginServiceImpl(pluginManager, driverDialect, props, dsn)
-	pluginServiceImpl, _ := pluginService.(*plugin_helpers.PluginServiceImpl)
-	return &MockPluginServiceImpl{
-		inTransactionResult: inTransactionResult,
-		PluginServiceImpl:   pluginServiceImpl,
-		isCurrentHostNil:    isCurrentHostNil,
-		forceRefreshFails:   forceRefreshFails,
-		isCurrentConnNil:    isCurrentConnNil,
-	}
-}
-
-func (t *MockPluginServiceImpl) GetHostListProvider() driver_infrastructure.HostListProvider {
-	return mockMonitoringRdsHostListProvider
-}
-
-func (t *MockPluginServiceImpl) GetCurrentHostInfo() (*host_info_util.HostInfo, error) {
-	if t.isCurrentHostNil {
-		return nil, nil
-	}
-	return t.PluginServiceImpl.GetCurrentHostInfo()
-}
-
-func (t *MockPluginServiceImpl) IsInTransaction() bool {
-	t.isInTransactionCounter++
-	return t.inTransactionResult
-}
-
-func (t *MockPluginServiceImpl) GetCurrentConnection() driver.Conn {
-	if t.isCurrentConnNil {
-		return nil
-	}
-	return mockConn
-}
-
-func (t *MockPluginServiceImpl) ForceRefreshHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) (bool, error) {
-	if t.forceRefreshFails {
-		return false, nil
-	}
-	return t.PluginServiceImpl.ForceRefreshHostListWithTimeout(shouldVerifyWriter, timeoutMs)
-}
+var failoverRdsHostListProvider *driver_infrastructure.RdsHostListProvider
 
 type mockAuroraMysqlDialect struct {
 	isRoleWriter bool
 	driver_infrastructure.AuroraMySQLDatabaseDialect
 }
 
-func (t *mockAuroraMysqlDialect) GetHostListProvider(
-	_ *utils.RWMap[string, string],
-	_ driver_infrastructure.HostListProviderService,
-	_ driver_infrastructure.PluginService) driver_infrastructure.HostListProvider {
-	return mockMonitoringRdsHostListProvider
+func (t *mockAuroraMysqlDialect) GetHostListProviderSupplier() driver_infrastructure.HostListProviderSupplier {
+	return func(
+		props *utils.RWMap[string, string],
+		initialDsn string,
+		servicesContainer driver_infrastructure.ServicesContainer,
+	) driver_infrastructure.HostListProvider {
+		return failoverRdsHostListProvider
+	}
 }
 
-func (t *mockAuroraMysqlDialect) GetWriterHostName(_ driver.Conn) (string, error) {
-	return "mydatabase-instance-1", nil
+type FailoverMockPluginServiceImpl struct {
+	inTransactionResult    bool
+	isCurrentHostNil       bool
+	isInTransactionCounter int
+	forceRefreshFails      bool
+	isCurrentConnNil       bool
+	isRoleWriter           bool
+	*plugin_helpers.PluginServiceImpl
 }
 
-func (t *mockAuroraMysqlDialect) GetTopology(_ driver.Conn, _ driver_infrastructure.HostListProvider) ([]*host_info_util.HostInfo, error) {
-	return []*host_info_util.HostInfo{host1, host2}, nil
+func newFailoverMockPluginServiceImpl(
+	container driver_infrastructure.ServicesContainer,
+	driverDialect driver_infrastructure.DriverDialect,
+	props *utils.RWMap[string, string],
+	dsn string,
+	inTransactionResult bool,
+	isCurrentHostNil bool,
+	forceRefreshFails bool,
+	isCurrentConnNil bool,
+	isRoleWriter bool) *FailoverMockPluginServiceImpl {
+	pluginService, _ := plugin_helpers.NewPluginServiceImpl(container, driverDialect, props, dsn)
+	pluginServiceImpl, _ := pluginService.(*plugin_helpers.PluginServiceImpl)
+	return &FailoverMockPluginServiceImpl{
+		inTransactionResult: inTransactionResult,
+		PluginServiceImpl:   pluginServiceImpl,
+		isCurrentHostNil:    isCurrentHostNil,
+		forceRefreshFails:   forceRefreshFails,
+		isCurrentConnNil:    isCurrentConnNil,
+		isRoleWriter:        isRoleWriter,
+	}
 }
 
-func (t *mockAuroraMysqlDialect) GetHostRole(_ driver.Conn) host_info_util.HostRole {
+func (t *FailoverMockPluginServiceImpl) GetHostListProvider() driver_infrastructure.HostListProvider {
+	return failoverRdsHostListProvider
+}
+
+func (t *FailoverMockPluginServiceImpl) GetCurrentHostInfo() (*host_info_util.HostInfo, error) {
+	if t.isCurrentHostNil {
+		return nil, nil
+	}
+	return t.PluginServiceImpl.GetCurrentHostInfo()
+}
+
+func (t *FailoverMockPluginServiceImpl) IsInTransaction() bool {
+	t.isInTransactionCounter++
+	return t.inTransactionResult
+}
+
+func (t *FailoverMockPluginServiceImpl) GetCurrentConnection() driver.Conn {
+	if t.isCurrentConnNil {
+		return nil
+	}
+	return failoverMockConn
+}
+
+func (t *FailoverMockPluginServiceImpl) ForceRefreshHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) (bool, error) {
+	if t.forceRefreshFails {
+		return false, nil
+	}
+	return t.PluginServiceImpl.ForceRefreshHostListWithTimeout(shouldVerifyWriter, timeoutMs)
+}
+
+func (t *FailoverMockPluginServiceImpl) GetHostRole(_ driver.Conn) host_info_util.HostRole {
 	if t.isRoleWriter {
 		return host_info_util.WRITER
 	}
 	return host_info_util.READER
 }
 
-type mockDefaultPlugin struct {
+type failoverMockDefaultPlugin struct {
 	connectFails       bool
 	acceptedStrategies []string
 	plugins.DefaultPlugin
 }
 
-func (t *mockDefaultPlugin) Connect(
+func (t *failoverMockDefaultPlugin) Connect(
 	_ *host_info_util.HostInfo,
 	_ *utils.RWMap[string, string],
 	_ bool,
@@ -196,10 +176,10 @@ func (t *mockDefaultPlugin) Connect(
 	if t.connectFails {
 		return nil, errors.New("invalid connection")
 	}
-	return mockConn, nil
+	return failoverMockConn, nil
 }
 
-func (t *mockDefaultPlugin) ForceConnect(
+func (t *failoverMockDefaultPlugin) ForceConnect(
 	_ *host_info_util.HostInfo,
 	_ *utils.RWMap[string, string],
 	_ bool,
@@ -207,10 +187,10 @@ func (t *mockDefaultPlugin) ForceConnect(
 	if t.connectFails {
 		return nil, errors.New("invalid connection")
 	}
-	return mockConn, nil
+	return failoverMockConn, nil
 }
 
-func (t *mockDefaultPlugin) GetHostInfoByStrategy(
+func (t *failoverMockDefaultPlugin) GetHostInfoByStrategy(
 	_ host_info_util.HostRole,
 	strategy string,
 	hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
@@ -220,77 +200,116 @@ func (t *mockDefaultPlugin) GetHostInfoByStrategy(
 	return nil, error_util.NewUnsupportedStrategyError("unsupported failover strategy")
 }
 
-func execFunc() (any, any, bool, error) {
-	execFuncCalls++
+func failoverExecFunc() (any, any, bool, error) {
+	failoverExecFuncCalls++
 	return 1, 0, true, nil
 }
 
-func initializeTest(
+func initializeFailoverTest(
+	t *testing.T,
 	propsMap map[string]string,
 	isInTransaction bool,
 	isRoleWriter bool,
 	isCurrentHostNil bool,
 	connectFails bool,
 	forceRefreshFails bool,
-	isCurrentConnNil bool) (*MockFailoverPlugin, *MockPluginServiceImpl) {
+	isCurrentConnNil bool) (*MockFailoverPlugin, *FailoverMockPluginServiceImpl) {
+	ctrl := gomock.NewController(t)
+
 	props := utils.NewRWMapFromMap(propsMap)
 	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
-	pluginServiceImpl := newMockPluginServiceImpl(
-		mockPluginManager,
+
+	// Create storage service
+	storage := services.NewExpiringStorage(5*time.Minute, nil)
+	driver_infrastructure.RegisterDefaultStorageTypes(storage)
+
+	// Create mock monitor service and topology monitor
+	mockMonitorService := mock_driver_infrastructure.NewMockMonitorService(ctrl)
+	mockTopologyMonitor := mock_driver_infrastructure.NewMockClusterTopologyMonitor(ctrl)
+
+	// Configure mock monitor service
+	mockMonitorService.EXPECT().RegisterMonitorType(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mockMonitorService.EXPECT().RunIfAbsent(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(mockTopologyMonitor, nil).AnyTimes()
+	mockMonitorService.EXPECT().StopAndRemove(gomock.Any(), gomock.Any()).AnyTimes()
+
+	// Configure mock topology monitor to return test hosts
+	mockTopologyMonitor.EXPECT().ForceRefresh(gomock.Any(), gomock.Any()).
+		Return([]*host_info_util.HostInfo{failoverHost1, failoverHost2}, nil).AnyTimes()
+
+	// Create the services container
+	container := &services.FullServicesContainer{
+		Storage:   storage,
+		Monitor:   mockMonitorService,
+		Telemetry: telemetryFactory,
+	}
+
+	mockPluginManager := plugin_helpers.NewPluginManagerImpl(nil, container, props)
+	container.PluginManager = mockPluginManager
+
+	pluginServiceImpl := newFailoverMockPluginServiceImpl(
+		container,
 		mysql_driver.MySQLDriverDialect{},
 		props,
 		mysqlTestDsn,
 		isInTransaction,
 		isCurrentHostNil,
 		forceRefreshFails,
-		isCurrentConnNil)
+		isCurrentConnNil,
+		isRoleWriter)
 
-	pluginServiceImpl.SetDialect(&mockAuroraMysqlDialect{isRoleWriter: isRoleWriter})
+	dialect := &mockAuroraMysqlDialect{isRoleWriter: isRoleWriter}
+	pluginServiceImpl.SetDialect(dialect)
 	mockPluginService := driver_infrastructure.PluginService(pluginServiceImpl)
+	container.PluginService = mockPluginService
+
 	mySqlTestDsnProps, _ := property_util.ParseDsn(mysqlTestDsn)
+	combinedProps := utils.CombineRWMaps(props, mySqlTestDsnProps)
 
 	hostListProviderService := driver_infrastructure.HostListProviderService(pluginServiceImpl)
-	mockMonitoringRdsHostListProvider = newTestMockMonitoringRdsHostListProvider(
-		hostListProviderService,
-		&mockAuroraMysqlDialect{isRoleWriter: isRoleWriter},
-		utils.CombineRWMaps(props, mySqlTestDsnProps),
-		pluginServiceImpl)
-	hostListProviderService.SetHostListProvider(mockMonitoringRdsHostListProvider)
+	container.HostListProviderService = hostListProviderService
 
-	defaultPlugin := mockDefaultPlugin{
+	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(dialect, mysql_driver.MySQLDriverDialect{}.GetRowParser())
+	failoverRdsHostListProvider = driver_infrastructure.NewRdsHostListProvider(
+		hostListProviderService,
+		topologyUtils,
+		combinedProps,
+		container,
+	)
+	_, _ = failoverRdsHostListProvider.GetClusterId()
+	hostListProviderService.SetHostListProvider(failoverRdsHostListProvider)
+
+	defaultPlugin := failoverMockDefaultPlugin{
 		connectFails:       connectFails,
 		acceptedStrategies: []string{"random"},
 		DefaultPlugin: plugins.DefaultPlugin{
-			PluginService:       mockPluginService,
-			DefaultConnProvider: mockPluginManager.GetDefaultConnectionProvider(),
-			ConnProviderManager: mockPluginManager.GetConnectionProviderManager(),
+			ServicesContainer: container,
 		},
 	}
-	failoverPlugin, _ := plugins.NewFailoverPlugin(pluginServiceImpl, props)
+	failoverPlugin, _ := plugins.NewFailoverPlugin(container, props)
 	mockFailoverPlugin := &MockFailoverPlugin{FailoverPlugin: failoverPlugin}
-	_ = mockPluginManager.Init(mockPluginService, []driver_infrastructure.ConnectionPlugin{mockFailoverPlugin, &defaultPlugin})
+	_ = mockPluginManager.Init([]driver_infrastructure.ConnectionPlugin{mockFailoverPlugin, &defaultPlugin})
 	_ = mockPluginManager.InitHostProvider(props, hostListProviderService)
 	return mockFailoverPlugin, pluginServiceImpl
 }
 
-func setupTest() {
-	execFuncCalls = 0
-	mockConn.closeCounter = 0
+func setupFailoverTest() {
+	failoverExecFuncCalls = 0
+	failoverMockConn.closeCounter = 0
 }
 
-func cleanupTest() {
-	driver_infrastructure.MonitoringRdsHostListProviderClearCaches()
+func cleanupFailoverTest() {
+	// RdsHostListProvider caches are now in StorageService, no global cleanup needed
 }
 
 func TestFailoverWriter(t *testing.T) {
-	setupTest()
+	setupFailoverTest()
 
 	props := map[string]string{
 		property_util.ENABLE_CONNECT_FAILOVER.Name: "false",
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 	}
-	plugin, _ := initializeTest(props, false, true, false, false, false, false)
+	plugin, _ := initializeFailoverTest(t, props, false, true, false, false, false, false)
 	plugin.InitFailoverMode()
 
 	err := plugin.Failover()
@@ -303,17 +322,17 @@ func TestFailoverWriter(t *testing.T) {
 	assert.Equal(t, 1, plugin.calledFailoverWriterCount)
 	assert.Equal(t, 0, plugin.calledFailoverReaderCount)
 
-	cleanupTest()
+	cleanupFailoverTest()
 }
 
 func TestFailoverWriterInTransaction(t *testing.T) {
-	setupTest()
+	setupFailoverTest()
 
 	props := map[string]string{
 		property_util.ENABLE_CONNECT_FAILOVER.Name: "false",
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 	}
-	plugin, _ := initializeTest(props, true, true, false, false, false, false)
+	plugin, _ := initializeFailoverTest(t, props, true, true, false, false, false, false)
 	plugin.InitFailoverMode()
 
 	err := plugin.Failover()
@@ -326,23 +345,25 @@ func TestFailoverWriterInTransaction(t *testing.T) {
 	assert.Equal(t, 1, plugin.calledFailoverWriterCount)
 	assert.Equal(t, 0, plugin.calledFailoverReaderCount)
 
-	cleanupTest()
+	cleanupFailoverTest()
 }
 
 func TestFailoverWriterFails(t *testing.T) {
-	setupTest()
+	setupFailoverTest()
 
 	props := map[string]string{
 		property_util.ENABLE_CONNECT_FAILOVER.Name: "false",
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 		property_util.FAILOVER_TIMEOUT_MS.Name:     "3000",
 	}
-	plugin, _ := initializeTest(props, false, true, false, true, false, false)
+	plugin, _ := initializeFailoverTest(t, props, false, true, false, true, false, false)
 	plugin.InitFailoverMode()
 
 	err := plugin.Failover()
 	if err != nil {
-		assert.Equal(t, error_util.NewFailoverFailedError(error_util.GetMessage("Failover.unableToRefreshHostList")), err)
+		// The mock monitor returns hosts successfully, so ForceRefreshHostListWithTimeout succeeds.
+		// The failover then tries to connect to the writer candidate, which fails with "invalid connection".
+		assert.Equal(t, error_util.NewFailoverFailedError("invalid connection"), err)
 	} else {
 		assert.Fail(t, "Unexpected failover without error")
 	}
@@ -350,17 +371,17 @@ func TestFailoverWriterFails(t *testing.T) {
 	assert.Equal(t, 1, plugin.calledFailoverWriterCount)
 	assert.Equal(t, 0, plugin.calledFailoverReaderCount)
 
-	cleanupTest()
+	cleanupFailoverTest()
 }
 
 func TestFailoverWriterTopologyUpdateFailure(t *testing.T) {
-	setupTest()
+	setupFailoverTest()
 
 	props := map[string]string{
 		property_util.ENABLE_CONNECT_FAILOVER.Name: "false",
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 	}
-	plugin, _ := initializeTest(props, false, true, false, false, true, false)
+	plugin, _ := initializeFailoverTest(t, props, false, true, false, false, true, false)
 	plugin.InitFailoverMode()
 
 	err := plugin.Failover()
@@ -373,22 +394,22 @@ func TestFailoverWriterTopologyUpdateFailure(t *testing.T) {
 	assert.Equal(t, 1, plugin.calledFailoverWriterCount)
 	assert.Equal(t, 0, plugin.calledFailoverReaderCount)
 
-	cleanupTest()
+	cleanupFailoverTest()
 }
 
 func TestFailoverWriterIncorrectRole(t *testing.T) {
-	setupTest()
+	setupFailoverTest()
 
 	props := map[string]string{
 		property_util.ENABLE_CONNECT_FAILOVER.Name: "false",
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 	}
-	plugin, _ := initializeTest(props, false, false, false, false, false, false)
+	plugin, _ := initializeFailoverTest(t, props, false, false, false, false, false, false)
 	plugin.InitFailoverMode()
 
 	err := plugin.Failover()
 	if err != nil {
-		assert.Equal(t, error_util.NewFailoverFailedError(error_util.GetMessage("Failover.unexpectedReaderRole", host1.Host, host_info_util.READER)), err)
+		assert.Equal(t, error_util.NewFailoverFailedError(error_util.GetMessage("Failover.unexpectedReaderRole", failoverHost1.Host, host_info_util.READER)), err)
 	} else {
 		assert.Fail(t, "Unexpected failover without error")
 	}
@@ -396,21 +417,21 @@ func TestFailoverWriterIncorrectRole(t *testing.T) {
 	assert.Equal(t, 1, plugin.calledFailoverWriterCount)
 	assert.Equal(t, 0, plugin.calledFailoverReaderCount)
 
-	cleanupTest()
+	cleanupFailoverTest()
 }
 
 func TestFailoverReader(t *testing.T) {
-	setupTest()
+	setupFailoverTest()
 
 	props := map[string]string{
 		property_util.ENABLE_CONNECT_FAILOVER.Name: "false",
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 		property_util.FAILOVER_MODE.Name:           "strict-reader",
 	}
-	plugin, _ := initializeTest(props, false, false, false, false, false, false)
+	plugin, _ := initializeFailoverTest(t, props, false, false, false, false, false, false)
 	plugin.InitFailoverMode()
 
-	_, _, _, _ = plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, execFunc)
+	_, _, _, _ = plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, failoverExecFunc)
 	err := plugin.Failover()
 	if err != nil {
 		assert.Equal(t, error_util.FailoverSuccessError, err)
@@ -421,21 +442,21 @@ func TestFailoverReader(t *testing.T) {
 	assert.Equal(t, 0, plugin.calledFailoverWriterCount)
 	assert.Equal(t, 1, plugin.calledFailoverReaderCount)
 
-	cleanupTest()
+	cleanupFailoverTest()
 }
 
 func TestFailoverReaderInTransaction(t *testing.T) {
-	setupTest()
+	setupFailoverTest()
 
 	props := map[string]string{
 		property_util.ENABLE_CONNECT_FAILOVER.Name: "false",
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 		property_util.FAILOVER_MODE.Name:           "strict-reader",
 	}
-	plugin, _ := initializeTest(props, true, false, false, false, false, false)
+	plugin, _ := initializeFailoverTest(t, props, true, false, false, false, false, false)
 	plugin.InitFailoverMode()
 
-	_, _, _, _ = plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, execFunc)
+	_, _, _, _ = plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, failoverExecFunc)
 	err := plugin.Failover()
 	if err != nil {
 		assert.Equal(t, error_util.TransactionResolutionUnknownError, err)
@@ -446,24 +467,26 @@ func TestFailoverReaderInTransaction(t *testing.T) {
 	assert.Equal(t, 0, plugin.calledFailoverWriterCount)
 	assert.Equal(t, 1, plugin.calledFailoverReaderCount)
 
-	cleanupTest()
+	cleanupFailoverTest()
 }
 
 func TestFailoverReaderFails(t *testing.T) {
-	setupTest()
+	setupFailoverTest()
 
 	props := map[string]string{
 		property_util.ENABLE_CONNECT_FAILOVER.Name: "false",
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 		property_util.FAILOVER_MODE.Name:           "strict-reader",
+		property_util.FAILOVER_TIMEOUT_MS.Name:     "3000",
 	}
-	plugin, _ := initializeTest(props, false, false, false, true, false, false)
+	plugin, _ := initializeFailoverTest(t, props, false, false, false, true, false, false)
 	plugin.InitFailoverMode()
 
-	_, _, _, _ = plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, execFunc)
+	_, _, _, _ = plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, failoverExecFunc)
 	err := plugin.Failover()
 	if err != nil {
-		assert.Equal(t, error_util.NewTimeoutError(error_util.GetMessage("ClusterTopologyMonitorImpl.topologyNotUpdated", 1100)), err)
+		// All connection attempts fail, so the reader failover loop runs until timeout.
+		assert.Equal(t, error_util.NewFailoverFailedError(error_util.GetMessage("Failover.unableToConnectToReader")), err)
 	} else {
 		assert.Fail(t, "Unexpected failover without error")
 	}
@@ -471,18 +494,18 @@ func TestFailoverReaderFails(t *testing.T) {
 	assert.Equal(t, 0, plugin.calledFailoverWriterCount)
 	assert.Equal(t, 1, plugin.calledFailoverReaderCount)
 
-	cleanupTest()
+	cleanupFailoverTest()
 }
 
 func TestFailoverReaderTopologyUpdateFailure(t *testing.T) {
-	setupTest()
+	setupFailoverTest()
 
 	props := map[string]string{
 		property_util.ENABLE_CONNECT_FAILOVER.Name: "false",
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 		property_util.FAILOVER_MODE.Name:           "strict-reader",
 	}
-	plugin, _ := initializeTest(props, false, true, false, false, true, false)
+	plugin, _ := initializeFailoverTest(t, props, false, true, false, false, true, false)
 	plugin.InitFailoverMode()
 
 	err := plugin.Failover()
@@ -495,11 +518,11 @@ func TestFailoverReaderTopologyUpdateFailure(t *testing.T) {
 	assert.Equal(t, 0, plugin.calledFailoverWriterCount)
 	assert.Equal(t, 1, plugin.calledFailoverReaderCount)
 
-	cleanupTest()
+	cleanupFailoverTest()
 }
 
 func TestFailoverReaderIncorrectRole(t *testing.T) {
-	setupTest()
+	setupFailoverTest()
 
 	props := map[string]string{
 		property_util.ENABLE_CONNECT_FAILOVER.Name: "false",
@@ -507,10 +530,10 @@ func TestFailoverReaderIncorrectRole(t *testing.T) {
 		property_util.FAILOVER_MODE.Name:           "strict-reader",
 		property_util.FAILOVER_TIMEOUT_MS.Name:     "3000",
 	}
-	plugin, _ := initializeTest(props, false, true, false, false, false, false)
+	plugin, _ := initializeFailoverTest(t, props, false, true, false, false, false, false)
 	plugin.InitFailoverMode()
 
-	_, _, _, _ = plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, execFunc)
+	_, _, _, _ = plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, failoverExecFunc)
 	err := plugin.Failover()
 	if err != nil {
 		assert.Equal(t, error_util.NewFailoverFailedError(error_util.GetMessage("Failover.unableToConnectToReader")), err)
@@ -521,21 +544,21 @@ func TestFailoverReaderIncorrectRole(t *testing.T) {
 	assert.Equal(t, 0, plugin.calledFailoverWriterCount)
 	assert.Equal(t, 1, plugin.calledFailoverReaderCount)
 
-	cleanupTest()
+	cleanupFailoverTest()
 }
 
 func TestFailoverReaderUnsupportedStrategy(t *testing.T) {
-	setupTest()
+	setupFailoverTest()
 	props := map[string]string{
 		property_util.ENABLE_CONNECT_FAILOVER.Name:                "false",
 		property_util.DRIVER_PROTOCOL.Name:                        "mysql",
 		property_util.FAILOVER_MODE.Name:                          "strict-reader",
 		property_util.FAILOVER_READER_HOST_SELECTOR_STRATEGY.Name: "unsupported",
 	}
-	plugin, _ := initializeTest(props, false, false, false, false, false, false)
+	plugin, _ := initializeFailoverTest(t, props, false, false, false, false, false, false)
 	plugin.InitFailoverMode()
 
-	_, _, _, _ = plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, execFunc)
+	_, _, _, _ = plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, failoverExecFunc)
 	err := plugin.Failover()
 	if err != nil {
 		assert.Equal(t, error_util.GetMessage("Failover.unableToConnectToReader"), err.Error())
@@ -546,75 +569,75 @@ func TestFailoverReaderUnsupportedStrategy(t *testing.T) {
 	assert.Equal(t, 0, plugin.calledFailoverWriterCount)
 	assert.Equal(t, 1, plugin.calledFailoverReaderCount)
 
-	cleanupTest()
+	cleanupFailoverTest()
 }
 
 func TestInvalidateCurrentConnectionWithNilConn(t *testing.T) {
-	setupTest()
+	setupFailoverTest()
 
 	props := map[string]string{
 		property_util.ENABLE_CONNECT_FAILOVER.Name: "false",
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 	}
-	plugin, pluginService := initializeTest(props, false, true, true, false, false, true)
+	plugin, pluginService := initializeFailoverTest(t, props, false, true, true, false, false, true)
 	plugin.InitFailoverMode()
 
 	plugin.InvalidateCurrentConnection()
 	assert.Equal(t, 0, pluginService.isInTransactionCounter)
-	assert.Equal(t, 0, mockConn.closeCounter)
+	assert.Equal(t, 0, failoverMockConn.closeCounter)
 
-	cleanupTest()
+	cleanupFailoverTest()
 }
 
 func TestInvalidateCurrentConnectionInTransaction(t *testing.T) {
-	setupTest()
+	setupFailoverTest()
 
 	props := map[string]string{
 		property_util.ENABLE_CONNECT_FAILOVER.Name: "false",
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 	}
-	plugin, pluginService := initializeTest(props, true, true, true, false, false, false)
+	plugin, pluginService := initializeFailoverTest(t, props, true, true, true, false, false, false)
 	plugin.InitFailoverMode()
 
 	plugin.InvalidateCurrentConnection()
 	assert.Equal(t, 2, pluginService.isInTransactionCounter)
-	assert.Equal(t, 1, mockConn.closeCounter)
+	assert.Equal(t, 1, failoverMockConn.closeCounter)
 
-	cleanupTest()
+	cleanupFailoverTest()
 }
 
 func TestInvalidateCurrentConnectionWithOpenConn(t *testing.T) {
-	setupTest()
+	setupFailoverTest()
 
 	props := map[string]string{
 		property_util.ENABLE_CONNECT_FAILOVER.Name: "false",
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 	}
-	plugin, pluginService := initializeTest(props, false, true, true, false, false, false)
+	plugin, pluginService := initializeFailoverTest(t, props, false, true, true, false, false, false)
 	plugin.InitFailoverMode()
 
 	plugin.InvalidateCurrentConnection()
 	assert.Equal(t, 1, pluginService.isInTransactionCounter)
-	assert.Equal(t, 1, mockConn.closeCounter)
+	assert.Equal(t, 1, failoverMockConn.closeCounter)
 
-	cleanupTest()
+	cleanupFailoverTest()
 }
 
 func TestExecuteWithFailoverDisabled(t *testing.T) {
-	setupTest()
+	setupFailoverTest()
 
 	props := map[string]string{
 		property_util.ENABLE_CONNECT_FAILOVER.Name: "false",
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 	}
-	plugin, _ := initializeTest(props, false, true, false, false, false, false)
+	plugin, _ := initializeFailoverTest(t, props, false, true, false, false, false, false)
 	plugin.InitFailoverMode()
 
-	_, _, _, _ = plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, execFunc)
+	_, _, _, _ = plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, failoverExecFunc)
 
-	assert.Equal(t, 1, execFuncCalls)
+	assert.Equal(t, 1, failoverExecFuncCalls)
 	assert.Equal(t, 0, plugin.calledFailoverCount)
-	assert.Equal(t, 0, mockConn.closeCounter)
+	assert.Equal(t, 0, failoverMockConn.closeCounter)
 
-	cleanupTest()
+	cleanupFailoverTest()
 }

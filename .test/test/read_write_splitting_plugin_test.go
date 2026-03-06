@@ -39,12 +39,14 @@ func TestNewReadWriteSplittingPlugin(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 
 	props := MakeMapFromKeysAndVals(
 		"someKey", "someVal",
 	)
 
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, props)
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockContainer, props)
 
 	assert.NotNil(t, plugin)
 }
@@ -58,11 +60,11 @@ func TestReadWriteSplittingPluginFactory_GetInstance(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
 	factory := read_write_splitting.NewReadWriteSplittingPluginFactory()
 
 	props := MakeMapFromKeysAndVals("test", "value")
-	instance, err := factory.GetInstance(mockPluginService, props)
+	instance, err := factory.GetInstance(mockContainer, props)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, instance)
@@ -73,7 +75,9 @@ func TestReadWriteSplittingPlugin_GetSubscribedMethods(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockContainer, nil)
 
 	methods := plugin.GetSubscribedMethods()
 	assert.Contains(t, methods, plugin_helpers.CONNECT_METHOD)
@@ -88,9 +92,11 @@ func TestReadWriteSplittingPlugin_InitHostProvider(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 	mockHostProvider := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
 
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockContainer, nil)
 
 	called := false
 	err := plugin.InitHostProvider(nil, mockHostProvider, func() error {
@@ -108,12 +114,14 @@ func TestReadWriteSplittingPlugin_Connect_UnsupportedStrategy(t *testing.T) {
 	strategy := "unsupported"
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 	mockPluginService.EXPECT().AcceptsStrategy(gomock.Any()).Return(false)
 
 	props := emptyProps
 	property_util.READER_HOST_SELECTOR_STRATEGY.Set(props, strategy)
 
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, props)
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockContainer, props)
 
 	conn, err := plugin.Connect(nil, nil, true, nil)
 
@@ -131,11 +139,13 @@ func TestReadWriteSplittingPlugin_Connect_StaticProvider(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 	mockHostProvider := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
 	mockPluginService.EXPECT().AcceptsStrategy(gomock.Any()).Return(true)
 	mockHostProvider.EXPECT().IsStaticHostListProvider().Return(true)
 
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockContainer, nil)
 	_ = plugin.InitHostProvider(nil, mockHostProvider, func() error { return nil })
 
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
@@ -154,12 +164,14 @@ func TestReadWriteSplittingPlugin_Connect_UnknownHostRole(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 	mockHostProvider := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
 	mockPluginService.EXPECT().AcceptsStrategy(gomock.Any()).Return(true)
 	mockHostProvider.EXPECT().IsStaticHostListProvider().Return(false)
 	mockPluginService.EXPECT().GetHostRole(gomock.Any()).Return(host_info_util.UNKNOWN)
 
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockContainer, nil)
 	_ = plugin.InitHostProvider(nil, mockHostProvider, func() error { return nil })
 
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
@@ -181,13 +193,15 @@ func TestReadWriteSplittingPlugin_Connect_NilHostRole(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 	mockHostProvider := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
 	mockPluginService.EXPECT().AcceptsStrategy(gomock.Any()).Return(true)
 	mockHostProvider.EXPECT().IsStaticHostListProvider().Return(false)
 	mockPluginService.EXPECT().GetHostRole(gomock.Any()).Return(host_info_util.READER)
 	mockPluginService.EXPECT().GetInitialConnectionHostInfo().Return(nil)
 
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockContainer, nil)
 	_ = plugin.InitHostProvider(nil, mockHostProvider, func() error { return nil })
 
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
@@ -206,6 +220,8 @@ func TestReadWriteSplittingPlugin_Connect_SameHostRole(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 	mockHostProvider := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
 	mockPluginService.EXPECT().AcceptsStrategy(gomock.Any()).Return(true)
 	mockHostProvider.EXPECT().IsStaticHostListProvider().Return(false)
@@ -213,7 +229,7 @@ func TestReadWriteSplittingPlugin_Connect_SameHostRole(t *testing.T) {
 	mockPluginService.EXPECT().GetInitialConnectionHostInfo().Return(
 		&host_info_util.HostInfo{Role: host_info_util.READER})
 
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockContainer, nil)
 	_ = plugin.InitHostProvider(nil, mockHostProvider, func() error { return nil })
 
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
@@ -232,6 +248,8 @@ func TestReadWriteSplittingPlugin_Connect_DifferentHostRole(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 	mockHostProvider := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
 	mockPluginService.EXPECT().AcceptsStrategy(gomock.Any()).Return(true)
 	mockHostProvider.EXPECT().IsStaticHostListProvider().Return(false)
@@ -240,7 +258,7 @@ func TestReadWriteSplittingPlugin_Connect_DifferentHostRole(t *testing.T) {
 		&host_info_util.HostInfo{Role: host_info_util.READER})
 	mockHostProvider.EXPECT().SetInitialConnectionHostInfo(gomock.Any()).Return()
 
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockContainer, nil)
 	_ = plugin.InitHostProvider(nil, mockHostProvider, func() error { return nil })
 
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
@@ -259,7 +277,9 @@ func TestReadWriteSplittingPlugin_NotifyConnectionChanged(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockContainer, nil)
 	mockPluginService.EXPECT().GetCurrentConnection()
 	mockPluginService.EXPECT().GetCurrentHostInfo()
 
@@ -273,7 +293,9 @@ func TestReadWriteSplittingPlugin_Execute_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockContainer, nil)
 	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 
 	mockPluginService.EXPECT().GetDialect().Return(mockDialect).AnyTimes()
@@ -298,7 +320,9 @@ func TestReadWriteSplittingPlugin_Execute_SwitchReadOnly(t *testing.T) {
 	hosts := []*host_info_util.HostInfo{hostReader1, hostReader2, hostWriter1}
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockContainer, nil)
 	mockWriterConn := mock_database_sql_driver.NewMockConn(ctrl)
 	mockReaderConn := mock_database_sql_driver.NewMockConn(ctrl)
 	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
@@ -335,7 +359,9 @@ func TestReadWriteSplittingPlugin_Execute_ReadOnlyNoReader(t *testing.T) {
 
 	hostWriter1 := &host_info_util.HostInfo{Role: host_info_util.WRITER, Host: "writer1"}
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockContainer, nil)
 	mockWriterConn := mock_database_sql_driver.NewMockConn(ctrl)
 	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
@@ -373,7 +399,9 @@ func TestReadWriteSplittingPlugin_Execute_SwitchWriter(t *testing.T) {
 	hosts := []*host_info_util.HostInfo{hostReader1, hostReader2, hostWriter1}
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockContainer, nil)
 	mockWriterConn := mock_database_sql_driver.NewMockConn(ctrl)
 	mockReaderConn := mock_database_sql_driver.NewMockConn(ctrl)
 	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
@@ -412,7 +440,9 @@ func TestReadWriteSplittingPlugin_Execute_SwitchReaderWriterReaderThenClose(t *t
 	hostReader2 := &host_info_util.HostInfo{Role: host_info_util.READER, Host: "reader2"}
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockContainer, nil)
 	mockWriterConn := mock_database_sql_driver.NewMockConn(ctrl)
 	mockReaderConn := mock_database_sql_driver.NewMockConn(ctrl)
 
@@ -501,7 +531,9 @@ func TestReadWriteSplittingPlugin_InitHostProvider_AfterReaderSetup(t *testing.T
 	hostReader2 := &host_info_util.HostInfo{Role: host_info_util.READER, Host: "reader2"}
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockContainer, nil)
 	mockWriterConn := mock_database_sql_driver.NewMockConn(ctrl)
 	mockReaderConn := mock_database_sql_driver.NewMockConn(ctrl)
 
@@ -560,7 +592,9 @@ func TestReadWriteSplittingPlugin_FailToConnectToCachedReader(t *testing.T) {
 	}
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockContainer, nil)
 	mockWriterConn := mock_database_sql_driver.NewMockConn(ctrl)
 	mockReaderConn := mock_database_sql_driver.NewMockConn(ctrl)
 	mockNewReaderConn := mock_database_sql_driver.NewMockConn(ctrl)
@@ -617,7 +651,9 @@ func TestReadWriteSplittingPlugin_NoWriterFound(t *testing.T) {
 	}
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockContainer, nil)
 	mockReaderConn := mock_database_sql_driver.NewMockConn(ctrl)
 	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
@@ -653,7 +689,9 @@ func TestReadWriteSplittingPlugin_WriterFallback(t *testing.T) {
 	}
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockContainer, nil)
 	mockWriterConn := mock_database_sql_driver.NewMockConn(ctrl)
 	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
@@ -684,7 +722,9 @@ func TestReadWriteSplittingPlugin_FailoverError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockPluginService, nil)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(mockContainer, nil)
 	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
 	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)

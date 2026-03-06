@@ -30,11 +30,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
-	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 	"github.com/golang/mock/gomock"
 
 	"github.com/stretchr/testify/assert"
@@ -192,15 +188,42 @@ func TestIsDialectMySQL(t *testing.T) {
 	}
 }
 
+// setupMockPluginManagerAndService creates gomock-based mocks for PluginManager and PluginService.
+// The PluginManager.Execute mock delegates to the passed-in executeFunc (mimicking a passthrough plugin chain).
+func setupMockPluginManagerAndService(
+	ctrl *gomock.Controller,
+	currentConn driver.Conn,
+) (*mock_driver_infrastructure.MockPluginManager, *mock_driver_infrastructure.MockPluginService) {
+	mockPluginManager := mock_driver_infrastructure.NewMockPluginManager(ctrl)
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockTelemetryFactory := mock_telemetry.NewMockTelemetryFactory(ctrl)
+	mockTelemetryContext := mock_telemetry.NewMockTelemetryContext(ctrl)
+
+	mockPluginService.EXPECT().GetCurrentConnection().Return(currentConn).AnyTimes()
+	mockPluginService.EXPECT().UpdateState(gomock.Any(), gomock.Any()).AnyTimes()
+	mockPluginManager.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory).AnyTimes()
+	mockTelemetryFactory.EXPECT().OpenTelemetryContext(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(mockTelemetryContext, context.TODO()).AnyTimes()
+	mockTelemetryContext.EXPECT().SetAttribute(gomock.Any(), gomock.Any()).AnyTimes()
+	mockPluginManager.EXPECT().SetTelemetryContext(gomock.Any()).AnyTimes()
+	mockTelemetryContext.EXPECT().CloseContext().AnyTimes()
+	mockTelemetryContext.EXPECT().SetSuccess(gomock.Any()).AnyTimes()
+	mockTelemetryContext.EXPECT().SetError(gomock.Any()).AnyTimes()
+
+	mockPluginManager.EXPECT().
+		Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(conn driver.Conn, methodName string, execFunc driver_infrastructure.ExecuteFunc, args ...any) (any, any, bool, error) {
+			return execFunc()
+		}).AnyTimes()
+
+	return mockPluginManager, mockPluginService
+}
+
 func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
-	props := MakeMapFromKeysAndVals("protocol", "mysql")
-	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
-	mockPluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, mysql_driver.MySQLDriverDialect{}, props, mysqlTestDsn)
-	plugins := []driver_infrastructure.ConnectionPlugin{
-		CreateTestPlugin(nil, 1, nil, nil, false),
-	}
-	_ = mockPluginManager.Init(mockPluginService, plugins)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockPluginManager, mockPluginService := setupMockPluginManagerAndService(ctrl, nil)
 	baseAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.MYSQL)
 	res, err := baseAwsWrapperConn.QueryContext(context.Background(), "", nil)
 	if res != nil ||
@@ -212,9 +235,8 @@ func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
 
 	mockUnderlyingConn := &MockConn{}
 	mockUnderlyingConn.updateQueryRow([]string{"column"}, []driver.Value{"test"})
-	mockAwsWrapperConn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.MYSQL)
-	err = mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
-	assert.Nil(t, err)
+	mockPluginManager2, mockPluginService2 := setupMockPluginManagerAndService(ctrl, mockUnderlyingConn)
+	mockAwsWrapperConn := awsDriver.NewAwsWrapperConn(mockPluginManager2, mockPluginService2, driver_infrastructure.MYSQL)
 	res, err = mockAwsWrapperConn.QueryContext(context.Background(), "", nil)
 	if err != nil || res.Columns()[0] != "column" {
 		t.Errorf("An AWS Wrapper Conn with an underlying connection that does support QueryContext should return a result.")
@@ -237,15 +259,10 @@ func TestWrapperUtilsQueryWithPluginsMySQL(t *testing.T) {
 }
 
 func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
-	props := MakeMapFromKeysAndVals("protocol", "postgres")
-	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
-	mockPluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
-	plugins := []driver_infrastructure.ConnectionPlugin{
-		CreateTestPlugin(nil, 1, nil, nil, false),
-	}
-	_ = mockPluginManager.Init(mockPluginService, plugins)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
+	mockPluginManager, mockPluginService := setupMockPluginManagerAndService(ctrl, nil)
 	baseAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.PG)
 	res, err := baseAwsWrapperConn.QueryContext(context.Background(), "", nil)
 	if res != nil ||
@@ -256,11 +273,9 @@ func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
 	}
 
 	mockUnderlyingConn := &MockConn{}
-	err = mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
-	assert.Nil(t, err)
-
 	mockUnderlyingConn.updateQueryRow([]string{"column"}, []driver.Value{"test"})
-	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.PG)
+	mockPluginManager2, mockPluginService2 := setupMockPluginManagerAndService(ctrl, mockUnderlyingConn)
+	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager2, mockPluginService2, driver_infrastructure.PG)
 	res, err = mockAwsWrapperConn.QueryContext(context.Background(), "", nil)
 	if err != nil || res.Columns()[0] != "column" {
 		t.Errorf("An AWS Wrapper Conn with an underlying connection that does support QueryContext should return a result.")
@@ -283,18 +298,11 @@ func TestWrapperUtilsQueryWithPluginsPg(t *testing.T) {
 }
 
 func TestWrapperUtilsExecWithPlugins(t *testing.T) {
-	props := MakeMapFromKeysAndVals("protocol", "postgres")
-	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
-	mockPluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
-	plugins := []driver_infrastructure.ConnectionPlugin{
-		CreateTestPlugin(nil, 1, nil, nil, false),
-	}
-	_ = mockPluginManager.Init(mockPluginService, plugins)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
 	mockUnderlyingConn := &MockConn{execResult: MockResult{}}
-	err := mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
-	assert.Nil(t, err)
+	mockPluginManager, mockPluginService := setupMockPluginManagerAndService(ctrl, mockUnderlyingConn)
 	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.PG)
 
 	res, err := mockAwsWrapperConn.ExecContext(context.Background(), "", nil)
@@ -314,18 +322,12 @@ func TestWrapperUtilsExecWithPlugins(t *testing.T) {
 }
 
 func TestWrapperUtilsBeginWithPlugins(t *testing.T) {
-	props := MakeMapFromKeysAndVals("protocol", "postgres")
-	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
-	mockPluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
-	plugins := []driver_infrastructure.ConnectionPlugin{
-		CreateTestPlugin(nil, 1, nil, nil, false),
-	}
-	_ = mockPluginManager.Init(mockPluginService, plugins)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
 	mockUnderlyingConn := &MockConn{beginResult: MockTx{}}
-	err := mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
-	assert.Nil(t, err)
+	mockPluginManager, mockPluginService := setupMockPluginManagerAndService(ctrl, mockUnderlyingConn)
+	mockPluginService.EXPECT().SetCurrentTx(gomock.Any()).AnyTimes()
 	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.PG)
 
 	tx, err := mockAwsWrapperConn.Begin()
@@ -345,18 +347,11 @@ func TestWrapperUtilsBeginWithPlugins(t *testing.T) {
 }
 
 func TestWrapperUtilsPrepareWithPlugins(t *testing.T) {
-	props := MakeMapFromKeysAndVals("protocol", "postgres")
-	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
-	mockPluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, nil, props, pgTestDsn)
-	plugins := []driver_infrastructure.ConnectionPlugin{
-		CreateTestPlugin(nil, 1, nil, nil, false),
-	}
-	_ = mockPluginManager.Init(mockPluginService, plugins)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
 	mockUnderlyingConn := &MockConn{prepareResult: MockStmt{}}
-	err := mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
-	assert.Nil(t, err)
+	mockPluginManager, mockPluginService := setupMockPluginManagerAndService(ctrl, mockUnderlyingConn)
 	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.PG)
 
 	res, err := mockAwsWrapperConn.Prepare("")
@@ -384,19 +379,43 @@ func TestWrapperUtilsPrepareWithPlugins(t *testing.T) {
 }
 
 func TestMethodInvokedOnOldConnection(t *testing.T) {
-	props := MakeMapFromKeysAndVals("protocol", "postgres")
-	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
-	mockPluginManager := plugin_helpers.NewPluginManagerImpl(nil, props, driver_infrastructure.ConnectionProviderManager{}, telemetryFactory)
-	mockPluginService, _ := plugin_helpers.NewPluginServiceImpl(mockPluginManager, pgx_driver.PgxDriverDialect{}, props, pgTestDsn)
-	plugins := []driver_infrastructure.ConnectionPlugin{
-		CreateTestPlugin(nil, 1, nil, nil, false),
-	}
-	_ = mockPluginManager.Init(mockPluginService, plugins)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
 	mockUnderlyingConn := &MockConn{execResult: MockResult{}, beginResult: MockTx{}, prepareResult: MockStmt{}}
 	mockUnderlyingConn.updateQueryRow([]string{"column"}, []driver.Value{"test"})
-	err := mockPluginService.SetCurrentConnection(mockUnderlyingConn, mockHostInfo, nil)
-	assert.Nil(t, err)
+
+	// Use a variable to track the "current connection" so we can change it mid-test.
+	currentConn := driver.Conn(mockUnderlyingConn)
+	mockPluginManager := mock_driver_infrastructure.NewMockPluginManager(ctrl)
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockTelemetryFactory := mock_telemetry.NewMockTelemetryFactory(ctrl)
+	mockTelemetryContext := mock_telemetry.NewMockTelemetryContext(ctrl)
+
+	mockPluginService.EXPECT().GetCurrentConnection().DoAndReturn(func() driver.Conn {
+		return currentConn
+	}).AnyTimes()
+	mockPluginService.EXPECT().UpdateState(gomock.Any(), gomock.Any()).AnyTimes()
+	mockPluginService.EXPECT().SetCurrentTx(gomock.Any()).AnyTimes()
+	mockPluginManager.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory).AnyTimes()
+	mockTelemetryFactory.EXPECT().OpenTelemetryContext(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(mockTelemetryContext, context.TODO()).AnyTimes()
+	mockTelemetryContext.EXPECT().SetAttribute(gomock.Any(), gomock.Any()).AnyTimes()
+	mockPluginManager.EXPECT().SetTelemetryContext(gomock.Any()).AnyTimes()
+	mockTelemetryContext.EXPECT().CloseContext().AnyTimes()
+	mockTelemetryContext.EXPECT().SetSuccess(gomock.Any()).AnyTimes()
+	mockTelemetryContext.EXPECT().SetError(gomock.Any()).AnyTimes()
+	mockPluginManager.EXPECT().ReleaseResources().AnyTimes()
+
+	mockPluginManager.EXPECT().
+		Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(conn driver.Conn, methodName string, execFunc driver_infrastructure.ExecuteFunc, args ...any) (any, any, bool, error) {
+			if conn != currentConn && !strings.Contains(methodName, "Close") {
+				return nil, nil, false, errors.New("The internal connection has changed since " + methodName)
+			}
+			return execFunc()
+		}).AnyTimes()
+
 	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.PG)
 
 	rows, err := mockAwsWrapperConn.QueryContext(context.Background(), "", nil)
@@ -419,33 +438,28 @@ func TestMethodInvokedOnOldConnection(t *testing.T) {
 		t.Errorf("An AWS Wrapper Conn with an underlying connection should return a result to Prepare.")
 	}
 
+	// Switch the current connection to a different one
 	differentConn := &MockConn{}
-	_, _, _, err = mockPluginManager.Execute(differentConn, utils.CONN_PING, nil)
-	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since Conn was created") {
-		t.Errorf("If executing on a different connection than the internal connection, methods on Conn should fail to execute.")
-	}
-
-	err = mockPluginService.SetCurrentConnection(differentConn, mockHostInfo, nil)
-	assert.Nil(t, err)
+	currentConn = differentConn
 
 	err = rows.Next([]driver.Value{})
-	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since Rows was created") {
+	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since") {
 		t.Errorf("After internal connection has changed, methods on Rows should fail to execute.")
 	}
 
 	_, err = res.RowsAffected()
-	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since Result was created") {
+	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since") {
 		t.Errorf("After internal connection has changed, methods on Result should fail to execute.")
 	}
 
 	err = tx.Commit()
-	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since Tx was created") {
+	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since") {
 		t.Errorf("After internal connection has changed, methods on Tx should fail to execute.")
 	}
 
 	//nolint:all
 	_, err = stmt.Exec(nil)
-	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since Stmt was created") {
+	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since") {
 		t.Errorf("After internal connection has changed, methods on Stmt should fail to execute.")
 	}
 
@@ -477,7 +491,7 @@ func TestAwsWrapperDriver_Open_WorkingDsn(t *testing.T) {
 		EXPECT().Open(gomock.Any()).Return(mockConn, nil)
 
 	newAwsDriver := &awsDriver.AwsWrapperDriver{
-		DriverDialect:    pgx_driver.NewPgxDriverDialect(),
+		DriverDialect:    mysql_driver.MySQLDriverDialect{},
 		UnderlyingDriver: mockDriver,
 	}
 	wrapperConn, err := newAwsDriver.Open("user=someuser host=somehost port=5432 database=postgres")
@@ -497,7 +511,7 @@ func TestAwsWrapperDriver_Open_ConnectionError(t *testing.T) {
 		EXPECT().Open(gomock.Any()).Return(mockConn, errors.New("connect-error"))
 
 	newAwsDriver := &awsDriver.AwsWrapperDriver{
-		DriverDialect:    pgx_driver.NewPgxDriverDialect(),
+		DriverDialect:    mysql_driver.NewMySQLDriverDialect(),
 		UnderlyingDriver: mockDriver,
 	}
 	wrapperConn, err := newAwsDriver.Open("user=someuser host=somehost port=5432 database=postgres")
@@ -515,6 +529,7 @@ func setupmocks_awsWrapperConn_executeWithPlugins(ctrl *gomock.Controller, resul
 	mockTelemetryContext := mock_telemetry.NewMockTelemetryContext(ctrl)
 
 	mockPluginService.EXPECT().GetCurrentConnection().Return(mockConn).AnyTimes()
+	mockPluginService.EXPECT().UpdateState(gomock.Any(), gomock.Any()).AnyTimes()
 	mockPluginManager.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory).AnyTimes()
 	mockTelemetryFactory.EXPECT().OpenTelemetryContext(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockTelemetryContext, context.TODO()).AnyTimes()

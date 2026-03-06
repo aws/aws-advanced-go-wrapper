@@ -35,6 +35,8 @@ func TestAuroraInitialConnectionStrategyPlugin_InitHostProvider(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 	mockHostListProviderService := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
 
 	initHostProviderFuncCalled := false
@@ -44,7 +46,7 @@ func TestAuroraInitialConnectionStrategyPlugin_InitHostProvider(t *testing.T) {
 	}
 	props := utils.NewRWMap[string, string]()
 
-	plugin, err0 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err0 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockContainer, props)
 	assert.NoError(t, err0)
 
 	err1 := plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
@@ -57,6 +59,8 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithNonRdsClusterUrl(t *t
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 	props := utils.NewRWMap[string, string]()
 	hostInfo, err1 := host_info_util.NewHostInfoBuilder().
 		SetHost("someNonRdsClusterUrl.someClusterId.amazon.com").
@@ -68,7 +72,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithNonRdsClusterUrl(t *t
 		return nil, nil
 	}
 
-	plugin, err0 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err0 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockContainer, props)
 
 	_, err2 := plugin.Connect(hostInfo, props, true, mockConnectFunc)
 
@@ -87,6 +91,8 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster(t *t
 		return nil
 	}
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 
 	hostWriter1 := &host_info_util.HostInfo{Role: host_info_util.WRITER, Host: "writer1"}
 	hostReader1 := &host_info_util.HostInfo{Role: host_info_util.READER, Host: "reader1"}
@@ -104,7 +110,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster(t *t
 		return nil, nil
 	}
 
-	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockContainer, props)
 
 	_ = plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 
@@ -129,6 +135,8 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndO
 		return nil
 	}
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 
 	hostWriter1 := &host_info_util.HostInfo{Role: host_info_util.WRITER, Host: "writer1"}
 	hosts := []*host_info_util.HostInfo{}
@@ -144,7 +152,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndO
 	mockPluginService.EXPECT().IdentifyConnection(mockDriverConn).Return(hostWriter1, nil)
 	mockHostListProviderService.EXPECT().SetInitialConnectionHostInfo(hostWriter1)
 
-	plugin, err0 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err0 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockContainer, props)
 
 	_ = plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 
@@ -168,6 +176,8 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndR
 		return nil
 	}
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 
 	hostWriter1 := &host_info_util.HostInfo{Role: host_info_util.WRITER, Host: "writer1"}
 	hostReader1 := &host_info_util.HostInfo{Role: host_info_util.READER, Host: "reader1"}
@@ -188,7 +198,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndR
 		return nil, mockError
 	}
 
-	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockContainer, props)
 
 	_ = plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 
@@ -216,6 +226,8 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndR
 		return nil
 	}
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 
 	hostWriter1 := &host_info_util.HostInfo{Role: host_info_util.WRITER, Host: "writer1"}
 	hostReader1 := &host_info_util.HostInfo{Role: host_info_util.READER, Host: "reader1"}
@@ -236,7 +248,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndR
 		return nil, nil
 	}
 
-	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockContainer, props)
 
 	_ = plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 
@@ -263,6 +275,8 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndL
 		return nil
 	}
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 
 	hostWriter1 := &host_info_util.HostInfo{Role: host_info_util.WRITER, Host: "writer1"}
 	hostReader1 := &host_info_util.HostInfo{Role: host_info_util.READER, Host: "reader1"}
@@ -279,7 +293,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndL
 		return nil, nil
 	}
 
-	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockContainer, props)
 
 	_ = plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 
@@ -306,6 +320,8 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster(t *t
 		return nil
 	}
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 
 	hostWriter1 := &host_info_util.HostInfo{Role: host_info_util.WRITER, Host: "writer1"}
 	hostReader1 := &host_info_util.HostInfo{Role: host_info_util.READER, Host: "reader1"}
@@ -326,7 +342,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster(t *t
 		return nil, nil
 	}
 
-	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockContainer, props)
 
 	_ = plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 
@@ -351,6 +367,8 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndN
 		return nil
 	}
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 
 	hostWriter1 := &host_info_util.HostInfo{Role: host_info_util.WRITER, Host: "writer1"}
 	hostReader1 := &host_info_util.HostInfo{Role: host_info_util.READER, Host: "reader1"}
@@ -372,7 +390,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndN
 		return mockDriverConn, nil
 	}
 
-	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockContainer, props)
 
 	_ = plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 
@@ -396,6 +414,8 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndO
 		return nil
 	}
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 
 	hostReader2 := &host_info_util.HostInfo{Role: host_info_util.READER, Host: "reader2"}
 	hosts := []*host_info_util.HostInfo{}
@@ -418,7 +438,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndO
 	mockPluginService.EXPECT().IdentifyConnection(mockDriverConn).Return(hostReader2, nil)
 	mockHostListProviderService.EXPECT().SetInitialConnectionHostInfo(hostReader2)
 
-	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockContainer, props)
 
 	_ = plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 
@@ -439,6 +459,8 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndN
 		return nil
 	}
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 
 	hostWriter1 := &host_info_util.HostInfo{Role: host_info_util.WRITER, Host: "writer1"}
 	hosts := []*host_info_util.HostInfo{hostWriter1}
@@ -457,7 +479,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndN
 		return nil, nil
 	}
 
-	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockContainer, props)
 
 	_ = plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 
@@ -484,6 +506,8 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndL
 		return nil
 	}
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 
 	hostWriter1 := &host_info_util.HostInfo{Role: host_info_util.WRITER, Host: "writer1"}
 	hostReader1 := &host_info_util.HostInfo{Role: host_info_util.READER, Host: "reader1"}
@@ -500,7 +524,7 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsReaderCluster_AndL
 		return nil, nil
 	}
 
-	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockPluginService, props)
+	plugin, err1 := plugins.NewAuroraInitialConnectionStrategyPlugin(mockContainer, props)
 
 	_ = plugin.InitHostProvider(props, mockHostListProviderService, mockInitHostProviderFunc)
 

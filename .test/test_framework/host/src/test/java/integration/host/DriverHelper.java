@@ -18,7 +18,7 @@ package integration.host;
 
 import com.mysql.cj.conf.PropertyKey;
 import org.postgresql.PGProperty;
-import org.testcontainers.shaded.org.apache.commons.lang3.NotImplementedException;
+
 
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -33,7 +33,7 @@ public class DriverHelper {
       case MYSQL:
         return "jdbc:mysql://";
       default:
-        throw new NotImplementedException(databaseEngine.toString());
+        throw new UnsupportedOperationException(databaseEngine.toString());
     }
   }
 
@@ -44,7 +44,7 @@ public class DriverHelper {
       case MYSQL:
         return getDriverClassname(TestDriver.MYSQL);
       default:
-        throw new NotImplementedException(databaseEngine.toString());
+        throw new UnsupportedOperationException(databaseEngine.toString());
     }
   }
 
@@ -55,7 +55,7 @@ public class DriverHelper {
       case MYSQL:
         return "com.mysql.cj.jdbc.Driver";
       default:
-        throw new NotImplementedException(testDriver.toString());
+        throw new UnsupportedOperationException(testDriver.toString());
     }
   }
 
@@ -75,7 +75,7 @@ public class DriverHelper {
             PropertyKey.connectTimeout.getKeyName(), String.valueOf(timeUnit.toMillis(timeout)));
         break;
       default:
-        throw new NotImplementedException(testDriver.toString());
+        throw new UnsupportedOperationException(testDriver.toString());
     }
   }
 }

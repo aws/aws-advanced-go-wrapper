@@ -51,7 +51,6 @@ type PluginService interface {
 	GetCurrentHostInfo() (*host_info_util.HostInfo, error)
 	GetAllHosts() []*host_info_util.HostInfo
 	GetHosts() []*host_info_util.HostInfo
-	SetAllowedAndBlockedHosts(allowedAndBlockedHosts *AllowedAndBlockedHosts)
 	AcceptsStrategy(strategy string) bool
 	GetHostInfoByStrategy(role host_info_util.HostRole, strategy string, hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error)
 	GetHostSelectorStrategy(strategy string) (hostSelector HostSelector, err error)
@@ -75,6 +74,7 @@ type PluginService interface {
 	GetDialect() DatabaseDialect
 	SetDialect(dialect DatabaseDialect)
 	UpdateDialect(conn driver.Conn)
+	IsDialectConfirmed() bool
 	GetTargetDriverDialect() DriverDialect
 	IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error)
 	FillAliases(conn driver.Conn, hostInfo *host_info_util.HostInfo)
@@ -86,8 +86,6 @@ type PluginService interface {
 	GetTelemetryFactory() telemetry.TelemetryFactory
 	SetTelemetryContext(ctx context.Context)
 	UpdateState(sql string, methodArgs ...any)
-	GetBgStatus(id string) (BlueGreenStatus, bool)
-	SetBgStatus(status BlueGreenStatus, id string)
 	IsPluginInUse(pluginName string) bool
 	ResetSession()
 	CreatePartialPluginService() PluginService
@@ -100,7 +98,7 @@ type PluginServiceProvider func(
 	dsn string) (PluginService, error)
 
 type PluginManager interface {
-	Init(pluginService PluginService, plugins []ConnectionPlugin) error
+	Init(plugins []ConnectionPlugin) error
 	InitHostProvider(props *utils.RWMap[string, string], hostListProviderService HostListProviderService) error
 	Connect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string], isInitialConnection bool, pluginToSkip ConnectionPlugin) (driver.Conn, error)
 	ForceConnect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string], isInitialConnection bool) (driver.Conn, error)
@@ -141,14 +139,5 @@ type CanReleaseResources interface {
 func ClearCaches() {
 	if knownEndpointDialectsCache != nil {
 		knownEndpointDialectsCache.Clear()
-	}
-	if primaryClusterIdCache != nil {
-		primaryClusterIdCache.Clear()
-	}
-	if suggestedPrimaryClusterCache != nil {
-		suggestedPrimaryClusterCache.Clear()
-	}
-	if TopologyCache != nil {
-		TopologyCache.Clear()
 	}
 }

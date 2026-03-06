@@ -34,7 +34,7 @@ func TestResetSessionStateOnCloseFunc(t *testing.T) {
 	}
 	driver_infrastructure.SetResetSessionStateOnCloseFunc(resetSessionStateFunc)
 	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, emptyProps)
-	err := sessionStateService.ApplyPristineSessionState(mockConn)
+	err := sessionStateService.ApplyPristineSessionState(MockDriverConn{})
 	assert.Nil(t, err)
 	assert.True(t, usedResetStateFunc)
 
@@ -51,7 +51,7 @@ func TestTransferSessionStateOnCloseFunc(t *testing.T) {
 	}
 	driver_infrastructure.SetTransferSessionStateOnCloseFunc(transferSessionStateFunc)
 	sessionStateService := driver_infrastructure.NewSessionStateServiceImpl(&plugin_helpers.PluginServiceImpl{}, emptyProps)
-	err := sessionStateService.ApplyCurrentSessionState(mockConn)
+	err := sessionStateService.ApplyCurrentSessionState(MockDriverConn{})
 	assert.Nil(t, err)
 	assert.True(t, usedTransferStateFunc)
 

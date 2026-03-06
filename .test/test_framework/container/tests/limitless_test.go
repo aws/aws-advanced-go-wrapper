@@ -49,6 +49,25 @@ func TestLimitlessValidConnectionProperties(t *testing.T) {
 	assert.NotZero(t, instanceId)
 }
 
+func TestLimitlessAndEfmPlugin(t *testing.T) {
+	defer test_utils.BasicCleanupAfterBasicSetup(t)()
+
+	environment, err := test_utils.GetCurrentTestEnvironment()
+	assert.Nil(t, err)
+
+	test_utils.RequireTestEnvironmentFeatures(t, environment.Info().Request.Features, test_utils.LIMITLESS_DEPLOYMENT)
+
+	dsn := test_utils.GetDsn(environment, map[string]string{"plugins": "limitless,efm"})
+	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+	defer db.Close()
+
+	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
+	assert.Nil(t, err)
+	assert.NotZero(t, instanceId)
+}
+
 func TestLimitlessAndIamPlugin(t *testing.T) {
 	defer test_utils.BasicCleanupAfterBasicSetup(t)()
 	awsDriver.ClearCaches()

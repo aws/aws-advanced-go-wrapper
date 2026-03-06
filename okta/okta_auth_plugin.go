@@ -42,12 +42,12 @@ func init() {
 type OktaAuthPluginFactory struct{}
 
 func (o OktaAuthPluginFactory) GetInstance(
-	pluginService driver_infrastructure.PluginService,
+	servicesContainer driver_infrastructure.ServicesContainer,
 	_ *utils.RWMap[string, string],
 ) (driver_infrastructure.ConnectionPlugin, error) {
-	providerFactory := NewOktaCredentialsProviderFactory(auth_helpers.GetBasicHttpClient, auth_helpers.NewAwsStsClient, pluginService)
+	providerFactory := NewOktaCredentialsProviderFactory(auth_helpers.GetBasicHttpClient, auth_helpers.NewAwsStsClient, servicesContainer.GetPluginService())
 
-	return NewOktaAuthPlugin(pluginService, providerFactory, &auth_helpers.RegularIamTokenUtility{})
+	return NewOktaAuthPlugin(servicesContainer, providerFactory, &auth_helpers.RegularIamTokenUtility{})
 }
 
 func (o OktaAuthPluginFactory) ClearCaches() {
@@ -61,7 +61,7 @@ func NewOktaAuthPluginFactory() driver_infrastructure.ConnectionPluginFactory {
 var OktaTokenCache = utils.NewCache[string]()
 
 type OktaAuthPlugin struct {
-	pluginService              driver_infrastructure.PluginService
+	servicesContainer          driver_infrastructure.ServicesContainer
 	credentialsProviderFactory auth_helpers.CredentialsProviderFactory
 	iamTokenUtility            auth_helpers.IamTokenUtility
 	fetchTokenCounter          telemetry.TelemetryCounter
@@ -69,15 +69,16 @@ type OktaAuthPlugin struct {
 }
 
 func NewOktaAuthPlugin(
-	pluginService driver_infrastructure.PluginService,
+	servicesContainer driver_infrastructure.ServicesContainer,
 	credentialsProviderFactory auth_helpers.CredentialsProviderFactory,
 	iamTokenUtility auth_helpers.IamTokenUtility) (*OktaAuthPlugin, error) {
+	pluginService := servicesContainer.GetPluginService()
 	fetchTokenCounter, err := pluginService.GetTelemetryFactory().CreateCounter("oktaAuth.fetchToken.count")
 	if err != nil {
 		return nil, err
 	}
 	return &OktaAuthPlugin{
-		pluginService:              pluginService,
+		servicesContainer:          servicesContainer,
 		credentialsProviderFactory: credentialsProviderFactory,
 		iamTokenUtility:            iamTokenUtility,
 		fetchTokenCounter:          fetchTokenCounter,
@@ -131,7 +132,7 @@ func (o *OktaAuthPlugin) connectInternal(
 	port := auth_helpers.GetIamPort(
 		property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.IAM_DEFAULT_PORT),
 		*hostInfo,
-		o.pluginService.GetDialect().GetDefaultPort())
+		o.servicesContainer.GetPluginService().GetDialect().GetDefaultPort())
 	region := region_util.GetRegion(host, props, property_util.IAM_REGION)
 
 	if region == "" {
@@ -161,7 +162,7 @@ func (o *OktaAuthPlugin) connectInternal(
 
 	conn, err := connectFunc(props)
 
-	if err != nil && o.pluginService.IsLoginError(err) && isCachedToken {
+	if err != nil && o.servicesContainer.GetPluginService().IsLoginError(err) && isCachedToken {
 		err = o.updateAuthenticationToken(props, region, cacheKey, host, port)
 		if err != nil {
 			return nil, err
@@ -185,8 +186,8 @@ func (o *OktaAuthPlugin) updateAuthenticationToken(
 		return err
 	}
 
-	o.fetchTokenCounter.Inc(o.pluginService.GetTelemetryContext())
-	token, err := o.iamTokenUtility.GenerateAuthenticationToken(property_util.DB_USER.Get(props), host, port, region, credentialsProvider, o.pluginService)
+	o.fetchTokenCounter.Inc(o.servicesContainer.GetPluginService().GetTelemetryContext())
+	token, err := o.iamTokenUtility.GenerateAuthenticationToken(property_util.DB_USER.Get(props), host, port, region, credentialsProvider, o.servicesContainer.GetPluginService())
 	if err != nil {
 		return err
 	}

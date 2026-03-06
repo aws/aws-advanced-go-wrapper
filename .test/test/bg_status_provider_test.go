@@ -51,7 +51,9 @@ func TestBlueGreenStatusProviderGetMonitoringProperties(t *testing.T) {
 	mockPluginService.EXPECT().GetDialect().Return(mockDialect).AnyTimes()
 	mockPluginService.EXPECT().GetCurrentHostInfo().Return(&host_info_util.HostInfo{Host: "test-host"}, nil).AnyTimes()
 
-	provider := bg.NewBlueGreenStatusProvider(mockPluginService, props, "test-bg-id")
+	storage := newTestStorageService()
+	defer storage.Stop()
+	provider := bg.NewBlueGreenStatusProvider(mockPluginService, storage, props, "test-bg-id")
 	assert.NotNil(t, provider)
 	provider.ClearMonitors()
 

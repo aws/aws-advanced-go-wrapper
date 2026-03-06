@@ -175,7 +175,7 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	SECRETS_MANAGER_REGION.Name:                     true,
 	SECRETS_MANAGER_ENDPOINT.Name:                   true,
 	SECRETS_MANAGER_EXPIRATION_SEC.Name:             true,
-	SECRETS_MANAGER_SECRET_USERNAME_PROPERTY.Name:	 true,
+	SECRETS_MANAGER_SECRET_USERNAME_PROPERTY.Name:   true,
 	SECRETS_MANAGER_SECRET_PASSWORD_PROPERTY.Name:   true,
 	FAILURE_DETECTION_TIME_MS.Name:                  true,
 	FAILURE_DETECTION_INTERVAL_MS.Name:              true,
@@ -332,6 +332,7 @@ var CLUSTER_ID = AwsWrapperProperty{
 	description: "A unique identifier for the cluster. " +
 		"Connections with the same cluster id share a cluster topology cache. " +
 		"If unspecified, a cluster id is automatically created for AWS RDS clusters.",
+	defaultValue:        "1",
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 

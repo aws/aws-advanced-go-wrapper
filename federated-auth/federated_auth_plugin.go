@@ -44,10 +44,10 @@ var TokenCache = utils.NewCache[string]()
 type FederatedAuthPluginFactory struct{}
 
 func (f FederatedAuthPluginFactory) GetInstance(
-	pluginService driver_infrastructure.PluginService,
+	servicesContainer driver_infrastructure.ServicesContainer,
 	_ *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-	providerFactory := NewAdfsCredentialsProviderFactory(auth_helpers.GetBasicHttpClient, auth_helpers.NewAwsStsClient, pluginService)
-	return NewFederatedAuthPlugin(pluginService, providerFactory, &auth_helpers.RegularIamTokenUtility{})
+	providerFactory := NewAdfsCredentialsProviderFactory(auth_helpers.GetBasicHttpClient, auth_helpers.NewAwsStsClient, servicesContainer.GetPluginService())
+	return NewFederatedAuthPlugin(servicesContainer, providerFactory, &auth_helpers.RegularIamTokenUtility{})
 }
 
 func (f FederatedAuthPluginFactory) ClearCaches() {
@@ -59,7 +59,7 @@ func NewFederatedAuthPluginFactory() driver_infrastructure.ConnectionPluginFacto
 }
 
 type FederatedAuthPlugin struct {
-	pluginService              driver_infrastructure.PluginService
+	servicesContainer          driver_infrastructure.ServicesContainer
 	credentialsProviderFactory auth_helpers.CredentialsProviderFactory
 	iamTokenUtility            auth_helpers.IamTokenUtility
 	fetchTokenCounter          telemetry.TelemetryCounter
@@ -67,15 +67,16 @@ type FederatedAuthPlugin struct {
 }
 
 func NewFederatedAuthPlugin(
-	pluginService driver_infrastructure.PluginService,
+	servicesContainer driver_infrastructure.ServicesContainer,
 	providerFactory auth_helpers.CredentialsProviderFactory,
 	iamTokenUtility auth_helpers.IamTokenUtility) (*FederatedAuthPlugin, error) {
+	pluginService := servicesContainer.GetPluginService()
 	fetchTokenCounter, err := pluginService.GetTelemetryFactory().CreateCounter("federatedAuth.fetchToken.count")
 	if err != nil {
 		return nil, err
 	}
 	return &FederatedAuthPlugin{
-		pluginService:              pluginService,
+		servicesContainer:          servicesContainer,
 		credentialsProviderFactory: providerFactory,
 		iamTokenUtility:            iamTokenUtility,
 		fetchTokenCounter:          fetchTokenCounter,
@@ -130,7 +131,7 @@ func (f *FederatedAuthPlugin) connectInternal(
 	port := auth_helpers.GetIamPort(
 		property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.IAM_DEFAULT_PORT),
 		*hostInfo,
-		f.pluginService.GetDialect().GetDefaultPort())
+		f.servicesContainer.GetPluginService().GetDialect().GetDefaultPort())
 
 	region := region_util.GetRegion(host, props, property_util.IAM_REGION)
 	if region == "" {
@@ -158,7 +159,7 @@ func (f *FederatedAuthPlugin) connectInternal(
 	property_util.USER.Set(props, property_util.DB_USER.Get(props))
 
 	result, err := connectFunc(props)
-	if err != nil && f.pluginService.IsLoginError(err) && isCachedToken {
+	if err != nil && f.servicesContainer.GetPluginService().IsLoginError(err) && isCachedToken {
 		updateErr := f.updateAuthenticationToken(props, region, cacheKey, host, port)
 		if updateErr != nil {
 			return nil, updateErr
@@ -180,8 +181,8 @@ func (f *FederatedAuthPlugin) updateAuthenticationToken(
 		return err
 	}
 
-	f.fetchTokenCounter.Inc(f.pluginService.GetTelemetryContext())
-	token, err := f.iamTokenUtility.GenerateAuthenticationToken(property_util.DB_USER.Get(props), host, port, region, credentialsProvider, f.pluginService)
+	f.fetchTokenCounter.Inc(f.servicesContainer.GetPluginService().GetTelemetryContext())
+	token, err := f.iamTokenUtility.GenerateAuthenticationToken(property_util.DB_USER.Get(props), host, port, region, credentialsProvider, f.servicesContainer.GetPluginService())
 	if err != nil {
 		return err
 	}

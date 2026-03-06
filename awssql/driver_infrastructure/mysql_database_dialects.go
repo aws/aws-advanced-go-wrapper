@@ -17,18 +17,13 @@
 package driver_infrastructure
 
 import (
-	"context"
 	"database/sql/driver"
 	"fmt"
-	"log/slog"
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
@@ -65,11 +60,14 @@ func (m *MySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	return false
 }
 
-func (m *MySQLDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string, string],
-	hostListProviderService HostListProviderService,
-	_ PluginService) HostListProvider {
-	return NewDsnHostListProvider(props, hostListProviderService)
+func (m *MySQLDatabaseDialect) GetHostListProviderSupplier() HostListProviderSupplier {
+	return func(
+		props *utils.RWMap[string, string],
+		initialDsn string,
+		servicesContainer ServicesContainer,
+	) HostListProvider {
+		return NewDsnHostListProvider(props, servicesContainer.GetHostListProviderService())
+	}
 }
 
 func (m *MySQLDatabaseDialect) GetSetAutoCommitQuery(autoCommit bool) (string, error) {
@@ -170,6 +168,10 @@ func (m *MySQLDatabaseDialect) DoesStatementSetTransactionIsolation(statement st
 	return TRANSACTION_READ_UNCOMMITTED, false
 }
 
+func (m *MySQLDatabaseDialect) GetIsReaderQuery() string {
+	return "SELECT @@innodb_read_only"
+}
+
 type RdsMySQLDatabaseDialect struct {
 	MySQLDatabaseDialect
 }
@@ -192,73 +194,17 @@ func (m *RdsMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	return false
 }
 
-func (m *RdsMySQLDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) ([]BlueGreenResult, error) {
-	bgStatusQuery := "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
-	return mySqlGetBlueGreenStatus(conn, bgStatusQuery)
+func (m *RdsMySQLDatabaseDialect) GetBlueGreenStatusQuery() string {
+	return "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
 }
 
 func (m *RdsMySQLDatabaseDialect) IsBlueGreenStatusAvailable(conn driver.Conn) bool {
 	topologyTableExistQuery := "SELECT 1 AS tmp FROM information_schema.tables WHERE table_schema = 'mysql' AND table_name = 'rds_topology'"
-	return utils.GetFirstRowFromQuery(conn, topologyTableExistQuery) != nil
-}
-
-type MySQLTopologyAwareDatabaseDialect struct {
-	MySQLDatabaseDialect
-}
-
-func (m *MySQLTopologyAwareDatabaseDialect) GetTopology(
-	_ driver.Conn, _ HostListProvider) ([]*host_info_util.HostInfo, error) {
-	return nil, nil
-}
-
-func (m *MySQLTopologyAwareDatabaseDialect) GetHostRole(conn driver.Conn) host_info_util.HostRole {
-	isReaderQuery := "SELECT @@innodb_read_only"
-	res := utils.GetFirstRowFromQuery(conn, isReaderQuery)
-	if len(res) > 0 {
-		isReader, ok := res[0].(int64)
-		if ok {
-			if isReader == 1 {
-				return host_info_util.READER
-			}
-			return host_info_util.WRITER
-		}
-	}
-	return host_info_util.UNKNOWN
-}
-
-func (m *MySQLTopologyAwareDatabaseDialect) GetHostName(_ driver.Conn) (string, string) {
-	return "", ""
-}
-
-func (m *MySQLTopologyAwareDatabaseDialect) GetWriterHostName(_ driver.Conn) (string, error) {
-	return "", nil
-}
-
-func (m *MySQLTopologyAwareDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string, string],
-	hostListProviderService HostListProviderService,
-	pluginService PluginService) HostListProvider {
-	return m.getTopologyAwareHostListProvider(m, props, hostListProviderService, pluginService)
-}
-
-func (m *MySQLTopologyAwareDatabaseDialect) getTopologyAwareHostListProvider(
-	dialect TopologyAwareDialect,
-	props *utils.RWMap[string, string],
-	hostListProviderService HostListProviderService,
-	pluginService PluginService) HostListProvider {
-	pluginsProp := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PLUGINS)
-
-	if strings.Contains(pluginsProp, "failover") {
-		slog.Debug(error_util.GetMessage("DatabaseDialect.usingMonitoringHostListProvider"))
-		return NewMonitoringRdsHostListProvider(hostListProviderService, dialect, props, pluginService)
-	}
-
-	slog.Debug(error_util.GetMessage("DatabaseDialect.usingRdsHostListProvider"))
-	return NewRdsHostListProvider(hostListProviderService, dialect, props, nil, nil)
+	return utils.CheckExistenceQueries(conn, topologyTableExistQuery)
 }
 
 type AuroraMySQLDatabaseDialect struct {
-	MySQLTopologyAwareDatabaseDialect
+	MySQLDatabaseDialect
 }
 
 func (m *AuroraMySQLDatabaseDialect) GetDialectUpdateCandidates() []string {
@@ -271,108 +217,45 @@ func (m *AuroraMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	return row != nil
 }
 
-func (m *AuroraMySQLDatabaseDialect) GetHostName(conn driver.Conn) (string, string) {
-	hostIdQuery := "SELECT @@aurora_server_id"
-	res := utils.GetFirstRowFromQueryAsString(conn, hostIdQuery)
-	if len(res) > 0 {
-		return res[0], res[0]
-	}
-	return "", ""
-}
-
-func (m *AuroraMySQLDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, error) {
-	hostIdQuery := "SELECT server_id " +
-		"FROM information_schema.replica_host_status " +
-		"WHERE SESSION_ID = 'MASTER_SESSION_ID' AND SERVER_ID = @@aurora_server_id"
-	res := utils.GetFirstRowFromQueryAsString(conn, hostIdQuery)
-	if res == nil {
-		return "", error_util.NewGenericAwsWrapperError("Could not determine writer host name.")
-	}
-	if len(res) > 0 {
-		return res[0], nil
-	}
-	return "", nil
-}
-
-func (m *AuroraMySQLDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string, string],
-	hostListProviderService HostListProviderService,
-	pluginService PluginService) HostListProvider {
-	return m.getTopologyAwareHostListProvider(m, props, hostListProviderService, pluginService)
-}
-
-func (m *AuroraMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
-	topologyQuery := "SELECT server_id, CASE WHEN SESSION_ID = 'MASTER_SESSION_ID' THEN TRUE ELSE FALSE END as is_writer, " +
+func (m *AuroraMySQLDatabaseDialect) GetTopologyQuery() string {
+	return "SELECT server_id, CASE WHEN SESSION_ID = 'MASTER_SESSION_ID' THEN TRUE ELSE FALSE END as is_writer, " +
 		"cpu, REPLICA_LAG_IN_MILLISECONDS as 'lag', LAST_UPDATE_TIMESTAMP as last_update_timestamp " +
 		"FROM information_schema.replica_host_status " +
 		// Filter out hosts that haven't been updated in the last 5 minutes.
 		"WHERE time_to_sec(timediff(now(), LAST_UPDATE_TIMESTAMP)) <= 300 OR SESSION_ID = 'MASTER_SESSION_ID' "
-
-	queryerCtx, ok := conn.(driver.QueryerContext)
-	if !ok {
-		// Unable to query, conn does not implement QueryerContext.
-		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("Conn.doesNotImplementRequiredInterface", "driver.QueryerContext"))
-	}
-
-	rows, err := queryerCtx.QueryContext(context.Background(), topologyQuery, nil)
-	if err != nil {
-		// Query failed.
-		return nil, err
-	}
-	if rows != nil {
-		defer rows.Close()
-	}
-
-	var hosts []*host_info_util.HostInfo
-	if rows == nil {
-		// Query returned an empty host list, no processing required.
-		return hosts, nil
-	}
-	row := make([]driver.Value, len(rows.Columns()))
-	err = rows.Next(row)
-
-	for err == nil && len(row) > 4 {
-		hostNameAsInt, ok1 := row[0].([]uint8)
-		isWriterAsInt, ok2 := row[1].(int64)
-		cpu, ok3 := row[2].(float64)
-		lag, ok4 := row[3].(float64)
-		lastUpdateTimeAsInt, ok5 := row[4].([]uint8)
-		if !ok1 || !ok2 || !ok3 || !ok4 {
-			// Unable to use information from row to create a host, try next row.
-			err = rows.Next(row)
-			continue
-		}
-
-		var lastUpdateTime time.Time
-		if ok5 {
-			lastUpdateTime, err = time.Parse("2006-01-02 15:04:05.999999", string(lastUpdateTimeAsInt))
-		}
-		if !ok5 || err != nil {
-			// Unable to get or convert last update time, use current time.
-			lastUpdateTime = time.Now()
-		}
-		role := host_info_util.READER
-		if isWriterAsInt == 1 {
-			role = host_info_util.WRITER
-		}
-		hosts = append(hosts, provider.CreateHost(string(hostNameAsInt), role, lag, cpu, lastUpdateTime))
-		err = rows.Next(row)
-	}
-	return hosts, nil
 }
 
-func (m *AuroraMySQLDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) ([]BlueGreenResult, error) {
-	bgStatusQuery := "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
-	return mySqlGetBlueGreenStatus(conn, bgStatusQuery)
+func (m *AuroraMySQLDatabaseDialect) GetInstanceIdQuery() string {
+	return "SELECT @@aurora_server_id, @@aurora_server_id;"
+}
+
+func (m *AuroraMySQLDatabaseDialect) GetWriterIdQuery() string {
+	return "SELECT server_id " +
+		"FROM information_schema.replica_host_status " +
+		"WHERE SESSION_ID = 'MASTER_SESSION_ID' AND SERVER_ID = @@aurora_server_id"
+}
+
+func (m *AuroraMySQLDatabaseDialect) GetHostListProviderSupplier() HostListProviderSupplier {
+	return func(
+		props *utils.RWMap[string, string],
+		initialDsn string,
+		servicesContainer ServicesContainer,
+	) HostListProvider {
+		parser := servicesContainer.GetPluginService().GetTargetDriverDialect().GetRowParser()
+		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewAuroraTopologyUtils(m, parser), props, servicesContainer)
+	}
+}
+func (m *AuroraMySQLDatabaseDialect) GetBlueGreenStatusQuery() string {
+	return "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
 }
 
 func (m *AuroraMySQLDatabaseDialect) IsBlueGreenStatusAvailable(conn driver.Conn) bool {
 	topologyTableExistQuery := "SELECT 1 AS tmp FROM information_schema.tables WHERE table_schema = 'mysql' AND table_name = 'rds_topology'"
-	return utils.GetFirstRowFromQuery(conn, topologyTableExistQuery) != nil
+	return utils.CheckExistenceQueries(conn, topologyTableExistQuery)
 }
 
 type RdsMultiAzClusterMySQLDatabaseDialect struct {
-	MySQLTopologyAwareDatabaseDialect
+	MySQLDatabaseDialect
 }
 
 func (r *RdsMultiAzClusterMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
@@ -410,200 +293,35 @@ func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetDialectUpdateCandidates() []s
 	return nil
 }
 
-func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetTopology(conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
-	topologyQuery := "SELECT id, endpoint FROM mysql.rds_topology"
-	writerHostId := r.getWriterHostId(conn)
-
-	if writerHostId == "" {
-		writerHostId = r.getHostIdOfCurrentConnection(conn)
-	}
-
-	queryerCtx, ok := conn.(driver.QueryerContext)
-	if !ok {
-		// Unable to query, conn does not implement QueryerContext.
-		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("Conn.doesNotImplementRequiredInterface", "driver.QueryerContext"))
-	}
-
-	rows, err := queryerCtx.QueryContext(context.Background(), topologyQuery, nil)
-	if err != nil {
-		// Query failed.
-		return nil, err
-	}
-	defer rows.Close()
-
-	return r.processTopologyQueryResults(provider, writerHostId, rows), nil
+func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetTopologyQuery() string {
+	return "SELECT id, endpoint FROM mysql.rds_topology"
 }
 
-func (r *RdsMultiAzClusterMySQLDatabaseDialect) processTopologyQueryResults(
-	provider HostListProvider,
-	writerHostId string,
-	rows driver.Rows) []*host_info_util.HostInfo {
-	var hosts []*host_info_util.HostInfo
-	row := make([]driver.Value, len(rows.Columns()))
-	err := rows.Next(row)
-	for err == nil && len(row) > 1 {
-		id, ok1 := row[0].(int64)
-		endpoint, ok2 := row[1].([]uint8)
-		if !ok1 || !ok2 {
-			// Unable to use information from row to create a host.
-			err = rows.Next(row)
-			continue
-		}
-		idString := strconv.FormatInt(id, 10)
-		endpointString := string(endpoint)
-		hostRole := host_info_util.READER
-
-		if writerHostId == idString {
-			hostRole = host_info_util.WRITER
-		}
-
-		hostName := utils.GetHostNameFromEndpoint(endpointString)
-		hosts = append(hosts, provider.CreateHost(hostName, hostRole, 0, 0, time.Now()))
-		err = rows.Next(row)
-	}
-	return hosts
+func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetInstanceIdQuery() string {
+	return "SELECT id, SUBSTRING_INDEX(endpoint, '.', 1)" +
+		" FROM mysql.rds_topology" +
+		" WHERE id = @@server_id"
 }
 
-func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetHostName(conn driver.Conn) (string, string) {
-	hostNameQuery := "SELECT id, endpoint from mysql.rds_topology as top where top.id = (SELECT @@server_id)"
-	row := utils.GetFirstRowFromQueryAsString(conn, hostNameQuery)
-
-	if len(row) > 1 {
-		return row[0], utils.GetHostNameFromEndpoint(row[1])
-	} else if len(row) == 1 {
-		return row[0], ""
-	}
-
-	return "", ""
+func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetWriterIdQuery() string {
+	return "SHOW REPLICA STATUS"
 }
 
-func (r *RdsMultiAzClusterMySQLDatabaseDialect) getWriterHostId(conn driver.Conn) string {
-	fetchWriterHostQuery := "SHOW REPLICA STATUS"
-	queryerCtx, ok := conn.(driver.QueryerContext)
-	if !ok {
-		// Unable to query, conn does not implement QueryerContext.
-		return ""
-	}
-
-	rows, err := queryerCtx.QueryContext(context.Background(), fetchWriterHostQuery, nil)
-	if err != nil {
-		return ""
-	}
-	defer rows.Close()
-
-	// Get column names
-	columnNames := rows.Columns()
-
-	// Read first row. If there is nothing,
-	//  then we should return the current server id
-	values := make([]driver.Value, len(columnNames))
-	if err := rows.Next(values); err != nil {
-		return r.getHostIdOfCurrentConnection(conn)
-	}
-
-	var sourceIndex = -1
-	for i, name := range columnNames {
-		if name == "Source_Server_Id" {
-			sourceIndex = i
-			break
-		}
-	}
-	if sourceIndex == -1 {
-		return ""
-	}
-
-	writerHostId := values[sourceIndex]
-	writerHostIdInt, ok := writerHostId.(int64)
-	if !ok {
-		return ""
-	}
-	return strconv.FormatInt(writerHostIdInt, 10)
+func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetWriterIdColumnName() string {
+	return "Source_Server_Id"
 }
 
-func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, error) {
-	writerId := r.getWriterHostId(conn)
-	if writerId == "" {
-		return "", error_util.NewGenericAwsWrapperError("Could not determine writer host name.")
-	}
-
-	fetchEndpointQuery := fmt.Sprintf("SELECT endpoint from mysql.rds_topology as top where top.id = '%v' and top.id = (SELECT @@server_id)", writerId)
-	res := utils.GetFirstRowFromQuery(conn, fetchEndpointQuery)
-	if res == nil {
-		return "", error_util.NewGenericAwsWrapperError("Could not determine writer host name.")
-	}
-
-	if len(res) > 0 {
-		instanceId, ok := (res[0]).([]uint8)
-
-		if ok {
-			return utils.GetHostNameFromEndpoint(string(instanceId)), nil
-		}
-	}
-	return "", nil
+func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetIsReaderQuery() string {
+	return "SELECT @@read_only"
 }
 
-func (r *RdsMultiAzClusterMySQLDatabaseDialect) getHostIdOfCurrentConnection(conn driver.Conn) string {
-	serverIdQuery := "SELECT @@server_id"
-	row := utils.GetFirstRowFromQueryAsString(conn, serverIdQuery)
-
-	if len(row) > 0 {
-		return row[0]
+func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetHostListProviderSupplier() HostListProviderSupplier {
+	return func(
+		props *utils.RWMap[string, string],
+		initialDsn string,
+		servicesContainer ServicesContainer,
+	) HostListProvider {
+		parser := servicesContainer.GetPluginService().GetTargetDriverDialect().GetRowParser()
+		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewMultiAzTopologyUtils(r, parser), props, servicesContainer)
 	}
-
-	return ""
-}
-
-func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string, string],
-	hostListProviderService HostListProviderService,
-	pluginService PluginService) HostListProvider {
-	return r.getTopologyAwareHostListProvider(r, props, hostListProviderService, pluginService)
-}
-
-func mySqlGetBlueGreenStatus(conn driver.Conn, query string) ([]BlueGreenResult, error) {
-	return getBlueGreenStatus(conn, query, utils.MySqlConvertValToString)
-}
-
-func getBlueGreenStatus(conn driver.Conn, query string, convertFunc func(driver.Value) (string, bool)) ([]BlueGreenResult, error) {
-	queryerCtx, ok := conn.(driver.QueryerContext)
-	if !ok {
-		// Unable to query, conn does not implement QueryerContext.
-		slog.Warn(error_util.GetMessage("Conn.doesNotImplementRequiredInterface", "driver.QueryerContext"))
-		return nil, nil
-	}
-
-	rows, err := queryerCtx.QueryContext(context.Background(), query, nil)
-	if err != nil {
-		// Query failed.
-		slog.Warn(error_util.GetMessage("BlueGreenDeployment.errorQueryingStatusTable", err))
-		return nil, err
-	}
-	if rows != nil {
-		defer rows.Close()
-	}
-
-	var statuses []BlueGreenResult
-	row := make([]driver.Value, len(rows.Columns()))
-	for rows.Next(row) == nil {
-		if len(row) > 4 {
-			version, ok1 := convertFunc(row[0])
-			endpoint, ok2 := convertFunc(row[1])
-			portAsFloat, ok3 := row[2].(int64)
-			role, ok4 := convertFunc(row[3])
-			status, ok5 := convertFunc(row[4])
-
-			if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 {
-				continue
-			}
-			statuses = append(statuses, BlueGreenResult{
-				Version:  version,
-				Endpoint: endpoint,
-				Port:     int(portAsFloat),
-				Role:     role,
-				Status:   status,
-			})
-		}
-	}
-
-	return statuses, nil
 }

@@ -18,10 +18,7 @@ package driver_infrastructure
 
 import (
 	"database/sql/driver"
-	"errors"
 	"log/slog"
-	"math"
-	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
@@ -63,7 +60,7 @@ func (c *DsnHostListProvider) init() error {
 	c.hostList = append(c.hostList, hosts...)
 
 	if len(c.hostList) == 0 {
-		return error_util.NewGenericAwsWrapperError(error_util.GetMessage("DsnHostListProvider.parsedListEmpty"))
+		return error_util.NewGenericAwsWrapperError(error_util.GetMessage("DsnHostListProvider.parsedListEmpty", property_util.MaskProperties(c.props)))
 	}
 
 	c.hostListProviderService.SetInitialConnectionHostInfo(c.hostList[0])
@@ -75,39 +72,27 @@ func (c *DsnHostListProvider) IsStaticHostListProvider() bool {
 	return true
 }
 
-func (c *DsnHostListProvider) Refresh(_ driver.Conn) ([]*host_info_util.HostInfo, error) {
+func (c *DsnHostListProvider) Refresh() ([]*host_info_util.HostInfo, error) {
 	err := c.init()
-	return c.hostList, err
+	return host_info_util.CopyHostList(c.hostList), err
 }
 
-func (c *DsnHostListProvider) ForceRefresh(_ driver.Conn) ([]*host_info_util.HostInfo, error) {
+func (c *DsnHostListProvider) ForceRefresh() ([]*host_info_util.HostInfo, error) {
 	err := c.init()
-	return c.hostList, err
+	return host_info_util.CopyHostList(c.hostList), err
 }
 
-func (c *DsnHostListProvider) GetHostRole(_ driver.Conn) host_info_util.HostRole {
-	slog.Warn(error_util.GetMessage("DsnHostListProvider.unsupportedGetHostRole"))
-	return host_info_util.UNKNOWN
+func (c *DsnHostListProvider) GetHostRole(conn driver.Conn) host_info_util.HostRole {
+	panic("DsnHostListProvider does not support getHostRole")
 }
 
 func (c *DsnHostListProvider) IdentifyConnection(_ driver.Conn) (*host_info_util.HostInfo, error) {
-	return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DsnHostListProvider.unsupportedIdentifyConnection"))
+	slog.Warn(error_util.GetMessage("DsnHostListProvider.unsupportedIdentifyConnection"))
+	return nil, nil
 }
 
 func (c *DsnHostListProvider) GetClusterId() (clusterId string, err error) {
-	return "", errors.New(error_util.GetMessage("DsnHostListProvider.unsupportedGetClusterId"))
-}
-
-func (c *DsnHostListProvider) CreateHost(hostName string, hostRole host_info_util.HostRole, lag float64, cpu float64, lastUpdateTime time.Time) *host_info_util.HostInfo {
-	builder := host_info_util.NewHostInfoBuilder()
-	weight := int(math.Round(lag)*100 + math.Round(cpu))
-	port := c.hostListProviderService.GetDialect().GetDefaultPort()
-	if hostName == "" {
-		hostName = c.initialHost
-	}
-	builder.SetHost(hostName).SetPort(port).SetRole(hostRole).SetAvailability(host_info_util.AVAILABLE).SetWeight(weight).SetLastUpdateTime(lastUpdateTime)
-	hostInfo, _ := builder.Build()
-	return hostInfo
+	return "<none>", nil
 }
 
 func (c *DsnHostListProvider) StopMonitor() {
