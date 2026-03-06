@@ -39,7 +39,6 @@ var HostMonitorType = &driver_infrastructure.MonitorType{Name: "HostMonitor"}
 type HostMonitoringService interface {
 	StartMonitoring(conn *driver.Conn, hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string]) (*MonitorConnectionState, error)
 	StopMonitoring(state *MonitorConnectionState, connToAbort driver.Conn)
-	ReleaseResources()
 }
 
 type HostMonitoringServiceImpl struct {
@@ -140,10 +139,6 @@ func (m *HostMonitoringServiceImpl) StopMonitoring(state *MonitorConnectionState
 	} else {
 		state.SetInactive()
 	}
-}
-
-func (m *HostMonitoringServiceImpl) ReleaseResources() {
-	// Nothing to do - monitors are managed by the MonitorService
 }
 
 func (m *HostMonitoringServiceImpl) getMonitor(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string]) (HostMonitor, error) {

@@ -39,6 +39,21 @@ type FullServicesContainer struct {
 	ConnProvider            driver_infrastructure.ConnectionProvider
 }
 
+// NewFullServicesContainer creates a full container with core services.
+func NewFullServicesContainer(
+	storage driver_infrastructure.StorageService,
+	monitor driver_infrastructure.MonitorService,
+	events driver_infrastructure.EventPublisher,
+	connProvider driver_infrastructure.ConnectionProvider,
+) *FullServicesContainer {
+	return &FullServicesContainer{
+		Storage:      storage,
+		Monitor:      monitor,
+		Events:       events,
+		ConnProvider: connProvider,
+	}
+}
+
 // Interface implementation - Getters.
 func (c *FullServicesContainer) GetStorageService() driver_infrastructure.StorageService {
 	return c.Storage
@@ -72,21 +87,6 @@ func (c *FullServicesContainer) SetPluginService(ps driver_infrastructure.Plugin
 }
 func (c *FullServicesContainer) SetHostListProviderService(h driver_infrastructure.HostListProviderService) {
 	c.HostListProviderService = h
-}
-
-// NewFullServicesContainer creates a full container with core services.
-func NewFullServicesContainer(
-	storage driver_infrastructure.StorageService,
-	monitor driver_infrastructure.MonitorService,
-	events driver_infrastructure.EventPublisher,
-	connProvider driver_infrastructure.ConnectionProvider,
-) *FullServicesContainer {
-	return &FullServicesContainer{
-		Storage:      storage,
-		Monitor:      monitor,
-		Events:       events,
-		ConnProvider: connProvider,
-	}
 }
 
 // CreateMinimal creates a lightweight container for internal use (failover, monitors).

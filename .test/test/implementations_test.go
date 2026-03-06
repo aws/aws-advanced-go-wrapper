@@ -153,12 +153,6 @@ func TestImplementations(t *testing.T) {
 	var _ driver_infrastructure.HostListProvider = (*driver_infrastructure.ConnectionStringHostListProvider)(nil)
 	var _ driver_infrastructure.HostListProvider = (*driver_infrastructure.RdsHostListProvider)(nil)
 
-	// StaticHostListProvider implementations
-	var _ driver_infrastructure.StaticHostListProvider = (*driver_infrastructure.ConnectionStringHostListProvider)(nil)
-
-	// DynamicHostListProvider implementations
-	var _ driver_infrastructure.DynamicHostListProvider = (*driver_infrastructure.RdsHostListProvider)(nil)
-
 	// BlockingHostListProvider implementations
 	var _ driver_infrastructure.BlockingHostListProvider = (*driver_infrastructure.RdsHostListProvider)(nil)
 

@@ -81,8 +81,7 @@ func NewPluginServiceImpl(
 }
 
 func (p *PluginServiceImpl) IsStaticHostListProvider() bool {
-	_, ok := p.GetHostListProvider().(driver_infrastructure.StaticHostListProvider)
-	return ok
+	return p.GetHostListProvider().IsStaticHostListProvider()
 }
 
 func (p *PluginServiceImpl) SetHostListProvider(hostListProvider driver_infrastructure.HostListProvider) {
@@ -643,5 +642,5 @@ func ClearCaches() {
 func (p *PluginServiceImpl) CreatePartialPluginService() driver_infrastructure.PluginService {
 	p.allHostsLock.RLock()
 	defer p.allHostsLock.RUnlock()
-	return NewPartialPluginService(p.servicesContainer, p.props, p.originalDsn, p.hostListProvider, p.dialect, p.driverDialect, p.AllHosts, p.allHostsLock, p.initialHostInfo)
+	return NewPartialPluginService(p.servicesContainer, p.props, p.originalDsn, p.dialect, p.driverDialect, p.AllHosts, p.allHostsLock, p.initialHostInfo)
 }

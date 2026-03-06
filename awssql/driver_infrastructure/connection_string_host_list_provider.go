@@ -82,11 +82,6 @@ func (c *ConnectionStringHostListProvider) ForceRefresh() ([]*host_info_util.Hos
 	return host_info_util.CopyHostList(c.hostList), err
 }
 
-func (c *ConnectionStringHostListProvider) ForceRefreshWithOptions(verifyTopology bool, timeoutMs int) ([]*host_info_util.HostInfo, error) {
-	err := c.init()
-	return host_info_util.CopyHostList(c.hostList), err
-}
-
 func (c *ConnectionStringHostListProvider) GetHostRole(conn driver.Conn) host_info_util.HostRole {
 	panic("ConnectionStringHostListProvider does not support getHostRole")
 }

@@ -48,7 +48,6 @@ func preparePartialPluginService(t *testing.T) (*plugin_helpers.PartialPluginSer
 	realPluginManager := plugin_helpers.NewPluginManagerImpl(mockTargetDriver, container, someProps)
 	mockPluginManager := &MockPluginManager{realPluginManager, nil, nil}
 	container.SetPluginManager(mockPluginManager)
-	mockHostListProvider := mock_driver_infrastructure.NewMockHostListProvider(ctrl)
 	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
 	someAllHosts := []*host_info_util.HostInfo{}
@@ -56,7 +55,6 @@ func preparePartialPluginService(t *testing.T) (*plugin_helpers.PartialPluginSer
 		container,
 		someProps,
 		"",
-		mockHostListProvider,
 		mockDialect,
 		mockDriverDialect,
 		someAllHosts,
@@ -84,7 +82,6 @@ func TestForceConnect_PartialPluginService(t *testing.T) {
 		mockContainer,
 		someProps,
 		"",
-		mock_driver_infrastructure.NewMockHostListProvider(ctrl),
 		mock_driver_infrastructure.NewMockDatabaseDialect(ctrl),
 		mock_driver_infrastructure.NewMockDriverDialect(ctrl),
 		[]*host_info_util.HostInfo{},
@@ -117,7 +114,6 @@ func TestGetHostSelectorStrategy_PartialPluginService(t *testing.T) {
 		mockContainer,
 		someProps,
 		"",
-		mock_driver_infrastructure.NewMockHostListProvider(ctrl),
 		mock_driver_infrastructure.NewMockDatabaseDialect(ctrl),
 		mock_driver_infrastructure.NewMockDriverDialect(ctrl),
 		[]*host_info_util.HostInfo{},
@@ -146,7 +142,6 @@ func TestCreateHostListProvider_PartialPluginService(t *testing.T) {
 		mockContainer,
 		someProps,
 		"",
-		mock_driver_infrastructure.NewMockHostListProvider(ctrl),
 		mockDatabaseDialect, mock_driver_infrastructure.NewMockDriverDialect(ctrl),
 		[]*host_info_util.HostInfo{},
 		new(sync.RWMutex),

@@ -66,21 +66,6 @@ func (mr *MockHostListProviderMockRecorder) ForceRefresh() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForceRefresh", reflect.TypeOf((*MockHostListProvider)(nil).ForceRefresh))
 }
 
-// ForceRefreshWithOptions mocks base method.
-func (m *MockHostListProvider) ForceRefreshWithOptions(arg0 bool, arg1 int) ([]*host_info_util.HostInfo, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ForceRefreshWithOptions", arg0, arg1)
-	ret0, _ := ret[0].([]*host_info_util.HostInfo)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ForceRefreshWithOptions indicates an expected call of ForceRefreshWithOptions.
-func (mr *MockHostListProviderMockRecorder) ForceRefreshWithOptions(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForceRefreshWithOptions", reflect.TypeOf((*MockHostListProvider)(nil).ForceRefreshWithOptions), arg0, arg1)
-}
-
 // GetClusterId mocks base method.
 func (m *MockHostListProvider) GetClusterId() (string, error) {
 	m.ctrl.T.Helper()
@@ -123,6 +108,20 @@ func (m *MockHostListProvider) IdentifyConnection(arg0 driver.Conn) (*host_info_
 func (mr *MockHostListProviderMockRecorder) IdentifyConnection(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IdentifyConnection", reflect.TypeOf((*MockHostListProvider)(nil).IdentifyConnection), arg0)
+}
+
+// IsStaticHostListProvider mocks base method.
+func (m *MockHostListProvider) IsStaticHostListProvider() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsStaticHostListProvider")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsStaticHostListProvider indicates an expected call of IsStaticHostListProvider.
+func (mr *MockHostListProviderMockRecorder) IsStaticHostListProvider() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsStaticHostListProvider", reflect.TypeOf((*MockHostListProvider)(nil).IsStaticHostListProvider))
 }
 
 // Refresh mocks base method.

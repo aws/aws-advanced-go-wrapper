@@ -37,7 +37,6 @@ type PartialPluginService struct {
 	servicesContainer driver_infrastructure.ServicesContainer
 	props             *utils.RWMap[string, string]
 	originalDsn       string
-	hostListProvider  driver_infrastructure.HostListProvider
 	dialect           driver_infrastructure.DatabaseDialect
 	driverDialect     driver_infrastructure.DriverDialect
 	AllHosts          []*host_info_util.HostInfo
@@ -49,7 +48,6 @@ func NewPartialPluginService(
 	servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string],
 	originalDsn string,
-	hostListProvider driver_infrastructure.HostListProvider,
 	dialect driver_infrastructure.DatabaseDialect,
 	driverDialect driver_infrastructure.DriverDialect,
 	AllHosts []*host_info_util.HostInfo,
@@ -59,7 +57,6 @@ func NewPartialPluginService(
 		servicesContainer: servicesContainer,
 		props:             props,
 		originalDsn:       originalDsn,
-		hostListProvider:  hostListProvider,
 		dialect:           dialect,
 		driverDialect:     driverDialect,
 		AllHosts:          AllHosts,

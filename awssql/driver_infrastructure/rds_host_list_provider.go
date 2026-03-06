@@ -36,13 +36,11 @@ var (
 )
 
 type RdsHostListProvider struct {
-	hostListProviderService HostListProviderService
-	servicesContainer       ServicesContainer
-	topologyUtils           TopologyUtils
-	properties              *utils.RWMap[string, string]
-	isInitialized           bool
-	// Monitor-related fields
-	pluginService                 PluginService
+	hostListProviderService       HostListProviderService
+	servicesContainer             ServicesContainer
+	topologyUtils                 TopologyUtils
+	properties                    *utils.RWMap[string, string]
+	isInitialized                 bool
 	defaultTopologyQueryTimeoutMs int
 	// The following properties are initialized from the above in init().
 	initialHostList         []*host_info_util.HostInfo
@@ -64,7 +62,6 @@ func NewRdsHostListProvider(
 		topologyUtils:                 topologyUtils,
 		properties:                    properties,
 		servicesContainer:             servicesContainer,
-		pluginService:                 servicesContainer.GetPluginService(),
 		defaultTopologyQueryTimeoutMs: DEFAULT_TOPOLOGY_QUERY_TIMEOUT_MS,
 		isInitialized:                 false,
 	}
@@ -128,7 +125,7 @@ func (r *RdsHostListProvider) getOrCreateMonitor() ClusterTopologyMonitor {
 			r.properties,
 			r.initialHostInfo,
 			r.clusterInstanceTemplate,
-			r.pluginService)
+			r.servicesContainer.GetPluginService())
 		return monitor, nil
 	}
 
@@ -148,16 +145,12 @@ func (r *RdsHostListProvider) getOrCreateMonitor() ClusterTopologyMonitor {
 // =============================================================================
 
 func (r *RdsHostListProvider) ForceRefresh() ([]*host_info_util.HostInfo, error) {
-	return r.ForceRefreshWithOptions(false, DEFAULT_TOPOLOGY_QUERY_TIMEOUT_MS)
-}
-
-func (r *RdsHostListProvider) ForceRefreshWithOptions(verifyTopology bool, timemoutMs int) ([]*host_info_util.HostInfo, error) {
-	return r.forceRefreshMonitor(verifyTopology, timemoutMs)
+	return r.forceRefreshMonitor(false, DEFAULT_TOPOLOGY_QUERY_TIMEOUT_MS)
 }
 
 func (r *RdsHostListProvider) forceRefreshMonitor(verifyTopology bool, timemoutMs int) ([]*host_info_util.HostInfo, error) {
 	r.init()
-	if !r.pluginService.IsDialectConfirmed() {
+	if !r.servicesContainer.GetPluginService().IsDialectConfirmed() {
 		return r.initialHostList, nil
 	}
 	monitor := r.getOrCreateMonitor()
@@ -205,8 +198,8 @@ func (r *RdsHostListProvider) IdentifyConnection(conn driver.Conn) (*host_info_u
 	return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("RdsHostListProvider.unableToGetHostName"))
 }
 
-func (r *RdsHostListProvider) IsDynamicHostListProvider() bool {
-	return true
+func (r *RdsHostListProvider) IsStaticHostListProvider() bool {
+	return false
 }
 
 func (r *RdsHostListProvider) Refresh() ([]*host_info_util.HostInfo, error) {
@@ -248,7 +241,7 @@ func (r *RdsHostListProvider) ForceRefreshHostListWithTimeout(shouldVerifyWriter
 func (r *RdsHostListProvider) getTopology() ([]*host_info_util.HostInfo, bool, error) {
 	hosts := r.getStoredHosts()
 
-	if !r.pluginService.IsDialectConfirmed() {
+	if !r.servicesContainer.GetPluginService().IsDialectConfirmed() {
 		// We need to confirm the dialect before creating a topology monitor so that it uses the correct SQL queries.
 		// We will return the original hosts parsed from the connection string until the dialect has been confirmed.
 		return r.initialHostList, false, nil

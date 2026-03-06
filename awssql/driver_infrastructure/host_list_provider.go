@@ -26,21 +26,11 @@ import (
 type HostListProvider interface {
 	Refresh() ([]*host_info_util.HostInfo, error)
 	ForceRefresh() ([]*host_info_util.HostInfo, error)
-	ForceRefreshWithOptions(verifyTopology bool, timeoutMs int) ([]*host_info_util.HostInfo, error)
 	GetHostRole(conn driver.Conn) host_info_util.HostRole
 	IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error)
 	GetClusterId() (string, error)
 	StopMonitor()
-}
-
-type StaticHostListProvider interface {
-	HostListProvider
 	IsStaticHostListProvider() bool
-}
-
-type DynamicHostListProvider interface {
-	HostListProvider
-	IsDynamicHostListProvider() bool
 }
 
 // HostListProviderSupplier is a factory function for creating HostListProvider instances.

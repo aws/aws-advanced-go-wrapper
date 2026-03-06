@@ -203,10 +203,6 @@ func (m *MockHostListProvider) ForceRefresh() ([]*host_info_util.HostInfo, error
 	return nil, nil
 }
 
-func (m *MockHostListProvider) ForceRefreshWithOptions(_ bool, _ int) ([]*host_info_util.HostInfo, error) {
-	return nil, nil
-}
-
 func (m *MockHostListProvider) GetClusterId() (string, error) {
 	return m.clusterId, nil
 }
