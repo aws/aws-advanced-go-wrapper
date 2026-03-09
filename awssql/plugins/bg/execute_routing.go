@@ -59,7 +59,7 @@ func (r *SuspendExecuteRouting) Apply(_ driver_infrastructure.ConnectionPlugin, 
 	endTime := holdStartTime.Add(time.Millisecond * time.Duration(timeoutMs))
 
 	for time.Now().Before(endTime) && bgStatus != nil && bgStatus.GetCurrentPhase() == driver_infrastructure.IN_PROGRESS {
-		r.Delay(SLEEP_TIME_DURATION, *bgStatus, pluginService, r.bgId, r.storageService)
+		r.Delay(SLEEP_TIME_DURATION, *bgStatus, r.bgId, r.storageService)
 	}
 
 	bgStatus = r.getBgStatus()

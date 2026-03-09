@@ -170,7 +170,7 @@ func (r *SuspendConnectRouting) Apply(_ driver_infrastructure.ConnectionPlugin, 
 	endTime := holdStartTime.Add(time.Millisecond * time.Duration(timeoutMs))
 
 	for time.Now().Before(endTime) && bgStatus != nil && bgStatus.GetCurrentPhase() == driver_infrastructure.IN_PROGRESS {
-		r.Delay(SLEEP_TIME_DURATION, *bgStatus, pluginService, r.bgId, r.storageService)
+		r.Delay(SLEEP_TIME_DURATION, *bgStatus, r.bgId, r.storageService)
 	}
 
 	bgStatus = r.getBgStatus()
@@ -231,7 +231,7 @@ func (r *SuspendUntilCorrespondingHostFoundConnectRouting) Apply(
 
 	for time.Now().Before(endTime) && bgStatus != nil && bgStatus.GetCurrentPhase() != driver_infrastructure.COMPLETED &&
 		correspondingPair.GetRight().IsNil() {
-		r.Delay(SLEEP_TIME_DURATION, *bgStatus, pluginService, r.bgId, r.storageService)
+		r.Delay(SLEEP_TIME_DURATION, *bgStatus, r.bgId, r.storageService)
 		bgStatus = r.getBgStatus()
 		if bgStatus != nil {
 			correspondingPair = bgStatus.GetCorrespondingHosts()[hostInfo.Host]

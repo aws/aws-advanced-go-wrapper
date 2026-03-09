@@ -42,7 +42,7 @@ func NewBaseRouting(hostAndPort string, role driver_infrastructure.BlueGreenRole
 }
 
 func (b BaseRouting) Delay(delayNanos time.Duration, bgStatus driver_infrastructure.BlueGreenStatus,
-	pluginService driver_infrastructure.PluginService, bgId string, storageService driver_infrastructure.StorageService) {
+	bgId string, storageService driver_infrastructure.StorageService) {
 	endTime := time.Now().Add(delayNanos)
 	minDelay := min(delayNanos, SLEEP_CHUNK_DURATION)
 

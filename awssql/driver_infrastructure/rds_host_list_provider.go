@@ -148,13 +148,13 @@ func (r *RdsHostListProvider) ForceRefresh() ([]*host_info_util.HostInfo, error)
 	return r.forceRefreshMonitor(false, DEFAULT_TOPOLOGY_QUERY_TIMEOUT_MS)
 }
 
-func (r *RdsHostListProvider) forceRefreshMonitor(verifyTopology bool, timemoutMs int) ([]*host_info_util.HostInfo, error) {
+func (r *RdsHostListProvider) forceRefreshMonitor(verifyTopology bool, timeoutMs int) ([]*host_info_util.HostInfo, error) {
 	r.init()
 	if !r.servicesContainer.GetPluginService().IsDialectConfirmed() {
 		return r.initialHostList, nil
 	}
 	monitor := r.getOrCreateMonitor()
-	return monitor.ForceRefresh(verifyTopology, timemoutMs)
+	return monitor.ForceRefresh(verifyTopology, timeoutMs)
 }
 
 func (r *RdsHostListProvider) GetClusterId() (string, error) {
@@ -171,8 +171,11 @@ func (r *RdsHostListProvider) IdentifyConnection(conn driver.Conn) (*host_info_u
 	_, instanceName := r.topologyUtils.GetInstanceId(conn)
 	if instanceName != "" {
 		topology, err := r.Refresh()
+		if err != nil {
+			return nil, err
+		}
 		forcedRefresh := false
-		if err != nil || len(topology) == 0 {
+		if len(topology) == 0 {
 			topology, err = r.ForceRefresh()
 			forcedRefresh = true
 		}

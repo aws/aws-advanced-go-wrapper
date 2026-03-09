@@ -83,7 +83,8 @@ func (c *DsnHostListProvider) ForceRefresh() ([]*host_info_util.HostInfo, error)
 }
 
 func (c *DsnHostListProvider) GetHostRole(conn driver.Conn) host_info_util.HostRole {
-	panic("DsnHostListProvider does not support getHostRole")
+	slog.Warn(error_util.GetMessage("DsnHostListProvider.unsupportedGetHostRole"))
+	return host_info_util.UNKNOWN
 }
 
 func (c *DsnHostListProvider) IdentifyConnection(_ driver.Conn) (*host_info_util.HostInfo, error) {

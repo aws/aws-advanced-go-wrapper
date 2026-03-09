@@ -115,11 +115,6 @@ func (c *ClusterTopologyMonitorImpl) Start() {
 	c.wg.Add(1)
 	c.lastActivityTimestampNano.Store(time.Now().UnixNano())
 
-	// Subscribe to MonitorResetEvent
-	if eventPublisher := c.servicesContainer.GetEventPublisher(); eventPublisher != nil {
-		eventPublisher.Subscribe(c, []*EventType{MonitorResetEventType})
-	}
-
 	go func() {
 		defer c.wg.Done()
 		c.Monitor()
@@ -128,6 +123,8 @@ func (c *ClusterTopologyMonitorImpl) Start() {
 
 func (c *ClusterTopologyMonitorImpl) Monitor() {
 	slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.startMonitoringRoutine", c.initialHostInfo.GetHost()))
+	c.servicesContainer.GetEventPublisher().Subscribe(c, []*EventType{MonitorResetEventType})
+
 	for !c.stop.Load() {
 		c.lastActivityTimestampNano.Store(time.Now().UnixNano())
 		if c.isInPanicMode() {
@@ -141,9 +138,8 @@ func (c *ClusterTopologyMonitorImpl) Monitor() {
 				c.hostRoutinesWriterHostInfo.Store(nil)
 				c.hostRoutinesLatestTopology.Store(map[string][]*host_info_util.HostInfo{})
 
-				topology, ok := TopologyStorageType.Get(c.servicesContainer.GetStorageService(), c.clusterId)
-				hosts := topology.GetHosts()
-				if !ok || len(hosts) == 0 {
+				hosts := c.getStoredHosts()
+				if len(hosts) == 0 {
 					// Need any connection to get topology.
 					hosts, _ = c.openAnyConnectionAndUpdateTopology()
 				}
@@ -199,7 +195,7 @@ func (c *ClusterTopologyMonitorImpl) Monitor() {
 					}
 				}
 			}
-
+			// TODO: checkForStableReaderTopologies()
 			c.delay(true)
 		} else {
 			// Regular mode (not panic mode).
@@ -213,12 +209,10 @@ func (c *ClusterTopologyMonitorImpl) Monitor() {
 			hosts := c.fetchTopologyAndUpdateCache(c.loadConn(c.monitoringConn))
 			if len(hosts) == 0 {
 				// Can't get topology, switch to panic mode.
-				conn := c.loadConn(c.monitoringConn)
+				c.closeConnection(c.loadConn(c.monitoringConn))
 				c.monitoringConn.Store(emptyContainer)
 				c.isVerifiedWriterConn = false
-				if conn != nil {
-					_ = conn.Close()
-				}
+				c.writerHostInfo.Store(nil)
 				continue
 			}
 
@@ -228,9 +222,9 @@ func (c *ClusterTopologyMonitorImpl) Monitor() {
 
 			// Do not log topology while in high refresh rate.
 			if c.highRefreshRateEndTimeInNanos == 0 {
-				topology, ok := TopologyStorageType.Get(c.servicesContainer.GetStorageService(), c.clusterId)
-				if ok {
-					slog.Debug(utils.LogTopology(topology.GetHosts(), ""))
+				hosts := c.getStoredHosts()
+				if hosts != nil {
+					slog.Debug(utils.LogTopology(hosts, ""))
 				}
 			}
 
@@ -243,7 +237,7 @@ func (c *ClusterTopologyMonitorImpl) Monitor() {
 func (c *ClusterTopologyMonitorImpl) Stop() {
 	c.stop.Store(true)
 	c.hostRoutinesStop.Store(true)
-	// signal channels to unblock waiting - send directly since stop is already true
+	// Signal channels to unblock waiting - send directly since stop is already true.
 	select {
 	case c.requestToUpdateTopologyChannel <- true:
 	default:
@@ -263,12 +257,8 @@ func (c *ClusterTopologyMonitorImpl) Close() {
 	c.closeConnection(c.loadConn(c.monitoringConn))
 
 	// Unsubscribe from events
-	if eventPublisher := c.servicesContainer.GetEventPublisher(); eventPublisher != nil {
-		eventPublisher.Unsubscribe(c, []*EventType{MonitorResetEventType})
-	}
+	c.servicesContainer.GetEventPublisher().Unsubscribe(c, []*EventType{MonitorResetEventType})
 
-	// Close channels safely - they may already be closed
-	defer func() { _ = recover() }()
 	close(c.requestToUpdateTopologyChannel)
 	close(c.topologyUpdatedChannel)
 }
@@ -571,7 +561,9 @@ func (h *HostMonitoringRoutine) run() {
 		if conn == nil {
 			conn, err = h.monitor.pluginService.ForceConnect(h.hostInfo, h.monitor.monitoringProps)
 			if err != nil {
-				// Connect issues.
+				// TODO: Add error classification (network vs login vs transient).
+				// Network errors should retry with a short delay, login errors should exit the routine,
+				// and transient errors should use exponential backoff.
 				h.monitor.pluginService.SetAvailability(h.hostInfo.AllAliases, host_info_util.UNAVAILABLE)
 			} else {
 				h.monitor.pluginService.SetAvailability(h.hostInfo.AllAliases, host_info_util.AVAILABLE)
@@ -596,6 +588,8 @@ func (h *HostMonitoringRoutine) run() {
 					// We need to update the topology before setting hostRoutinesWriterHostInfo
 					// so that the topology is available when the monitor picks up the writer.
 					h.monitor.fetchTopologyAndUpdateCache(conn)
+
+					// TODO: Set host availability
 					h.monitor.hostRoutinesWriterHostInfo.Store(h.hostInfo)
 					h.monitor.hostRoutinesStop.Store(true)
 					hosts := h.monitor.getStoredHosts()
@@ -607,16 +601,16 @@ func (h *HostMonitoringRoutine) run() {
 				return
 			} else {
 				// This connection is a reader connection.
-				if h.monitor.loadConn(h.monitor.hostRoutinesWriterConn) != nil {
+				if h.monitor.loadConn(h.monitor.hostRoutinesWriterConn) == nil {
 					// While writer connection isn't yet established this reader connection may update topology.
 					if updateTopology {
 						h.readerRoutineFetchTopology(conn, *h.writerHostInfo)
-					} else if h.monitor.loadConn(h.monitor.hostRoutinesReaderConn) != nil {
-						if h.monitor.hostRoutinesReaderConn.CompareAndSwap(emptyContainer, ConnectionContainer{conn}) {
-							// Let's use this connection to update topology.
-							updateTopology = true
-							h.readerRoutineFetchTopology(conn, *h.writerHostInfo)
-						}
+					} else if h.monitor.hostRoutinesReaderConn.CompareAndSwap(emptyContainer, ConnectionContainer{conn}) {
+						// Let's use this connection to update topology.
+						updateTopology = true
+						h.readerRoutineFetchTopology(conn, *h.writerHostInfo)
+					} else {
+						h.readerRoutineFetchTopology(conn, *h.writerHostInfo)
 					}
 				}
 			}

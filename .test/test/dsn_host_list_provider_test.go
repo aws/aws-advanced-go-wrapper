@@ -21,6 +21,7 @@ import (
 
 	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -66,9 +67,9 @@ func TestDsnHostListProvider_ForceRefresh_UsesInit(t *testing.T) {
 
 // CreateHost was removed from DsnHostListProvider as it was dead code.
 
-func TestDsnHostListProvider_GetHostRole_Panics(t *testing.T) {
+func TestDsnHostListProvider_GetHostRole_ReturnsUnknown(t *testing.T) {
 	provider := driver_infrastructure.NewDsnHostListProvider(nil, nil)
-	assert.Panics(t, func() { provider.GetHostRole(nil) })
+	assert.Equal(t, host_info_util.UNKNOWN, provider.GetHostRole(nil))
 }
 
 func TestDsnHostListProvider_IdentifyConnection_ReturnsNil(t *testing.T) {
