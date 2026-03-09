@@ -189,6 +189,7 @@ func (c *ClusterTopologyMonitorImpl) Monitor() {
 									writerHostInfo: c.writerHostInfo.Load(),
 								}
 								hostMonitor.Init()
+								c.hostRoutinesWg.Add(1)
 								c.hostRoutines.Store(hostInfo.Host, hostMonitor)
 							}
 						}
