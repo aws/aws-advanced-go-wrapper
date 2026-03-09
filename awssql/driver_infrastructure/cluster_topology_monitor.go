@@ -136,7 +136,7 @@ func (c *ClusterTopologyMonitorImpl) Monitor() {
 				c.hostRoutinesWriterConn.Store(emptyContainer)
 				c.hostRoutinesReaderConn.Store(emptyContainer)
 				c.hostRoutinesWriterHostInfo.Store(nil)
-				c.hostRoutinesLatestTopology.Store(map[string][]*host_info_util.HostInfo{})
+				c.hostRoutinesLatestTopology.Store([]*host_info_util.HostInfo{})
 
 				hosts := c.getStoredHosts()
 				if len(hosts) == 0 {
@@ -312,7 +312,7 @@ func (c *ClusterTopologyMonitorImpl) reset() {
 	c.hostRoutinesStop.Store(false)
 
 	c.hostRoutinesWriterHostInfo.Store(nil)
-	c.hostRoutinesLatestTopology.Store(map[string][]*host_info_util.HostInfo{})
+	c.hostRoutinesLatestTopology.Store([]*host_info_util.HostInfo{})
 
 	// Reset monitoring connection
 	c.closeConnection(c.loadConn(c.monitoringConn))
@@ -604,13 +604,13 @@ func (h *HostMonitoringRoutine) run() {
 				if h.monitor.loadConn(h.monitor.hostRoutinesWriterConn) == nil {
 					// While writer connection isn't yet established this reader connection may update topology.
 					if updateTopology {
-						h.readerRoutineFetchTopology(conn, *h.writerHostInfo)
+						h.readerRoutineFetchTopology(conn, h.writerHostInfo)
 					} else if h.monitor.hostRoutinesReaderConn.CompareAndSwap(emptyContainer, ConnectionContainer{conn}) {
 						// Let's use this connection to update topology.
 						updateTopology = true
-						h.readerRoutineFetchTopology(conn, *h.writerHostInfo)
+						h.readerRoutineFetchTopology(conn, h.writerHostInfo)
 					} else {
-						h.readerRoutineFetchTopology(conn, *h.writerHostInfo)
+						h.readerRoutineFetchTopology(conn, h.writerHostInfo)
 					}
 				}
 			}
@@ -620,7 +620,7 @@ func (h *HostMonitoringRoutine) run() {
 	}
 }
 
-func (h *HostMonitoringRoutine) readerRoutineFetchTopology(conn driver.Conn, writerHostInfo host_info_util.HostInfo) {
+func (h *HostMonitoringRoutine) readerRoutineFetchTopology(conn driver.Conn, writerHostInfo *host_info_util.HostInfo) {
 	if conn == nil {
 		return
 	}
@@ -640,7 +640,7 @@ func (h *HostMonitoringRoutine) readerRoutineFetchTopology(conn driver.Conn, wri
 	}
 
 	latestWriterHostInfo := host_info_util.GetWriter(hosts)
-	if !latestWriterHostInfo.IsNil() && !writerHostInfo.IsNil() && latestWriterHostInfo.GetHostAndPort() != writerHostInfo.GetHostAndPort() {
+	if !latestWriterHostInfo.IsNil() && writerHostInfo != nil && !writerHostInfo.IsNil() && latestWriterHostInfo.GetHostAndPort() != writerHostInfo.GetHostAndPort() {
 		// Writer host has changed.
 		h.writerChanged = true
 
