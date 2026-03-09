@@ -19,14 +19,17 @@ package driver_infrastructure
 import (
 	"context"
 	"database/sql/driver"
+	"fmt"
 	"log/slog"
 	"math"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
 const DefaultQueryTimeoutMs = 1000
@@ -471,3 +474,223 @@ func (m *MultiAzTopologyUtils) CreateHost(
 }
 
 var _ TopologyUtils = (*MultiAzTopologyUtils)(nil)
+
+// =============================================================================
+// Global Aurora Topology Utils
+// =============================================================================
+
+type GlobalAuroraTopologyUtils struct {
+	dialect                   GlobalAuroraTopologyDialect
+	parser                    RowParser
+	instanceTemplatesByRegion map[string]*host_info_util.HostInfo
+}
+
+func NewGlobalAuroraTopologyUtils(dialect GlobalAuroraTopologyDialect, parser RowParser) *GlobalAuroraTopologyUtils {
+	return &GlobalAuroraTopologyUtils{dialect: dialect, parser: parser}
+}
+
+func (g *GlobalAuroraTopologyUtils) SetInstanceTemplatesByRegion(templates map[string]*host_info_util.HostInfo) {
+	g.instanceTemplatesByRegion = templates
+}
+
+func (g *GlobalAuroraTopologyUtils) QueryForTopology(
+	conn driver.Conn,
+	initialHost, instanceTemplate *host_info_util.HostInfo,
+) ([]*host_info_util.HostInfo, error) {
+	rows, err := executeQuery(conn, g.dialect.GetTopologyQuery())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if len(rows.Columns()) == 0 {
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("TopologyUtils.unexpectedTopologyQueryColumnCount"))
+	}
+
+	hostsMap := make(map[string]*host_info_util.HostInfo)
+	row := make([]driver.Value, len(rows.Columns()))
+
+	for rows.Next(row) == nil {
+		host, err := g.createHostFromRow(row, initialHost, instanceTemplate)
+		if err != nil {
+			slog.Debug(error_util.GetMessage("TopologyUtils.errorProcessingQueryResults", err.Error()))
+			continue
+		}
+		if host != nil {
+			if existing, ok := hostsMap[host.Host]; ok {
+				if existing.LastUpdateTime.Before(host.LastUpdateTime) {
+					hostsMap[host.Host] = host
+				}
+			} else {
+				hostsMap[host.Host] = host
+			}
+		}
+	}
+
+	hosts := make([]*host_info_util.HostInfo, 0, len(hostsMap))
+	for _, host := range hostsMap {
+		hosts = append(hosts, host)
+	}
+	return verifyWriter(hosts), nil
+}
+
+// createHostFromRow: server_id (0), is_writer (1), visibility_lag_in_msec (2), aws_region (3).
+func (g *GlobalAuroraTopologyUtils) createHostFromRow(
+	row []driver.Value,
+	initialHost, defaultInstanceTemplate *host_info_util.HostInfo,
+) (*host_info_util.HostInfo, error) {
+	if len(row) < 4 {
+		return nil, error_util.NewGenericAwsWrapperError("insufficient columns in global topology row")
+	}
+
+	parser := g.parser
+	hostName, ok := parser.ParseString(row[0])
+	if !ok {
+		return nil, error_util.NewGenericAwsWrapperError("failed to parse host name")
+	}
+
+	isWriter, ok := parser.ParseBool(row[1])
+	if !ok {
+		return nil, error_util.NewGenericAwsWrapperError("failed to parse is_writer")
+	}
+
+	nodeLag, _ := parser.ParseFloat64(row[2])
+	weight := int(math.Round(nodeLag) * 100)
+
+	awsRegion, ok := parser.ParseString(row[3])
+	if !ok {
+		return nil, error_util.NewGenericAwsWrapperError("failed to parse aws_region")
+	}
+
+	var instanceTemplate *host_info_util.HostInfo
+	if g.instanceTemplatesByRegion != nil {
+		if regionTemplate, found := g.instanceTemplatesByRegion[awsRegion]; found {
+			instanceTemplate = regionTemplate
+		} else {
+			return nil, error_util.NewGenericAwsWrapperError(
+				error_util.GetMessage("GlobalAuroraTopologyMonitor.cannotFindRegionTemplate", awsRegion))
+		}
+	} else {
+		instanceTemplate = defaultInstanceTemplate
+	}
+
+	host := CreateHost(hostName, hostName, isWriter, weight, time.Now(), initialHost, instanceTemplate)
+	if host == nil {
+		return nil, error_util.NewGenericAwsWrapperError("failed to create host")
+	}
+	return host, nil
+}
+
+func (g *GlobalAuroraTopologyUtils) GetHostRole(conn driver.Conn) host_info_util.HostRole {
+	return queryHostRole(conn, g.dialect.GetIsReaderQuery(), g.parser)
+}
+
+func (g *GlobalAuroraTopologyUtils) GetInstanceId(conn driver.Conn) (string, string) {
+	return queryInstanceId(conn, g.dialect.GetInstanceIdQuery(), g.parser)
+}
+
+func (g *GlobalAuroraTopologyUtils) IsWriterInstance(conn driver.Conn) (bool, error) {
+	return queryIsWriter(conn, g.dialect.GetWriterIdQuery(), g.parser, false)
+}
+
+func (g *GlobalAuroraTopologyUtils) CreateHost(
+	instanceId, instanceName string, isWriter bool, weight int,
+	lastUpdateTime time.Time, initialHost, instanceTemplate *host_info_util.HostInfo,
+) *host_info_util.HostInfo {
+	return CreateHost(instanceId, instanceName, isWriter, weight, lastUpdateTime, initialHost, instanceTemplate)
+}
+
+// GetRegion queries the database to get the AWS region for a given instance ID.
+func (g *GlobalAuroraTopologyUtils) GetRegion(instanceId string, conn driver.Conn) (string, error) {
+	queryerCtx, ok := conn.(driver.QueryerContext)
+	if !ok {
+		return "", error_util.NewGenericAwsWrapperError(
+			error_util.GetMessage("Conn.doesNotImplementRequiredInterface", "driver.QueryerContext"))
+	}
+
+	rows, err := queryerCtx.QueryContext(context.Background(), g.dialect.GetRegionByInstanceIdQuery(), []driver.NamedValue{
+		{Ordinal: 1, Value: instanceId},
+	})
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+
+	row := make([]driver.Value, 1)
+	if rows.Next(row) == nil {
+		if region, ok := g.parser.ParseString(row[0]); ok && region != "" {
+			return region, nil
+		}
+	}
+	return "", nil
+}
+
+// ParseInstanceTemplates parses a comma-separated string of "[region]host:port" patterns
+// into a map of region to HostInfo templates.
+func ParseInstanceTemplates(instanceTemplatesString string, defaultPort int) (map[string]*host_info_util.HostInfo, error) {
+	if instanceTemplatesString == "" {
+		return nil, error_util.NewGenericAwsWrapperError(
+			error_util.GetMessage("GlobalAuroraTopologyUtils.globalClusterInstanceHostPatternsRequired"))
+	}
+
+	result := make(map[string]*host_info_util.HostInfo)
+	entries := strings.Split(instanceTemplatesString, ",")
+	for _, entry := range entries {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		region, hostInfo, err := parseHostPortPairWithRegionPrefix(entry, defaultPort)
+		if err != nil {
+			return nil, err
+		}
+		result[region] = hostInfo
+	}
+	return result, nil
+}
+
+var urlWithRegionPattern = regexp.MustCompile(`^(?:\[(?P<region>.+)\])?(?P<domain>[a-zA-Z0-9?\.\-]+)(?::(?P<port>[0-9]+))?$`)
+
+func parseHostPortPairWithRegionPrefix(urlWithRegionPrefix string, defaultPort int) (string, *host_info_util.HostInfo, error) {
+	matches := urlWithRegionPattern.FindStringSubmatch(urlWithRegionPrefix)
+	if matches == nil {
+		return "", nil, error_util.NewGenericAwsWrapperError("cannot parse URL: " + urlWithRegionPrefix)
+	}
+
+	regionIdx := urlWithRegionPattern.SubexpIndex("region")
+	domainIdx := urlWithRegionPattern.SubexpIndex("domain")
+	portIdx := urlWithRegionPattern.SubexpIndex("port")
+
+	awsRegion := ""
+	if regionIdx >= 0 && regionIdx < len(matches) {
+		awsRegion = matches[regionIdx]
+	}
+
+	host := ""
+	if domainIdx >= 0 && domainIdx < len(matches) {
+		host = matches[domainIdx]
+	}
+	if host == "" {
+		return "", nil, error_util.NewGenericAwsWrapperError("cannot parse host from: " + urlWithRegionPrefix)
+	}
+
+	if awsRegion == "" {
+		awsRegion = utils.GetRdsRegion(host)
+		if awsRegion == "" {
+			return "", nil, error_util.NewGenericAwsWrapperError("cannot parse AWS region from: " + urlWithRegionPrefix)
+		}
+	}
+
+	port := defaultPort
+	if portIdx >= 0 && portIdx < len(matches) && matches[portIdx] != "" {
+		fmt.Sscanf(matches[portIdx], "%d", &port)
+	}
+
+	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost(host).SetPort(port).Build()
+	if err != nil {
+		return "", nil, err
+	}
+	return awsRegion, hostInfo, nil
+}
+
+var _ TopologyUtils = (*GlobalAuroraTopologyUtils)(nil)

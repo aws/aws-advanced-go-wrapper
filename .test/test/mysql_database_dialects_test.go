@@ -33,8 +33,9 @@ func TestMySQLDatabaseDialect_GetDialectUpdateCandidates(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.MySQLDatabaseDialect{}
 
 	expectedCandidates := []string{
-		driver_infrastructure.RDS_MYSQL_MULTI_AZ_CLUSTER_DIALECT,
+		driver_infrastructure.GLOBAL_AURORA_MYSQL_DIALECT,
 		driver_infrastructure.AURORA_MYSQL_DIALECT,
+		driver_infrastructure.RDS_MYSQL_MULTI_AZ_CLUSTER_DIALECT,
 		driver_infrastructure.RDS_MYSQL_DIALECT}
 	assert.ElementsMatch(t, expectedCandidates, testDatabaseDialect.GetDialectUpdateCandidates())
 }
@@ -114,6 +115,7 @@ func TestRdsMySQLDatabaseDialect_GetDialectUpdateCandidates(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.RdsMySQLDatabaseDialect{}
 	expectedCandidates := []string{
 		driver_infrastructure.RDS_MYSQL_MULTI_AZ_CLUSTER_DIALECT,
+		driver_infrastructure.GLOBAL_AURORA_MYSQL_DIALECT,
 		driver_infrastructure.AURORA_MYSQL_DIALECT}
 
 	assert.ElementsMatch(t, expectedCandidates, testDatabaseDialect.GetDialectUpdateCandidates())
@@ -195,6 +197,7 @@ func TestRdsMySQLDatabaseDialect_GetHostListProvider(t *testing.T) {
 func TestAuroraRdsMySQLDatabaseDialect_GetDialectUpdateCandidates(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.AuroraMySQLDatabaseDialect{}
 	expectedCandidates := []string{
+		driver_infrastructure.GLOBAL_AURORA_MYSQL_DIALECT,
 		driver_infrastructure.RDS_MYSQL_MULTI_AZ_CLUSTER_DIALECT,
 	}
 
