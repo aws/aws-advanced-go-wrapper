@@ -31,7 +31,7 @@ type PgDatabaseDialect struct {
 }
 
 func (p *PgDatabaseDialect) GetDialectUpdateCandidates() []string {
-	return []string{RDS_PG_MULTI_AZ_CLUSTER_DIALECT, AURORA_PG_DIALECT, RDS_PG_DIALECT}
+	return []string{GLOBAL_AURORA_PG_DIALECT, AURORA_PG_DIALECT, RDS_PG_MULTI_AZ_CLUSTER_DIALECT, RDS_PG_DIALECT}
 }
 
 func (p *PgDatabaseDialect) GetDefaultPort() int {
@@ -161,7 +161,7 @@ type RdsPgDatabaseDialect struct {
 }
 
 func (m *RdsPgDatabaseDialect) GetDialectUpdateCandidates() []string {
-	return []string{RDS_PG_MULTI_AZ_CLUSTER_DIALECT, AURORA_PG_DIALECT, RDS_PG_DIALECT}
+	return []string{RDS_PG_MULTI_AZ_CLUSTER_DIALECT, GLOBAL_AURORA_PG_DIALECT, AURORA_PG_DIALECT}
 }
 
 func (m *RdsPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
@@ -208,7 +208,7 @@ func (m *AuroraPgDatabaseDialect) GetWriterIdQuery() string {
 }
 
 func (m *AuroraPgDatabaseDialect) GetDialectUpdateCandidates() []string {
-	return []string{RDS_PG_MULTI_AZ_CLUSTER_DIALECT}
+	return []string{GLOBAL_AURORA_PG_DIALECT, RDS_PG_MULTI_AZ_CLUSTER_DIALECT}
 }
 
 func (m *AuroraPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
@@ -246,6 +246,63 @@ func (m *AuroraPgDatabaseDialect) GetBlueGreenStatusQuery() string {
 func (m *AuroraPgDatabaseDialect) IsBlueGreenStatusAvailable(conn driver.Conn) bool {
 	topologyTableExistQuery := "SELECT 'pg_catalog.get_blue_green_fast_switchover_metadata'::regproc"
 	return utils.CheckExistenceQueries(conn, topologyTableExistQuery)
+}
+
+type GlobalAuroraPgDatabaseDialect struct {
+	AuroraPgDatabaseDialect
+}
+
+func (g *GlobalAuroraPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
+	if !g.PgDatabaseDialect.IsDialect(conn) {
+		return false
+	}
+	hasExtensions := utils.GetFirstRowFromQuery(
+		conn,
+		"SELECT (setting LIKE '%aurora_stat_utils%') AS aurora_stat_utils FROM pg_catalog.pg_settings WHERE name OPERATOR(pg_catalog.=) 'rds.extensions'")
+	if hasExtensions == nil || hasExtensions[0] != true {
+		return false
+	}
+
+	if !utils.CheckExistenceQueries(conn,
+		"SELECT 'aurora_global_db_status'::regproc",
+		"SELECT 'aurora_global_db_instance_status'::regproc") {
+		return false
+	}
+
+	regionCount := utils.GetFirstRowFromQuery(conn, "SELECT count(1) FROM aurora_global_db_status()")
+	if regionCount == nil {
+		return false
+	}
+	count, ok := regionCount[0].(int64)
+	if !ok {
+		return false
+	}
+	return count > 1
+}
+
+func (g *GlobalAuroraPgDatabaseDialect) GetDialectUpdateCandidates() []string {
+	return []string{}
+}
+
+func (g *GlobalAuroraPgDatabaseDialect) GetTopologyQuery() string {
+	return "SELECT SERVER_ID, CASE WHEN SESSION_ID OPERATOR(pg_catalog.=) 'MASTER_SESSION_ID' THEN TRUE ELSE FALSE END, " +
+		"VISIBILITY_LAG_IN_MSEC, AWS_REGION " +
+		"FROM aurora_global_db_instance_status()"
+}
+
+func (g *GlobalAuroraPgDatabaseDialect) GetRegionByInstanceIdQuery() string {
+	return "SELECT AWS_REGION FROM aurora_global_db_instance_status() WHERE SERVER_ID = $1"
+}
+
+func (g *GlobalAuroraPgDatabaseDialect) GetHostListProviderSupplier() HostListProviderSupplier {
+	return func(
+		props *utils.RWMap[string, string],
+		initialDsn string,
+		servicesContainer ServicesContainer,
+	) HostListProvider {
+		parser := servicesContainer.GetPluginService().GetTargetDriverDialect().GetRowParser()
+		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewGlobalAuroraTopologyUtils(g, parser), props, servicesContainer)
+	}
 }
 
 type RdsMultiAzClusterPgDatabaseDialect struct {

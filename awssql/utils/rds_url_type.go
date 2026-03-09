@@ -30,5 +30,6 @@ var (
 	RDS_PROXY                           RdsUrlType = RdsUrlType{4, true, false}
 	RDS_INSTANCE                        RdsUrlType = RdsUrlType{5, true, false}
 	RDS_AURORA_LIMITLESS_DB_SHARD_GROUP RdsUrlType = RdsUrlType{6, true, false}
-	IP_ADDRESS                          RdsUrlType = RdsUrlType{7, false, false}
+	RDS_GLOBAL_WRITER_CLUSTER           RdsUrlType = RdsUrlType{7, true, true}
+	IP_ADDRESS                          RdsUrlType = RdsUrlType{8, false, false}
 )

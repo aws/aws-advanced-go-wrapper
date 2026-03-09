@@ -150,22 +150,23 @@ func GetRefreshRateValue(props *utils.RWMap[string, string], property AwsWrapper
 }
 
 var ALL_WRAPPER_PROPERTIES = map[string]bool{
-	USER.Name:                                       true,
-	PASSWORD.Name:                                   true,
-	HOST.Name:                                       true,
-	PORT.Name:                                       true,
-	DATABASE.Name:                                   true,
-	DRIVER_PROTOCOL.Name:                            true,
-	NET.Name:                                        true,
-	SINGLE_WRITER_DSN.Name:                          true,
-	PLUGINS.Name:                                    true,
-	AUTO_SORT_PLUGIN_ORDER.Name:                     true,
-	DIALECT.Name:                                    true,
-	TARGET_DRIVER_DIALECT.Name:                      true,
-	TARGET_DRIVER_AUTO_REGISTER.Name:                true,
-	CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name:           true,
-	CLUSTER_ID.Name:                                 true,
-	CLUSTER_INSTANCE_HOST_PATTERN.Name:              true,
+	USER.Name:                             true,
+	PASSWORD.Name:                         true,
+	HOST.Name:                             true,
+	PORT.Name:                             true,
+	DATABASE.Name:                         true,
+	DRIVER_PROTOCOL.Name:                  true,
+	NET.Name:                              true,
+	SINGLE_WRITER_DSN.Name:                true,
+	PLUGINS.Name:                          true,
+	AUTO_SORT_PLUGIN_ORDER.Name:           true,
+	DIALECT.Name:                          true,
+	TARGET_DRIVER_DIALECT.Name:            true,
+	TARGET_DRIVER_AUTO_REGISTER.Name:      true,
+	CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name: true,
+	CLUSTER_ID.Name:                       true,
+	CLUSTER_INSTANCE_HOST_PATTERN.Name:    true,
+	GLOBAL_CLUSTER_INSTANCE_HOST_PATTERNS.Name: true,
 	AWS_PROFILE.Name:                                true,
 	IAM_HOST.Name:                                   true,
 	IAM_EXPIRATION_SEC.Name:                         true,
@@ -342,6 +343,16 @@ var CLUSTER_INSTANCE_HOST_PATTERN = AwsWrapperProperty{
 		"A \"?\" character in this pattern should be used as a placeholder for cluster instance names. " +
 		"This pattern is required to be specified for IP address or custom domain connections to AWS RDS " +
 		"clusters. Otherwise, if unspecified, the pattern will be automatically created for AWS RDS clusters.",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var GLOBAL_CLUSTER_INSTANCE_HOST_PATTERNS = AwsWrapperProperty{
+	Name: "globalClusterInstanceHostPatterns",
+	description: "Comma-separated list of the cluster instance DNS patterns that will be used to " +
+		"build complete instance endpoints. " +
+		"A \"?\" character in these patterns should be used as a placeholder for cluster instance names. " +
+		"This parameter is required for Global Aurora Databases. " +
+		"Each region in the Global Aurora Database should be specified in the list.",
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 

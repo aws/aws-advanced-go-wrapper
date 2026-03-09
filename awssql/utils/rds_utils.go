@@ -48,6 +48,11 @@ var (
 			"(?P<domain>[a-zA-Z0-9]+\\.(rds|rds-fips)\\.(?P<region>[a-zA-Z0-9\\-]+)" +
 			"\\.(amazonaws\\.com\\.?|c2s\\.ic\\.gov\\.?|sc2s\\.sgov\\.gov\\.?))$")
 
+	AURORA_GLOBAL_WRITER_DNS_PATTERN = regexp.MustCompile(
+		"(?i)^(?P<instance>.+)\\." +
+			"(?P<dns>global-)?" +
+			"(?P<domain>[a-zA-Z0-9]+\\.global\\.rds\\.amazonaws\\.com\\.?)$")
+
 	IP_V4_REGEXP = regexp.MustCompile(
 		"^(([1-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){1}" +
 			"(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){2}" +
@@ -62,7 +67,7 @@ var (
 	BG_GREEN_HOSTID_PATTERN = regexp.MustCompile("(?i)(.*)-green-[0-9a-z]{6}")
 	BG_GREEN_HOST_PATTERN   = regexp.MustCompile("(?i).*(?P<prefix>-green-[0-9a-z]{6})..*")
 
-	dnsRegexpArray    = [4]*regexp.Regexp{AURORA_DNS_PATTERN, AURORA_CHINA_DNS_PATTERN, AURORA_OLD_CHINA_DNS_PATTERN, AURORA_GOV_DNS_PATTERN}
+	dnsRegexpArray    = [5]*regexp.Regexp{AURORA_DNS_PATTERN, AURORA_CHINA_DNS_PATTERN, AURORA_OLD_CHINA_DNS_PATTERN, AURORA_GOV_DNS_PATTERN, AURORA_GLOBAL_WRITER_DNS_PATTERN}
 	cachedDnsRegexp   = sync.Map{}
 	cachedDnsPatterns = sync.Map{}
 
@@ -83,6 +88,8 @@ func IdentifyRdsUrlType(host string) RdsUrlType {
 
 	if IsIPv4(host) || IsIPV6(host) {
 		return IP_ADDRESS
+	} else if IsGlobalDbWriterClusterDns(host) {
+		return RDS_GLOBAL_WRITER_CLUSTER
 	} else if IsWriterClusterDns(host) {
 		return RDS_WRITER_CLUSTER
 	} else if IsReaderClusterDns(host) {
@@ -115,6 +122,14 @@ func IsIPV6(host string) bool {
 func IsRdsClusterDns(host string) bool {
 	dnsGroup := getDnsGroup(GetPreparedHost(host))
 	return strings.EqualFold(dnsGroup, "cluster-") || strings.EqualFold(dnsGroup, "cluster-ro-")
+}
+
+func IsGlobalDbWriterClusterDns(host string) bool {
+	preparedHost := GetPreparedHost(host)
+	if preparedHost == "" {
+		return false
+	}
+	return AURORA_GLOBAL_WRITER_DNS_PATTERN.MatchString(preparedHost)
 }
 
 func IsWriterClusterDns(host string) bool {
