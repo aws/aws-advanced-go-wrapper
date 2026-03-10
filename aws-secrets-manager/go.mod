@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-advanced-go-wrapper/auth-helpers v1.0.5
 	github.com/aws/aws-advanced-go-wrapper/awssql v1.4.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.11
-	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.41.2
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.41.3
 )
 
 require (
@@ -24,7 +24,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.16 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.8 // indirect
 	github.com/aws/smithy-go v1.24.2 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.6.1 // indirect
 	golang.org/x/text v0.34.0 // indirect
 )
