@@ -32,6 +32,7 @@ const (
 	AURORA_CONNECTION_TRACKER_PLUGIN_CODE          string = "auroraConnectionTracker"
 	DEVELOPER_PLUGIN_CODE                          string = "dev"
 	AURORA_INITIAL_CONNECTION_STRATEGY_PLUGIN_CODE string = "initialConnection"
+	GDB_FAILOVER_PLUGIN_CODE                       string = "gdbFailover"
 )
 
 type HostChangeOptions int

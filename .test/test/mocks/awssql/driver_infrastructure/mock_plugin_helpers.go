@@ -56,11 +56,12 @@ func (m *MockHostListProviderService) EXPECT() *MockHostListProviderServiceMockR
 }
 
 // CreateHostListProvider mocks base method.
-func (m *MockHostListProviderService) CreateHostListProvider(arg0 *utils.RWMap[string, string]) driver_infrastructure.HostListProvider {
+func (m *MockHostListProviderService) CreateHostListProvider(arg0 *utils.RWMap[string, string]) (driver_infrastructure.HostListProvider, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateHostListProvider", arg0)
 	ret0, _ := ret[0].(driver_infrastructure.HostListProvider)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateHostListProvider indicates an expected call of CreateHostListProvider.
@@ -202,11 +203,12 @@ func (mr *MockPluginServiceMockRecorder) Connect(arg0, arg1, arg2 interface{}) *
 }
 
 // CreateHostListProvider mocks base method.
-func (m *MockPluginService) CreateHostListProvider(arg0 *utils.RWMap[string, string]) driver_infrastructure.HostListProvider {
+func (m *MockPluginService) CreateHostListProvider(arg0 *utils.RWMap[string, string]) (driver_infrastructure.HostListProvider, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateHostListProvider", arg0)
 	ret0, _ := ret[0].(driver_infrastructure.HostListProvider)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateHostListProvider indicates an expected call of CreateHostListProvider.

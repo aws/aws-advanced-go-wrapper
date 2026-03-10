@@ -64,7 +64,7 @@ func rdsTestSetup(
 	mockContainer.EXPECT().GetMonitorService().Return(mockMonitorService).AnyTimes()
 	mockContainer.EXPECT().GetStorageService().Return(storageService).AnyTimes()
 
-	provider := driver_infrastructure.NewRdsHostListProvider(mockHLPService, mockTopologyUtils, props, mockContainer)
+	provider := driver_infrastructure.NewRdsHostListProvider(mockHLPService, mockTopologyUtils, props, mockContainer, nil)
 
 	return provider, mockPluginService, mockMonitorService, mockTopologyUtils, mockContainer, storageService
 }

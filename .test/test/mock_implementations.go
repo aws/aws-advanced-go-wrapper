@@ -428,8 +428,8 @@ func (p *MockPluginService) GetCurrentTx() driver.Tx {
 
 func (p *MockPluginService) SetCurrentTx(_ driver.Tx) {}
 
-func (p *MockPluginService) CreateHostListProvider(_ *utils.RWMap[string, string]) driver_infrastructure.HostListProvider {
-	return nil
+func (p *MockPluginService) CreateHostListProvider(_ *utils.RWMap[string, string]) (driver_infrastructure.HostListProvider, error) {
+	return nil, nil
 }
 
 func (p *MockPluginService) SetHostListProvider(_ driver_infrastructure.HostListProvider) {
@@ -579,8 +579,8 @@ func (m *MockRdsHostListProviderService) IsStaticHostListProvider() bool {
 	return false
 }
 
-func (m *MockRdsHostListProviderService) CreateHostListProvider(_ *utils.RWMap[string, string]) driver_infrastructure.HostListProvider {
-	return nil
+func (m *MockRdsHostListProviderService) CreateHostListProvider(_ *utils.RWMap[string, string]) (driver_infrastructure.HostListProvider, error) {
+	return nil, nil
 }
 
 func (m *MockRdsHostListProviderService) GetCurrentConnection() driver.Conn {

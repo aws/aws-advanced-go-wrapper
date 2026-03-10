@@ -88,8 +88,8 @@ func (t *mockAuroraMysqlDialect) GetHostListProviderSupplier() driver_infrastruc
 		props *utils.RWMap[string, string],
 		initialDsn string,
 		servicesContainer driver_infrastructure.ServicesContainer,
-	) driver_infrastructure.HostListProvider {
-		return failoverRdsHostListProvider
+	) (driver_infrastructure.HostListProvider, error) {
+		return failoverRdsHostListProvider, nil
 	}
 }
 
@@ -275,6 +275,7 @@ func initializeFailoverTest(
 		topologyUtils,
 		combinedProps,
 		container,
+		nil,
 	)
 	_, _ = failoverRdsHostListProvider.GetClusterId()
 	hostListProviderService.SetHostListProvider(failoverRdsHostListProvider)

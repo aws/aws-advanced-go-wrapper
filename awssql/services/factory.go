@@ -168,7 +168,10 @@ func (f *ServiceFactory) CreateStandardContainer(
 
 	supplier := pluginService.GetDialect().GetHostListProviderSupplier()
 	if supplier != nil {
-		provider := supplier(cfg.Props, cfg.OriginalURL, container)
+		provider, err := supplier(cfg.Props, cfg.OriginalURL, container)
+		if err != nil {
+			return nil, err
+		}
 		pluginService.SetHostListProvider(provider)
 	}
 

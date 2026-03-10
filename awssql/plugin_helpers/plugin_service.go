@@ -87,7 +87,7 @@ func (p *PluginServiceImpl) SetHostListProvider(hostListProvider driver_infrastr
 	p.hostListProvider = hostListProvider
 }
 
-func (p *PluginServiceImpl) CreateHostListProvider(props *utils.RWMap[string, string]) driver_infrastructure.HostListProvider {
+func (p *PluginServiceImpl) CreateHostListProvider(props *utils.RWMap[string, string]) (driver_infrastructure.HostListProvider, error) {
 	return p.GetDialect().GetHostListProviderSupplier()(props, p.originalDsn, p.servicesContainer)
 }
 
@@ -110,7 +110,11 @@ func (p *PluginServiceImpl) UpdateDialect(conn driver.Conn) {
 	if originalDialect == p.dialect {
 		return
 	}
-	p.SetHostListProvider(p.CreateHostListProvider(p.props))
+	hlp, err := p.CreateHostListProvider(p.props)
+	if err != nil {
+		return
+	}
+	p.SetHostListProvider(hlp)
 	_ = p.RefreshHostList(conn)
 }
 

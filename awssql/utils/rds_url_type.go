@@ -20,16 +20,17 @@ type RdsUrlType struct {
 	Id           int
 	IsRds        bool
 	IsRdsCluster bool
+	HasRegion    bool
 }
 
 var (
-	OTHER                               RdsUrlType = RdsUrlType{0, false, false}
-	RDS_WRITER_CLUSTER                  RdsUrlType = RdsUrlType{1, true, true}
-	RDS_READER_CLUSTER                  RdsUrlType = RdsUrlType{2, true, true}
-	RDS_CUSTOM_CLUSTER                  RdsUrlType = RdsUrlType{3, true, true}
-	RDS_PROXY                           RdsUrlType = RdsUrlType{4, true, false}
-	RDS_INSTANCE                        RdsUrlType = RdsUrlType{5, true, false}
-	RDS_AURORA_LIMITLESS_DB_SHARD_GROUP RdsUrlType = RdsUrlType{6, true, false}
-	RDS_GLOBAL_WRITER_CLUSTER           RdsUrlType = RdsUrlType{7, true, true}
-	IP_ADDRESS                          RdsUrlType = RdsUrlType{8, false, false}
+	OTHER                               RdsUrlType = RdsUrlType{0, false, false, false}
+	RDS_WRITER_CLUSTER                  RdsUrlType = RdsUrlType{1, true, true, true}
+	RDS_READER_CLUSTER                  RdsUrlType = RdsUrlType{2, true, true, true}
+	RDS_CUSTOM_CLUSTER                  RdsUrlType = RdsUrlType{3, true, true, true}
+	RDS_PROXY                           RdsUrlType = RdsUrlType{4, true, false, true}
+	RDS_INSTANCE                        RdsUrlType = RdsUrlType{5, true, false, true}
+	RDS_AURORA_LIMITLESS_DB_SHARD_GROUP RdsUrlType = RdsUrlType{6, true, false, true}
+	RDS_GLOBAL_WRITER_CLUSTER           RdsUrlType = RdsUrlType{7, true, true, false}
+	IP_ADDRESS                          RdsUrlType = RdsUrlType{8, false, false, false}
 )
