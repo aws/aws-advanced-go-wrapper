@@ -18,9 +18,7 @@ package driver_infrastructure
 
 import (
 	"database/sql/driver"
-	"fmt"
 	"log/slog"
-	"math"
 	"strings"
 	"sync"
 	"time"
@@ -29,51 +27,44 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-
-	"github.com/google/uuid"
 )
 
-func NewRdsHostListProvider(
-	hostListProviderService HostListProviderService,
-	databaseDialect TopologyAwareDialect,
-	properties *utils.RWMap[string, string],
-	queryForTopologyFunc func(conn driver.Conn) ([]*host_info_util.HostInfo, error),
-	clusterIdChangedFunc func(oldClusterId string)) *RdsHostListProvider {
-	r := &RdsHostListProvider{
-		hostListProviderService: hostListProviderService,
-		databaseDialect:         databaseDialect,
-		properties:              properties,
-		isInitialized:           false,
-	}
-	if queryForTopologyFunc == nil {
-		queryForTopologyFunc = func(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
-			return r.databaseDialect.GetTopology(conn, r)
-		}
-	}
-	r.queryForTopologyFunc = queryForTopologyFunc
-	r.clusterIdChangedFunc = clusterIdChangedFunc
-	return r
-}
-
-var primaryClusterIdCache = utils.NewCache[bool]()
-var suggestedPrimaryClusterCache = utils.NewCache[string]()
-var TopologyCache = utils.NewCache[[]*host_info_util.HostInfo]()
+// Monitor-related constants.
+var (
+	TOPOLOGY_CACHE_EXPIRATION_NANO    = time.Minute * 5
+	DEFAULT_TOPOLOGY_QUERY_TIMEOUT_MS = 5000
+)
 
 type RdsHostListProvider struct {
-	hostListProviderService HostListProviderService
-	databaseDialect         TopologyAwareDialect
-	properties              *utils.RWMap[string, string]
-	isInitialized           bool
+	hostListProviderService       HostListProviderService
+	servicesContainer             ServicesContainer
+	topologyUtils                 TopologyUtils
+	properties                    *utils.RWMap[string, string]
+	isInitialized                 bool
+	defaultTopologyQueryTimeoutMs int
 	// The following properties are initialized from the above in init().
 	initialHostList         []*host_info_util.HostInfo
 	initialHostInfo         *host_info_util.HostInfo
-	IsPrimaryClusterId      bool
 	clusterId               string
 	clusterInstanceTemplate *host_info_util.HostInfo
 	refreshRateNanos        time.Duration
 	lock                    sync.Mutex
-	queryForTopologyFunc    func(driver.Conn) ([]*host_info_util.HostInfo, error)
-	clusterIdChangedFunc    func(oldClusterId string)
+}
+
+func NewRdsHostListProvider(
+	hostListProviderService HostListProviderService,
+	topologyUtils TopologyUtils,
+	properties *utils.RWMap[string, string],
+	servicesContainer ServicesContainer,
+) *RdsHostListProvider {
+	return &RdsHostListProvider{
+		hostListProviderService:       hostListProviderService,
+		topologyUtils:                 topologyUtils,
+		properties:                    properties,
+		servicesContainer:             servicesContainer,
+		defaultTopologyQueryTimeoutMs: DEFAULT_TOPOLOGY_QUERY_TIMEOUT_MS,
+		isInitialized:                 false,
+	}
 }
 
 func (r *RdsHostListProvider) init() {
@@ -114,49 +105,56 @@ func (r *RdsHostListProvider) init() {
 	} else {
 		r.clusterInstanceTemplate = defaultTemplate
 	}
-
-	r.clusterId = uuid.New().String()
-	r.IsPrimaryClusterId = false
-	rdsUrlType := utils.IdentifyRdsUrlType(r.initialHostInfo.Host)
-	clusterIdSetting := property_util.GetVerifiedWrapperPropertyValue[string](r.properties, property_util.CLUSTER_ID)
-
-	if clusterIdSetting != "" {
-		r.clusterId = clusterIdSetting
-	} else if rdsUrlType == utils.RDS_PROXY {
-		r.clusterId = r.initialHostInfo.GetUrl()
-	} else if rdsUrlType.IsRds {
-		suggestedClusterId, isPrimary := r.getSuggestedClusterId(r.initialHostInfo.GetHostAndPort())
-		if suggestedClusterId != "" {
-			r.clusterId = suggestedClusterId
-			r.IsPrimaryClusterId = isPrimary
-		} else {
-			clusterRdsHostUrl := utils.GetRdsClusterHostUrl(r.initialHostInfo.Host)
-			if clusterRdsHostUrl != "" {
-				if r.clusterInstanceTemplate.Port != 0 {
-					r.clusterId = fmt.Sprintf("%s:%d", clusterRdsHostUrl, r.clusterInstanceTemplate.Port)
-				} else {
-					r.clusterId = clusterRdsHostUrl
-				}
-				r.IsPrimaryClusterId = true
-				primaryClusterIdCache.Put(r.clusterId, true, utils.CleanupIntervalNanos)
-			}
-		}
-	}
+	r.clusterId = property_util.GetVerifiedWrapperPropertyValue[string](r.properties, property_util.CLUSTER_ID)
 
 	r.isInitialized = true
 }
 
-func (r *RdsHostListProvider) ForceRefresh(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
+func (r *RdsHostListProvider) getOrCreateMonitor() ClusterTopologyMonitor {
 	r.init()
-	if conn == nil {
-		conn = r.hostListProviderService.GetCurrentConnection()
+	highRefreshRateNano := time.Millisecond * time.Duration(property_util.GetRefreshRateValue(r.properties, property_util.CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS))
+
+	initializer := func(container ServicesContainer) (Monitor, error) {
+		monitor := NewClusterTopologyMonitorImpl(
+			container,
+			r.topologyUtils,
+			r.clusterId,
+			highRefreshRateNano,
+			r.refreshRateNanos,
+			TOPOLOGY_CACHE_EXPIRATION_NANO,
+			r.properties,
+			r.initialHostInfo,
+			r.clusterInstanceTemplate,
+			r.servicesContainer.GetPluginService())
+		return monitor, nil
 	}
-	hosts, _, err := r.getTopology(conn, true)
+
+	monitor, err := r.servicesContainer.GetMonitorService().RunIfAbsent(
+		ClusterTopologyMonitorType,
+		r.clusterId,
+		r.servicesContainer,
+		initializer)
 	if err != nil {
-		return nil, err
+		return nil
 	}
-	slog.Debug(utils.LogTopology(hosts, "From ForceRefresh"))
-	return hosts, nil
+	return monitor.(ClusterTopologyMonitor)
+}
+
+// =============================================================================
+// HostListProvider Interface Implementation
+// =============================================================================
+
+func (r *RdsHostListProvider) ForceRefresh() ([]*host_info_util.HostInfo, error) {
+	return r.forceRefreshMonitor(false, DEFAULT_TOPOLOGY_QUERY_TIMEOUT_MS)
+}
+
+func (r *RdsHostListProvider) forceRefreshMonitor(verifyTopology bool, timeoutMs int) ([]*host_info_util.HostInfo, error) {
+	r.init()
+	if !r.servicesContainer.GetPluginService().IsDialectConfirmed() {
+		return r.initialHostList, nil
+	}
+	monitor := r.getOrCreateMonitor()
+	return monitor.ForceRefresh(verifyTopology, timeoutMs)
 }
 
 func (r *RdsHostListProvider) GetClusterId() (string, error) {
@@ -165,16 +163,20 @@ func (r *RdsHostListProvider) GetClusterId() (string, error) {
 }
 
 func (r *RdsHostListProvider) GetHostRole(conn driver.Conn) host_info_util.HostRole {
-	return r.databaseDialect.GetHostRole(conn)
+	return r.topologyUtils.GetHostRole(conn)
 }
 
 func (r *RdsHostListProvider) IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error) {
-	instanceName, _ := r.databaseDialect.GetHostName(conn)
+	r.init()
+	_, instanceName := r.topologyUtils.GetInstanceId(conn)
 	if instanceName != "" {
-		topology, err := r.Refresh(conn)
+		topology, err := r.Refresh()
+		if err != nil {
+			return nil, err
+		}
 		forcedRefresh := false
-		if err != nil || len(topology) == 0 {
-			topology, err = r.ForceRefresh(conn)
+		if len(topology) == 0 {
+			topology, err = r.ForceRefresh()
 			forcedRefresh = true
 		}
 		if err != nil {
@@ -186,7 +188,7 @@ func (r *RdsHostListProvider) IdentifyConnection(conn driver.Conn) (*host_info_u
 		foundHost := utils.FindHostInTopology(topology, instanceName, r.getHostEndpoint(instanceName))
 
 		if foundHost.IsNil() && !forcedRefresh {
-			topology, err = r.ForceRefresh(conn)
+			topology, err = r.ForceRefresh()
 			if err != nil {
 				return nil, err
 			}
@@ -203,55 +205,59 @@ func (r *RdsHostListProvider) IsStaticHostListProvider() bool {
 	return false
 }
 
-func (r *RdsHostListProvider) Refresh(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
+func (r *RdsHostListProvider) Refresh() ([]*host_info_util.HostInfo, error) {
 	r.init()
-	if conn == nil {
-		conn = r.hostListProviderService.GetCurrentConnection()
-	}
-	hosts, isCachedData, err := r.getTopology(conn, false)
+	hosts, isCachedData, err := r.getTopology()
 	if err != nil {
 		return nil, err
 	}
+
 	msgPrefix := "From SQL Query"
 	if isCachedData {
 		msgPrefix = "From cache"
 	}
 	slog.Info(utils.LogTopology(hosts, msgPrefix))
-	return hosts, nil
+	return host_info_util.CopyHostList(hosts), nil
 }
 
-func (r *RdsHostListProvider) getTopology(conn driver.Conn, forceUpdate bool) ([]*host_info_util.HostInfo, bool, error) {
-	r.lock.Lock()
-	suggestedPrimaryId, ok := suggestedPrimaryClusterCache.Get(r.clusterId)
-	if ok && suggestedPrimaryId != "" && r.clusterId != suggestedPrimaryId {
-		oldClusterId := r.clusterId
-		r.clusterId = suggestedPrimaryId
-		r.IsPrimaryClusterId = true
-		r.clusterIdChangedFunc(oldClusterId)
+func (r *RdsHostListProvider) StopMonitor() {
+	r.servicesContainer.GetMonitorService().StopAndRemove(ClusterTopologyMonitorType, r.clusterId)
+}
+
+// =============================================================================
+// BlockingHostListProvider Interface Implementation
+// =============================================================================
+
+func (r *RdsHostListProvider) ForceRefreshHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) ([]*host_info_util.HostInfo, error) {
+	monitor := r.getOrCreateMonitor()
+	updatedHosts, err := monitor.ForceRefresh(shouldVerifyWriter, timeoutMs)
+	if err == nil && len(updatedHosts) > 0 {
+		TopologyStorageType.Set(r.servicesContainer.GetStorageService(), r.clusterId, NewTopology(updatedHosts))
 	}
-	r.lock.Unlock()
+	return updatedHosts, err
+}
 
-	hosts, ok := TopologyCache.Get(r.clusterId)
+// =============================================================================
+// Internal Helpers
+// =============================================================================
 
-	// If this cluster id is a primary one, and about to create a new entry in the cache
-	// it needs to be suggested for other non-primary clusters.
-	needToSuggest := (!ok || len(hosts) == 0) && r.IsPrimaryClusterId
+func (r *RdsHostListProvider) getTopology() ([]*host_info_util.HostInfo, bool, error) {
+	hosts := r.getStoredHosts()
 
-	if (!ok || forceUpdate || len(hosts) == 0) && conn != nil {
-		// Need to fetch the topology.
-		hosts, err := r.queryForTopologyFunc(conn)
-		if err != nil {
-			// Topology fetch failed, pass on error.
-			return nil, false, err
-		}
-		if len(hosts) > 0 {
-			TopologyCache.Put(r.clusterId, hosts, r.refreshRateNanos)
-			if needToSuggest {
-				r.suggestPrimaryCluster(hosts)
-			}
-			return hosts, false, nil
+	if !r.servicesContainer.GetPluginService().IsDialectConfirmed() {
+		// We need to confirm the dialect before creating a topology monitor so that it uses the correct SQL queries.
+		// We will return the original hosts parsed from the connection string until the dialect has been confirmed.
+		return r.initialHostList, false, nil
+	}
+
+	if len(hosts) == 0 {
+		// We need to re-fetch topology - start the monitor and get topology
+		refreshedHosts, err := r.forceRefreshMonitor(false, DEFAULT_TOPOLOGY_QUERY_TIMEOUT_MS)
+		if err == nil && len(refreshedHosts) > 0 {
+			return refreshedHosts, false, nil
 		}
 	}
+
 	if len(hosts) > 0 {
 		// Return the cached hosts.
 		return hosts, true, nil
@@ -264,88 +270,29 @@ func (r *RdsHostListProvider) getTopology(conn driver.Conn, forceUpdate bool) ([
 	return nil, false, error_util.NewGenericAwsWrapperError(error_util.GetMessage("RdsHostListProvider.unableToGatherTopology"))
 }
 
-func (r *RdsHostListProvider) getSuggestedClusterId(url string) (string, bool) {
-	for key, hosts := range TopologyCache.GetAllEntries() {
-		isPrimaryCluster, ok := primaryClusterIdCache.Get(key)
-		if ok && isPrimaryCluster && key == url {
-			return url, isPrimaryCluster
-		}
-		if len(hosts) == 0 || !ok {
-			continue
-		}
-		for _, host := range hosts {
-			if host.GetHostAndPort() == url {
-				slog.Info(error_util.GetMessage("RdsHostListProvider.suggestedClusterId", key, url))
-				return key, isPrimaryCluster
-			}
-		}
+func (r *RdsHostListProvider) getStoredHosts() []*host_info_util.HostInfo {
+	r.init()
+	topology, found := TopologyStorageType.Get(r.servicesContainer.GetStorageService(), r.clusterId)
+	if !found {
+		return nil
 	}
-	return "", false
-}
-
-func (r *RdsHostListProvider) suggestPrimaryCluster(primaryClusterHosts []*host_info_util.HostInfo) {
-	if len(primaryClusterHosts) == 0 {
-		return
-	}
-
-	primaryClusterHostUrls := map[string]bool{}
-	for _, hostInfo := range primaryClusterHosts {
-		primaryClusterHostUrls[hostInfo.GetUrl()] = true
-	}
-
-	for clusterId, clusterHosts := range TopologyCache.GetAllEntries() {
-		isPrimaryCluster, ok := primaryClusterIdCache.Get(clusterId)
-		suggestedPrimaryClusterId, ok2 := suggestedPrimaryClusterCache.Get(clusterId)
-		// No further action if the cluster is primary, there is no suggestion, or there are no hosts.
-		if (ok && isPrimaryCluster) || (!ok2 || suggestedPrimaryClusterId == "") || len(clusterHosts) == 0 {
-			continue
-		}
-
-		// The entry is not primary.
-		for _, host := range clusterHosts {
-			if primaryClusterHostUrls[host.GetUrl()] {
-				// Instance in this cluster matches one instance on primary cluster. Suggest primary cluster id.
-				suggestedPrimaryClusterCache.Put(clusterId, r.clusterId, utils.CleanupIntervalNanos)
-				break
-			}
-		}
-	}
-}
-
-func (r *RdsHostListProvider) CreateHost(host string, hostRole host_info_util.HostRole, lag float64, cpu float64, lastUpdateTime time.Time) *host_info_util.HostInfo {
-	builder := host_info_util.NewHostInfoBuilder()
-
-	weight := int(math.Round(lag)*100 + math.Round(cpu))
-	var port int
-	if r.clusterInstanceTemplate.Port != host_info_util.HOST_NO_PORT {
-		port = r.clusterInstanceTemplate.Port
-	} else {
-		if r.initialHostInfo.Port != host_info_util.HOST_NO_PORT {
-			port = r.initialHostInfo.Port
-		} else {
-			port = r.hostListProviderService.GetDialect().GetDefaultPort()
-		}
-	}
-
-	host = r.getHostEndpoint(host)
-
-	builder.SetHost(host).SetPort(port).SetRole(hostRole).SetAvailability(host_info_util.AVAILABLE).SetWeight(weight).SetLastUpdateTime(lastUpdateTime)
-
-	hostInfo, _ := builder.Build()
-	return hostInfo
+	return topology.GetHosts()
 }
 
 func (r *RdsHostListProvider) getHostEndpoint(hostName string) string {
 	host := r.clusterInstanceTemplate.Host
-	return strings.Replace(host, "?", hostName, -1)
+	return strings.ReplaceAll(host, "?", hostName)
 }
 
-func (r *RdsHostListProvider) StopMonitor() {
-	// do nothing since this provider doesn't implement active monitoring
-}
+// =============================================================================
+// Cache Management
+// =============================================================================
 
-func ClearAllRdsHostListProviderCaches() {
-	TopologyCache.Clear()
-	primaryClusterIdCache.Clear()
-	suggestedPrimaryClusterCache.Clear()
+// ClearAllRdsHostListProviderCaches clears all cluster topology monitors.
+// Note: This requires access to a ServicesContainer to clear monitors via MonitorService.
+// For global cleanup, use MonitorService.StopAndRemoveByType(ClusterTopologyMonitorType) directly.
+func ClearAllRdsHostListProviderCaches(monitorService MonitorService) {
+	if monitorService != nil {
+		monitorService.StopAndRemoveByType(ClusterTopologyMonitorType)
+	}
 }

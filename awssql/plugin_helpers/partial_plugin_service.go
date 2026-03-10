@@ -22,7 +22,6 @@ import (
 	"log/slog"
 	"slices"
 	"sync"
-	"sync/atomic"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -35,43 +34,42 @@ import (
 // To keep it light, some fields/methods are not implemented. `panic()` is used to ensure that these methods not used and are caught during development/testing.
 // If the PartialPluginService fits your usecase but doesn't implement the field/method you need, feel free to add it.
 type PartialPluginService struct {
-	pluginManager          driver_infrastructure.PluginManager
-	props                  *utils.RWMap[string, string]
-	hostListProvider       driver_infrastructure.HostListProvider
-	dialect                driver_infrastructure.DatabaseDialect
-	driverDialect          driver_infrastructure.DriverDialect
-	AllHosts               []*host_info_util.HostInfo
-	allHostsLock           *sync.RWMutex
-	allowedAndBlockedHosts *atomic.Pointer[driver_infrastructure.AllowedAndBlockedHosts]
+	servicesContainer driver_infrastructure.ServicesContainer
+	props             *utils.RWMap[string, string]
+	originalDsn       string
+	dialect           driver_infrastructure.DatabaseDialect
+	driverDialect     driver_infrastructure.DriverDialect
+	AllHosts          []*host_info_util.HostInfo
+	allHostsLock      *sync.RWMutex
+	initialHostInfo   *host_info_util.HostInfo
 }
 
 func NewPartialPluginService(
-	pluginManager driver_infrastructure.PluginManager,
+	servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string],
-	hostListProvider driver_infrastructure.HostListProvider,
+	originalDsn string,
 	dialect driver_infrastructure.DatabaseDialect,
 	driverDialect driver_infrastructure.DriverDialect,
 	AllHosts []*host_info_util.HostInfo,
 	allHostsLock *sync.RWMutex,
-	allowedAndBlockedHosts *atomic.Pointer[driver_infrastructure.AllowedAndBlockedHosts]) driver_infrastructure.PluginService {
+	initialHostInfo *host_info_util.HostInfo) driver_infrastructure.PluginService {
 	return &PartialPluginService{
-		pluginManager:          pluginManager,
-		props:                  props,
-		hostListProvider:       hostListProvider,
-		dialect:                dialect,
-		driverDialect:          driverDialect,
-		AllHosts:               AllHosts,
-		allHostsLock:           allHostsLock,
-		allowedAndBlockedHosts: allowedAndBlockedHosts,
+		servicesContainer: servicesContainer,
+		props:             props,
+		originalDsn:       originalDsn,
+		dialect:           dialect,
+		driverDialect:     driverDialect,
+		AllHosts:          AllHosts,
+		allHostsLock:      allHostsLock,
 	}
 }
 
 func (p *PartialPluginService) ForceConnect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string]) (driver.Conn, error) {
-	return p.pluginManager.ForceConnect(hostInfo, props, true)
+	return p.servicesContainer.GetPluginManager().ForceConnect(hostInfo, props, true)
 }
 
 func (p *PartialPluginService) GetHostSelectorStrategy(strategy string) (hostSelector driver_infrastructure.HostSelector, err error) {
-	return p.pluginManager.GetHostSelectorStrategy(strategy)
+	return p.servicesContainer.GetPluginManager().GetHostSelectorStrategy(strategy)
 }
 
 func (p *PartialPluginService) GetTargetDriverDialect() driver_infrastructure.DriverDialect {
@@ -83,19 +81,19 @@ func (p *PartialPluginService) GetDialect() driver_infrastructure.DatabaseDialec
 }
 
 func (p *PartialPluginService) CreateHostListProvider(props *utils.RWMap[string, string]) driver_infrastructure.HostListProvider {
-	return p.GetDialect().GetHostListProvider(props, driver_infrastructure.HostListProviderService(p), p)
+	supplier := p.GetDialect().GetHostListProviderSupplier()
+	if supplier != nil {
+		return supplier(props, p.originalDsn, p.servicesContainer)
+	}
+	return nil
 }
 
 func (p *PartialPluginService) GetTelemetryContext() context.Context {
-	return p.pluginManager.GetTelemetryContext()
+	return p.servicesContainer.GetPluginManager().GetTelemetryContext()
 }
 
 func (p *PartialPluginService) SetTelemetryContext(ctx context.Context) {
-	p.pluginManager.SetTelemetryContext(ctx)
-}
-
-func (p *PartialPluginService) SetAllowedAndBlockedHosts(allowedAndBlockedHosts *driver_infrastructure.AllowedAndBlockedHosts) {
-	p.allowedAndBlockedHosts.Store(allowedAndBlockedHosts)
+	p.servicesContainer.GetPluginManager().SetTelemetryContext(ctx)
 }
 
 func (p *PartialPluginService) SetAvailability(hostAliases map[string]bool, availability host_info_util.HostAvailability) {
@@ -141,7 +139,7 @@ func (p *PartialPluginService) SetAvailability(hostAliases map[string]bool, avai
 	}
 
 	if len(changes) > 0 {
-		p.pluginManager.NotifyHostListChanged(changes)
+		p.servicesContainer.GetPluginManager().NotifyHostListChanged(changes)
 	}
 }
 
@@ -154,8 +152,8 @@ func (p *PartialPluginService) GetHosts() []*host_info_util.HostInfo {
 	p.allHostsLock.RLock()
 	defer p.allHostsLock.RUnlock()
 
-	hostPermissions := p.allowedAndBlockedHosts.Load()
-	if hostPermissions == nil {
+	hostPermissions, found := driver_infrastructure.AllowedAndBlockedHostsStorageType.Get(p.servicesContainer.GetStorageService(), p.initialHostInfo)
+	if !found {
 		return p.AllHosts
 	}
 
@@ -240,6 +238,7 @@ func (p *PartialPluginService) Connect(
 func (p *PartialPluginService) SetDialect(dialect driver_infrastructure.DatabaseDialect) {
 	panic("Method not implemented.")
 }
+func (p *PartialPluginService) IsDialectConfirmed() bool       { panic("Method not implemented.") }
 func (p *PartialPluginService) UpdateDialect(conn driver.Conn) { panic("Method not implemented.") }
 func (p *PartialPluginService) IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error) {
 	panic("Method not implemented.")
@@ -259,12 +258,6 @@ func (p *PartialPluginService) GetTelemetryFactory() telemetry.TelemetryFactory 
 	panic("Method not implemented.")
 }
 func (p *PartialPluginService) UpdateState(sql string, methodArgs ...any) {
-	panic("Method not implemented.")
-}
-func (p *PartialPluginService) GetBgStatus(id string) (driver_infrastructure.BlueGreenStatus, bool) {
-	panic("Method not implemented.")
-}
-func (p *PartialPluginService) SetBgStatus(status driver_infrastructure.BlueGreenStatus, id string) {
 	panic("Method not implemented.")
 }
 func (p *PartialPluginService) IsPluginInUse(pluginName string) bool {

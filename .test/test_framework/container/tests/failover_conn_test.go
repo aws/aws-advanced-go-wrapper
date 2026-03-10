@@ -18,6 +18,7 @@ package test
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
@@ -27,6 +28,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	_ "github.com/aws/aws-advanced-go-wrapper/otlp"
 	_ "github.com/aws/aws-advanced-go-wrapper/xray"
 
@@ -35,6 +37,14 @@ import (
 )
 
 func failoverSetup(t *testing.T) (*test_utils.AuroraTestUtility, *test_utils.TestEnvironment, error) {
+	utils.SetPreparedHostFunc(func(host string) string {
+		if strings.HasSuffix(host, ".proxied") {
+			return strings.TrimSuffix(host, ".proxied")
+		}
+		return host
+	})
+	t.Cleanup(utils.ResetPreparedHostFunc)
+
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
 	test_utils.SkipForTestEnvironmentFeatures(t, environment.Info().Request.Features, test_utils.LIMITLESS_DEPLOYMENT)

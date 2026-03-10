@@ -17,19 +17,18 @@
 package test
 
 import (
+	"database/sql/driver"
 	"errors"
 	"testing"
 	"time"
 
 	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
-	mock_limitless "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/limitless"
-	mock_database_sql_driver "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/database_sql_driver"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/limitless"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/services"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
 	"github.com/golang/mock/gomock"
 )
 
@@ -37,70 +36,60 @@ func TestMonitor_RunAndClose_SuccessfulCycle(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPlugin := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 	mockSelector := mock_driver_infrastructure.NewMockWeightedHostSelector(ctrl)
-	mockQuery := mock_limitless.NewMockLimitlessQueryHelper(ctrl)
-	fakeConn := mock_database_sql_driver.NewMockConn(ctrl)
 
 	host := &host_info_util.HostInfo{Host: "h1", Port: 5432, Weight: 10}
-	testRouters := []*host_info_util.HostInfo{
-		{Host: "r1", Port: 5432, Weight: 2},
-	}
 
-	cache := utils.NewSlidingExpirationCache[[]*host_info_util.HostInfo]("test")
-
-	mockPlugin.
-		EXPECT().
-		ForceConnect(gomock.Any(), gomock.Any()).
-		Return(fakeConn, nil).
-		AnyTimes()
-
-	// Ensure conn.Close() is expected
-	fakeConn.
-		EXPECT().
-		Close().
-		Return(nil).
-		AnyTimes()
-
-	mockQuery.
-		EXPECT().
-		QueryForLimitlessRouters(fakeConn, host.Port, gomock.Any()).
-		Return(testRouters, nil)
-
-	mockPlugin.
-		EXPECT().
-		GetHostSelectorStrategy(driver_infrastructure.SELECTOR_WEIGHTED_RANDOM).
-		Return(driver_infrastructure.HostSelector(mockSelector), nil)
-
-	mockSelector.
-		EXPECT().
-		SetHostWeights(map[string]int{"r1": 2})
-
-	mockQuery.
-		EXPECT().
-		QueryForLimitlessRouters(fakeConn, host.Port, gomock.Any()).
-		Return([]*host_info_util.HostInfo{}, nil)
+	// Set up a mock connection that returns router data from QueryContext
+	routerRows := newMultiRowMockRows(
+		[]string{"router_endpoint", "load"},
+		[][]driver.Value{
+			{"r1", 0.8},
+		},
+	)
+	fakeConn := &MockConn{queryResult: routerRows}
 
 	props := MakeMapFromKeysAndVals(
 		property_util.LIMITLESS_ROUTER_CACHE_EXPIRATION_TIME_MS.Name, "100",
 	)
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+
+	storage := services.NewExpiringStorage(5*time.Minute, nil)
+	driver_infrastructure.RegisterDefaultStorageTypes(storage)
+	limitless.LimitlessRoutersStorageType.Register(storage)
+
+	mockMonitorService := mock_driver_infrastructure.NewMockMonitorService(ctrl)
+	mockMonitorService.EXPECT().RegisterMonitorType(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
+	container := &services.FullServicesContainer{
+		Storage:       storage,
+		Monitor:       mockMonitorService,
+		Telemetry:     telemetryFactory,
+		PluginService: mockPluginService,
+	}
+
+	mockPluginService.EXPECT().ForceConnect(gomock.Any(), gomock.Any()).Return(fakeConn, nil).AnyTimes()
+	mockPluginService.EXPECT().GetDialect().Return(driver_infrastructure.DatabaseDialect(&driver_infrastructure.AuroraPgDatabaseDialect{})).AnyTimes()
+	mockPluginService.EXPECT().GetHostSelectorStrategy(driver_infrastructure.SELECTOR_WEIGHTED_RANDOM).
+		Return(driver_infrastructure.HostSelector(mockSelector), nil).AnyTimes()
+	mockSelector.EXPECT().SetHostWeights(gomock.Any()).AnyTimes()
 
 	monitor := limitless.NewLimitlessRouterMonitorImpl(
-		mockQuery,
-		mockPlugin,
+		container,
 		host,
-		cache,
 		"key",
-		10, // ms
 		props,
+		10,
 	)
 
+	monitor.Start()
 	time.Sleep(50 * time.Millisecond)
+	monitor.Stop()
 
-	monitor.Close()
-	time.Sleep(20 * time.Millisecond)
-
-	if _, found := cache.Get("key", 100*time.Millisecond); !found {
+	// Verify routers were stored in StorageService
+	routers, found := limitless.LimitlessRoutersStorageType.Get(storage, "key")
+	if !found || routers == nil {
 		t.Error("expected router cache to contain key after successful fetch")
 	}
 }
@@ -109,37 +98,37 @@ func TestOpenConnection_ErrorClosesConn(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPlugin := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	mockQuery := mock_limitless.NewMockLimitlessQueryHelper(ctrl)
-	fakeConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 
 	host := &host_info_util.HostInfo{Host: "hX", Port: 1234, Weight: 1}
-	cache := utils.NewSlidingExpirationCache[[]*host_info_util.HostInfo]("test")
 
-	mockPlugin.
-		EXPECT().
-		ForceConnect(gomock.Any(), gomock.Any()).
-		Return(fakeConn, errors.New("fail")).
-		AnyTimes()
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(emptyProps)
 
-	// Make sure conn.Close() is expected
-	fakeConn.
-		EXPECT().
-		Close().
-		Return(nil).
-		AnyTimes()
+	storage := services.NewExpiringStorage(5*time.Minute, nil)
+	driver_infrastructure.RegisterDefaultStorageTypes(storage)
+
+	mockMonitorService := mock_driver_infrastructure.NewMockMonitorService(ctrl)
+	mockMonitorService.EXPECT().RegisterMonitorType(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
+	container := &services.FullServicesContainer{
+		Storage:       storage,
+		Monitor:       mockMonitorService,
+		Telemetry:     telemetryFactory,
+		PluginService: mockPluginService,
+	}
+
+	fakeConn := &MockConn{}
+	mockPluginService.EXPECT().ForceConnect(gomock.Any(), gomock.Any()).Return(fakeConn, errors.New("fail")).AnyTimes()
 
 	monitor := limitless.NewLimitlessRouterMonitorImpl(
-		mockQuery,
-		mockPlugin,
+		container,
 		host,
-		cache,
 		"any",
-		10,
 		emptyProps,
+		10,
 	)
 
-	time.Sleep(20 * time.Millisecond)
-
-	monitor.Close()
+	monitor.Start()
+	time.Sleep(50 * time.Millisecond)
+	monitor.Stop()
 }

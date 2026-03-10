@@ -113,3 +113,79 @@ func TestSlidingExpirationComputeIfAbsentExpiredItem(t *testing.T) {
 	assert.Equal(t, 2, slidingExpirationCache.Size())
 	assert.True(t, itemDisposed)
 }
+
+func TestSlidingExpirationComputeIfAbsentWithError_Success(t *testing.T) {
+	slidingExpirationCache := utils.NewSlidingExpirationCache[int]("test")
+
+	item, err := slidingExpirationCache.ComputeIfAbsentWithError("a", func() (int, error) {
+		return 42, nil
+	}, time.Minute)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 42, item)
+	assert.Equal(t, 1, slidingExpirationCache.Size())
+}
+
+func TestSlidingExpirationComputeIfAbsentWithError_Error(t *testing.T) {
+	slidingExpirationCache := utils.NewSlidingExpirationCache[int]("test")
+
+	item, err := slidingExpirationCache.ComputeIfAbsentWithError("a", func() (int, error) {
+		return 0, assert.AnError
+	}, time.Minute)
+
+	assert.Error(t, err)
+	assert.Equal(t, 0, item)
+	// Should not cache the value on error
+	assert.Equal(t, 0, slidingExpirationCache.Size())
+}
+
+func TestSlidingExpirationComputeIfAbsentWithError_ExistingValue(t *testing.T) {
+	slidingExpirationCache := utils.NewSlidingExpirationCache[int]("test")
+	slidingExpirationCache.Put("a", 10, time.Minute)
+
+	computeCalled := false
+	item, err := slidingExpirationCache.ComputeIfAbsentWithError("a", func() (int, error) {
+		computeCalled = true
+		return 99, nil
+	}, time.Minute)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 10, item)
+	assert.False(t, computeCalled)
+}
+
+func TestSlidingExpirationComputeIfAbsentWithError_ExpiredValue(t *testing.T) {
+	itemDisposed := false
+	disposalFunc := func(item int) bool {
+		itemDisposed = true
+		return true
+	}
+	slidingExpirationCache := utils.NewSlidingExpirationCache("test", disposalFunc)
+	slidingExpirationCache.Put("a", 10, time.Nanosecond)
+
+	// Wait for expiration
+	time.Sleep(time.Millisecond)
+
+	item, err := slidingExpirationCache.ComputeIfAbsentWithError("a", func() (int, error) {
+		return 99, nil
+	}, time.Minute)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 99, item)
+	assert.True(t, itemDisposed)
+}
+
+func TestSlidingExpirationComputeIfAbsentWithError_ExpiredValueWithError(t *testing.T) {
+	slidingExpirationCache := utils.NewSlidingExpirationCache[int]("test")
+	slidingExpirationCache.Put("a", 10, time.Nanosecond)
+
+	// Wait for expiration
+	time.Sleep(time.Millisecond)
+
+	item, err := slidingExpirationCache.ComputeIfAbsentWithError("a", func() (int, error) {
+		return 0, assert.AnError
+	}, time.Minute)
+
+	assert.Error(t, err)
+	assert.Equal(t, 0, item)
+}

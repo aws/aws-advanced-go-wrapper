@@ -29,10 +29,12 @@ import (
 type BenchmarkPluginFactory struct{}
 
 func (b BenchmarkPluginFactory) GetInstance(
-	pluginService driver_infrastructure.PluginService,
+	servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewBenchmarkPlugin(pluginService, props), nil
+	return NewBenchmarkPlugin(servicesContainer.GetPluginService(), props), nil
 }
+
+func (b BenchmarkPluginFactory) ClearCaches() {}
 
 type BenchmarkPlugin struct {
 	plugins.BaseConnectionPlugin

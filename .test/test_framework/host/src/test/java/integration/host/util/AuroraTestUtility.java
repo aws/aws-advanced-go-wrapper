@@ -18,7 +18,7 @@ package integration.host.util;
 
 import integration.host.*;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.testcontainers.shaded.org.apache.commons.lang3.NotImplementedException;
+
 import software.amazon.awssdk.auth.credentials.*;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.waiters.WaiterResponse;
@@ -1002,7 +1002,7 @@ public class AuroraTestUtility {
       case RDS_MULTI_AZ_CLUSTER:
         return "db.m5d.large";
       default:
-        throw new NotImplementedException(request.getDatabaseEngineDeployment().toString());
+        throw new UnsupportedOperationException(request.getDatabaseEngineDeployment().toString());
     }
   }
 
@@ -1190,6 +1190,7 @@ public class AuroraTestUtility {
           } else {
             stmt.execute("GRANT ALL PRIVILEGES ON `%`.* TO '" + dbUser + "'@'%';");
           }
+          stmt.execute("GRANT REPLICATION CLIENT ON *.* TO '" + dbUser + "'@'%';");
 
           // BG switchover status and Multi AZ needs it.
           stmt.execute("GRANT SELECT ON mysql.* TO '" + dbUser + "'@'%';");

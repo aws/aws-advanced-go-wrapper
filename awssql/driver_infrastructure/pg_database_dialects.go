@@ -17,18 +17,13 @@
 package driver_infrastructure
 
 import (
-	"context"
 	"database/sql/driver"
 	"fmt"
-	"log/slog"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_info"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
@@ -51,17 +46,22 @@ func (p *PgDatabaseDialect) GetServerVersionQuery() string {
 	return "SELECT 'version', pg_catalog.VERSION()"
 }
 
-func (p *PgDatabaseDialect) IsDialect(conn driver.Conn) bool {
-	row := utils.GetFirstRowFromQuery(conn, "SELECT 1 FROM pg_catalog.pg_proc LIMIT 1")
-	// If the pg_proc table exists then it's a PostgreSQL cluster.
-	return row != nil
+func (m *PgDatabaseDialect) GetIsReaderQuery() string {
+	return "SELECT pg_catalog.pg_is_in_recovery()"
 }
 
-func (p *PgDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string, string],
-	hostListProviderService HostListProviderService,
-	_ PluginService) HostListProvider {
-	return NewDsnHostListProvider(props, hostListProviderService)
+func (p *PgDatabaseDialect) IsDialect(conn driver.Conn) bool {
+	return utils.CheckExistenceQueries(conn, "SELECT 1 FROM pg_catalog.pg_proc LIMIT 1")
+}
+
+func (p *PgDatabaseDialect) GetHostListProviderSupplier() HostListProviderSupplier {
+	return func(
+		props *utils.RWMap[string, string],
+		initialDsn string,
+		servicesContainer ServicesContainer,
+	) HostListProvider {
+		return NewDsnHostListProvider(props, servicesContainer.GetHostListProviderService())
+	}
 }
 
 func (p *PgDatabaseDialect) DoesStatementSetAutoCommit(_ string) (bool, bool) {
@@ -176,72 +176,35 @@ func (m *RdsPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 		hasExtensions[1] == false // If aurora_stat_utils is present then it should be treated as an Aurora cluster, not an RDS cluster.
 }
 
-func (m *RdsPgDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) ([]BlueGreenResult, error) {
-	bgStatusQuery := "SELECT version, endpoint, port, role, status FROM rds_tools.show_topology('aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
-	return pgGetBlueGreenStatus(conn, bgStatusQuery)
+func (m *RdsPgDatabaseDialect) GetBlueGreenStatusQuery() string {
+	return "SELECT version, endpoint, port, role, status FROM rds_tools.show_topology('aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
 }
 
 func (m *RdsPgDatabaseDialect) IsBlueGreenStatusAvailable(conn driver.Conn) bool {
 	topologyTableExistQuery := "SELECT 'rds_tools.show_topology'::regproc"
-	return utils.GetFirstRowFromQuery(conn, topologyTableExistQuery) != nil
-}
-
-type PgTopologyAwareDatabaseDialect struct {
-	PgDatabaseDialect
-}
-
-func (m *PgTopologyAwareDatabaseDialect) GetTopology(
-	_ driver.Conn, _ HostListProvider) ([]*host_info_util.HostInfo, error) {
-	return nil, nil
-}
-
-func (m *PgTopologyAwareDatabaseDialect) GetHostRole(conn driver.Conn) host_info_util.HostRole {
-	isReaderQuery := "SELECT pg_catalog.pg_is_in_recovery()"
-	res := utils.GetFirstRowFromQuery(conn, isReaderQuery)
-	if len(res) > 0 {
-		b, ok := (res[0]).(bool)
-		if ok {
-			if b {
-				return host_info_util.READER
-			}
-			return host_info_util.WRITER
-		}
-	}
-	return host_info_util.UNKNOWN
-}
-
-func (m *PgTopologyAwareDatabaseDialect) GetHostName(_ driver.Conn) (string, string) {
-	return "", ""
-}
-func (m *PgTopologyAwareDatabaseDialect) GetWriterHostName(_ driver.Conn) (string, error) {
-	return "", nil
-}
-
-func (m *PgTopologyAwareDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string, string],
-	hostListProviderService HostListProviderService,
-	pluginService PluginService) HostListProvider {
-	return m.getTopologyAwareHostListProvider(m, props, hostListProviderService, pluginService)
-}
-
-func (m *PgTopologyAwareDatabaseDialect) getTopologyAwareHostListProvider(
-	dialect TopologyAwareDialect,
-	props *utils.RWMap[string, string],
-	hostListProviderService HostListProviderService,
-	pluginService PluginService) HostListProvider {
-	pluginsProp := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.PLUGINS)
-
-	if strings.Contains(pluginsProp, "failover") {
-		slog.Debug(error_util.GetMessage("DatabaseDialect.usingMonitoringHostListProvider"))
-		return NewMonitoringRdsHostListProvider(hostListProviderService, dialect, props, pluginService)
-	}
-
-	slog.Debug(error_util.GetMessage("DatabaseDialect.usingRdsHostListProvider"))
-	return NewRdsHostListProvider(hostListProviderService, dialect, props, nil, nil)
+	return utils.CheckExistenceQueries(conn, topologyTableExistQuery)
 }
 
 type AuroraPgDatabaseDialect struct {
-	PgTopologyAwareDatabaseDialect
+	PgDatabaseDialect
+}
+
+func (m *AuroraPgDatabaseDialect) GetTopologyQuery() string {
+	return "SELECT server_id, CASE WHEN SESSION_ID OPERATOR(pg_catalog.=) 'MASTER_SESSION_ID' THEN TRUE ELSE FALSE END AS is_writer, " +
+		"CPU, COALESCE(REPLICA_LAG_IN_MSEC, 0) AS lag, LAST_UPDATE_TIMESTAMP " +
+		"FROM pg_catalog.aurora_replica_status() " +
+		// Filter out hosts that haven't been updated in the last 5 minutes.
+		"WHERE EXTRACT(EPOCH FROM(pg_catalog.NOW() OPERATOR(pg_catalog.-) LAST_UPDATE_TIMESTAMP)) OPERATOR(pg_catalog.<=) 300 OR SESSION_ID OPERATOR(pg_catalog.=) " +
+		"'MASTER_SESSION_ID' OR LAST_UPDATE_TIMESTAMP IS NULL"
+}
+
+func (m *AuroraPgDatabaseDialect) GetInstanceIdQuery() string {
+	return "SELECT pg_catalog.aurora_db_instance_identifier()"
+}
+
+func (m *AuroraPgDatabaseDialect) GetWriterIdQuery() string {
+	return "SELECT server_id FROM pg_catalog.aurora_replica_status() WHERE SESSION_ID OPERATOR(pg_catalog.=) 'MASTER_SESSION_ID' AND SERVER_ID OPERATOR(pg_catalog.=)" +
+		" pg_catalog.aurora_db_instance_identifier()"
 }
 
 func (m *AuroraPgDatabaseDialect) GetDialectUpdateCandidates() []string {
@@ -260,115 +223,33 @@ func (m *AuroraPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	return hasExtensions != nil && hasExtensions[0] == true && hasTopology != nil
 }
 
-func (m *AuroraPgDatabaseDialect) GetTopology(conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
-	topologyQuery := "SELECT server_id, CASE WHEN SESSION_ID OPERATOR(pg_catalog.=) 'MASTER_SESSION_ID' THEN TRUE ELSE FALSE END AS is_writer, " +
-		"CPU, COALESCE(REPLICA_LAG_IN_MSEC, 0) AS lag, LAST_UPDATE_TIMESTAMP " +
-		"FROM pg_catalog.aurora_replica_status() " +
-		// Filter out hosts that haven't been updated in the last 5 minutes.
-		"WHERE EXTRACT(EPOCH FROM(pg_catalog.NOW() OPERATOR(pg_catalog.-) LAST_UPDATE_TIMESTAMP)) OPERATOR(pg_catalog.<=) 300 OR SESSION_ID OPERATOR(pg_catalog.=) " +
-		"'MASTER_SESSION_ID' OR LAST_UPDATE_TIMESTAMP IS NULL"
-
-	queryerCtx, ok := conn.(driver.QueryerContext)
-	if !ok {
-		// Unable to query, conn does not implement QueryerContext.
-		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("Conn.doesNotImplementRequiredInterface", "driver.QueryerContext"))
+func (m *AuroraPgDatabaseDialect) GetHostListProviderSupplier() HostListProviderSupplier {
+	return func(
+		props *utils.RWMap[string, string],
+		initialDsn string,
+		servicesContainer ServicesContainer,
+	) HostListProvider {
+		parser := servicesContainer.GetPluginService().GetTargetDriverDialect().GetRowParser()
+		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewAuroraTopologyUtils(m, parser), props, servicesContainer)
 	}
-
-	rows, err := queryerCtx.QueryContext(context.Background(), topologyQuery, nil)
-	if err != nil {
-		// Query failed.
-		return nil, err
-	}
-	if rows != nil {
-		defer rows.Close()
-	}
-
-	var hosts []*host_info_util.HostInfo
-	if rows == nil {
-		// Query returned an empty host list, no processing required.
-		return hosts, nil
-	}
-	row := make([]driver.Value, len(rows.Columns()))
-	err = rows.Next(row)
-
-	for err == nil && len(row) > 4 {
-		hostName, ok1 := row[0].(string)
-		isWriter, ok2 := row[1].(bool)
-		cpu, ok3 := row[2].(float64)
-		lag, ok4 := row[3].(float64)
-		lastUpdateTime, ok5 := row[4].(time.Time)
-		if !ok1 || !ok2 || !ok3 || !ok4 {
-			// Unable to use information from row to create a host.
-			err = rows.Next(row)
-			continue
-		}
-		if !ok5 {
-			// Not able to get last update time, use current time.
-			lastUpdateTime = time.Now()
-		}
-		hostRole := host_info_util.READER
-		if isWriter {
-			hostRole = host_info_util.WRITER
-		}
-		hosts = append(hosts, provider.CreateHost(hostName, hostRole, lag, cpu, lastUpdateTime))
-		err = rows.Next(row)
-	}
-	return hosts, nil
-}
-
-func (m *AuroraPgDatabaseDialect) GetHostName(conn driver.Conn) (string, string) {
-	hostIdQuery := "SELECT pg_catalog.aurora_db_instance_identifier()"
-	res := utils.GetFirstRowFromQuery(conn, hostIdQuery)
-	if len(res) > 0 {
-		instanceId, ok := (res[0]).(string)
-		if ok {
-			return instanceId, instanceId
-		}
-	}
-	return "", ""
-}
-
-func (m *AuroraPgDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, error) {
-	hostIdQuery := "SELECT server_id FROM pg_catalog.aurora_replica_status() WHERE SESSION_ID OPERATOR(pg_catalog.=) 'MASTER_SESSION_ID' AND SERVER_ID OPERATOR(pg_catalog.=)" +
-		" pg_catalog.aurora_db_instance_identifier()"
-	res := utils.GetFirstRowFromQuery(conn, hostIdQuery)
-	if res == nil {
-		return "", error_util.NewGenericAwsWrapperError("Could not determine writer host name.")
-	}
-
-	if len(res) > 0 {
-		instanceId, ok := (res[0]).(string)
-		if ok {
-			return instanceId, nil
-		}
-	}
-	return "", nil
-}
-
-func (m *AuroraPgDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string, string],
-	hostListProviderService HostListProviderService,
-	pluginService PluginService) HostListProvider {
-	return m.getTopologyAwareHostListProvider(m, props, hostListProviderService, pluginService)
 }
 
 func (m *AuroraPgDatabaseDialect) GetLimitlessRouterEndpointQuery() string {
 	return "select router_endpoint, load from pg_catalog.aurora_limitless_router_endpoints()"
 }
 
-func (m *AuroraPgDatabaseDialect) GetBlueGreenStatus(conn driver.Conn) ([]BlueGreenResult, error) {
-	bgStatusQuery := "SELECT version, endpoint, port, role, status FROM pg_catalog.get_blue_green_fast_switchover_metadata(" +
+func (m *AuroraPgDatabaseDialect) GetBlueGreenStatusQuery() string {
+	return "SELECT version, endpoint, port, role, status FROM pg_catalog.get_blue_green_fast_switchover_metadata(" +
 		"'aws_advanced_go_wrapper-" + driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION + "')"
-	return pgGetBlueGreenStatus(conn, bgStatusQuery)
 }
 
 func (m *AuroraPgDatabaseDialect) IsBlueGreenStatusAvailable(conn driver.Conn) bool {
 	topologyTableExistQuery := "SELECT 'pg_catalog.get_blue_green_fast_switchover_metadata'::regproc"
-	return utils.GetFirstRowFromQuery(conn, topologyTableExistQuery) != nil
+	return utils.CheckExistenceQueries(conn, topologyTableExistQuery)
 }
 
 type RdsMultiAzClusterPgDatabaseDialect struct {
-	PgTopologyAwareDatabaseDialect
+	PgDatabaseDialect
 }
 
 func (r *RdsMultiAzClusterPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
@@ -391,131 +272,34 @@ func (r *RdsMultiAzClusterPgDatabaseDialect) GetDialectUpdateCandidates() []stri
 	return []string{}
 }
 
-func (r *RdsMultiAzClusterPgDatabaseDialect) GetTopology(conn driver.Conn, provider HostListProvider) ([]*host_info_util.HostInfo, error) {
-	topologyQuery := fmt.Sprintf("SELECT id, endpoint FROM rds_tools.show_topology('aws-advanced-go-wrapper-%v')", driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION)
-	writerHostId := r.getWriterHostId(conn)
-
-	if writerHostId == "" {
-		writerHostId = r.getHostIdOfCurrentConnection(conn)
-	}
-
-	queryerCtx, ok := conn.(driver.QueryerContext)
-	if !ok {
-		// Unable to query, conn does not implement QueryerContext.
-		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("Conn.doesNotImplementRequiredInterface", "driver.QueryerContext"))
-	}
-
-	rows, err := queryerCtx.QueryContext(context.Background(), topologyQuery, nil)
-	if err != nil {
-		// Query failed.
-		return nil, err
-	}
-	defer rows.Close()
-
-	return r.processTopologyQueryResults(provider, writerHostId, rows), nil
+func (r *RdsMultiAzClusterPgDatabaseDialect) GetTopologyQuery() string {
+	return fmt.Sprintf("SELECT id, endpoint FROM rds_tools.show_topology('aws-advanced-go-wrapper-%v')", driver_info.AWS_ADVANCED_GO_WRAPPER_VERSION)
 }
 
-func (r *RdsMultiAzClusterPgDatabaseDialect) processTopologyQueryResults(
-	provider HostListProvider,
-	writerHostId string,
-	rows driver.Rows) []*host_info_util.HostInfo {
-	var hosts []*host_info_util.HostInfo
-	row := make([]driver.Value, len(rows.Columns()))
-	err := rows.Next(row)
-	for err == nil && len(row) > 1 {
-		id, ok1 := row[0].(string)
-		endpoint, ok2 := row[1].(string)
-		if !ok1 || !ok2 {
-			// Unable to use information from row to create a host.
-			err = rows.Next(row)
-			continue
-		}
-		hostRole := host_info_util.READER
-
-		if writerHostId == id {
-			hostRole = host_info_util.WRITER
-		}
-
-		hostName := utils.GetHostNameFromEndpoint(endpoint)
-		if hostName == "" {
-			// Unable to use information from row to create a host
-			continue
-		}
-		hosts = append(hosts, provider.CreateHost(hostName, hostRole, 0, 0, time.Now()))
-		err = rows.Next(row)
-	}
-
-	return hosts
+func (r *RdsMultiAzClusterPgDatabaseDialect) GetInstanceIdQuery() string {
+	return "SELECT id, SUBSTRING(endpoint FROM 0 FOR POSITION('.' IN endpoint))" +
+		" FROM rds_tools.show_topology()" +
+		" WHERE id OPERATOR(pg_catalog.=) rds_tools.dbi_resource_id()"
 }
 
-func (r *RdsMultiAzClusterPgDatabaseDialect) getHostIdOfCurrentConnection(conn driver.Conn) string {
-	hostIdQuery := "SELECT dbi_resource_id FROM rds_tools.dbi_resource_id()"
-
-	row := utils.GetFirstRowFromQueryAsString(conn, hostIdQuery)
-
-	if len(row) > 0 {
-		return row[0]
-	}
-
-	return ""
+func (r *RdsMultiAzClusterPgDatabaseDialect) GetWriterIdQuery() string {
+	return "SELECT multi_az_db_cluster_source_dbi_resource_id" +
+		" FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()" +
+		" WHERE multi_az_db_cluster_source_dbi_resource_id OPERATOR(pg_catalog.!=)" +
+		" (SELECT dbi_resource_id FROM rds_tools.dbi_resource_id())"
 }
 
-func (r *RdsMultiAzClusterPgDatabaseDialect) GetHostName(conn driver.Conn) (string, string) {
-	hostNameQuery := "SELECT serverid, endpoint FROM rds_tools.db_instance_identifier()"
-	row := utils.GetFirstRowFromQueryAsString(conn, hostNameQuery)
-
-	if len(row) > 1 {
-		return row[0], utils.GetHostNameFromEndpoint(row[1])
-	} else if len(row) == 1 {
-		return row[0], ""
+func (r *RdsMultiAzClusterPgDatabaseDialect) GetHostListProviderSupplier() HostListProviderSupplier {
+	return func(
+		props *utils.RWMap[string, string],
+		initialDsn string,
+		servicesContainer ServicesContainer,
+	) HostListProvider {
+		parser := servicesContainer.GetPluginService().GetTargetDriverDialect().GetRowParser()
+		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewMultiAzTopologyUtils(r, parser), props, servicesContainer)
 	}
-
-	return "", ""
 }
 
-func (r *RdsMultiAzClusterPgDatabaseDialect) getWriterHostId(conn driver.Conn) string {
-	fetchWriterHostQuery := "SELECT multi_az_db_cluster_source_dbi_resource_id " +
-		"FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()"
-
-	row := utils.GetFirstRowFromQueryAsString(conn, fetchWriterHostQuery)
-	if len(row) > 0 {
-		return row[0]
-	}
-
-	return ""
-}
-
-func (r *RdsMultiAzClusterPgDatabaseDialect) GetWriterHostName(conn driver.Conn) (string, error) {
-	fetchWriterHostNameQuery := "SELECT endpoint FROM rds_tools.show_topology('aws-advanced-go-wrapper') as topology " +
-		"WHERE topology.id OPERATOR(pg_catalog.=) (SELECT multi_az_db_cluster_source_dbi_resource_id FROM rds_tools.multi_az_db_cluster_source_dbi_resource_id()) " +
-		"AND topology.id OPERATOR(pg_catalog.=) (SELECT dbi_resource_id FROM rds_tools.dbi_resource_id())"
-
-	res := utils.GetFirstRowFromQuery(conn, fetchWriterHostNameQuery)
-	if res == nil {
-		return "", error_util.NewGenericAwsWrapperError("Could not determine writer host name.")
-	}
-
-	if len(res) > 0 {
-		endpoint, ok := (res[0]).(string)
-		if !ok {
-			return "", nil
-		}
-
-		hostName := utils.GetHostNameFromEndpoint(endpoint)
-		if hostName != "" {
-			return hostName, nil
-		}
-	}
-	return "", nil
-}
-
-func (r *RdsMultiAzClusterPgDatabaseDialect) GetHostListProvider(
-	props *utils.RWMap[string, string],
-	hostListProviderService HostListProviderService,
-	pluginService PluginService) HostListProvider {
-	return r.getTopologyAwareHostListProvider(r, props, hostListProviderService, pluginService)
-}
-
-func pgGetBlueGreenStatus(conn driver.Conn, query string) ([]BlueGreenResult, error) {
-	return getBlueGreenStatus(conn, query, utils.PgConvertValToString)
+func (r *RdsMultiAzClusterPgDatabaseDialect) GetWriterIdColumnName() string {
+	return "multi_az_db_cluster_source_dbi_resource_id"
 }

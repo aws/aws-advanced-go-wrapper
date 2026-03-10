@@ -31,21 +31,20 @@ import (
 type HostMonitoringPluginFactory struct {
 }
 
-func (h HostMonitoringPluginFactory) GetInstance(pluginService driver_infrastructure.PluginService,
+func (h HostMonitoringPluginFactory) GetInstance(servicesContainer driver_infrastructure.ServicesContainer,
 	properties *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-	if pluginService == nil {
+	if servicesContainer.GetPluginService() == nil {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("HostMonitoringConnectionPlugin.illegalArgumentError", "pluginService"))
 	}
 	if properties == nil {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("HostMonitoringConnectionPlugin.illegalArgumentError", "properties"))
 	}
-	return &HostMonitorConnectionPlugin{pluginService: pluginService, props: properties}, nil
+	return &HostMonitorConnectionPlugin{servicesContainer: servicesContainer, props: properties}, nil
 }
 
 func (h HostMonitoringPluginFactory) ClearCaches() {
-	if EFM_MONITORS != nil {
-		EFM_MONITORS.Clear()
-	}
+	// Monitors are now managed by the MonitorService, so we don't need to clear them here.
+	// The MonitorService will handle cleanup when ReleaseResources is called.
 }
 
 func NewHostMonitoringPluginFactory() driver_infrastructure.ConnectionPluginFactory {
@@ -53,10 +52,10 @@ func NewHostMonitoringPluginFactory() driver_infrastructure.ConnectionPluginFact
 }
 
 type HostMonitorConnectionPlugin struct {
-	pluginService              driver_infrastructure.PluginService
-	props                      *utils.RWMap[string, string]
-	monitoringHostInfo         *host_info_util.HostInfo
-	monitorService             MonitorService
+	servicesContainer  driver_infrastructure.ServicesContainer
+	props              *utils.RWMap[string, string]
+	monitoringHostInfo *host_info_util.HostInfo
+	monitorService     HostMonitoringService
 	plugins.BaseConnectionPlugin
 }
 
@@ -77,9 +76,9 @@ func (b *HostMonitorConnectionPlugin) Connect(
 	if err != nil {
 		return nil, err
 	}
-	if utils.IdentifyRdsUrlType(hostInfo.Host).IsRds {
+	if utils.IdentifyRdsUrlType(hostInfo.Host).IsRdsCluster {
 		hostInfo.ResetAliases()
-		b.pluginService.FillAliases(conn, hostInfo)
+		b.servicesContainer.GetPluginService().FillAliases(conn, hostInfo)
 	}
 	return conn, err
 }
@@ -116,7 +115,7 @@ func (b *HostMonitorConnectionPlugin) Execute(
 	if err == nil {
 		slog.Debug(error_util.GetMessage("HostMonitoringConnectionPlugin.activatedMonitoring", methodName))
 		monitorState, err = b.monitorService.StartMonitoring(
-			b.pluginService.GetCurrentConnectionRef(), monitoringHostInfo, b.props)
+			b.servicesContainer.GetPluginService().GetCurrentConnectionRef(), monitoringHostInfo, b.props)
 		if err != nil {
 			slog.Warn(err.Error())
 			wrappedErr = err
@@ -125,7 +124,7 @@ func (b *HostMonitorConnectionPlugin) Execute(
 		wrappedReturnValue, wrappedReturnValue2, wrappedOk, wrappedErr = executeFunc()
 
 		if monitorState != nil {
-			b.monitorService.StopMonitoring(monitorState, b.pluginService.GetCurrentConnection())
+			b.monitorService.StopMonitoring(monitorState, b.servicesContainer.GetPluginService().GetCurrentConnection())
 			slog.Debug(error_util.GetMessage("HostMonitoringConnectionPlugin.monitoringDeactivated", methodName))
 		}
 	} else {
@@ -138,7 +137,7 @@ func (b *HostMonitorConnectionPlugin) Execute(
 
 func (b *HostMonitorConnectionPlugin) initMonitorService() error {
 	if b.monitorService == nil {
-		monitorService, err := NewMonitorServiceImpl(b.pluginService, b.props)
+		monitorService, err := NewHostMonitoringServiceImpl(b.servicesContainer, b.props)
 		if err != nil {
 			return err
 		}
@@ -149,11 +148,12 @@ func (b *HostMonitorConnectionPlugin) initMonitorService() error {
 
 func (b *HostMonitorConnectionPlugin) getMonitoringHostInfo() (*host_info_util.HostInfo, error) {
 	if b.monitoringHostInfo.IsNil() {
-		monitoringHostInfo, err := b.pluginService.GetCurrentHostInfo()
+		monitoringHostInfo, err := b.servicesContainer.GetPluginService().GetCurrentHostInfo()
 		if err == nil && !monitoringHostInfo.IsNil() {
-			if utils.IsRdsDns(monitoringHostInfo.Host) {
+			rdsUrlType := utils.IdentifyRdsUrlType(monitoringHostInfo.Host)
+			if rdsUrlType.IsRdsCluster {
 				slog.Debug(error_util.GetMessage("HostMonitoringConnectionPlugin.clusterHostInfoRequired"))
-				rdsHostMonitoringInfo, err := b.pluginService.IdentifyConnection(b.pluginService.GetCurrentConnection())
+				rdsHostMonitoringInfo, err := b.servicesContainer.GetPluginService().IdentifyConnection(b.servicesContainer.GetPluginService().GetCurrentConnection())
 				if err != nil {
 					return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("HostMonitoringConnectionPlugin.unableToIdentifyConnection", monitoringHostInfo.Host, err.Error()))
 				}

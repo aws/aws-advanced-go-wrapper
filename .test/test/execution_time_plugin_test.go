@@ -31,10 +31,10 @@ func TestFactoryReturnsExecutionTimePlugin(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
 
 	factory := plugins.NewExecutionTimePluginFactory()
-	plugin, err := factory.GetInstance(mockService, emptyProps)
+	plugin, err := factory.GetInstance(mockContainer, emptyProps)
 	assert.NoError(t, err)
 
 	_, ok := plugin.(*plugins.ExecutionTimePlugin)

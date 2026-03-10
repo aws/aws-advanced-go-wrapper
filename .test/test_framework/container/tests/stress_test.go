@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
+	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
@@ -38,6 +39,7 @@ import (
 const STRESS_TEST_NUM_ROUTINES = 5
 
 func setupStressTest(t *testing.T) (map[string]string, *test_utils.TestEnvironment) {
+	awsDriver.ClearCaches()
 	err := test_utils.BasicSetupInfoLog(t.Name())
 	assert.NoError(t, err)
 	env, err := test_utils.GetCurrentTestEnvironment()

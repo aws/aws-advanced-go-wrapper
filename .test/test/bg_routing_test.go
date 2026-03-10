@@ -227,15 +227,18 @@ func TestSuspendConnectRoutingApply(t *testing.T) {
 	bgId := "test-bg-deployment-123"
 	bgInProgressStatus := driver_infrastructure.NewBgStatus(bgId, driver_infrastructure.IN_PROGRESS, nil, nil, nil, nil)
 	bgPostStatus := driver_infrastructure.NewBgStatus(bgId, driver_infrastructure.POST, nil, nil, nil, nil)
-	routing := bg.NewSuspendConnectRouting(hostAndPort, role, bgId)
 	props := MakeMapFromKeysAndVals(
 		property_util.BG_CONNECT_TIMEOUT_MS.Name, "45",
 	)
-	assert.NotNil(t, routing, "Should create SuspendConnectRouting instance")
 
 	t.Run("NilBgStatus", func(t *testing.T) {
+		storage := newTestStorageService()
+		defer storage.Stop()
+		routing := bg.NewSuspendConnectRouting(hostAndPort, role, bgId, storage)
+		assert.NotNil(t, routing, "Should create SuspendConnectRouting instance")
+
 		mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-		mockPluginService.EXPECT().GetBgStatus(bgId).Return(driver_infrastructure.BlueGreenStatus{}, false).AnyTimes()
+		// No BG status in storage
 		mockPluginService.EXPECT().GetTelemetryContext().Return(ctxBefore).Times(1)
 		mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetry).Times(1)
 		mockPluginService.EXPECT().SetTelemetryContext(ctxBefore).Times(2)
@@ -251,8 +254,12 @@ func TestSuspendConnectRoutingApply(t *testing.T) {
 	})
 
 	t.Run("BgStatusStaysInProgress", func(t *testing.T) {
+		storage := newTestStorageService()
+		defer storage.Stop()
+		routing := bg.NewSuspendConnectRouting(hostAndPort, role, bgId, storage)
+
 		mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-		mockPluginService.EXPECT().GetBgStatus(bgId).Return(bgInProgressStatus, true).AnyTimes()
+		driver_infrastructure.BlueGreenStatusStorageType.Set(storage, bgStatusCacheKey(bgId), &bgInProgressStatus)
 		mockPluginService.EXPECT().GetTelemetryContext().Return(ctxBefore).Times(1)
 		mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetry).Times(1)
 		mockPluginService.EXPECT().SetTelemetryContext(gomock.Any()).Times(2)
@@ -269,12 +276,21 @@ func TestSuspendConnectRoutingApply(t *testing.T) {
 	})
 
 	t.Run("BgStatusChanges", func(t *testing.T) {
+		storage := newTestStorageService()
+		defer storage.Stop()
+		routing := bg.NewSuspendConnectRouting(hostAndPort, role, bgId, storage)
+
 		mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-		mockPluginService.EXPECT().GetBgStatus(bgId).Return(bgInProgressStatus, true).Times(2)
-		mockPluginService.EXPECT().GetBgStatus(bgId).Return(bgPostStatus, true)
+		driver_infrastructure.BlueGreenStatusStorageType.Set(storage, bgStatusCacheKey(bgId), &bgInProgressStatus)
 		mockPluginService.EXPECT().GetTelemetryContext().Return(ctxBefore).Times(1)
 		mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetry).Times(1)
 		mockPluginService.EXPECT().SetTelemetryContext(ctxBefore).Times(2)
+
+		// Swap status to POST after a short delay so the loop exits
+		go func() {
+			time.Sleep(20 * time.Millisecond)
+			driver_infrastructure.BlueGreenStatusStorageType.Set(storage, bgStatusCacheKey(bgId), &bgPostStatus)
+		}()
 
 		start := time.Now()
 		conn, err := routing.Apply(nil, hostInfo, props, true, mockPluginService)
@@ -283,7 +299,6 @@ func TestSuspendConnectRoutingApply(t *testing.T) {
 		assert.Nil(t, conn, "Should not create a connection")
 
 		elapsed := time.Since(start)
-		assert.True(t, elapsed >= 45*time.Millisecond, "Should sleep for at least the requested duration")
 		assert.True(t, elapsed < 110*time.Millisecond, "Should not sleep much longer than requested. Slept for %d ms.", elapsed.Milliseconds())
 	})
 }
@@ -306,15 +321,18 @@ func TestSuspendUntilCorrespondingHostFoundConnectRoutingApply(t *testing.T) {
 	bgId := "test-bg-deployment-456"
 	hostInfo, _ := host_info_util.NewHostInfoBuilder().SetHost("test-host").SetPort(5432).Build()
 
-	routing := bg.NewSuspendUntilCorrespondingHostFoundConnectRouting(hostAndPort, role, bgId)
 	props := MakeMapFromKeysAndVals(
 		property_util.BG_CONNECT_TIMEOUT_MS.Name, "45",
 	)
-	assert.NotNil(t, routing, "Should create SuspendUntilCorrespondingNodeFoundConnectRouting instance")
 
 	t.Run("NilBgStatus", func(t *testing.T) {
+		storage := newTestStorageService()
+		defer storage.Stop()
+		routing := bg.NewSuspendUntilCorrespondingHostFoundConnectRouting(hostAndPort, role, bgId, storage)
+		assert.NotNil(t, routing, "Should create SuspendUntilCorrespondingNodeFoundConnectRouting instance")
+
 		mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-		mockPluginService.EXPECT().GetBgStatus(bgId).Return(driver_infrastructure.BlueGreenStatus{}, false).AnyTimes()
+		// No BG status in storage
 		mockPluginService.EXPECT().GetTelemetryContext().Return(ctxBefore).Times(1)
 		mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetry).Times(1)
 		mockPluginService.EXPECT().SetTelemetryContext(ctxBefore).Times(2)
@@ -330,9 +348,13 @@ func TestSuspendUntilCorrespondingHostFoundConnectRoutingApply(t *testing.T) {
 	})
 
 	t.Run("BgStatusCompleted", func(t *testing.T) {
+		storage := newTestStorageService()
+		defer storage.Stop()
+		routing := bg.NewSuspendUntilCorrespondingHostFoundConnectRouting(hostAndPort, role, bgId, storage)
+
 		bgCompletedStatus := driver_infrastructure.NewBgStatus(bgId, driver_infrastructure.COMPLETED, nil, nil, nil, nil)
 		mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-		mockPluginService.EXPECT().GetBgStatus(bgId).Return(bgCompletedStatus, true).AnyTimes()
+		driver_infrastructure.BlueGreenStatusStorageType.Set(storage, bgStatusCacheKey(bgId), &bgCompletedStatus)
 		mockPluginService.EXPECT().GetTelemetryContext().Return(ctxBefore).Times(1)
 		mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetry).Times(1)
 		mockPluginService.EXPECT().SetTelemetryContext(ctxBefore).Times(2)
@@ -348,12 +370,16 @@ func TestSuspendUntilCorrespondingHostFoundConnectRoutingApply(t *testing.T) {
 	})
 
 	t.Run("TimeoutWaitingForCorrespondingHost", func(t *testing.T) {
+		storage := newTestStorageService()
+		defer storage.Stop()
+		routing := bg.NewSuspendUntilCorrespondingHostFoundConnectRouting(hostAndPort, role, bgId, storage)
+
 		correspondingHosts := utils.NewRWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]()
 		correspondingHosts.Put("test-host", utils.NewPair(hostInfo, &host_info_util.HostInfo{}))
 		bgCompletedStatus := driver_infrastructure.NewBgStatus(bgId, driver_infrastructure.POST, nil, nil, nil, correspondingHosts)
 
 		mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-		mockPluginService.EXPECT().GetBgStatus(bgId).Return(bgCompletedStatus, true).AnyTimes()
+		driver_infrastructure.BlueGreenStatusStorageType.Set(storage, bgStatusCacheKey(bgId), &bgCompletedStatus)
 		mockPluginService.EXPECT().GetTelemetryContext().Return(ctxBefore).Times(1)
 		mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetry).Times(1)
 		mockPluginService.EXPECT().SetTelemetryContext(gomock.Any()).Times(2)
@@ -367,13 +393,18 @@ func TestSuspendUntilCorrespondingHostFoundConnectRoutingApply(t *testing.T) {
 		elapsed := time.Since(start)
 		assert.True(t, elapsed >= 45*time.Millisecond, "Should sleep for at least the requested duration")
 	})
+
 	t.Run("FindCorrespondingHost", func(t *testing.T) {
+		storage := newTestStorageService()
+		defer storage.Stop()
+		routing := bg.NewSuspendUntilCorrespondingHostFoundConnectRouting(hostAndPort, role, bgId, storage)
+
 		correspondingHosts := utils.NewRWMap[string, utils.Pair[*host_info_util.HostInfo, *host_info_util.HostInfo]]()
 		correspondingHosts.Put("test-host", utils.NewPair(hostInfo, hostInfo))
 		bgCompletedStatus := driver_infrastructure.NewBgStatus(bgId, driver_infrastructure.POST, nil, nil, nil, correspondingHosts)
 
 		mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-		mockPluginService.EXPECT().GetBgStatus(bgId).Return(bgCompletedStatus, true).AnyTimes()
+		driver_infrastructure.BlueGreenStatusStorageType.Set(storage, bgStatusCacheKey(bgId), &bgCompletedStatus)
 		mockPluginService.EXPECT().GetTelemetryContext().Return(ctxBefore).Times(1)
 		mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetry).Times(1)
 		mockPluginService.EXPECT().SetTelemetryContext(gomock.Any()).Times(2)
@@ -386,98 +417,4 @@ func TestSuspendUntilCorrespondingHostFoundConnectRoutingApply(t *testing.T) {
 		elapsed := time.Since(start)
 		assert.True(t, elapsed <= 45*time.Millisecond, "Should not sleep for the requested duration. Time elapsed: %d.", elapsed.Milliseconds())
 	})
-}
-
-func TestSuspendExecuteRoutingApply(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockTelemetry := mock_telemetry.NewMockTelemetryFactory(ctrl)
-	mockTelemetryCtx := mock_telemetry.NewMockTelemetryContext(ctrl)
-
-	ctxBefore := context.Background()
-	mockTelemetry.EXPECT().
-		OpenTelemetryContext(gomock.Any(), telemetry.NESTED, ctxBefore).
-		Return(mockTelemetryCtx, ctxBefore).AnyTimes()
-	mockTelemetryCtx.EXPECT().CloseContext().AnyTimes()
-
-	hostAndPort := "test-host:5432"
-	role := driver_infrastructure.SOURCE
-	bgId := "test-bg-id"
-	bgInProgressStatus := driver_infrastructure.NewBgStatus(bgId, driver_infrastructure.IN_PROGRESS, nil, nil, nil, nil)
-	bgPostStatus := driver_infrastructure.NewBgStatus(bgId, driver_infrastructure.POST, nil, nil, nil, nil)
-
-	routing := bg.NewSuspendExecuteRouting(hostAndPort, role, bgId)
-	props := MakeMapFromKeysAndVals(
-		property_util.BG_CONNECT_TIMEOUT_MS.Name, "45",
-	)
-	assert.NotNil(t, routing, "Should create SuspendExecuteRouting instance")
-
-	methodName := "testMethod"
-	methodFunc := func() (any, any, bool, error) {
-		return nil, nil, false, nil
-	}
-
-	t.Run("NilBgStatus", func(t *testing.T) {
-		mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-		mockPluginService.EXPECT().GetBgStatus(bgId).Return(driver_infrastructure.BlueGreenStatus{}, false).AnyTimes()
-		mockPluginService.EXPECT().GetTelemetryContext().Return(ctxBefore).Times(1)
-		mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetry).Times(1)
-		mockPluginService.EXPECT().SetTelemetryContext(ctxBefore).Times(2)
-
-		start := time.Now()
-		result := routing.Apply(nil, props, mockPluginService, methodName, methodFunc)
-		assert.False(t, result.IsPresent(), "Should return empty result when no blue/green status")
-
-		elapsed := time.Since(start)
-		assert.True(t, elapsed <= 45*time.Millisecond, "Should not sleep for the requested duration")
-	})
-
-	t.Run("BgStatusStaysInProgress", func(t *testing.T) {
-		mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-		mockPluginService.EXPECT().GetBgStatus(bgId).Return(bgInProgressStatus, true).AnyTimes()
-		mockPluginService.EXPECT().GetTelemetryContext().Return(ctxBefore).Times(1)
-		mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetry).Times(1)
-		mockPluginService.EXPECT().SetTelemetryContext(gomock.Any()).Times(2)
-
-		start := time.Now()
-		result := routing.Apply(nil, props, mockPluginService, methodName, methodFunc)
-		assert.True(t, result.IsPresent(), "Should return result with error")
-		assert.NotNil(t, result.WrappedErr, "Should return error")
-		assert.True(t, strings.Contains(result.WrappedErr.Error(), "Blue/Green Deployment switchover is still in progress"))
-
-		elapsed := time.Since(start)
-		assert.True(t, elapsed >= 45*time.Millisecond, "Should sleep for at least the requested duration")
-		assert.True(t, elapsed < 110*time.Millisecond, "Should not sleep much longer than requested. Slept for %d ms.", elapsed.Milliseconds())
-	})
-
-	t.Run("BgStatusChanges", func(t *testing.T) {
-		mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-		mockPluginService.EXPECT().GetBgStatus(bgId).Return(bgInProgressStatus, true).Times(2)
-		mockPluginService.EXPECT().GetBgStatus(bgId).Return(bgPostStatus, true)
-		mockPluginService.EXPECT().GetTelemetryContext().Return(ctxBefore).Times(1)
-		mockPluginService.EXPECT().GetTelemetryFactory().Return(mockTelemetry).Times(1)
-		mockPluginService.EXPECT().SetTelemetryContext(ctxBefore).Times(2)
-
-		start := time.Now()
-		result := routing.Apply(nil, props, mockPluginService, methodName, methodFunc)
-		assert.False(t, result.IsPresent(), "Should return empty result when switchover completes")
-
-		elapsed := time.Since(start)
-		assert.True(t, elapsed >= 45*time.Millisecond, "Should sleep for at least the requested duration")
-		assert.True(t, elapsed < 110*time.Millisecond, "Should not sleep much longer than requested. Slept for %d ms.", elapsed.Milliseconds())
-	})
-}
-
-func TestBaseRoutingDelay(t *testing.T) {
-	routing := bg.NewBaseRouting("test-host:5432", driver_infrastructure.SOURCE)
-
-	zeroStatus := driver_infrastructure.BlueGreenStatus{}
-
-	start := time.Now()
-	routing.Delay(50*time.Millisecond, zeroStatus, nil, "")
-	elapsed := time.Since(start)
-
-	assert.True(t, elapsed >= 40*time.Millisecond, "Should sleep for at least the requested duration")
-	assert.True(t, elapsed < 100*time.Millisecond, "Should not sleep much longer than requested")
 }

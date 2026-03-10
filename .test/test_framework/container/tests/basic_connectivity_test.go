@@ -78,6 +78,8 @@ func TestBasicConnectivityFailoverClusterEndpoint(t *testing.T) {
 
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
+	test_utils.SkipForTestEnvironmentFeatures(t, environment.Info().Request.Features, test_utils.LIMITLESS_DEPLOYMENT)
+
 	dsn := test_utils.GetDsn(environment, map[string]string{})
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
@@ -114,6 +116,8 @@ func TestBasicConnectivityFailoverReaderEndpoint(t *testing.T) {
 
 	environment, err := test_utils.GetCurrentTestEnvironment()
 	assert.Nil(t, err)
+	test_utils.SkipForTestEnvironmentFeatures(t, environment.Info().Request.Features, test_utils.LIMITLESS_DEPLOYMENT)
+
 	dsn := test_utils.GetDsn(environment, map[string]string{
 		"host": environment.Info().DatabaseInfo.ClusterReadOnlyEndpoint,
 	})

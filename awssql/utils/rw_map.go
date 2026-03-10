@@ -165,18 +165,13 @@ func (c *RWMap[K, V]) Size() int {
 
 // ProcessAndRemoveIf executes the provided function on each key-value pair
 // where the key satisfies the condition function. Matching entries are removed after processing.
+// For cases where you need the removed entries back instead of inline processing, use RemoveIf.
 func (c *RWMap[K, V]) ProcessAndRemoveIf(condition func(K) bool, processor func(K, V)) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	for key, value := range c.cache {
-		if condition(key) {
-			processor(key, value)
-			if c.disposalFunc != nil {
-				c.disposalFunc(value)
-			}
-			delete(c.cache, key)
-		}
+	removed := c.RemoveIf(func(k K, _ V) bool {
+		return condition(k)
+	})
+	for _, entry := range removed {
+		processor(entry.Key, entry.Value)
 	}
 }
 
@@ -201,4 +196,30 @@ func (c *RWMap[K, V]) ForEach(fn func(K, V)) {
 	for key, value := range c.cache {
 		fn(key, value)
 	}
+}
+
+// MapEntry holds a key-value pair returned from RemoveIf.
+type MapEntry[K comparable, V any] struct {
+	Key   K
+	Value V
+}
+
+// RemoveIf removes all entries matching the predicate and returns them as key-value pairs.
+// This acquires the write lock, making it safe to use without the two-phase
+// collect-then-mutate pattern that ForEach + Remove would require.
+func (c *RWMap[K, V]) RemoveIf(predicate func(K, V) bool) []MapEntry[K, V] {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	var removed []MapEntry[K, V]
+	for key, value := range c.cache {
+		if predicate(key, value) {
+			removed = append(removed, MapEntry[K, V]{Key: key, Value: value})
+			if c.disposalFunc != nil {
+				c.disposalFunc(value)
+			}
+			delete(c.cache, key)
+		}
+	}
+	return removed
 }

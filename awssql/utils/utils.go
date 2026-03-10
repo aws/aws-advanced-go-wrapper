@@ -340,12 +340,26 @@ func GetSetReadOnlyFromCtx(ctx context.Context) (bool, bool) {
 	return setReadOnly, ok
 }
 
-func MySqlConvertValToString(value driver.Value) (string, bool) {
-	stringAsInt, ok := value.([]uint8)
-	return string(stringAsInt), ok
-}
+func CheckExistenceQueries(conn driver.Conn, queries ...string) bool {
+	queryerCtx, ok := conn.(driver.QueryerContext)
+	if !ok {
+		return false
+	}
 
-func PgConvertValToString(value driver.Value) (string, bool) {
-	stringVal, ok := value.(string)
-	return stringVal, ok
+	for _, query := range queries {
+		rows, err := queryerCtx.QueryContext(context.Background(), query, nil)
+		if err != nil {
+			return false
+		}
+
+		row := make([]driver.Value, 1)
+		hasRow := rows.Next(row) == nil
+		_ = rows.Close()
+
+		if !hasRow {
+			return false
+		}
+	}
+
+	return true
 }

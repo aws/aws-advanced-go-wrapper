@@ -29,9 +29,7 @@ import (
 )
 
 type DefaultPlugin struct {
-	PluginService       driver_infrastructure.PluginService
-	DefaultConnProvider driver_infrastructure.ConnectionProvider
-	ConnProviderManager driver_infrastructure.ConnectionProviderManager
+	ServicesContainer driver_infrastructure.ServicesContainer
 }
 
 func (d *DefaultPlugin) GetPluginCode() string {
@@ -61,16 +59,17 @@ func (d *DefaultPlugin) Execute(
 		return
 	}
 
-	if connInvokedOn != nil && connInvokedOn != d.PluginService.GetCurrentConnection() {
+	pluginService := d.ServicesContainer.GetPluginService()
+	if connInvokedOn != nil && connInvokedOn != pluginService.GetCurrentConnection() {
 		// Is using an old connection, so transaction analysis should be skipped.
 		// PluginManager blocks all methods invoked using old connections except for close/abort.
 		return
 	}
 
 	if utils.DoesOpenTransaction(methodName, methodArgs...) {
-		d.PluginService.SetInTransaction(true)
+		pluginService.SetInTransaction(true)
 	} else if utils.DoesCloseTransaction(methodName, methodArgs...) {
-		d.PluginService.SetInTransaction(false)
+		pluginService.SetInTransaction(false)
 	}
 
 	return
@@ -82,7 +81,8 @@ func (d *DefaultPlugin) Connect(
 	isInitialConnection bool,
 	_ driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	// It's guaranteed that this plugin is always the last in plugin chain so connectFunc can be ignored.
-	connProvider := d.ConnProviderManager.GetConnectionProvider(*hostInfo, props)
+	cpm := d.ServicesContainer.GetPluginManager().GetConnectionProviderManager()
+	connProvider := cpm.GetConnectionProvider(*hostInfo, props)
 	return d.connectInternal(hostInfo, props, connProvider, isInitialConnection)
 }
 
@@ -92,7 +92,7 @@ func (d *DefaultPlugin) ForceConnect(
 	isInitialConnection bool,
 	_ driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	// It's guaranteed that this plugin is always the last in plugin chain so connectFunc can be ignored.
-	return d.connectInternal(hostInfo, props, d.DefaultConnProvider, isInitialConnection)
+	return d.connectInternal(hostInfo, props, d.ServicesContainer.GetConnectionProvider(), isInitialConnection)
 }
 
 func (d *DefaultPlugin) connectInternal(
@@ -100,27 +100,29 @@ func (d *DefaultPlugin) connectInternal(
 	props *utils.RWMap[string, string],
 	connProvider driver_infrastructure.ConnectionProvider,
 	isInitialConnection bool) (driver.Conn, error) {
-	parentCtx := d.PluginService.GetTelemetryContext()
-	telemetryCtx, ctx := d.PluginService.GetTelemetryFactory().OpenTelemetryContext(
+	pluginService := d.ServicesContainer.GetPluginService()
+	parentCtx := pluginService.GetTelemetryContext()
+	telemetryCtx, ctx := pluginService.GetTelemetryFactory().OpenTelemetryContext(
 		fmt.Sprintf(telemetry.TELEMETRY_CONNECT_INTERNAL, utils.GetStructName(connProvider)), telemetry.NESTED, parentCtx)
-	d.PluginService.SetTelemetryContext(ctx)
+	pluginService.SetTelemetryContext(ctx)
 	defer func() {
 		telemetryCtx.CloseContext()
-		d.PluginService.SetTelemetryContext(parentCtx)
+		pluginService.SetTelemetryContext(parentCtx)
 	}()
 
-	conn, err := connProvider.Connect(hostInfo, props.GetAllEntries(), d.PluginService)
+	conn, err := connProvider.Connect(hostInfo, props.GetAllEntries(), pluginService)
 	if err == nil {
-		d.PluginService.SetAvailability(hostInfo.AllAliases, host_info_util.AVAILABLE)
+		pluginService.SetAvailability(hostInfo.AllAliases, host_info_util.AVAILABLE)
 		if isInitialConnection {
-			d.PluginService.UpdateDialect(conn)
+			pluginService.UpdateDialect(conn)
 		}
 	}
 	return conn, err
 }
 
 func (d *DefaultPlugin) AcceptsStrategy(strategy string) bool {
-	return d.ConnProviderManager.AcceptsStrategy(strategy)
+	cpm := d.ServicesContainer.GetPluginManager().GetConnectionProviderManager()
+	return cpm.AcceptsStrategy(strategy)
 }
 
 func (d *DefaultPlugin) GetHostInfoByStrategy(
@@ -130,11 +132,13 @@ func (d *DefaultPlugin) GetHostInfoByStrategy(
 	if len(hosts) == 0 {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DefaultConnectionPlugin.noHostsAvailable"))
 	}
-	return d.ConnProviderManager.GetHostInfoByStrategy(hosts, role, strategy, d.PluginService.GetProperties())
+	cpm := d.ServicesContainer.GetPluginManager().GetConnectionProviderManager()
+	return cpm.GetHostInfoByStrategy(hosts, role, strategy, d.ServicesContainer.GetPluginService().GetProperties())
 }
 
 func (d *DefaultPlugin) GetHostSelectorStrategy(strategy string) (driver_infrastructure.HostSelector, error) {
-	return d.ConnProviderManager.GetHostSelectorStrategy(strategy)
+	cpm := d.ServicesContainer.GetPluginManager().GetConnectionProviderManager()
+	return cpm.GetHostSelectorStrategy(strategy)
 }
 
 func (d *DefaultPlugin) NotifyConnectionChanged(_ map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {
