@@ -6,5 +6,3 @@ require (
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	golang.org/x/text v0.34.0
 )
-
-require github.com/google/uuid v1.6.0
