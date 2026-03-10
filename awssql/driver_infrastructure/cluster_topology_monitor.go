@@ -484,6 +484,7 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 		c.monitoringConn.Store(emptyContainer)
 		c.closeConnection(connToClose)
 		c.isVerifiedWriterConn = false
+		c.writerHostInfo.Store(nil)
 	}
 
 	return hosts, nil
