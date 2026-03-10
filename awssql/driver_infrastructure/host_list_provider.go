@@ -38,4 +38,4 @@ type HostListProviderSupplier func(
 	props *utils.RWMap[string, string],
 	initialDsn string,
 	servicesContainer ServicesContainer,
-) HostListProvider
+) (HostListProvider, error)

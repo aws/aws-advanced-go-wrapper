@@ -80,12 +80,12 @@ func (p *PartialPluginService) GetDialect() driver_infrastructure.DatabaseDialec
 	return p.dialect
 }
 
-func (p *PartialPluginService) CreateHostListProvider(props *utils.RWMap[string, string]) driver_infrastructure.HostListProvider {
+func (p *PartialPluginService) CreateHostListProvider(props *utils.RWMap[string, string]) (driver_infrastructure.HostListProvider, error) {
 	supplier := p.GetDialect().GetHostListProviderSupplier()
 	if supplier != nil {
 		return supplier(props, p.originalDsn, p.servicesContainer)
 	}
-	return nil
+	return nil, nil
 }
 
 func (p *PartialPluginService) GetTelemetryContext() context.Context {

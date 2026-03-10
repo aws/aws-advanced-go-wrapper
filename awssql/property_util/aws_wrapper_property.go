@@ -185,6 +185,9 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	FAILOVER_TIMEOUT_MS.Name:                        true,
 	FAILOVER_MODE.Name:                              true,
 	FAILOVER_READER_HOST_SELECTOR_STRATEGY.Name:     true,
+	GDB_FAILOVER_ACTIVE_HOME_MODE.Name:              true,
+	GDB_FAILOVER_INACTIVE_HOME_MODE.Name:            true,
+	GDB_FAILOVER_HOME_REGION.Name:                   true,
 	ENABLE_CONNECT_FAILOVER.Name:                    true,
 	CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS.Name:      true,
 	WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS.Name:          true,
@@ -436,6 +439,24 @@ var FAILOVER_READER_HOST_SELECTOR_STRATEGY = AwsWrapperProperty{
 	Name:                "failoverReaderHostSelectorStrategy",
 	description:         "The strategy that should be used to select a new reader host when opening a new connection during failover.",
 	defaultValue:        "random",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var GDB_FAILOVER_ACTIVE_HOME_MODE = AwsWrapperProperty{
+	Name:                "activeHomeFailoverMode",
+	description:         "Set node role to follow during failover when GDB primary region is in home region.",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var GDB_FAILOVER_INACTIVE_HOME_MODE = AwsWrapperProperty{
+	Name:                "inactiveHomeFailoverMode",
+	description:         "Set node role to follow during failover when GDB primary region is not in home region.",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var GDB_FAILOVER_HOME_REGION = AwsWrapperProperty{
+	Name:                "failoverHomeRegion",
+	description:         "Set home region for failover.",
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 

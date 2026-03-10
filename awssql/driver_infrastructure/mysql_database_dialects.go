@@ -65,8 +65,8 @@ func (m *MySQLDatabaseDialect) GetHostListProviderSupplier() HostListProviderSup
 		props *utils.RWMap[string, string],
 		initialDsn string,
 		servicesContainer ServicesContainer,
-	) HostListProvider {
-		return NewDsnHostListProvider(props, servicesContainer.GetHostListProviderService())
+	) (HostListProvider, error) {
+		return NewDsnHostListProvider(props, servicesContainer.GetHostListProviderService()), nil
 	}
 }
 
@@ -240,9 +240,9 @@ func (m *AuroraMySQLDatabaseDialect) GetHostListProviderSupplier() HostListProvi
 		props *utils.RWMap[string, string],
 		initialDsn string,
 		servicesContainer ServicesContainer,
-	) HostListProvider {
+	) (HostListProvider, error) {
 		parser := servicesContainer.GetPluginService().GetTargetDriverDialect().GetRowParser()
-		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewAuroraTopologyUtils(m, parser), props, servicesContainer)
+		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewAuroraTopologyUtils(m, parser), props, servicesContainer, nil), nil
 	}
 }
 func (m *AuroraMySQLDatabaseDialect) GetBlueGreenStatusQuery() string {
@@ -297,9 +297,9 @@ func (g *GlobalAuroraMySQLDatabaseDialect) GetHostListProviderSupplier() HostLis
 		props *utils.RWMap[string, string],
 		initialDsn string,
 		servicesContainer ServicesContainer,
-	) HostListProvider {
+	) (HostListProvider, error) {
 		parser := servicesContainer.GetPluginService().GetTargetDriverDialect().GetRowParser()
-		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewGlobalAuroraTopologyUtils(g, parser), props, servicesContainer)
+		return NewGlobalAuroraHostListProvider(servicesContainer.GetHostListProviderService(), NewGlobalAuroraTopologyUtils(g, parser), props, servicesContainer)
 	}
 }
 
@@ -369,8 +369,8 @@ func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetHostListProviderSupplier() Ho
 		props *utils.RWMap[string, string],
 		initialDsn string,
 		servicesContainer ServicesContainer,
-	) HostListProvider {
+	) (HostListProvider, error) {
 		parser := servicesContainer.GetPluginService().GetTargetDriverDialect().GetRowParser()
-		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewMultiAzTopologyUtils(r, parser), props, servicesContainer)
+		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewMultiAzTopologyUtils(r, parser), props, servicesContainer, nil), nil
 	}
 }

@@ -77,6 +77,71 @@ type ClusterTopologyMonitorImpl struct {
 	state                          atomic.Value // MonitorState
 	lastActivityTimestampNano      atomic.Int64
 	wg                             sync.WaitGroup
+
+	// topologyQueryStrategy provides pluggable behavior for topology querying
+	// and instance template resolution. For regular Aurora clusters, the default
+	// strategy delegates to topologyUtils with a single instance template.
+	// For Global Aurora, a region-aware strategy is injected.
+	topologyQueryStrategy TopologyQueryStrategy
+}
+
+// TopologyQueryStrategy defines pluggable behavior for how the cluster topology
+// monitor queries topology and resolves instance templates. This allows the
+// monitor to work with both regular Aurora clusters (single template) and
+// Global Aurora clusters (region-specific templates).
+type TopologyQueryStrategy interface {
+	// QueryForTopology fetches the current cluster topology using the given connection.
+	QueryForTopology(conn driver.Conn) ([]*host_info_util.HostInfo, error)
+	// GetInstanceTemplate returns the instance template for the given instance.
+	// Returns nil if the default clusterInstanceTemplate should be used.
+	GetInstanceTemplate(instanceId string, conn driver.Conn) (*host_info_util.HostInfo, error)
+}
+
+// auroraTopologyQueryStrategy is the standard strategy for Aurora clusters.
+// It delegates to TopologyUtils with a single cluster instance template.
+type auroraTopologyQueryStrategy struct {
+	topologyUtils           TopologyUtils
+	initialHostInfo         *host_info_util.HostInfo
+	clusterInstanceTemplate *host_info_util.HostInfo
+}
+
+func (d *auroraTopologyQueryStrategy) QueryForTopology(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
+	return d.topologyUtils.QueryForTopology(conn, d.initialHostInfo, d.clusterInstanceTemplate)
+}
+
+func (d *auroraTopologyQueryStrategy) GetInstanceTemplate(_ string, _ driver.Conn) (*host_info_util.HostInfo, error) {
+	return nil, nil // nil signals: use the default clusterInstanceTemplate
+}
+
+// globalAuroraTopologyQueryStrategy implements TopologyQueryStrategy for
+// Global Aurora Databases. It uses the multi-region topology query and
+// resolves region-specific instance templates via RegionAwareTopologyUtils.
+type globalAuroraTopologyQueryStrategy struct {
+	topologyUtils             RegionAwareTopologyUtils
+	initialHostInfo           *host_info_util.HostInfo
+	clusterInstanceTemplate   *host_info_util.HostInfo
+	instanceTemplatesByRegion map[string]*host_info_util.HostInfo
+}
+
+func (s *globalAuroraTopologyQueryStrategy) QueryForTopology(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
+	return s.topologyUtils.QueryForTopologyByRegion(conn, s.initialHostInfo, s.instanceTemplatesByRegion)
+}
+
+func (s *globalAuroraTopologyQueryStrategy) GetInstanceTemplate(instanceId string, conn driver.Conn) (*host_info_util.HostInfo, error) {
+	region, err := s.topologyUtils.GetRegion(instanceId, conn)
+	if err != nil {
+		return nil, err
+	}
+	if region != "" {
+		template, found := s.instanceTemplatesByRegion[region]
+		if !found {
+			return nil, error_util.NewGenericAwsWrapperError(
+				error_util.GetMessage("GlobalAuroraTopologyMonitor.cannotFindRegionTemplate", region))
+		}
+		return template, nil
+	}
+	// Region not found for this instance; fall back to default template.
+	return nil, nil
 }
 
 func NewClusterTopologyMonitorImpl(
@@ -89,7 +154,8 @@ func NewClusterTopologyMonitorImpl(
 	props *utils.RWMap[string, string],
 	initialHostInfo *host_info_util.HostInfo,
 	clusterInstanceTemplate *host_info_util.HostInfo,
-	pluginService PluginService) *ClusterTopologyMonitorImpl {
+	pluginService PluginService,
+	strategy TopologyQueryStrategy) *ClusterTopologyMonitorImpl {
 	return &ClusterTopologyMonitorImpl{
 		servicesContainer:              servicesContainer,
 		topologyUtils:                  topologyUtils,
@@ -104,6 +170,7 @@ func NewClusterTopologyMonitorImpl(
 		topologyCacheExpirationNano:    topologyCacheExpirationNano,
 		requestToUpdateTopologyChannel: make(chan bool),
 		topologyUpdatedChannel:         make(chan bool),
+		topologyQueryStrategy:          strategy,
 	}
 }
 
@@ -434,7 +501,15 @@ func (c *ClusterTopologyMonitorImpl) fetchTopologyAndUpdateCache(conn driver.Con
 }
 
 func (c *ClusterTopologyMonitorImpl) queryForTopology(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
-	return c.topologyUtils.QueryForTopology(conn, c.initialHostInfo, c.clusterInstanceTemplate)
+	return c.topologyQueryStrategy.QueryForTopology(conn)
+}
+
+func (c *ClusterTopologyMonitorImpl) getInstanceTemplate(instanceId string, conn driver.Conn) *host_info_util.HostInfo {
+	template, err := c.topologyQueryStrategy.GetInstanceTemplate(instanceId, conn)
+	if err == nil && template != nil {
+		return template
+	}
+	return c.clusterInstanceTemplate
 }
 
 func (c *ClusterTopologyMonitorImpl) updateTopologyCache(hosts []*host_info_util.HostInfo) {
@@ -465,7 +540,8 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 				} else {
 					hostId, hostName := c.topologyUtils.GetInstanceId(conn)
 					if hostId != "" || hostName != "" {
-						c.writerHostInfo.Store(c.topologyUtils.CreateHost(hostId, hostName, true, 0, time.Time{}, c.initialHostInfo, c.clusterInstanceTemplate))
+						instanceTemplate := c.getInstanceTemplate(hostName, conn)
+						c.writerHostInfo.Store(c.topologyUtils.CreateHost(hostId, hostName, true, 0, time.Time{}, c.initialHostInfo, instanceTemplate))
 						slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.writerMonitoringConnection", c.writerHostInfo.Load().GetHost()))
 					}
 				}

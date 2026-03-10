@@ -479,23 +479,44 @@ var _ TopologyUtils = (*MultiAzTopologyUtils)(nil)
 // Global Aurora Topology Utils
 // =============================================================================
 
+// RegionAwareTopologyUtils extends TopologyUtils with multi-region support for
+// Global Aurora Databases. It provides region-aware topology queries and region
+// lookups needed by the global topology query strategy.
+type RegionAwareTopologyUtils interface {
+	TopologyUtils
+	// QueryForTopologyByRegion fetches the current cluster topology using region-specific
+	// instance templates to resolve host endpoints for each region in the global database.
+	QueryForTopologyByRegion(
+		conn driver.Conn,
+		initialHost *host_info_util.HostInfo,
+		instanceTemplatesByRegion map[string]*host_info_util.HostInfo,
+	) ([]*host_info_util.HostInfo, error)
+	// GetRegion queries the database to get the AWS region for a given instance ID.
+	GetRegion(instanceId string, conn driver.Conn) (string, error)
+}
+
 type GlobalAuroraTopologyUtils struct {
-	dialect                   GlobalAuroraTopologyDialect
-	parser                    RowParser
-	instanceTemplatesByRegion map[string]*host_info_util.HostInfo
+	dialect GlobalAuroraTopologyDialect
+	parser  RowParser
 }
 
 func NewGlobalAuroraTopologyUtils(dialect GlobalAuroraTopologyDialect, parser RowParser) *GlobalAuroraTopologyUtils {
 	return &GlobalAuroraTopologyUtils{dialect: dialect, parser: parser}
 }
 
-func (g *GlobalAuroraTopologyUtils) SetInstanceTemplatesByRegion(templates map[string]*host_info_util.HostInfo) {
-	g.instanceTemplatesByRegion = templates
-}
-
+// QueryForTopology satisfies the TopologyUtils interface but is not supported for
+// Global Aurora Databases. Use QueryForTopologyByRegion instead.
 func (g *GlobalAuroraTopologyUtils) QueryForTopology(
 	conn driver.Conn,
 	initialHost, instanceTemplate *host_info_util.HostInfo,
+) ([]*host_info_util.HostInfo, error) {
+	return nil, error_util.NewGenericAwsWrapperError("QueryForTopology is not supported for Global Aurora; use QueryForTopologyByRegion")
+}
+
+func (g *GlobalAuroraTopologyUtils) QueryForTopologyByRegion(
+	conn driver.Conn,
+	initialHost *host_info_util.HostInfo,
+	instanceTemplatesByRegion map[string]*host_info_util.HostInfo,
 ) ([]*host_info_util.HostInfo, error) {
 	rows, err := executeQuery(conn, g.dialect.GetTopologyQuery())
 	if err != nil {
@@ -511,7 +532,7 @@ func (g *GlobalAuroraTopologyUtils) QueryForTopology(
 	row := make([]driver.Value, len(rows.Columns()))
 
 	for rows.Next(row) == nil {
-		host, err := g.createHostFromRow(row, initialHost, instanceTemplate)
+		host, err := g.createHostFromRow(row, initialHost, instanceTemplatesByRegion)
 		if err != nil {
 			slog.Debug(error_util.GetMessage("TopologyUtils.errorProcessingQueryResults", err.Error()))
 			continue
@@ -537,7 +558,8 @@ func (g *GlobalAuroraTopologyUtils) QueryForTopology(
 // createHostFromRow: server_id (0), is_writer (1), visibility_lag_in_msec (2), aws_region (3).
 func (g *GlobalAuroraTopologyUtils) createHostFromRow(
 	row []driver.Value,
-	initialHost, defaultInstanceTemplate *host_info_util.HostInfo,
+	initialHost *host_info_util.HostInfo,
+	instanceTemplatesByRegion map[string]*host_info_util.HostInfo,
 ) (*host_info_util.HostInfo, error) {
 	if len(row) < 4 {
 		return nil, error_util.NewGenericAwsWrapperError("insufficient columns in global topology row")
@@ -562,19 +584,13 @@ func (g *GlobalAuroraTopologyUtils) createHostFromRow(
 		return nil, error_util.NewGenericAwsWrapperError("failed to parse aws_region")
 	}
 
-	var instanceTemplate *host_info_util.HostInfo
-	if g.instanceTemplatesByRegion != nil {
-		if regionTemplate, found := g.instanceTemplatesByRegion[awsRegion]; found {
-			instanceTemplate = regionTemplate
-		} else {
-			return nil, error_util.NewGenericAwsWrapperError(
-				error_util.GetMessage("GlobalAuroraTopologyMonitor.cannotFindRegionTemplate", awsRegion))
-		}
-	} else {
-		instanceTemplate = defaultInstanceTemplate
+	regionTemplate, found := instanceTemplatesByRegion[awsRegion]
+	if !found {
+		return nil, error_util.NewGenericAwsWrapperError(
+			error_util.GetMessage("GlobalAuroraTopologyMonitor.cannotFindRegionTemplate", awsRegion))
 	}
 
-	host := CreateHost(hostName, hostName, isWriter, weight, time.Now(), initialHost, instanceTemplate)
+	host := CreateHost(hostName, hostName, isWriter, weight, time.Now(), initialHost, regionTemplate)
 	if host == nil {
 		return nil, error_util.NewGenericAwsWrapperError("failed to create host")
 	}
@@ -694,3 +710,4 @@ func parseHostPortPairWithRegionPrefix(urlWithRegionPrefix string, defaultPort i
 }
 
 var _ TopologyUtils = (*GlobalAuroraTopologyUtils)(nil)
+var _ RegionAwareTopologyUtils = (*GlobalAuroraTopologyUtils)(nil)
