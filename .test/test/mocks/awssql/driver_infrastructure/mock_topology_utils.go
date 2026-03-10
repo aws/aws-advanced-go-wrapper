@@ -124,3 +124,129 @@ func (mr *MockTopologyUtilsMockRecorder) QueryForTopology(conn, initialHost, ins
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryForTopology", reflect.TypeOf((*MockTopologyUtils)(nil).QueryForTopology), conn, initialHost, instanceTemplate)
 }
+
+// MockRegionAwareTopologyUtils is a mock of RegionAwareTopologyUtils interface.
+type MockRegionAwareTopologyUtils struct {
+	ctrl     *gomock.Controller
+	recorder *MockRegionAwareTopologyUtilsMockRecorder
+}
+
+// MockRegionAwareTopologyUtilsMockRecorder is the mock recorder for MockRegionAwareTopologyUtils.
+type MockRegionAwareTopologyUtilsMockRecorder struct {
+	mock *MockRegionAwareTopologyUtils
+}
+
+// NewMockRegionAwareTopologyUtils creates a new mock instance.
+func NewMockRegionAwareTopologyUtils(ctrl *gomock.Controller) *MockRegionAwareTopologyUtils {
+	mock := &MockRegionAwareTopologyUtils{ctrl: ctrl}
+	mock.recorder = &MockRegionAwareTopologyUtilsMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockRegionAwareTopologyUtils) EXPECT() *MockRegionAwareTopologyUtilsMockRecorder {
+	return m.recorder
+}
+
+// CreateHost mocks base method.
+func (m *MockRegionAwareTopologyUtils) CreateHost(instanceId, instanceName string, isWriter bool, weight int, lastUpdateTime time.Time, initialHost, instanceTemplate *host_info_util.HostInfo) *host_info_util.HostInfo {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateHost", instanceId, instanceName, isWriter, weight, lastUpdateTime, initialHost, instanceTemplate)
+	ret0, _ := ret[0].(*host_info_util.HostInfo)
+	return ret0
+}
+
+// CreateHost indicates an expected call of CreateHost.
+func (mr *MockRegionAwareTopologyUtilsMockRecorder) CreateHost(instanceId, instanceName, isWriter, weight, lastUpdateTime, initialHost, instanceTemplate interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateHost", reflect.TypeOf((*MockRegionAwareTopologyUtils)(nil).CreateHost), instanceId, instanceName, isWriter, weight, lastUpdateTime, initialHost, instanceTemplate)
+}
+
+// GetHostRole mocks base method.
+func (m *MockRegionAwareTopologyUtils) GetHostRole(conn driver.Conn) host_info_util.HostRole {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetHostRole", conn)
+	ret0, _ := ret[0].(host_info_util.HostRole)
+	return ret0
+}
+
+// GetHostRole indicates an expected call of GetHostRole.
+func (mr *MockRegionAwareTopologyUtilsMockRecorder) GetHostRole(conn interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHostRole", reflect.TypeOf((*MockRegionAwareTopologyUtils)(nil).GetHostRole), conn)
+}
+
+// GetInstanceId mocks base method.
+func (m *MockRegionAwareTopologyUtils) GetInstanceId(conn driver.Conn) (string, string) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetInstanceId", conn)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(string)
+	return ret0, ret1
+}
+
+// GetInstanceId indicates an expected call of GetInstanceId.
+func (mr *MockRegionAwareTopologyUtilsMockRecorder) GetInstanceId(conn interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInstanceId", reflect.TypeOf((*MockRegionAwareTopologyUtils)(nil).GetInstanceId), conn)
+}
+
+// GetRegion mocks base method.
+func (m *MockRegionAwareTopologyUtils) GetRegion(instanceId string, conn driver.Conn) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRegion", instanceId, conn)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRegion indicates an expected call of GetRegion.
+func (mr *MockRegionAwareTopologyUtilsMockRecorder) GetRegion(instanceId, conn interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRegion", reflect.TypeOf((*MockRegionAwareTopologyUtils)(nil).GetRegion), instanceId, conn)
+}
+
+// IsWriterInstance mocks base method.
+func (m *MockRegionAwareTopologyUtils) IsWriterInstance(conn driver.Conn) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsWriterInstance", conn)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsWriterInstance indicates an expected call of IsWriterInstance.
+func (mr *MockRegionAwareTopologyUtilsMockRecorder) IsWriterInstance(conn interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsWriterInstance", reflect.TypeOf((*MockRegionAwareTopologyUtils)(nil).IsWriterInstance), conn)
+}
+
+// QueryForTopology mocks base method.
+func (m *MockRegionAwareTopologyUtils) QueryForTopology(conn driver.Conn, initialHost, instanceTemplate *host_info_util.HostInfo) ([]*host_info_util.HostInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryForTopology", conn, initialHost, instanceTemplate)
+	ret0, _ := ret[0].([]*host_info_util.HostInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryForTopology indicates an expected call of QueryForTopology.
+func (mr *MockRegionAwareTopologyUtilsMockRecorder) QueryForTopology(conn, initialHost, instanceTemplate interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryForTopology", reflect.TypeOf((*MockRegionAwareTopologyUtils)(nil).QueryForTopology), conn, initialHost, instanceTemplate)
+}
+
+// QueryForTopologyByRegion mocks base method.
+func (m *MockRegionAwareTopologyUtils) QueryForTopologyByRegion(conn driver.Conn, initialHost *host_info_util.HostInfo, instanceTemplatesByRegion map[string]*host_info_util.HostInfo) ([]*host_info_util.HostInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryForTopologyByRegion", conn, initialHost, instanceTemplatesByRegion)
+	ret0, _ := ret[0].([]*host_info_util.HostInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryForTopologyByRegion indicates an expected call of QueryForTopologyByRegion.
+func (mr *MockRegionAwareTopologyUtilsMockRecorder) QueryForTopologyByRegion(conn, initialHost, instanceTemplatesByRegion interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryForTopologyByRegion", reflect.TypeOf((*MockRegionAwareTopologyUtils)(nil).QueryForTopologyByRegion), conn, initialHost, instanceTemplatesByRegion)
+}

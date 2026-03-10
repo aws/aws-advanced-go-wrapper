@@ -33,9 +33,9 @@ const (
 	usEastRegionCustomDomain          = "custom-test-name.cluster-custom-XYZ.us-east-2.rds.amazonaws.com"
 	usEastRegionLimitlessDbShardGroup = "database-test-name.shardgrp-XYZ.us-east-2.rds.amazonaws.com"
 
-	euRedshift = "redshift-test-name.XYZ.eusc-de-east-1.rds.amazonaws.eu"
-	ukRedshift = "redshift-test-name.XYZ.eusc-de-east-1.rds.amazonaws.uk"
-	auRedshift = "redshift-test-name.XYZ.eusc-de-east-1.rds.amazonaws.au"
+	euRedshift      = "redshift-test-name.XYZ.eusc-de-east-1.rds.amazonaws.eu"
+	ukRedshift      = "redshift-test-name.XYZ.eusc-de-east-1.rds.amazonaws.uk"
+	auRedshift      = "redshift-test-name.XYZ.eusc-de-east-1.rds.amazonaws.au"
 	rdsFipsRedshift = "redshift-test-name.XYZ.eusc-de-east-1.rds-fips.amazonaws.au"
 
 	chinaRegionCluster               = "database-test-name.cluster-XYZ.rds.cn-northwest-1.amazonaws.com.cn"
@@ -548,5 +548,79 @@ func TestGetRdsClusterId(t *testing.T) {
 	for _, host := range nonRdsHosts {
 		result := utils.GetRdsClusterId(host)
 		assert.Equal(t, "", result, "Should return empty string for non-RDS host: %s", host)
+	}
+}
+
+// =============================================================================
+// Global DB Writer Cluster DNS tests
+// =============================================================================
+
+const (
+	globalWriterCluster       = "my-global-cluster.global-abc123.global.rds.amazonaws.com"
+	globalWriterClusterSimple = "my-global-cluster.abc123.global.rds.amazonaws.com"
+)
+
+func TestIsGlobalDbWriterClusterDns(t *testing.T) {
+	assert.True(t, utils.IsGlobalDbWriterClusterDns(globalWriterCluster))
+	assert.True(t, utils.IsGlobalDbWriterClusterDns(globalWriterClusterSimple))
+
+	// Regular Aurora endpoints should not match
+	assert.False(t, utils.IsGlobalDbWriterClusterDns(usEastRegionCluster))
+	assert.False(t, utils.IsGlobalDbWriterClusterDns(usEastRegionClusterReadOnly))
+	assert.False(t, utils.IsGlobalDbWriterClusterDns(usEastRegionInstance))
+	assert.False(t, utils.IsGlobalDbWriterClusterDns(usEastRegionProxy))
+	assert.False(t, utils.IsGlobalDbWriterClusterDns(usEastRegionCustomDomain))
+	assert.False(t, utils.IsGlobalDbWriterClusterDns(usEastRegionLimitlessDbShardGroup))
+
+	// China and gov endpoints should not match
+	assert.False(t, utils.IsGlobalDbWriterClusterDns(chinaRegionCluster))
+	assert.False(t, utils.IsGlobalDbWriterClusterDns(usIsobEastRegionCluster))
+	assert.False(t, utils.IsGlobalDbWriterClusterDns(usIsoEastRegionCluster))
+
+	// Non-RDS endpoints
+	assert.False(t, utils.IsGlobalDbWriterClusterDns("example.com"))
+	assert.False(t, utils.IsGlobalDbWriterClusterDns(""))
+	assert.False(t, utils.IsGlobalDbWriterClusterDns("192.168.1.1"))
+}
+
+func TestIdentifyRdsUrlType_GlobalWriterCluster(t *testing.T) {
+	assert.Equal(t, utils.RDS_GLOBAL_WRITER_CLUSTER, utils.IdentifyRdsUrlType(globalWriterCluster))
+	assert.Equal(t, utils.RDS_GLOBAL_WRITER_CLUSTER, utils.IdentifyRdsUrlType(globalWriterClusterSimple))
+}
+
+func TestIdentifyRdsUrlType_GlobalWriterClusterProperties(t *testing.T) {
+	urlType := utils.IdentifyRdsUrlType(globalWriterCluster)
+	assert.True(t, urlType.IsRds)
+	assert.True(t, urlType.IsRdsCluster)
+	assert.False(t, urlType.HasRegion)
+}
+
+func TestIdentifyRdsUrlType_RegularClusterStillWorks(t *testing.T) {
+	assert.Equal(t, utils.RDS_WRITER_CLUSTER, utils.IdentifyRdsUrlType(usEastRegionCluster))
+	assert.Equal(t, utils.RDS_READER_CLUSTER, utils.IdentifyRdsUrlType(usEastRegionClusterReadOnly))
+	assert.Equal(t, utils.RDS_INSTANCE, utils.IdentifyRdsUrlType(usEastRegionInstance))
+}
+
+func TestRdsUrlType_HasRegion(t *testing.T) {
+	testCases := []struct {
+		name      string
+		urlType   utils.RdsUrlType
+		hasRegion bool
+	}{
+		{"OTHER", utils.OTHER, false},
+		{"RDS_WRITER_CLUSTER", utils.RDS_WRITER_CLUSTER, true},
+		{"RDS_READER_CLUSTER", utils.RDS_READER_CLUSTER, true},
+		{"RDS_CUSTOM_CLUSTER", utils.RDS_CUSTOM_CLUSTER, true},
+		{"RDS_PROXY", utils.RDS_PROXY, true},
+		{"RDS_INSTANCE", utils.RDS_INSTANCE, true},
+		{"RDS_AURORA_LIMITLESS_DB_SHARD_GROUP", utils.RDS_AURORA_LIMITLESS_DB_SHARD_GROUP, true},
+		{"RDS_GLOBAL_WRITER_CLUSTER", utils.RDS_GLOBAL_WRITER_CLUSTER, false},
+		{"IP_ADDRESS", utils.IP_ADDRESS, false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.hasRegion, tc.urlType.HasRegion)
+		})
 	}
 }
