@@ -19,6 +19,8 @@ package driver_infrastructure
 import (
 	"database/sql/driver"
 	"log/slog"
+	"math"
+	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -31,6 +33,12 @@ import (
 var highRefreshPeriodAfterPanicNano = time.Second * 30
 var FallbackTopologyRefreshTimeoutMs = 1100
 var topologyUpdateWaitTime = time.Millisecond * 1000
+var stableTopologiesDurationNano = time.Second * 15
+
+const (
+	initialBackoffMs = 100
+	maxBackoffMs     = 10000
+)
 
 type ConnectionContainer struct {
 	Conn driver.Conn
@@ -77,18 +85,14 @@ type ClusterTopologyMonitorImpl struct {
 	state                          atomic.Value // MonitorState
 	lastActivityTimestampNano      atomic.Int64
 	wg                             sync.WaitGroup
-
-	// topologyQueryStrategy provides pluggable behavior for topology querying
-	// and instance template resolution. For regular Aurora clusters, the default
-	// strategy delegates to topologyUtils with a single instance template.
-	// For Global Aurora, a region-aware strategy is injected.
-	topologyQueryStrategy TopologyQueryStrategy
+	readerTopologiesById           *utils.RWMap[string, []*host_info_util.HostInfo]
+	completedOneCycle              *utils.RWMap[string, bool]
+	stableTopologiesStart          int64 // UnixNano; 0 means "not tracking"
+	topologyQueryStrategy          TopologyQueryStrategy
 }
 
-// TopologyQueryStrategy defines pluggable behavior for how the cluster topology
-// monitor queries topology and resolves instance templates. This allows the
-// monitor to work with both regular Aurora clusters (single template) and
-// Global Aurora clusters (region-specific templates).
+// topologyQueryStrategy provides pluggable behavior for topology querying
+// and instance template resolution.
 type TopologyQueryStrategy interface {
 	// QueryForTopology fetches the current cluster topology using the given connection.
 	QueryForTopology(conn driver.Conn) ([]*host_info_util.HostInfo, error)
@@ -98,7 +102,6 @@ type TopologyQueryStrategy interface {
 }
 
 // auroraTopologyQueryStrategy is the standard strategy for Aurora clusters.
-// It delegates to TopologyUtils with a single cluster instance template.
 type auroraTopologyQueryStrategy struct {
 	topologyUtils           TopologyUtils
 	initialHostInfo         *host_info_util.HostInfo
@@ -171,6 +174,8 @@ func NewClusterTopologyMonitorImpl(
 		requestToUpdateTopologyChannel: make(chan bool),
 		topologyUpdatedChannel:         make(chan bool),
 		topologyQueryStrategy:          strategy,
+		readerTopologiesById:           utils.NewRWMap[string, []*host_info_util.HostInfo](),
+		completedOneCycle:              utils.NewRWMap[string, bool](),
 	}
 }
 
@@ -242,6 +247,9 @@ func (c *ClusterTopologyMonitorImpl) Monitor() {
 					c.hostRoutinesStop.Store(true)
 					c.hostRoutinesWg.Wait()
 					c.hostRoutines.Clear()
+					c.stableTopologiesStart = 0
+					c.readerTopologiesById.Clear()
+					c.completedOneCycle.Clear()
 					continue
 				} else {
 					// Update host routines with new hosts in the topology.
@@ -263,7 +271,7 @@ func (c *ClusterTopologyMonitorImpl) Monitor() {
 					}
 				}
 			}
-			// TODO: checkForStableReaderTopologies()
+			c.checkForStableReaderTopologies()
 			c.delay(true)
 		} else {
 			// Regular mode (not panic mode).
@@ -272,6 +280,9 @@ func (c *ClusterTopologyMonitorImpl) Monitor() {
 				c.hostRoutinesStop.Store(true)
 				c.hostRoutinesWg.Wait()
 				c.hostRoutines.Clear()
+				c.stableTopologiesStart = 0
+				c.readerTopologiesById.Clear()
+				c.completedOneCycle.Clear()
 			}
 
 			hosts := c.fetchTopologyAndUpdateCache(c.loadConn(c.monitoringConn))
@@ -362,6 +373,85 @@ func (c *ClusterTopologyMonitorImpl) ProcessEvent(event Event) {
 	}
 }
 
+// checkForStableReaderTopologies checks whether all host monitoring routines
+// (readers) report the same topology. If they agree for stableTopologiesDurationNano,
+// we accept the topology as accurate and update the cache. This allows the monitor
+// to converge on a stable topology during extended writer outages.
+func (c *ClusterTopologyMonitorImpl) checkForStableReaderTopologies() {
+	latestHosts := c.getStoredHosts()
+	if len(latestHosts) == 0 {
+		c.stableTopologiesStart = 0
+		return
+	}
+
+	// Check that every host monitor has completed at least one cycle.
+	// We shouldn't conclude stability until every monitor has had a chance to report.
+	for _, h := range latestHosts {
+		completed, found := c.completedOneCycle.Get(h.HostId)
+		if !found || !completed {
+			c.stableTopologiesStart = 0
+			return
+		}
+	}
+
+	// Get all reader-reported topologies. Monitors that encountered errors
+	// remove their entry, so only successful reports are checked.
+	allTopologies := c.readerTopologiesById.GetAllEntries()
+	if len(allTopologies) == 0 {
+		c.stableTopologiesStart = 0
+		return
+	}
+
+	// Compare topologies by extracting (Host, Port, Availability, Role) — skip Weight
+	// since it fluctuates and shouldn't affect topology equality.
+	var referenceKey string
+	first := true
+	for _, topology := range allTopologies {
+		key := host_info_util.TopologyComparisonKey(topology)
+		if first {
+			referenceKey = key
+			first = false
+		} else if key != referenceKey {
+			// Topologies don't match across readers.
+			c.stableTopologiesStart = 0
+			return
+		}
+	}
+
+	// All reader topologies match.
+	now := time.Now().UnixNano()
+	if c.stableTopologiesStart == 0 {
+		c.stableTopologiesStart = now
+	}
+
+	if now > c.stableTopologiesStart+stableTopologiesDurationNano.Nanoseconds() {
+		c.stableTopologiesStart = 0
+
+		// Use the first reader topology to update the cache.
+		var stableTopology []*host_info_util.HostInfo
+		for _, t := range allTopologies {
+			stableTopology = t
+			break
+		}
+
+		slog.Debug(utils.LogTopology(stableTopology,
+			error_util.GetMessage("ClusterTopologyMonitorImpl.matchingReaderTopologies",
+				stableTopologiesDurationNano.Milliseconds())))
+		c.updateHostsAvailability(stableTopology)
+		c.updateTopologyCache(stableTopology)
+	}
+}
+
+// calculateBackoffWithJitter returns an exponential backoff duration with jitter.
+// backoff = min(initialBackoffMs * 2^min(attempt, 6), maxBackoffMs) * random(0.5, 1.0)
+func calculateBackoffWithJitter(attempt int) time.Duration {
+	exp := math.Min(float64(attempt), 6)
+	backoff := float64(initialBackoffMs) * math.Round(math.Pow(2, exp))
+	backoff = math.Min(backoff, maxBackoffMs)
+	backoff = math.Round(backoff * (0.5 + rand.Float64()*0.5))
+	return time.Duration(backoff) * time.Millisecond
+}
+
 // reset resets the monitor state, clearing all connections and cached data.
 // This is called when a MonitorResetEvent is received for this cluster.
 func (c *ClusterTopologyMonitorImpl) reset() {
@@ -381,6 +471,9 @@ func (c *ClusterTopologyMonitorImpl) reset() {
 
 	c.hostRoutinesWriterHostInfo.Store(nil)
 	c.hostRoutinesLatestTopology.Store([]*host_info_util.HostInfo{})
+	c.stableTopologiesStart = 0
+	c.readerTopologiesById.Clear()
+	c.completedOneCycle.Clear()
 
 	// Reset monitoring connection
 	c.closeConnection(c.loadConn(c.monitoringConn))
@@ -512,6 +605,20 @@ func (c *ClusterTopologyMonitorImpl) getInstanceTemplate(instanceId string, conn
 	return c.clusterInstanceTemplate
 }
 
+func (c *ClusterTopologyMonitorImpl) updateHostsAvailability(hosts []*host_info_util.HostInfo) {
+	if len(hosts) == 0 {
+		return
+	}
+	for _, h := range hosts {
+		_, hasTopology := c.readerTopologiesById.Get(h.HostId)
+		if hasTopology {
+			h.Availability = host_info_util.AVAILABLE
+		} else {
+			h.Availability = host_info_util.UNAVAILABLE
+		}
+	}
+}
+
 func (c *ClusterTopologyMonitorImpl) updateTopologyCache(hosts []*host_info_util.HostInfo) {
 	TopologyStorageType.Set(c.servicesContainer.GetStorageService(), c.clusterId, NewTopology(hosts))
 	c.requestToUpdateTopology.Store(false)
@@ -613,10 +720,11 @@ func (c *ClusterTopologyMonitorImpl) notifyChannel(channel chan bool) {
 }
 
 type HostMonitoringRoutine struct {
-	monitor        *ClusterTopologyMonitorImpl
-	hostInfo       *host_info_util.HostInfo
-	writerHostInfo *host_info_util.HostInfo
-	writerChanged  bool
+	monitor            *ClusterTopologyMonitorImpl
+	hostInfo           *host_info_util.HostInfo
+	writerHostInfo     *host_info_util.HostInfo
+	writerChanged      bool
+	connectionAttempts int
 }
 
 func (h *HostMonitoringRoutine) Init() {
@@ -629,6 +737,8 @@ func (h *HostMonitoringRoutine) run() {
 	updateTopology := false
 	startTime := time.Now()
 	defer func() {
+		h.monitor.completedOneCycle.Put(h.hostInfo.HostId, true)
+		h.monitor.readerTopologiesById.Remove(h.hostInfo.HostId)
 		h.monitor.closeConnection(conn)
 		end := time.Now()
 		slog.Debug(error_util.GetMessage("HostMonitoringRoutine.routineCompleted", end.Sub(startTime)))
@@ -639,11 +749,26 @@ func (h *HostMonitoringRoutine) run() {
 		if conn == nil {
 			conn, err = h.monitor.pluginService.ForceConnect(h.hostInfo, h.monitor.monitoringProps)
 			if err != nil {
-				// TODO: Add error classification (network vs login vs transient).
-				// Network errors should retry with a short delay, login errors should exit the routine,
-				// and transient errors should use exponential backoff.
 				h.monitor.pluginService.SetAvailability(h.hostInfo.AllAliases, host_info_util.UNAVAILABLE)
+				if h.monitor.pluginService.IsNetworkError(err) {
+					// Network issue expected during cluster failover. Retry on next iteration.
+					time.Sleep(time.Millisecond * 100)
+					h.monitor.completedOneCycle.Put(h.hostInfo.HostId, true)
+					h.monitor.readerTopologiesById.Remove(h.hostInfo.HostId)
+					continue
+				} else if h.monitor.pluginService.IsLoginError(err) {
+					// Bad credentials — no point retrying.
+					return
+				} else {
+					// Transient error — retry with exponential backoff.
+					time.Sleep(calculateBackoffWithJitter(h.connectionAttempts))
+					h.connectionAttempts++
+					h.monitor.completedOneCycle.Put(h.hostInfo.HostId, true)
+					h.monitor.readerTopologiesById.Remove(h.hostInfo.HostId)
+					continue
+				}
 			} else {
+				h.connectionAttempts = 0
 				h.monitor.pluginService.SetAvailability(h.hostInfo.AllAliases, host_info_util.AVAILABLE)
 			}
 		}
@@ -653,6 +778,8 @@ func (h *HostMonitoringRoutine) run() {
 			if err != nil {
 				h.monitor.closeConnection(conn)
 				conn = nil
+				h.monitor.completedOneCycle.Put(h.hostInfo.HostId, true)
+				h.monitor.readerTopologiesById.Remove(h.hostInfo.HostId)
 			}
 
 			if isWriter {
@@ -667,7 +794,7 @@ func (h *HostMonitoringRoutine) run() {
 					// so that the topology is available when the monitor picks up the writer.
 					h.monitor.fetchTopologyAndUpdateCache(conn)
 
-					// TODO: Set host availability
+					h.hostInfo.Availability = host_info_util.AVAILABLE
 					h.monitor.hostRoutinesWriterHostInfo.Store(h.hostInfo)
 					h.monitor.hostRoutinesStop.Store(true)
 					hosts := h.monitor.getStoredHosts()
@@ -694,6 +821,7 @@ func (h *HostMonitoringRoutine) run() {
 			}
 		}
 
+		h.monitor.completedOneCycle.Put(h.hostInfo.HostId, true)
 		time.Sleep(time.Millisecond * 100)
 	}
 }
@@ -710,8 +838,10 @@ func (h *HostMonitoringRoutine) readerRoutineFetchTopology(conn driver.Conn, wri
 
 	// Share this topology so the main monitoring routine be able to adjust host monitoring routines.
 	h.monitor.hostRoutinesLatestTopology.Store(hosts)
+	h.monitor.readerTopologiesById.Put(h.hostInfo.HostId, hosts)
 
 	if h.writerChanged {
+		h.monitor.updateHostsAvailability(hosts)
 		h.monitor.updateTopologyCache(hosts)
 		slog.Debug(utils.LogTopology(hosts, ""))
 		return
@@ -725,6 +855,7 @@ func (h *HostMonitoringRoutine) readerRoutineFetchTopology(conn driver.Conn, wri
 		slog.Debug(error_util.GetMessage("HostMonitoringRoutine.writerHostChanged", writerHostInfo.GetHost(), latestWriterHostInfo.GetHost()))
 
 		// We can update topology cache and notify all waiting routines.
+		h.monitor.updateHostsAvailability(hosts)
 		h.monitor.updateTopologyCache(hosts)
 		slog.Debug(utils.LogTopology(hosts, ""))
 	}
