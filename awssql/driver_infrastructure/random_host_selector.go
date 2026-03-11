@@ -28,7 +28,7 @@ type RandomHostSelector struct{}
 
 func (r *RandomHostSelector) GetHost(hosts []*host_info_util.HostInfo, role host_info_util.HostRole, _ map[string]string) (*host_info_util.HostInfo, error) {
 	eligibleHosts := utils.FilterSlice(hosts, func(hostInfo *host_info_util.HostInfo) bool {
-		return role == hostInfo.Role && hostInfo.Availability == host_info_util.AVAILABLE
+		return (role == "" || role == hostInfo.Role) && hostInfo.Availability == host_info_util.AVAILABLE
 	})
 
 	if len(eligibleHosts) == 0 {

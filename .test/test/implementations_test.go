@@ -207,7 +207,6 @@ func TestImplementations(t *testing.T) {
 	var _ driver_infrastructure.ConnectionPlugin = (*custom_endpoint.CustomEndpointPlugin)(nil)
 	var _ driver_infrastructure.ConnectionPlugin = (*limitless.LimitlessPlugin)(nil)
 	var _ driver_infrastructure.ConnectionPlugin = (*plugins.AuroraInitialConnectionStrategyPlugin)(nil)
-	var _ driver_infrastructure.ConnectionPlugin = (*plugins.GlobalDbFailoverPlugin)(nil)
 
 	// =========================================================================
 	// Connection Plugin Factories

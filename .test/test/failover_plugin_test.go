@@ -287,7 +287,8 @@ func initializeFailoverTest(
 			ServicesContainer: container,
 		},
 	}
-	failoverPlugin, _ := plugins.NewFailoverPlugin(container, props)
+	failoverPlugin, _ := plugins.NewFailoverPlugin(container, props, driver_infrastructure.FAILOVER_PLUGIN_CODE,
+		func(p *plugins.FailoverPlugin) plugins.FailoverHandler { return plugins.NewRdsFailoverHandler(p) })
 	mockFailoverPlugin := &MockFailoverPlugin{FailoverPlugin: failoverPlugin}
 	_ = mockPluginManager.Init([]driver_infrastructure.ConnectionPlugin{mockFailoverPlugin, &defaultPlugin})
 	_ = mockPluginManager.InitHostProvider(props, hostListProviderService)
