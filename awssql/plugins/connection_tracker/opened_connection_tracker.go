@@ -22,8 +22,8 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
-	"weak"
 	"time"
+	"weak"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -160,7 +160,7 @@ func (o *OpenedConnectionTracker) LogOpenedConnections() {
 	}
 	str = strings.Join(hostList, "\n\t")
 
-	slog.Debug("Opened Connections Tracked", "connections", str)
+	slog.Debug(error_util.GetMessage("OpenedConnectionTracker.connectionsTracked", str))
 }
 
 func (o *OpenedConnectionTracker) PruneNullConnections() {

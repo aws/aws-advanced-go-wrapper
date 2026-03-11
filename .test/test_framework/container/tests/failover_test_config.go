@@ -51,7 +51,6 @@ var failoverConfigs = []failoverTestConfig{
 			// via a writer cluster endpoint (RDS_WRITER_CLUSTER / RDS_GLOBAL_WRITER_CLUSTER).
 			props["activeHomeFailoverMode"] = "strict-writer"
 			props["inactiveHomeFailoverMode"] = "strict-writer"
-			props["failoverHomeRegion"] = env.Info().Region
 			return props
 		},
 	},

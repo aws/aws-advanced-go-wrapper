@@ -76,7 +76,7 @@ func NewUnsupportedStrategyError(message string) *AwsWrapperError {
 }
 
 func NewUnsupportedMethodError(method string, object string) *AwsWrapperError {
-	return &AwsWrapperError{GetMessage("AwsWrapper.unsupportedMethod", method, object), UnsupportedStrategyErrorType}
+	return &AwsWrapperError{GetMessage("AwsWrapper.unsupportedMethodError", method, object), UnsupportedStrategyErrorType}
 }
 
 func NewIllegalArgumentError(message string) *AwsWrapperError {

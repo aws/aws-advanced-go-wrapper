@@ -117,7 +117,7 @@ func (builder *ConnectionPluginChainBuilder) GetPlugins(
 	}
 	resultPlugins = append(resultPlugins, defaultPlugin)
 	if pluginsSorted {
-		slog.Info(fmt.Sprintf("Plugins order has been rearranged. The following order is in effect: '%v'.", getFactoryOrder(resultPlugins)))
+		slog.Info(error_util.GetMessage("ConnectionPluginChainBuilder.pluginsOrderRearranged", getFactoryOrder(resultPlugins)))
 	}
 
 	return resultPlugins, nil

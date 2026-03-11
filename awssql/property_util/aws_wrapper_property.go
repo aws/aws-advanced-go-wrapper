@@ -17,7 +17,6 @@
 package property_util
 
 import (
-	"fmt"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -95,13 +94,13 @@ func convertValue[T any](propValue string, property AwsWrapperProperty) T {
 	case WRAPPER_TYPE_INT:
 		parsedValue, err = strconv.Atoi(propValue)
 		if err != nil {
-			slog.Warn(fmt.Sprintf("Using default value '%s' for property '%s' after encountering an error: '%s'.", property.defaultValue, property.Name, err.Error()))
+			slog.Warn(error_util.GetMessage("AwsWrapperProperty.defaultValueUsed", property.defaultValue, property.Name, err.Error()))
 			parsedValue, _ = strconv.Atoi(property.defaultValue)
 		}
 	case WRAPPER_TYPE_BOOL:
 		parsedValue, err = strconv.ParseBool(propValue)
 		if err != nil {
-			slog.Warn(fmt.Sprintf("Using default value '%s' for property '%s' after encountering an error: '%s'.", property.defaultValue, property.Name, err.Error()))
+			slog.Warn(error_util.GetMessage("AwsWrapperProperty.defaultValueUsed", property.defaultValue, property.Name, err.Error()))
 			parsedValue, _ = strconv.ParseBool(property.defaultValue)
 		}
 	default: // Default type is: WRAPPER_TYPE_STRING.
