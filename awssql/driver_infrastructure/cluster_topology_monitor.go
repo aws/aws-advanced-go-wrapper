@@ -101,18 +101,18 @@ type TopologyQueryStrategy interface {
 	GetInstanceTemplate(instanceId string, conn driver.Conn) (*host_info_util.HostInfo, error)
 }
 
-// auroraTopologyQueryStrategy is the standard strategy for Aurora clusters.
-type auroraTopologyQueryStrategy struct {
+// rdsTopologyQueryStrategy is the standard strategy for RDS clusters (Aurora and Multi-AZ).
+type rdsTopologyQueryStrategy struct {
 	topologyUtils           TopologyUtils
 	initialHostInfo         *host_info_util.HostInfo
 	clusterInstanceTemplate *host_info_util.HostInfo
 }
 
-func (d *auroraTopologyQueryStrategy) QueryForTopology(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
+func (d *rdsTopologyQueryStrategy) QueryForTopology(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
 	return d.topologyUtils.QueryForTopology(conn, d.initialHostInfo, d.clusterInstanceTemplate)
 }
 
-func (d *auroraTopologyQueryStrategy) GetInstanceTemplate(_ string, _ driver.Conn) (*host_info_util.HostInfo, error) {
+func (d *rdsTopologyQueryStrategy) GetInstanceTemplate(_ string, _ driver.Conn) (*host_info_util.HostInfo, error) {
 	return nil, nil // nil signals: use the default clusterInstanceTemplate
 }
 

@@ -60,7 +60,7 @@ func (pc *internalPooledConn) Close() error {
 		// We must reset the session before it is brought back to the pool
 		err := pc.ResetSession(context.Background())
 		if err != nil {
-			slog.Warn("InternalPooledConn.CannotResetSession")
+			slog.Warn(error_util.GetMessage("InternalPooledConn.CannotResetSession"))
 			return pc.Conn.Close()
 		}
 		pc.pool.idleConns = append(pc.pool.idleConns, pc)

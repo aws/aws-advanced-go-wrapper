@@ -133,7 +133,7 @@ func (r *RdsHostListProvider) getOrCreateMonitor() (ClusterTopologyMonitor, erro
 			r.initialHostInfo,
 			r.clusterInstanceTemplate,
 			r.servicesContainer.GetPluginService(),
-			&auroraTopologyQueryStrategy{
+			&rdsTopologyQueryStrategy{
 				topologyUtils:           r.topologyUtils,
 				initialHostInfo:         r.initialHostInfo,
 				clusterInstanceTemplate: r.clusterInstanceTemplate,
