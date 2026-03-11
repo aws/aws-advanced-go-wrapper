@@ -21,7 +21,6 @@ import (
 	"database/sql/driver"
 	"errors"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
@@ -65,7 +64,8 @@ type FailoverPluginFactory struct{}
 func (f FailoverPluginFactory) GetInstance(
 	servicesContainer driver_infrastructure.ServicesContainer,
 	props *utils.RWMap[string, string]) (driver_infrastructure.ConnectionPlugin, error) {
-	return NewFailoverPlugin(servicesContainer, props)
+	return NewFailoverPlugin(servicesContainer, props, driver_infrastructure.FAILOVER_PLUGIN_CODE,
+		func(p *FailoverPlugin) FailoverHandler { return NewRdsFailoverHandler(p) })
 }
 
 func (f FailoverPluginFactory) ClearCaches() {}
@@ -75,6 +75,8 @@ func NewFailoverPluginFactory() driver_infrastructure.ConnectionPluginFactory {
 }
 
 type FailoverPlugin struct {
+	pluginCode                                 string
+	handler                                    FailoverHandler
 	servicesContainer                          driver_infrastructure.ServicesContainer
 	hostListProviderService                    driver_infrastructure.HostListProviderService
 	props                                      *utils.RWMap[string, string]
@@ -95,7 +97,12 @@ type FailoverPlugin struct {
 	BaseConnectionPlugin
 }
 
-func NewFailoverPlugin(servicesContainer driver_infrastructure.ServicesContainer, props *utils.RWMap[string, string]) (*FailoverPlugin, error) {
+func NewFailoverPlugin(
+	servicesContainer driver_infrastructure.ServicesContainer,
+	props *utils.RWMap[string, string],
+	pluginCode string,
+	handlerFactory func(*FailoverPlugin) FailoverHandler,
+) (*FailoverPlugin, error) {
 	pluginService := servicesContainer.GetPluginService()
 	telemetryFactory := servicesContainer.GetTelemetryFactory()
 
@@ -135,7 +142,8 @@ func NewFailoverPlugin(servicesContainer driver_infrastructure.ServicesContainer
 		return nil, err
 	}
 
-	return &FailoverPlugin{
+	plugin := &FailoverPlugin{
+		pluginCode:               pluginCode,
 		servicesContainer:        servicesContainer,
 		props:                    props,
 		failoverTimeoutMsSetting: failoverTimeoutMsSetting,
@@ -148,11 +156,25 @@ func NewFailoverPlugin(servicesContainer driver_infrastructure.ServicesContainer
 		failoverReaderSuccessCounter:               failoverReaderSuccessCounter,
 		failoverReaderFailedCounter:                failoverReaderFailedCounter,
 		telemetryFailoverAdditionalTopTraceSetting: property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.TELEMETRY_FAILOVER_ADDITIONAL_TOP_TRACE),
-	}, nil
+	}
+	plugin.handler = handlerFactory(plugin)
+	return plugin, nil
 }
 
 func (p *FailoverPlugin) GetPluginCode() string {
-	return driver_infrastructure.FAILOVER_PLUGIN_CODE
+	return p.pluginCode
+}
+
+func (p *FailoverPlugin) InitFailoverMode() error {
+	return p.handler.initFailoverMode()
+}
+
+func (p *FailoverPlugin) Failover() error {
+	return p.handler.failover()
+}
+
+func (p *FailoverPlugin) DealWithError(err error) error {
+	return p.handler.dealWithError(err)
 }
 
 func (p *FailoverPlugin) GetSubscribedMethods() []string {
@@ -175,7 +197,9 @@ func (p *FailoverPlugin) Connect(
 	props *utils.RWMap[string, string],
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-	p.InitFailoverMode()
+	if err := p.handler.initFailoverMode(); err != nil {
+		return nil, err
+	}
 
 	var conn driver.Conn
 
@@ -202,7 +226,7 @@ func (p *FailoverPlugin) Connect(
 
 			p.servicesContainer.GetPluginService().SetAvailability(hostInfo.AllAliases, host_info_util.UNAVAILABLE)
 
-			err = p.Failover()
+			err = p.handler.failover()
 			if errors.Is(err, error_util.FailoverSuccessError) {
 				conn = p.servicesContainer.GetPluginService().GetCurrentConnection()
 			} else {
@@ -214,7 +238,7 @@ func (p *FailoverPlugin) Connect(
 		if refreshErr != nil {
 			return nil, refreshErr
 		}
-		err := p.Failover()
+		err := p.handler.failover()
 		if errors.Is(err, error_util.FailoverSuccessError) {
 			conn = p.servicesContainer.GetPluginService().GetCurrentConnection()
 		} else {
@@ -237,24 +261,6 @@ func (p *FailoverPlugin) Connect(
 	return conn, nil
 }
 
-func (p *FailoverPlugin) InitFailoverMode() {
-	if p.rdsUrlType == utils.OTHER {
-		p.FailoverMode = failoverModeFromValue(strings.ToLower(property_util.GetVerifiedWrapperPropertyValue[string](p.props, property_util.FAILOVER_MODE)))
-		initialHostInfo := p.servicesContainer.GetPluginService().GetInitialConnectionHostInfo()
-		p.rdsUrlType = utils.IdentifyRdsUrlType(initialHostInfo.Host)
-
-		if p.FailoverMode == MODE_UNKNOWN {
-			if p.rdsUrlType == utils.RDS_READER_CLUSTER {
-				p.FailoverMode = MODE_READER_OR_WRITER
-			} else {
-				p.FailoverMode = MODE_STRICT_WRITER
-			}
-		}
-
-		slog.Debug(error_util.GetMessage("Failover.parameterValue", "failoverMode", p.FailoverMode))
-	}
-}
-
 func (p *FailoverPlugin) Execute(
 	_ driver.Conn,
 	methodName string,
@@ -267,7 +273,7 @@ func (p *FailoverPlugin) Execute(
 	wrappedReturnValue, wrappedReturnValue2, wrappedOk, wrappedErr = executeFunc()
 	var err error
 	if wrappedErr != nil {
-		err = p.DealWithError(wrappedErr)
+		err = p.handler.dealWithError(wrappedErr)
 	}
 
 	if err != nil {
@@ -277,40 +283,12 @@ func (p *FailoverPlugin) Execute(
 	return wrappedReturnValue, wrappedReturnValue2, wrappedOk, wrappedErr
 }
 
-func (p *FailoverPlugin) DealWithError(err error) error {
-	if err != nil {
-		slog.Debug(error_util.GetMessage("Failover.detectedError", err.Error()))
-		if !errors.Is(err, p.lastErrorDealtWith) && p.shouldErrorTriggerConnectionSwitch(err) {
-			p.InvalidateCurrentConnection()
-			currentHost, e := p.servicesContainer.GetPluginService().GetCurrentHostInfo()
-			if e != nil {
-				return e
-			}
-			p.servicesContainer.GetPluginService().SetAvailability(currentHost.Aliases, host_info_util.UNAVAILABLE)
-			e = p.Failover()
-			if e != nil {
-				return e
-			}
-			p.lastErrorDealtWith = err
-		}
-	}
-	return err
-}
-
 func (p *FailoverPlugin) isFailoverEnabled() bool {
 	return p.rdsUrlType != utils.RDS_PROXY && len(p.servicesContainer.GetPluginService().GetAllHosts()) != 0
 }
 
 func (p *FailoverPlugin) canDirectExecute(methodName string) bool {
 	return methodName == utils.CONN_CLOSE
-}
-
-func (p *FailoverPlugin) Failover() error {
-	if p.FailoverMode == MODE_STRICT_WRITER {
-		return p.FailoverWriter()
-	} else {
-		return p.FailoverReader()
-	}
 }
 
 func (p *FailoverPlugin) returnFailoverSuccessError() error {

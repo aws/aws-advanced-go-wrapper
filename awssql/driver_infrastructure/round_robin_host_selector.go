@@ -66,7 +66,7 @@ func (r *RoundRobinHostSelector) GetHost(hosts []*host_info_util.HostInfo, role 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	eligibleHosts := utils.FilterSlice(hosts, func(hostInfo *host_info_util.HostInfo) bool {
-		return role == hostInfo.Role && host_info_util.AVAILABLE == hostInfo.Availability
+		return (role == "" || role == hostInfo.Role) && host_info_util.AVAILABLE == hostInfo.Availability
 	})
 
 	slices.SortFunc(eligibleHosts, func(i, j *host_info_util.HostInfo) int {
