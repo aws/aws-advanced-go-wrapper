@@ -20,6 +20,7 @@ import (
 	"context"
 	"database/sql/driver"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"time"
@@ -46,24 +47,27 @@ const (
 	GDB_MODE_UNKNOWN                      GlobalDbFailoverMode = ""
 )
 
-func gdbFailoverModeFromValue(value string) GlobalDbFailoverMode {
+func gdbFailoverModeFromValue(value string) (GlobalDbFailoverMode, error) {
+	if value == "" {
+		return GDB_MODE_UNKNOWN, nil
+	}
 	switch strings.ToLower(value) {
 	case "strict-writer":
-		return GDB_MODE_STRICT_WRITER
+		return GDB_MODE_STRICT_WRITER, nil
 	case "strict-home-reader":
-		return GDB_MODE_STRICT_HOME_READER
+		return GDB_MODE_STRICT_HOME_READER, nil
 	case "strict-out-of-home-reader":
-		return GDB_MODE_STRICT_OUT_OF_HOME_READER
+		return GDB_MODE_STRICT_OUT_OF_HOME_READER, nil
 	case "strict-any-reader":
-		return GDB_MODE_STRICT_ANY_READER
+		return GDB_MODE_STRICT_ANY_READER, nil
 	case "home-reader-or-writer":
-		return GDB_MODE_HOME_READER_OR_WRITER
+		return GDB_MODE_HOME_READER_OR_WRITER, nil
 	case "out-of-home-reader-or-writer":
-		return GDB_MODE_OUT_OF_HOME_READER_OR_WRITER
+		return GDB_MODE_OUT_OF_HOME_READER_OR_WRITER, nil
 	case "any-reader-or-writer":
-		return GDB_MODE_ANY_READER_OR_WRITER
+		return GDB_MODE_ANY_READER_OR_WRITER, nil
 	default:
-		return GDB_MODE_UNKNOWN
+		return GDB_MODE_UNKNOWN, fmt.Errorf("invalid GlobalDbFailoverMode value: %s", value)
 	}
 }
 
@@ -131,7 +135,9 @@ func (p *GlobalDbFailoverPlugin) Connect(
 	props *utils.RWMap[string, string],
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-	p.initFailoverMode()
+	if err := p.initFailoverMode(); err != nil {
+		return nil, err
+	}
 
 	var conn driver.Conn
 
@@ -244,9 +250,9 @@ func (p *GlobalDbFailoverPlugin) NotifyHostListChanged(changes map[string]map[dr
 // Global DB failover logic
 // =============================================================================
 
-func (p *GlobalDbFailoverPlugin) initFailoverMode() {
+func (p *GlobalDbFailoverPlugin) initFailoverMode() error {
 	if p.failoverModeInitialized {
-		return
+		return nil
 	}
 
 	initialHostInfo := p.base.servicesContainer.GetPluginService().GetInitialConnectionHostInfo()
@@ -255,23 +261,28 @@ func (p *GlobalDbFailoverPlugin) initFailoverMode() {
 	p.homeRegion = property_util.GetVerifiedWrapperPropertyValue[string](p.base.props, property_util.GDB_FAILOVER_HOME_REGION)
 	if p.homeRegion == "" {
 		if !p.rdsUrlType.HasRegion {
-			slog.Error(error_util.GetMessage("GlobalDbFailoverConnectionPlugin.missingHomeRegion"))
-			return
+			return errors.New(error_util.GetMessage("GlobalDbFailoverConnectionPlugin.missingHomeRegion"))
 		}
 		p.homeRegion = utils.GetRdsRegion(initialHostInfo.Host)
 		if p.homeRegion == "" {
-			slog.Error(error_util.GetMessage("GlobalDbFailoverConnectionPlugin.missingHomeRegion"))
-			return
+			return errors.New(error_util.GetMessage("GlobalDbFailoverConnectionPlugin.missingHomeRegion"))
 		}
 	}
 
 	slog.Debug(error_util.GetMessage("Failover.parameterValue", "failoverHomeRegion", p.homeRegion))
 
 	activeVal := property_util.GetVerifiedWrapperPropertyValue[string](p.base.props, property_util.GDB_FAILOVER_ACTIVE_HOME_MODE)
-	p.activeHomeFailoverMode = gdbFailoverModeFromValue(activeVal)
+	var err error
+	p.activeHomeFailoverMode, err = gdbFailoverModeFromValue(activeVal)
+	if err != nil {
+		return err
+	}
 
 	inactiveVal := property_util.GetVerifiedWrapperPropertyValue[string](p.base.props, property_util.GDB_FAILOVER_INACTIVE_HOME_MODE)
-	p.inactiveHomeFailoverMode = gdbFailoverModeFromValue(inactiveVal)
+	p.inactiveHomeFailoverMode, err = gdbFailoverModeFromValue(inactiveVal)
+	if err != nil {
+		return err
+	}
 
 	if p.activeHomeFailoverMode == GDB_MODE_UNKNOWN {
 		if p.rdsUrlType == utils.RDS_WRITER_CLUSTER || p.rdsUrlType == utils.RDS_GLOBAL_WRITER_CLUSTER {
@@ -293,6 +304,7 @@ func (p *GlobalDbFailoverPlugin) initFailoverMode() {
 	slog.Debug(error_util.GetMessage("Failover.parameterValue", "inactiveHomeFailoverMode", string(p.inactiveHomeFailoverMode)))
 
 	p.failoverModeInitialized = true
+	return nil
 }
 
 func (p *GlobalDbFailoverPlugin) dealWithError(err error) error {

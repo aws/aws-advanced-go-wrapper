@@ -262,7 +262,15 @@ func GetRdsRegion(host string) string {
 		return ""
 	}
 
-	return cachedDnsRegexp.FindStringSubmatch(host)[cachedDnsRegexp.SubexpIndex(REGION_GROUP)]
+	matches := cachedDnsRegexp.FindStringSubmatch(preparedHost)
+	if matches == nil {
+		return ""
+	}
+	idx := cachedDnsRegexp.SubexpIndex(REGION_GROUP)
+	if idx < 0 || idx >= len(matches) {
+		return ""
+	}
+	return matches[idx]
 }
 
 func GetRdsClusterId(host string) string {
