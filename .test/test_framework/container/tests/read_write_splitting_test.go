@@ -72,10 +72,10 @@ func setupTest(t *testing.T, minInstances int) *testSetup {
 
 func (s *testSetup) cleanup(t *testing.T) {
 	if s.conn != nil {
-		s.conn.Close()
+		_ = s.conn.Close()
 	}
 	if s.db != nil {
-		s.db.Close()
+		_ = s.db.Close()
 	}
 	test_utils.BasicCleanup(t.Name())
 }
@@ -256,7 +256,7 @@ func TestReadWriteSplitting_StmtDb(t *testing.T) {
 	err = stmt.QueryRowContext(context.TODO()).Scan(&instanceId)
 	assert.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
-	stmt.Close()
+	assert.NoError(t, stmt.Close())
 
 	stmt, err = setup.db.PrepareContext(writeCtx, instanceQuery)
 	require.NoError(t, err)
@@ -264,7 +264,7 @@ func TestReadWriteSplitting_StmtDb(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
-	stmt.Close()
+	assert.NoError(t, stmt.Close())
 }
 
 func TestReadWriteSplitting_StmtConn(t *testing.T) {
@@ -289,7 +289,7 @@ func TestReadWriteSplitting_StmtConn(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
-	stmt.Close()
+	assert.NoError(t, stmt.Close())
 
 	// Assert that Conn has switched to reader after statement
 	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
@@ -302,13 +302,13 @@ func TestReadWriteSplitting_StmtConn(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
-	stmt.Close()
+	assert.NoError(t, stmt.Close())
 
 	// Assert that Conn has switched to writer after statement
 	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
 	require.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
-	conn.Close()
+	_ = conn.Close()
 
 	// Test Read/Write from Conn level
 	conn, err = setup.db.Conn(context.TODO())
@@ -324,7 +324,7 @@ func TestReadWriteSplitting_StmtConn(t *testing.T) {
 	err = stmt.QueryRowContext(context.TODO()).Scan(&instanceId)
 	assert.NoError(t, err)
 	assert.Equal(t, readerId, instanceId)
-	stmt.Close()
+	assert.NoError(t, stmt.Close())
 
 	// Assert that Conn is still connected to the reader
 	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
@@ -342,12 +342,12 @@ func TestReadWriteSplitting_StmtConn(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, writerId, instanceId)
 
-	stmt.Close()
+	assert.NoError(t, stmt.Close())
 	// Assert that Conn is still connected to the writer
 	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
 	require.NoError(t, err)
 	assert.Equal(t, writerId, instanceId)
-	conn.Close()
+	_ = conn.Close()
 
 	// Test Read/Write from conn level, but switch when creating statement
 	conn, err = setup.db.Conn(context.TODO())
@@ -365,7 +365,7 @@ func TestReadWriteSplitting_StmtConn(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEqual(t, readerId, instanceId)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
-	stmt.Close()
+	assert.NoError(t, stmt.Close())
 
 	// Assert that Conn is still connected to the writer
 	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
@@ -385,13 +385,13 @@ func TestReadWriteSplitting_StmtConn(t *testing.T) {
 	assert.NotEqual(t, writerId, instanceId)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
-	stmt.Close()
+	assert.NoError(t, stmt.Close())
 
 	// Assert that Conn is still connected to the reader
 	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
 	require.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
-	conn.Close()
+	assert.NoError(t, conn.Close())
 }
 
 func TestReadWriteSplitting_StmtTx(t *testing.T) {
@@ -414,7 +414,7 @@ func TestReadWriteSplitting_StmtTx(t *testing.T) {
 	err = stmt.QueryRowContext(context.TODO()).Scan(&instanceId)
 	assert.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
-	stmt.Close()
+	assert.NoError(t, stmt.Close())
 	err = tx.Commit()
 	assert.NoError(t, err)
 
@@ -426,7 +426,7 @@ func TestReadWriteSplitting_StmtTx(t *testing.T) {
 	err = stmt.QueryRowContext(context.TODO()).Scan(&instanceId)
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
-	stmt.Close()
+	assert.NoError(t, stmt.Close())
 	err = tx.Commit()
 	assert.NoError(t, err)
 
@@ -438,7 +438,7 @@ func TestReadWriteSplitting_StmtTx(t *testing.T) {
 	err = stmt.QueryRowContext(context.TODO()).Scan(&instanceId)
 	assert.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
-	stmt.Close()
+	assert.NoError(t, stmt.Close())
 	err = tx.Commit()
 	assert.NoError(t, err)
 
@@ -450,7 +450,7 @@ func TestReadWriteSplitting_StmtTx(t *testing.T) {
 	err = stmt.QueryRowContext(context.TODO()).Scan(&instanceId)
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
-	stmt.Close()
+	assert.NoError(t, stmt.Close())
 	err = tx.Commit()
 	assert.NoError(t, err)
 }
@@ -559,11 +559,11 @@ func TestReadWriteSplitting_NoReaders(t *testing.T) {
 		test_utils.GetPropsForProxyWithConnectTimeout(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 2))
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	conn, err := db.Conn(context.TODO())
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Get writer and disable all readers
 	writerId, err := executeInstanceQueryWrite(setup.env, conn, 5)
@@ -590,11 +590,11 @@ func TestReadWriteSplitting_WriterFailover(t *testing.T) {
 		test_utils.GetPropsForProxyWithConnectTimeout(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 5))
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	conn, err := db.Conn(context.TODO())
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	originalWriterId, err := executeInstanceQueryWrite(setup.env, conn, 5)
 	require.NoError(t, err)
@@ -652,11 +652,11 @@ func TestReadWriteSplitting_FailoverToNewReader(t *testing.T) {
 
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	conn, err := db.Conn(context.TODO())
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	originalWriterId, err := executeInstanceQueryWrite(setup.env, conn, 60)
 	require.NoError(t, err)
@@ -724,11 +724,11 @@ func TestReadWriteSplitting_FailoverReaderToWriter(t *testing.T) {
 
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	conn, err := db.Conn(context.TODO())
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	originalWriterId, err := executeInstanceQueryWrite(setup.env, conn, 5)
 	require.NoError(t, err)
@@ -791,11 +791,11 @@ func TestPooledConnection_Failover(t *testing.T) {
 		test_utils.GetPropsForProxyWithConnectTimeout(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 4))
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	conn, err := db.Conn(context.TODO())
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	originalWriterId, err := executeInstanceQueryWrite(setup.env, conn, 5)
 	require.NoError(t, err)
@@ -816,7 +816,7 @@ func TestPooledConnection_Failover(t *testing.T) {
 
 	conn2, err := db.Conn(context.TODO())
 	require.NoError(t, err)
-	defer conn2.Close()
+	defer func() { _ = conn2.Close() }()
 
 	newWriterId, err := executeInstanceQueryWrite(setup.env, conn2, 2)
 	require.NoError(t, err)
@@ -834,11 +834,11 @@ func TestPooledConnection_FailoverInTransaction(t *testing.T) {
 		test_utils.GetPropsForProxyWithConnectTimeout(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 5))
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	conn, err := db.Conn(context.TODO())
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	originalWriterId, err := executeInstanceQueryWrite(setup.env, conn, 5)
 	require.NoError(t, err)

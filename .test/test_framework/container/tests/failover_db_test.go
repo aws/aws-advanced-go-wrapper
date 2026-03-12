@@ -43,7 +43,7 @@ func TestFailoverWriterDB(t *testing.T) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Verify connection works.
 	err = db.Ping()
@@ -89,7 +89,7 @@ func TestFailoverWriterDBWithTelemetryOtel(t *testing.T) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Verify connection works.
 	err = db.Ping()
@@ -135,7 +135,7 @@ func TestFailoverWriterDBWithTelemetryXray(t *testing.T) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Verify connection works.
 	err = db.Ping()
@@ -175,7 +175,7 @@ func TestFailoverWriterInTransactionWithBegin(t *testing.T) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Check that we are connected to the writer.
 	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
@@ -220,7 +220,7 @@ func TestFailoverWriterInTransactionWithBegin(t *testing.T) {
 	}))
 	assert.Nil(t, err)
 	assert.NotNil(t, cleanup_db)
-	defer cleanup_db.Close()
+	defer func() { _ = cleanup_db.Close() }()
 
 	// Check that we are connected to the writer.
 	instanceId, err = test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, cleanup_db)
@@ -239,7 +239,7 @@ func TestFailoverDisableProxies(t *testing.T) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Verify connection works.
 	err = db.Ping()
@@ -285,7 +285,7 @@ func TestFailoverEfmDisableAllInstances(t *testing.T) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Verify connection works.
 	err = db.Ping()

@@ -34,7 +34,7 @@ func TestBasicConnectivityWrapper(t *testing.T) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
 	assert.Nil(t, err)
@@ -65,7 +65,7 @@ func TestBasicConnectivityWrapperProxy(t *testing.T) {
 	instanceId, err := test_utils.ExecuteInstanceQueryDbWithTimeout(environment.Info().Request.Engine, environment.Info().Request.Deployment, db, 10)
 	assert.NotNil(t, err)
 	assert.Zero(t, instanceId)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	test_utils.EnableAllConnectivity(true)
 	instanceId, err2 := test_utils.ExecuteInstanceQueryDbWithTimeout(environment.Info().Request.Engine, environment.Info().Request.Deployment, db, 10)
@@ -84,7 +84,7 @@ func TestBasicConnectivityFailoverClusterEndpoint(t *testing.T) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
 	assert.Nil(t, err)
@@ -104,7 +104,7 @@ func TestBasicConnectivityFailoverInstanceEndpoint(t *testing.T) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
 	assert.Nil(t, err)
@@ -124,7 +124,7 @@ func TestBasicConnectivityFailoverReaderEndpoint(t *testing.T) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
 	assert.Nil(t, err)

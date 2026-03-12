@@ -32,8 +32,8 @@ import (
 )
 
 var (
-	testError = errors.New("test")
-	hostInfo  = &host_info_util.HostInfo{Host: "pg.testdb.us-east-2.rds.amazonaws.com", Port: 1234}
+	errTest  = errors.New("test")
+	hostInfo = &host_info_util.HostInfo{Host: "pg.testdb.us-east-2.rds.amazonaws.com", Port: 1234}
 )
 
 func setupPlugin(ctrl *gomock.Controller) (*plugins.DeveloperConnectionPlugin, *utils.RWMap[string, string]) {
@@ -73,11 +73,11 @@ func TestDeveloperConnectionPlugin(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Raise error on next call
-		plugin.RaiseErrorOnNextCall(testError, "")
+		plugin.RaiseErrorOnNextCall(errTest, "")
 
 		// Should fail with test error
 		_, _, _, err = plugin.Execute(nil, "query", mockExecuteFunc)
-		assert.Equal(t, testError, err)
+		assert.Equal(t, errTest, err)
 	})
 
 	t.Run("testRaiseErrorForMethodName", func(t *testing.T) {
@@ -95,7 +95,7 @@ func TestDeveloperConnectionPlugin(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Raise error on next call for specific method
-		plugin.RaiseErrorOnNextCall(testError, "query")
+		plugin.RaiseErrorOnNextCall(errTest, "query")
 
 		// Should not raise error on a different method call
 		_, _, _, err = plugin.Execute(nil, "differentMethod", mockExecuteFunc)
@@ -103,7 +103,7 @@ func TestDeveloperConnectionPlugin(t *testing.T) {
 
 		// Should fail with test error
 		_, _, _, err = plugin.Execute(nil, "query", mockExecuteFunc)
-		assert.Equal(t, testError, err)
+		assert.Equal(t, errTest, err)
 
 		// Should execute successfully after error is returned once
 		_, _, _, err = plugin.Execute(nil, "query", mockExecuteFunc)
@@ -125,11 +125,11 @@ func TestDeveloperConnectionPlugin(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Raise error on next call for any method
-		plugin.RaiseErrorOnNextCall(testError, "*")
+		plugin.RaiseErrorOnNextCall(errTest, "*")
 
 		// Should fail with test error
 		_, _, _, err = plugin.Execute(nil, "query", mockExecuteFunc)
-		assert.Equal(t, testError, err)
+		assert.Equal(t, errTest, err)
 	})
 
 	t.Run("testRaiseErrorForWrongMethodName", func(t *testing.T) {
@@ -147,7 +147,7 @@ func TestDeveloperConnectionPlugin(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Raise error on next call for different method
-		plugin.RaiseErrorOnNextCall(testError, "close")
+		plugin.RaiseErrorOnNextCall(errTest, "close")
 
 		// Should execute successfully (wrong method name)
 		_, _, _, err = plugin.Execute(nil, "query", mockExecuteFunc)
@@ -164,7 +164,7 @@ func TestDeveloperConnectionPlugin(t *testing.T) {
 		plugin.SetCallback(mockMethodCallback)
 
 		mockArgs := []any{"test", "employees"}
-		mockMethodCallback.EXPECT().GetErrorToRaise("query", gomock.Any()).Return(testError)
+		mockMethodCallback.EXPECT().GetErrorToRaise("query", gomock.Any()).Return(errTest)
 		mockMethodCallback.EXPECT().GetErrorToRaise("query", gomock.Any()).Return(nil)
 
 		// Should connect successfully
@@ -173,7 +173,7 @@ func TestDeveloperConnectionPlugin(t *testing.T) {
 
 		// Should fail with test error
 		_, _, _, err = plugin.Execute(nil, "query", mockExecuteFunc, mockArgs...)
-		assert.Equal(t, testError, err)
+		assert.Equal(t, errTest, err)
 
 		// Should execute successfully with different args
 		_, _, _, err = plugin.Execute(nil, "query", mockExecuteFunc, "test", "admin")
@@ -212,11 +212,11 @@ func TestDeveloperConnectionPlugin(t *testing.T) {
 		mockConnectFunc, _ := getMockFuncs()
 
 		errorSimulatorManager := error_simulator.GetErrorSimulatorManager()
-		errorSimulatorManager.RaiseErrorOnNextConnect(testError)
+		errorSimulatorManager.RaiseErrorOnNextConnect(errTest)
 
 		// Should fail with test error
 		_, err := plugin.Connect(hostInfo, properties, false, mockConnectFunc)
-		assert.Equal(t, testError, err)
+		assert.Equal(t, errTest, err)
 
 		// Should connect successfully on second attempt
 		_, err = plugin.Connect(hostInfo, properties, false, mockConnectFunc)
@@ -251,13 +251,13 @@ func TestDeveloperConnectionPlugin(t *testing.T) {
 		errorSimulatorManager.SetCallback(mockConnectCallback)
 
 		gomock.InOrder(
-			mockConnectCallback.EXPECT().GetErrorToRaise(gomock.Any(), gomock.Any(), gomock.Any()).Return(testError),
+			mockConnectCallback.EXPECT().GetErrorToRaise(gomock.Any(), gomock.Any(), gomock.Any()).Return(errTest),
 			mockConnectCallback.EXPECT().GetErrorToRaise(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil),
 		)
 
 		// Should fail with test error
 		_, err := plugin.Connect(hostInfo, properties, false, mockConnectFunc)
-		assert.Equal(t, testError, err)
+		assert.Equal(t, errTest, err)
 
 		// Should connect successfully on second attempt
 		_, err = plugin.Connect(hostInfo, properties, false, mockConnectFunc)
