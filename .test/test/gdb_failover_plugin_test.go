@@ -45,8 +45,6 @@ type gdbTestSetup struct {
 	mockSC *mock_driver_infrastructure.MockServicesContainer
 }
 
-// createGdbPlugin builds a GDB FailoverPlugin backed entirely by gomock mocks.
-// The caller can further configure mockPS expectations before calling plugin methods.
 func createGdbPlugin(
 	t *testing.T,
 	propsMap map[string]string,
@@ -64,52 +62,39 @@ func createGdbPlugin(
 	mockSC := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
 	mockPS := mock_driver_infrastructure.NewMockPluginService(ctrl)
 
-	// ServicesContainer always returns our mock plugin service and telemetry.
 	mockSC.EXPECT().GetPluginService().Return(mockPS).AnyTimes()
 	mockSC.EXPECT().GetTelemetryFactory().Return(telemetryFactory).AnyTimes()
 
-	// PluginService: initial host info (from DSN — a writer cluster endpoint in us-east-2).
 	initialHost, _ := gdbBuilder.SetHost("mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com").SetPort(3306).SetRole(host_info_util.WRITER).Build()
 	mockPS.EXPECT().GetInitialConnectionHostInfo().Return(initialHost).AnyTimes()
 
-	// Telemetry context.
 	mockPS.EXPECT().GetTelemetryContext().Return(context.Background()).AnyTimes()
 	mockPS.EXPECT().GetTelemetryFactory().Return(telemetryFactory).AnyTimes()
 	mockPS.EXPECT().SetTelemetryContext(gomock.Any()).AnyTimes()
 
-	// ForceRefreshHostListWithTimeout — controls whether topology refresh succeeds.
 	mockPS.EXPECT().ForceRefreshHostListWithTimeout(gomock.Any(), gomock.Any()).Return(forceRefreshOk, nil).AnyTimes()
 
-	// GetAllHosts / GetHosts — return our test topology.
 	mockPS.EXPECT().GetAllHosts().Return(testHosts).AnyTimes()
 	mockPS.EXPECT().GetHosts().Return(testHosts).AnyTimes()
 
-	// RefreshHostList — no-op for unit tests.
 	mockPS.EXPECT().RefreshHostList(gomock.Any()).Return(nil).AnyTimes()
 
-	// IsInTransaction.
 	mockPS.EXPECT().IsInTransaction().Return(isInTransaction).AnyTimes()
 
-	// GetHostRole — returns the configured role for any connection.
 	mockPS.EXPECT().GetHostRole(gomock.Any()).Return(hostRoleReturn).AnyTimes()
 
-	// Connect — returns mock conn or error.
 	if connectErr != nil {
 		mockPS.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, connectErr).AnyTimes()
 	} else {
 		mockPS.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Any()).Return(gdbMockConn, nil).AnyTimes()
 	}
 
-	// SetCurrentConnection — accept any call.
 	mockPS.EXPECT().SetCurrentConnection(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
-	// SetAvailability — accept any call.
 	mockPS.EXPECT().SetAvailability(gomock.Any(), gomock.Any()).AnyTimes()
 
-	// SetInTransaction — accept any call.
 	mockPS.EXPECT().SetInTransaction(gomock.Any()).AnyTimes()
 
-	// GetHostInfoByStrategy — pick the first host from the provided list (mimics "random").
 	mockPS.EXPECT().GetHostInfoByStrategy(gomock.Any(), gomock.Any(), gomock.Any()).
 		DoAndReturn(func(role host_info_util.HostRole, strategy string, hosts []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
 			if len(hosts) == 0 {
@@ -118,7 +103,6 @@ func createGdbPlugin(
 			return hosts[0], nil
 		}).AnyTimes()
 
-	// GetCurrentHostInfo — return the writer host.
 	mockPS.EXPECT().GetCurrentHostInfo().Return(gdbWriterHost, nil).AnyTimes()
 
 	plugin, err := plugins.NewGlobalDbFailoverPlugin(mockSC, props)

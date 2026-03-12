@@ -33,25 +33,13 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
-const DefaultQueryTimeoutMs = 1000
-
-// resolveQueryTimeoutMs returns the context-based query timeout for topology queries.
-// If the driver supports socket timeout via DSN, returns 0 (DSN handles it).
-// Otherwise returns the configured CLUSTER_TOPOLOGY_SOCKET_TIMEOUT_MS value.
-func resolveQueryTimeoutMs(driverDialect DriverDialect, props *utils.RWMap[string, string]) int {
-	if SupportsSocketTimeoutViaDsn(driverDialect) {
-		return 0
-	}
-	return property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.CLUSTER_TOPOLOGY_SOCKET_TIMEOUT_MS)
-}
-
 // =============================================================================
 // Interface
 // =============================================================================
 
-// TopologyUtils defines the interface for querying and processing database topology information.
+// TopologyUtils defines the base interface for common topology operations
+// shared by all topology types (Aurora, Multi-AZ, Global Aurora).
 type TopologyUtils interface {
-	QueryForTopology(conn driver.Conn, initialHost *host_info_util.HostInfo, instanceTemplate *host_info_util.HostInfo) ([]*host_info_util.HostInfo, error)
 	GetHostRole(conn driver.Conn) host_info_util.HostRole
 	// GetInstanceId returns the instance identifier for the connected database instance.
 	// Returns (instanceId, instanceName) - empty strings if unable to determine.
@@ -62,6 +50,13 @@ type TopologyUtils interface {
 		instanceId, instanceName string, isWriter bool, weight int,
 		lastUpdateTime time.Time, initialHost, instanceTemplate *host_info_util.HostInfo,
 	) *host_info_util.HostInfo
+}
+
+// ClusterTopologyUtils extends TopologyUtils with single-cluster topology querying
+// for Aurora and Multi-AZ clusters.
+type ClusterTopologyUtils interface {
+	TopologyUtils
+	QueryForTopology(conn driver.Conn, initialHost *host_info_util.HostInfo, instanceTemplate *host_info_util.HostInfo) ([]*host_info_util.HostInfo, error)
 }
 
 // =============================================================================
@@ -152,6 +147,13 @@ func CreateHost(
 		hostInfo.AddAlias(instanceName)
 	}
 	return hostInfo
+}
+
+func resolveQueryTimeoutMs(driverDialect DriverDialect, props *utils.RWMap[string, string]) int {
+	if SupportsSocketTimeoutViaDsn(driverDialect) {
+		return 0
+	}
+	return property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.CLUSTER_TOPOLOGY_SOCKET_TIMEOUT_MS)
 }
 
 // =============================================================================
@@ -350,7 +352,7 @@ func (a *AuroraTopologyUtils) CreateHost(
 	return CreateHost(instanceId, instanceName, isWriter, weight, lastUpdateTime, initialHost, instanceTemplate)
 }
 
-var _ TopologyUtils = (*AuroraTopologyUtils)(nil)
+var _ ClusterTopologyUtils = (*AuroraTopologyUtils)(nil)
 
 // =============================================================================
 // Multi-AZ Topology Utils
@@ -502,16 +504,16 @@ func (m *MultiAzTopologyUtils) CreateHost(
 	return CreateHost(instanceId, instanceName, isWriter, weight, lastUpdateTime, initialHost, instanceTemplate)
 }
 
-var _ TopologyUtils = (*MultiAzTopologyUtils)(nil)
+var _ ClusterTopologyUtils = (*MultiAzTopologyUtils)(nil)
 
 // =============================================================================
 // Global Aurora Topology Utils
 // =============================================================================
 
-// RegionAwareTopologyUtils extends TopologyUtils with multi-region support for
+// GlobalClusterTopologyUtils extends TopologyUtils with multi-region support for
 // Global Aurora Databases. It provides region-aware topology queries and region
 // lookups needed by the global topology query strategy.
-type RegionAwareTopologyUtils interface {
+type GlobalClusterTopologyUtils interface {
 	TopologyUtils
 	// QueryForTopologyByRegion fetches the current cluster topology using region-specific
 	// instance templates to resolve host endpoints for each region in the global database.
@@ -536,15 +538,6 @@ func NewGlobalAuroraTopologyUtils(dialect GlobalAuroraTopologyDialect, driverDia
 		parser:         driverDialect.GetRowParser(),
 		queryTimeoutMs: resolveQueryTimeoutMs(driverDialect, props),
 	}
-}
-
-// QueryForTopology satisfies the TopologyUtils interface but is not supported for
-// Global Aurora Databases. Use QueryForTopologyByRegion instead.
-func (g *GlobalAuroraTopologyUtils) QueryForTopology(
-	conn driver.Conn,
-	initialHost, instanceTemplate *host_info_util.HostInfo,
-) ([]*host_info_util.HostInfo, error) {
-	return nil, error_util.NewGenericAwsWrapperError("QueryForTopology is not supported for Global Aurora; use QueryForTopologyByRegion")
 }
 
 func (g *GlobalAuroraTopologyUtils) QueryForTopologyByRegion(
@@ -743,5 +736,4 @@ func parseHostPortPairWithRegionPrefix(urlWithRegionPrefix string, defaultPort i
 	return awsRegion, hostInfo, nil
 }
 
-var _ TopologyUtils = (*GlobalAuroraTopologyUtils)(nil)
-var _ RegionAwareTopologyUtils = (*GlobalAuroraTopologyUtils)(nil)
+var _ GlobalClusterTopologyUtils = (*GlobalAuroraTopologyUtils)(nil)

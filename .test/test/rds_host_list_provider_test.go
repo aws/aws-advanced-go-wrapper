@@ -39,7 +39,7 @@ func rdsTestSetup(
 	*driver_infrastructure.RdsHostListProvider,
 	*mock_driver_infrastructure.MockPluginService,
 	*mock_driver_infrastructure.MockMonitorService,
-	*mock_driver_infrastructure.MockTopologyUtils,
+	*mock_driver_infrastructure.MockClusterTopologyUtils,
 	*mock_driver_infrastructure.MockServicesContainer,
 	*services.ExpiringStorage,
 ) {
@@ -57,7 +57,7 @@ func rdsTestSetup(
 	mockHLPService.EXPECT().SetInitialConnectionHostInfo(gomock.Any()).AnyTimes()
 	mockHLPService.EXPECT().GetDialect().Return(nil).AnyTimes()
 
-	mockTopologyUtils := mock_driver_infrastructure.NewMockTopologyUtils(ctrl)
+	mockTopologyUtils := mock_driver_infrastructure.NewMockClusterTopologyUtils(ctrl)
 
 	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
 	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
