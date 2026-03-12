@@ -53,6 +53,7 @@ dependencies {
     testImplementation("org.testcontainers:testcontainers-junit-jupiter:2.0.3")
     testImplementation("org.apache.poi:poi-ooxml:5.3.0")
     testImplementation("org.slf4j:slf4j-simple:2.0.16")
+    testImplementation("org.apache.logging.log4j:log4j-to-slf4j:2.24.3")
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.18.2")
     testImplementation("com.amazonaws:aws-xray-recorder-sdk-core:2.14.0")
     testImplementation("io.opentelemetry:opentelemetry-sdk:1.29.0")

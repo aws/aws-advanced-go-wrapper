@@ -196,7 +196,7 @@ func (b *BlueGreenStatusMonitor) getBlueGreenStatus(conn driver.Conn) ([]driver_
 		return nil, err
 	}
 	if rows != nil {
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 	}
 
 	var statuses []driver_infrastructure.BlueGreenResult

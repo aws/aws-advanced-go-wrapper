@@ -58,7 +58,7 @@ func TestIamWrongDatabaseUsername(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	pingErr := db.Ping()
 	assert.Error(t, pingErr)
@@ -81,7 +81,7 @@ func TestIamNoDatabaseUsername(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	pingErr := db.Ping()
 	assert.Error(t, pingErr)
@@ -113,7 +113,7 @@ func TestIamUsingIpAddress(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	pingErr := db.Ping()
 	assert.NoError(t, pingErr)
@@ -134,7 +134,7 @@ func TestIamValidConnectionProperties(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	pingErr := db.Ping()
 	assert.NoError(t, pingErr)
 }
@@ -154,7 +154,7 @@ func TestIamValidConnectionPropertiesNoPassword(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	pingErr := db.Ping()
 	assert.NoError(t, pingErr)
 }
@@ -175,7 +175,7 @@ func TestIamValidConnectionConnObject(t *testing.T) {
 
 	conn, err := wrapperDriver.Open(dsn)
 	assert.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	queryer, ok := conn.(driver.QueryerContext)
 	assert.True(t, ok)
@@ -183,7 +183,7 @@ func TestIamValidConnectionConnObject(t *testing.T) {
 	// Execute the query
 	rows, err := queryer.QueryContext(context.Background(), "SELECT 1", nil)
 	assert.NoError(t, err)
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 }
 
 func TestIamValidConnectionConnObjectWithTelemetryOtel(t *testing.T) {
@@ -209,7 +209,7 @@ func TestIamValidConnectionConnObjectWithTelemetryOtel(t *testing.T) {
 
 	conn, err := wrapperDriver.Open(dsn)
 	assert.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	queryer, ok := conn.(driver.QueryerContext)
 	assert.True(t, ok)
@@ -217,7 +217,7 @@ func TestIamValidConnectionConnObjectWithTelemetryOtel(t *testing.T) {
 	// Execute the query
 	rows, err := queryer.QueryContext(context.Background(), "SELECT 1", nil)
 	assert.NoError(t, err)
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 }
 
 func TestIamValidConnectionConnObjectWithTelemetryXray(t *testing.T) {
@@ -242,7 +242,7 @@ func TestIamValidConnectionConnObjectWithTelemetryXray(t *testing.T) {
 
 	conn, err := wrapperDriver.Open(dsn)
 	assert.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	queryer, ok := conn.(driver.QueryerContext)
 	assert.True(t, ok)
@@ -250,7 +250,7 @@ func TestIamValidConnectionConnObjectWithTelemetryXray(t *testing.T) {
 	// Execute the query
 	rows, err := queryer.QueryContext(context.Background(), "SELECT 1", nil)
 	assert.NoError(t, err)
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 }
 
 func TestIamWithFailover(t *testing.T) {
@@ -277,7 +277,7 @@ func TestIamWithFailover(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Check that we are connected to the writer.
 	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
@@ -325,7 +325,7 @@ func TestIamWithEfm(t *testing.T) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Verify connection works.
 	err = db.Ping()
@@ -385,7 +385,7 @@ func TestIamWithFailoverEfm(t *testing.T) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Verify connection works.
 	err = db.Ping()

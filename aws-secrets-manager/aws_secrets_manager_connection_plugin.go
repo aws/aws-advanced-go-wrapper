@@ -68,7 +68,7 @@ type AwsSecretsManagerPlugin struct {
 	region                          region_util.Region
 	endpoint                        string
 	awsSecretsManagerClientProvider NewAwsSecretsManagerClientProvider
-	secretExpirationTimeSec         time.Duration
+	secretExpirationTime            time.Duration
 	fetchCredentialsCounter         telemetry.TelemetryCounter
 	secretUsernameKey               string
 	secretPasswordKey               string
@@ -121,7 +121,7 @@ func NewAwsSecretsManagerPlugin(servicesContainer driver_infrastructure.Services
 	if err != nil {
 		return nil, err
 	}
-	secretExpirationTimeSec := property_util.GetExpirationValue(props, property_util.SECRETS_MANAGER_EXPIRATION_SEC)
+	secretExpirationTime := property_util.GetExpirationValue(props, property_util.SECRETS_MANAGER_EXPIRATION_SEC)
 
 	return &AwsSecretsManagerPlugin{
 		servicesContainer: servicesContainer,
@@ -132,7 +132,7 @@ func NewAwsSecretsManagerPlugin(servicesContainer driver_infrastructure.Services
 		region:                          region,
 		endpoint:                        secretsEndpoint,
 		awsSecretsManagerClientProvider: awsSecretsManagerClientProvider,
-		secretExpirationTimeSec:         time.Second * time.Duration(secretExpirationTimeSec),
+		secretExpirationTime:            time.Second * time.Duration(secretExpirationTime),
 		fetchCredentialsCounter:         fetchCredentialsCounter,
 		secretUsernameKey:               secretUsernameKey,
 		secretPasswordKey:               secretPasswordKey,
@@ -231,7 +231,7 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) updateSecrets(
 
 		if err == nil {
 			fetched = true
-			SecretsCache.Put(awsSecretsManagerPlugin.SecretsCacheKey, secret, awsSecretsManagerPlugin.secretExpirationTimeSec)
+			SecretsCache.Put(awsSecretsManagerPlugin.SecretsCacheKey, secret, awsSecretsManagerPlugin.secretExpirationTime)
 		} else {
 			slog.Error(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.failedToFetchDbCredentials"))
 			telemetryCtx.SetSuccess(false)

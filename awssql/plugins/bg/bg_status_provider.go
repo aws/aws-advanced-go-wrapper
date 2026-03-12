@@ -898,10 +898,10 @@ func (b *BlueGreenStatusProvider) LogSwitchoverFinalSummary() {
 	})
 
 	var logMessage strings.Builder
-	logMessage.WriteString(fmt.Sprintf("[bgdId: '%s']", b.bgdId))
+	fmt.Fprintf(&logMessage, "[bgdId: '%s']", b.bgdId)
 	logMessage.WriteString("\n")
 	logMessage.WriteString(divider)
-	logMessage.WriteString(fmt.Sprintf("%-28s %21s %31s\n", "timestamp", "time offset (ms)", "event"))
+	fmt.Fprintf(&logMessage, "%-28s %21s %31s\n", "timestamp", "time offset (ms)", "event")
 	logMessage.WriteString(divider)
 
 	for _, entry := range entries {
@@ -911,7 +911,7 @@ func (b *BlueGreenStatusProvider) LogSwitchoverFinalSummary() {
 			offsetMs := entry.phaseTime.Timestamp.Sub(timeZero.Timestamp).Milliseconds()
 			offsetStr = fmt.Sprintf("%d ms", offsetMs)
 		}
-		logMessage.WriteString(fmt.Sprintf("%28s %18s %31s\n", timestampStr, offsetStr, entry.key))
+		fmt.Fprintf(&logMessage, "%28s %18s %31s\n", timestampStr, offsetStr, entry.key)
 	}
 	logMessage.WriteString(divider)
 
@@ -948,21 +948,21 @@ func (b *BlueGreenStatusProvider) LogCurrentContext() {
 		} else {
 			rightHostStr = value.GetRight().GetHostAndPort()
 		}
-		correspondingHostsBuilder.WriteString(fmt.Sprintf("   %s -> %s\n", key, rightHostStr))
+		fmt.Fprintf(&correspondingHostsBuilder, "   %s -> %s\n", key, rightHostStr)
 	}
 	slog.Debug(correspondingHostsBuilder.String())
 
 	var phaseTimesBuilder strings.Builder
 	phaseTimesBuilder.WriteString("Phase times:\n")
 	for key, value := range b.phaseTimeNano.GetAllEntries() {
-		phaseTimesBuilder.WriteString(fmt.Sprintf("   %s -> %s\n", key, value.Timestamp.Format("2006-01-02T15:04:05.000Z")))
+		fmt.Fprintf(&phaseTimesBuilder, "   %s -> %s\n", key, value.Timestamp.Format("2006-01-02T15:04:05.000Z"))
 	}
 	slog.Debug(phaseTimesBuilder.String())
 
 	var greenHostChangeTimesBuilder strings.Builder
 	greenHostChangeTimesBuilder.WriteString("Green host certificate change times:\n")
 	for key, value := range b.greenHostChangeNameTimes.GetAllEntries() {
-		greenHostChangeTimesBuilder.WriteString(fmt.Sprintf("   %s -> %s\n", key, value.Format("2006-01-02T15:04:05.000Z")))
+		fmt.Fprintf(&greenHostChangeTimesBuilder, "   %s -> %s\n", key, value.Format("2006-01-02T15:04:05.000Z"))
 	}
 	slog.Debug(greenHostChangeTimesBuilder.String())
 

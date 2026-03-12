@@ -97,7 +97,7 @@ func TestStress_MultipleConnSleep(t *testing.T) {
 	runStressTest(t, func(db *sql.DB, env *test_utils.TestEnvironment) {
 		conn, err := db.Conn(context.TODO())
 		assert.NoError(t, err)
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		_, err = test_utils.ExecuteInstanceQueryWithSleep(env.Info().Request.Engine, env.Info().Request.Deployment, conn, 10)
 		assert.NoError(t, err)
 	})
@@ -282,7 +282,7 @@ func TestStress_ContinuousInsertWithFailoverConn(t *testing.T) {
 			slog.Info("failed to get connection", "error", err)
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		_, err = conn.ExecContext(context.TODO(), "INSERT INTO "+tableName+" (id, name) VALUES (1, 'test')")
 		if err != nil {
@@ -341,7 +341,7 @@ func TestStress_ContinuousInsertWithFailoverAndSecretsConn(t *testing.T) {
 			slog.Info("failed to get connection", "error", err)
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		_, err = conn.ExecContext(context.TODO(), "INSERT INTO "+tableName+" (id, name) VALUES (1, 'test')")
 		if err != nil {
@@ -361,14 +361,14 @@ func TestStress_ContinuousSelectInsertWithFailoverAndMultiplePluginsConn(t *test
 			slog.Info("failed to get connection", "error", err)
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		rows, err := conn.QueryContext(context.TODO(), "SELECT * FROM "+tableName+" LIMIT 1")
 		if err != nil {
 			slog.Info("select failed", "error", err)
 			return
 		}
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 		if rows.Next() {
 			slog.Info("select succeeded")
 		}
@@ -378,7 +378,7 @@ func TestStress_ContinuousSelectInsertWithFailoverAndMultiplePluginsConn(t *test
 			slog.Info("failed to get connection", "error", err)
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		_, err = conn.ExecContext(context.TODO(), "INSERT INTO "+tableName+" (id, name) VALUES (1, 'test')")
 		if err != nil {
@@ -399,7 +399,7 @@ func TestStress_ContinuousSelectInsertWithFailoverAndMultiplePluginsDb(t *testin
 			slog.Info("select failed", "error", err)
 			return
 		}
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 		if rows.Next() {
 			slog.Info("select succeeded")
 		}
@@ -429,7 +429,7 @@ func TestStress_ContinuousSelectInsertWithFailoverAndMultiplePluginsTx(t *testin
 			slog.Info("select failed", "error", err)
 			return
 		}
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 		if rows.Next() {
 			slog.Info("select succeeded")
 		}

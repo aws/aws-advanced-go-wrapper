@@ -117,7 +117,7 @@ func GetFirstItemFromQueryAsString(engine DatabaseEngine, conn driver.Conn, quer
 	if err != nil {
 		return "", err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	if len(rows.Columns()) == 0 {
 		return "", errors.New("nothing returned from query")
 	}
@@ -151,7 +151,7 @@ func GetFirstItemFromQueryAsInt(conn driver.Conn, query string) (int, error) {
 	if err != nil {
 		return -1, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	if len(rows.Columns()) == 0 {
 		return -1, errors.New("nothing returned from query")
 	}

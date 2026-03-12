@@ -42,7 +42,7 @@ func TestLimitlessValidConnectionProperties(t *testing.T) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
 	assert.Nil(t, err)
@@ -61,7 +61,7 @@ func TestLimitlessAndEfmPlugin(t *testing.T) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
 	assert.Nil(t, err)
@@ -95,7 +95,7 @@ func TestLimitlessAndIamPlugin(t *testing.T) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
 	assert.Nil(t, err)
@@ -132,7 +132,7 @@ func TestLimitlessAndAwsSecretsManagerPlugin(t *testing.T) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
 	assert.Nil(t, err)

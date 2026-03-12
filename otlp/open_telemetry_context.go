@@ -106,9 +106,10 @@ func (o *OpenTelemetryContext) Clone(traceLevel telemetry.TelemetryTraceLevel) *
 		}
 	}
 
-	if o.statusCode == codes.Ok {
+	switch o.statusCode {
+	case codes.Ok:
 		copyCtx.SetSuccess(true)
-	} else if o.statusCode == codes.Error {
+	case codes.Error:
 		copyCtx.SetSuccess(false)
 	}
 

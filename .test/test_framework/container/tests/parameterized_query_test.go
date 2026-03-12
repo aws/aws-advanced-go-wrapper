@@ -137,7 +137,7 @@ func verifyInsertedData(t *testing.T, env *test_utils.TestEnvironment, db *sql.D
 func TestParameterizedQuery(t *testing.T) {
 	t.Run("Parameterized Query With Named/Positional Args Query", func(t *testing.T) {
 		env, db := setupParamTest(t, t.Name())
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 		row, err := runPositionalArgsQuery(env, db)
 		require.NoError(t, err)
 
@@ -154,7 +154,7 @@ func TestParameterizedQuery(t *testing.T) {
 
 	t.Run("Parameterized Query With Named/Positional Args Exec", func(t *testing.T) {
 		env, db := setupParamTest(t, t.Name())
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		err := createParamTestTable(env, db)
 		require.NoError(t, err)
@@ -173,12 +173,12 @@ func TestParameterizedQuery(t *testing.T) {
 
 	t.Run("Parameterized Query With Prepared Statements Stmt", func(t *testing.T) {
 		env, db := setupParamTest(t, t.Name())
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		preparedStatement := getPreparedStatement(env)
 		stmt, err := db.PrepareContext(context.TODO(), preparedStatement)
 		require.NoError(t, err)
-		defer stmt.Close()
+		defer func() { _ = stmt.Close() }()
 
 		var returnedValue int
 		var returnedName string
@@ -192,16 +192,16 @@ func TestParameterizedQuery(t *testing.T) {
 
 	t.Run("Parameterized Query With Prepared Statements Conn", func(t *testing.T) {
 		env, db := setupParamTest(t, t.Name())
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		conn, err := db.Conn(context.TODO())
 		require.NoError(t, err)
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		preparedStatement := getPreparedStatement(env)
 		stmt, err := conn.PrepareContext(context.TODO(), preparedStatement)
 		require.NoError(t, err)
-		defer stmt.Close()
+		defer func() { _ = stmt.Close() }()
 
 		var returnedValue int
 		var returnedName string
@@ -215,7 +215,7 @@ func TestParameterizedQuery(t *testing.T) {
 
 	t.Run("Parameterized Query With Prepared Statements Tx", func(t *testing.T) {
 		env, db := setupParamTest(t, t.Name())
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		tx, err := db.BeginTx(context.TODO(), nil)
 		require.NoError(t, err)
@@ -226,7 +226,7 @@ func TestParameterizedQuery(t *testing.T) {
 		preparedStatement := getPreparedStatement(env)
 		stmt, err := tx.PrepareContext(context.TODO(), preparedStatement)
 		require.NoError(t, err)
-		defer stmt.Close()
+		defer func() { _ = stmt.Close() }()
 
 		var returnedValue int
 		var returnedName string
@@ -243,7 +243,7 @@ func TestParameterizedQuery(t *testing.T) {
 
 	t.Run("Parameterized Query With Prepared Statements Stmt Exec", func(t *testing.T) {
 		env, db := setupParamTest(t, t.Name())
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		err := createParamTestTable(env, db)
 		require.NoError(t, err)
@@ -251,7 +251,7 @@ func TestParameterizedQuery(t *testing.T) {
 		insertStatement := getInsertStatement(env)
 		stmt, err := db.PrepareContext(context.TODO(), insertStatement)
 		require.NoError(t, err)
-		defer stmt.Close()
+		defer func() { _ = stmt.Close() }()
 
 		result, err := stmt.Exec(testValue, testName)
 		require.NoError(t, err)
@@ -267,19 +267,19 @@ func TestParameterizedQuery(t *testing.T) {
 
 	t.Run("Parameterized Query With Prepared Statements Conn Exec", func(t *testing.T) {
 		env, db := setupParamTest(t, t.Name())
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		err := createParamTestTable(env, db)
 		require.NoError(t, err)
 
 		conn, err := db.Conn(context.TODO())
 		require.NoError(t, err)
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		insertStatement := getInsertStatement(env)
 		stmt, err := conn.PrepareContext(context.TODO(), insertStatement)
 		require.NoError(t, err)
-		defer stmt.Close()
+		defer func() { _ = stmt.Close() }()
 
 		result, err := stmt.Exec(testValue, testName)
 		require.NoError(t, err)
@@ -295,7 +295,7 @@ func TestParameterizedQuery(t *testing.T) {
 
 	t.Run("Parameterized Query With Prepared Statements Tx Exec", func(t *testing.T) {
 		env, db := setupParamTest(t, t.Name())
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		err := createParamTestTable(env, db)
 		require.NoError(t, err)
@@ -309,7 +309,7 @@ func TestParameterizedQuery(t *testing.T) {
 		insertStatement := getInsertStatement(env)
 		stmt, err := tx.PrepareContext(context.TODO(), insertStatement)
 		require.NoError(t, err)
-		defer stmt.Close()
+		defer func() { _ = stmt.Close() }()
 
 		result, err := stmt.Exec(testValue, testName)
 		require.NoError(t, err)
@@ -328,7 +328,7 @@ func TestParameterizedQuery(t *testing.T) {
 
 	t.Run("Parameterized Query With Wrong Parameter Count", func(t *testing.T) {
 		env, db := setupParamTest(t, t.Name())
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		// Try to execute a query with wrong number of parameters
 		var wrongQuery string

@@ -157,7 +157,7 @@ func connectionTest(t *testing.T, env *test_utils.TestEnvironment, secretName st
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	pingErr := db.Ping()
 	assert.Nil(t, pingErr)
@@ -185,7 +185,7 @@ func connectionTestWithTelemetryOtel(t *testing.T, env *test_utils.TestEnvironme
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	pingErr := db.Ping()
 	assert.Nil(t, pingErr)
@@ -213,7 +213,7 @@ func connectionTestWithTelemetryXray(t *testing.T, env *test_utils.TestEnvironme
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	pingErr := db.Ping()
 	assert.Nil(t, pingErr)
@@ -233,7 +233,7 @@ func connectWithARNTest(t *testing.T, env *test_utils.TestEnvironment, secretARN
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	pingErr := db.Ping()
 	assert.Nil(t, pingErr)
@@ -254,7 +254,7 @@ func incorrectSecretIdTest(t *testing.T, env *test_utils.TestEnvironment) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	pingErr := db.Ping()
 	assert.NotNil(t, pingErr)
@@ -274,7 +274,7 @@ func missingSecretIdTest(t *testing.T, env *test_utils.TestEnvironment) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	pingErr := db.Ping()
 	assert.NotNil(t, pingErr)
@@ -295,7 +295,7 @@ func invalidRegionTest(t *testing.T, env *test_utils.TestEnvironment, secretName
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	pingErr := db.Ping()
 	assert.Equal(
@@ -318,7 +318,7 @@ func missingRegionTest(t *testing.T, env *test_utils.TestEnvironment, secretName
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	pingErr := db.Ping()
 	assert.Error(t, pingErr, "Default region does not match secret region, should throw an error")
@@ -339,7 +339,7 @@ func incorrectRegionTest(t *testing.T, env *test_utils.TestEnvironment, secretNa
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	pingErr := db.Ping()
 	assert.NotNil(t, pingErr)
@@ -365,7 +365,7 @@ func failoverTest(t *testing.T, env *test_utils.TestEnvironment, secretName stri
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Check that we are connected to the writer.
 	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
@@ -408,7 +408,7 @@ func efmTest(t *testing.T, env *test_utils.TestEnvironment, secretName string) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Verify connection works.
 	err = db.Ping()
@@ -467,7 +467,7 @@ func failoverEfmTest(t *testing.T, env *test_utils.TestEnvironment, secretName s
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Verify connection works.
 	err = db.Ping()

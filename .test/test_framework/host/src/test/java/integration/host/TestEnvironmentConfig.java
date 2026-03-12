@@ -1172,7 +1172,7 @@ public class TestEnvironmentConfig implements AutoCloseable {
   }
 
   private static String getContainerBaseImageName() {
-    return "golang:1.24";
+    return "golang:1.25";
   }
 
   private static void configureIamAccess(TestEnvironmentConfig env) {

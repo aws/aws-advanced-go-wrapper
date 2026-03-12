@@ -52,7 +52,7 @@ func TestEfmDisableInstance(t *testing.T) {
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 	conn, err := wrapperDriver.Open(dsn)
 	require.Nil(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Get initial instance ID
 	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
@@ -112,7 +112,7 @@ func TestEfmDisableAllInstances(t *testing.T) {
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 	conn, err := wrapperDriver.Open(dsn)
 	require.Nil(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Get initial instance ID
 	instanceId, err := test_utils.ExecuteInstanceQuery(environment.Info().Request.Engine, environment.Info().Request.Deployment, conn)
@@ -171,7 +171,7 @@ func TestEfmDisableAllInstancesDB(t *testing.T) {
 
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	require.Nil(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Get initial instance ID
 	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)

@@ -101,7 +101,7 @@ func (o *OktaCredentialsProviderFactory) GetSamlAssertion(props *utils.RWMap[str
 		telemetryCtx.SetError(err)
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	statusCode := resp.StatusCode
 	if statusCode/100 != 2 {
@@ -168,7 +168,7 @@ func (o *OktaCredentialsProviderFactory) GetSessionToken(props *utils.RWMap[stri
 	if resp == nil || err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	statusCode := resp.StatusCode
 

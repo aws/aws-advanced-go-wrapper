@@ -142,7 +142,7 @@ func queryHostRole(conn driver.Conn, query string, parser RowParser) host_info_u
 	if err != nil {
 		return host_info_util.UNKNOWN
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	row := make([]driver.Value, 1)
 	if rows.Next(row) == nil && len(row) > 0 {
@@ -165,7 +165,7 @@ func queryInstanceId(conn driver.Conn, query string, parser RowParser) (string, 
 	if err != nil {
 		return "", ""
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	numCols := len(rows.Columns())
 	row := make([]driver.Value, numCols)
@@ -194,7 +194,7 @@ func queryIsWriter(conn driver.Conn, query string, parser RowParser, writerWhenE
 	if err != nil {
 		return false, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	row := make([]driver.Value, 1)
 	hasRow := rows.Next(row) == nil
@@ -232,7 +232,7 @@ func (a *AuroraTopologyUtils) QueryForTopology(
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	if len(rows.Columns()) == 0 {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("TopologyUtils.unexpectedTopologyQueryColumnCount"))
@@ -351,7 +351,7 @@ func (m *MultiAzTopologyUtils) QueryForTopology(
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	if len(rows.Columns()) == 0 {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("TopologyUtils.unexpectedTopologyQueryColumnCount"))
@@ -391,7 +391,7 @@ func (m *MultiAzTopologyUtils) getWriterId(conn driver.Conn) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 
 		row := make([]driver.Value, len(rows.Columns()))
 		if rows.Next(row) == nil {

@@ -318,7 +318,7 @@ func parsePgxKeywordValueSettings(dsn string) (*utils.RWMap[string, string], err
 					}
 				}
 			}
-			val = strings.Replace(strings.Replace(dsn[:end], "\\\\", "\\", -1), "\\'", "'", -1)
+			val = strings.ReplaceAll(strings.ReplaceAll(dsn[:end], "\\\\", "\\"), "\\'", "'")
 			if end == len(dsn) {
 				dsn = ""
 			} else {
@@ -339,7 +339,7 @@ func parsePgxKeywordValueSettings(dsn string) (*utils.RWMap[string, string], err
 				return nil, error_util.NewDsnParsingError(
 					error_util.GetMessage("DsnParser.unterminatedQuotedString", MaskSensitiveInfoFromDsn(dsn)))
 			}
-			val = strings.Replace(strings.Replace(dsn[:end], "\\\\", "\\", -1), "\\'", "'", -1)
+			val = strings.ReplaceAll(strings.ReplaceAll(dsn[:end], "\\\\", "\\"), "\\'", "'")
 			if end == len(dsn) {
 				dsn = ""
 			} else {

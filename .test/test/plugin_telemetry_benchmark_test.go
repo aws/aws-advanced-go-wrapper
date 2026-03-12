@@ -123,7 +123,7 @@ func BenchmarkExecuteStatementBaseline(b *testing.B) {
 	for i := 1; i < b.N; i++ {
 		testWrapper := NewTestConnectionWrapper(manager, service, driver_infrastructure.MYSQL)
 		//nolint:errcheck
-		_, _ = testWrapper.AwsWrapperConn.QueryContext(context.TODO(), "Select 1", nil)
+		_, _ = testWrapper.QueryContext(context.TODO(), "Select 1", nil)
 		testWrapper.PluginManager.ReleaseResources()
 	}
 }
@@ -135,7 +135,7 @@ func BenchmarkExecuteStatementWithExecutionTimePlugin(b *testing.B) {
 	for i := 1; i < b.N; i++ {
 		testWrapper := NewTestConnectionWrapper(manager, service, driver_infrastructure.MYSQL)
 		//nolint:errcheck
-		_, _ = testWrapper.AwsWrapperConn.QueryContext(context.TODO(), "Select 1", nil)
+		_, _ = testWrapper.QueryContext(context.TODO(), "Select 1", nil)
 		testWrapper.PluginManager.ReleaseResources()
 	}
 }
