@@ -62,15 +62,16 @@ func NewDefaultTelemetryFactory(props *utils.RWMap[string, string]) (*DefaultTel
 
 func getTelemetryFactory(enableTelemetry bool, backend string) (TelemetryFactory, error) {
 	if enableTelemetry {
-		if backend == "otlp" || backend == "xray" {
+		switch backend {
+		case "otlp", "xray":
 			factory, ok := availableTelemetryFactories[backend]
 			if ok {
 				return factory, nil
 			}
 			return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DefaultTelemetryFactory.telemetryFactoryUnavailable", backend))
-		} else if backend == "none" {
+		case "none":
 			return NewNilTelemetryFactory(), nil
-		} else {
+		default:
 			return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DefaultTelemetryFactory.invalidBackend", backend))
 		}
 	} else {
