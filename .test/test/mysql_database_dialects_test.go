@@ -698,3 +698,36 @@ func TestGetBlueGreenStatus_InsufficientColumns(t *testing.T) {
 	expectedQuery := "SELECT version, endpoint, port, role, status FROM mysql.rds_topology"
 	assert.Equal(t, expectedQuery, testDatabaseDialect.GetBlueGreenStatusQuery())
 }
+
+func TestGlobalAuroraMySQLDatabaseDialect_GetDialectUpdateCandidates(t *testing.T) {
+	dialect := &driver_infrastructure.GlobalAuroraMySQLDatabaseDialect{}
+	candidates := dialect.GetDialectUpdateCandidates()
+	assert.Empty(t, candidates)
+}
+
+func TestGlobalAuroraMySQLDatabaseDialect_GetTopologyQuery(t *testing.T) {
+	dialect := &driver_infrastructure.GlobalAuroraMySQLDatabaseDialect{}
+	query := dialect.GetTopologyQuery()
+	assert.Contains(t, query, "aurora_global_db_instance_status")
+	assert.Contains(t, query, "SERVER_ID")
+	assert.Contains(t, query, "AWS_REGION")
+}
+
+func TestGlobalAuroraMySQLDatabaseDialect_GetRegionByInstanceIdQuery(t *testing.T) {
+	dialect := &driver_infrastructure.GlobalAuroraMySQLDatabaseDialect{}
+	query := dialect.GetRegionByInstanceIdQuery()
+	assert.Contains(t, query, "aurora_global_db_instance_status")
+	assert.Contains(t, query, "AWS_REGION")
+	assert.Contains(t, query, "SERVER_ID")
+}
+
+func TestGlobalAuroraMySQLDatabaseDialect_GetHostListProviderSupplier(t *testing.T) {
+	dialect := &driver_infrastructure.GlobalAuroraMySQLDatabaseDialect{}
+	supplier := dialect.GetHostListProviderSupplier()
+	assert.NotNil(t, supplier)
+}
+
+func TestGlobalAuroraMySQLDatabaseDialect_GetDefaultPort(t *testing.T) {
+	dialect := &driver_infrastructure.GlobalAuroraMySQLDatabaseDialect{}
+	assert.Equal(t, 3306, dialect.GetDefaultPort())
+}

@@ -90,22 +90,13 @@ type ClusterTopologyMonitorImpl struct {
 	topologyQueryStrategy          TopologyQueryStrategy
 }
 
-// TopologyQueryStrategy provides pluggable behavior for topology querying,
-// instance template resolution, and writer detection. This is the sole
-// topology dependency for ClusterTopologyMonitorImpl — the monitor does not
-// hold a TopologyUtils reference directly.
+// TopologyQueryStrategy abstracts topology querying and instance resolution
+// for the cluster topology monitor.
 type TopologyQueryStrategy interface {
-	// QueryForTopology fetches the current cluster topology using the given connection.
 	QueryForTopology(conn driver.Conn) ([]*host_info_util.HostInfo, error)
-	// GetInstanceTemplate returns the instance template for the given instance.
-	// Returns nil if the default clusterInstanceTemplate should be used.
 	GetInstanceTemplate(instanceId string, conn driver.Conn) (*host_info_util.HostInfo, error)
-	// IsWriterInstance checks whether the given connection is to a writer instance.
 	IsWriterInstance(conn driver.Conn) (bool, error)
-	// GetInstanceId returns the instance identifier for the connected database instance.
-	// Returns (instanceId, instanceName) - empty strings if unable to determine.
 	GetInstanceId(conn driver.Conn) (string, string)
-	// CreateHost creates a HostInfo from topology data. Returns nil if creation fails.
 	CreateHost(
 		instanceId, instanceName string, isWriter bool, weight int,
 		lastUpdateTime time.Time, initialHost, instanceTemplate *host_info_util.HostInfo,

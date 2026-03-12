@@ -112,9 +112,7 @@ func CopyHostList(hosts []*HostInfo) []*HostInfo {
 	return result
 }
 
-// TopologyComparisonKey produces a deterministic string key from a topology
-// using Host, Port, Availability, and Role — excluding Weight which fluctuates.
-// This is used to compare topologies for structural equality.
+// TODO: Rename this
 func TopologyComparisonKey(hosts []*HostInfo) string {
 	sorted := make([]*HostInfo, len(hosts))
 	copy(sorted, hosts)
