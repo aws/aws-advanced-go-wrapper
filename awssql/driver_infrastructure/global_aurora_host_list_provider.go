@@ -26,16 +26,6 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 )
 
-// Compile-time interface checks.
-var (
-	_ HostListProvider         = (*GlobalAuroraHostListProvider)(nil)
-	_ BlockingHostListProvider = (*GlobalAuroraHostListProvider)(nil)
-)
-
-// GlobalAuroraHostListProvider provides host list management for Global Aurora
-// Databases that span multiple AWS regions. It composes with RdsHostListProvider
-// for shared infrastructure but creates its own monitor with a global-aware
-// topology query strategy.
 type GlobalAuroraHostListProvider struct {
 	base                      *RdsHostListProvider
 	globalTopologyUtils       GlobalClusterTopologyUtils
@@ -136,21 +126,13 @@ func (g *GlobalAuroraHostListProvider) IsStaticHostListProvider() bool {
 	return false
 }
 
-// =============================================================================
-// BlockingHostListProvider interface
-// =============================================================================
-
 func (g *GlobalAuroraHostListProvider) ForceRefreshHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) ([]*host_info_util.HostInfo, error) {
 	return g.base.ForceRefreshHostListWithTimeout(shouldVerifyWriter, timeoutMs)
 }
 
 // =============================================================================
-// Global Aurora Topology Query Strategy
+// TopologyQueryStrategy interface
 // =============================================================================
-
-// globalAuroraTopologyQueryStrategy implements TopologyQueryStrategy for
-// Global Aurora Databases. It uses the multi-region topology query and
-// resolves region-specific instance templates via GlobalClusterTopologyUtils.
 type globalAuroraTopologyQueryStrategy struct {
 	topologyUtils             GlobalClusterTopologyUtils
 	initialHostInfo           *host_info_util.HostInfo

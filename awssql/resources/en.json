@@ -264,7 +264,6 @@
   "PluginServiceImpl.nilHost": "Current host evaluates to nil.",
   "PluginServiceImpl.nonEmptyAliases": "FillAliases called when HostInfo already contains the following aliases: '%v'.",
   "PluginServiceImpl.releaseResources": "Releasing resources from PluginServiceImpl.",
-  "PluginServiceImpl.requiredBlockingHostListProvider": "The detected host list provider is not a BlockingHostListProvider. A BlockingHostListProvider is required to force refresh the host list. Detected host list provider: '%T'.",
   "PluginServiceImpl.setCurrentHost": "Set current host to '%v'.",
   "RdsHostListProvider.givenTemplateInvalid": "The given cluster format template is invalid, using default host formatting.",
   "RdsHostListProvider.suggestedClusterId": "ClusterId '%v' is suggested for url '%v'.",

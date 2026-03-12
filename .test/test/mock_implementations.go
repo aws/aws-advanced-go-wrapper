@@ -233,6 +233,10 @@ func (m *MockHostListProvider) StopMonitor() {
 	// do nothing since this provider doesn't implement active monitoring
 }
 
+func (m *MockHostListProvider) ForceRefreshHostListWithTimeout(_ bool, _ int) ([]*host_info_util.HostInfo, error) {
+	return m.ForceRefresh()
+}
+
 type MockPluginManager struct {
 	driver_infrastructure.PluginManager
 	Changes           map[string]map[driver_infrastructure.HostChangeOptions]bool

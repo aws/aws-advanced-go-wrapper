@@ -154,10 +154,6 @@ func TestImplementations(t *testing.T) {
 	var _ driver_infrastructure.HostListProvider = (*driver_infrastructure.RdsHostListProvider)(nil)
 	var _ driver_infrastructure.HostListProvider = (*driver_infrastructure.GlobalAuroraHostListProvider)(nil)
 
-	// BlockingHostListProvider implementations
-	var _ driver_infrastructure.BlockingHostListProvider = (*driver_infrastructure.RdsHostListProvider)(nil)
-	var _ driver_infrastructure.BlockingHostListProvider = (*driver_infrastructure.GlobalAuroraHostListProvider)(nil)
-
 	// =========================================================================
 	// Host Selectors
 	// =========================================================================

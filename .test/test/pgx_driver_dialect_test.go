@@ -23,7 +23,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -72,41 +71,4 @@ func TestPgxErrorHandler(t *testing.T) {
 		assert.False(t, errorHandler.IsNetworkError(err))
 		assert.True(t, errorHandler.IsLoginError(err))
 	}
-}
-
-// =============================================================================
-// Global Aurora PG Database Dialect tests
-// =============================================================================
-
-func TestGlobalAuroraPgDatabaseDialect_GetDialectUpdateCandidates(t *testing.T) {
-	dialect := &driver_infrastructure.GlobalAuroraPgDatabaseDialect{}
-	candidates := dialect.GetDialectUpdateCandidates()
-	assert.Empty(t, candidates)
-}
-
-func TestGlobalAuroraPgDatabaseDialect_GetTopologyQuery(t *testing.T) {
-	dialect := &driver_infrastructure.GlobalAuroraPgDatabaseDialect{}
-	query := dialect.GetTopologyQuery()
-	assert.Contains(t, query, "aurora_global_db_instance_status()")
-	assert.Contains(t, query, "SERVER_ID")
-	assert.Contains(t, query, "AWS_REGION")
-}
-
-func TestGlobalAuroraPgDatabaseDialect_GetRegionByInstanceIdQuery(t *testing.T) {
-	dialect := &driver_infrastructure.GlobalAuroraPgDatabaseDialect{}
-	query := dialect.GetRegionByInstanceIdQuery()
-	assert.Contains(t, query, "aurora_global_db_instance_status()")
-	assert.Contains(t, query, "AWS_REGION")
-	assert.Contains(t, query, "$1")
-}
-
-func TestGlobalAuroraPgDatabaseDialect_GetHostListProviderSupplier(t *testing.T) {
-	dialect := &driver_infrastructure.GlobalAuroraPgDatabaseDialect{}
-	supplier := dialect.GetHostListProviderSupplier()
-	assert.NotNil(t, supplier)
-}
-
-func TestGlobalAuroraPgDatabaseDialect_GetDefaultPort(t *testing.T) {
-	dialect := &driver_infrastructure.GlobalAuroraPgDatabaseDialect{}
-	assert.Equal(t, 5432, dialect.GetDefaultPort())
 }

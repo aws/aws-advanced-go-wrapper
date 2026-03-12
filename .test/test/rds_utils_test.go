@@ -551,10 +551,6 @@ func TestGetRdsClusterId(t *testing.T) {
 	}
 }
 
-// =============================================================================
-// Global DB Writer Cluster DNS tests
-// =============================================================================
-
 const (
 	globalWriterCluster       = "my-global-cluster.global-abc123.global.rds.amazonaws.com"
 	globalWriterClusterSimple = "my-global-cluster.abc123.global.rds.amazonaws.com"

@@ -270,10 +270,6 @@ func (r *RdsHostListProvider) StopMonitor() {
 	r.servicesContainer.GetMonitorService().StopAndRemove(ClusterTopologyMonitorType, r.clusterId)
 }
 
-// =============================================================================
-// BlockingHostListProvider Interface Implementation
-// =============================================================================
-
 func (r *RdsHostListProvider) ForceRefreshHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) ([]*host_info_util.HostInfo, error) {
 	monitor, err := r.monitorCreator()
 	if err != nil {

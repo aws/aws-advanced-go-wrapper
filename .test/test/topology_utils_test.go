@@ -29,34 +29,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// =============================================================================
-// Helper to create a mock connection (driver.Conn + driver.QueryerContext)
-// =============================================================================
-
-// stubPropertyResolver is a minimal DriverPropertyResolver for tests.
-// It reports socket timeout as supported via DSN so that topology utils
-// constructors resolve queryTimeoutMs to 0 (matching pre-refactor test behavior).
-type stubPropertyResolver struct{}
-
-func (s *stubPropertyResolver) GetPropertyName(key driver_infrastructure.DriverPropertyKey) string {
-	if key == driver_infrastructure.SocketTimeout {
-		return "timeout"
-	}
-	return ""
-}
-func (s *stubPropertyResolver) FormatValue(_ driver_infrastructure.DriverPropertyKey, _ int) string {
-	return ""
-}
-func (s *stubPropertyResolver) CreateProps(_ ...driver_infrastructure.DriverPropertyOption) map[string]string {
-	return nil
-}
-
 // newMockDriverDialect creates a MockDriverDialect that returns the given parser
-// and a stub resolver. Use this when constructing topology utils in tests.
+// and a mock resolver. Use this when constructing topology utils in tests.
 func newMockDriverDialect(ctrl *gomock.Controller, parser driver_infrastructure.RowParser) *mock_driver_infrastructure.MockDriverDialect {
 	mockDD := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
 	mockDD.EXPECT().GetRowParser().Return(parser).AnyTimes()
-	mockDD.EXPECT().GetPropertyResolver().Return(&stubPropertyResolver{}).AnyTimes()
+
+	mockResolver := mock_driver_infrastructure.NewMockDriverPropertyResolver(ctrl)
+	mockResolver.EXPECT().GetPropertyName(gomock.Any()).Return("").AnyTimes()
+	mockResolver.EXPECT().FormatValue(gomock.Any(), gomock.Any()).Return("").AnyTimes()
+	mockResolver.EXPECT().CreateProps(gomock.Any()).Return(nil).AnyTimes()
+	mockDD.EXPECT().GetPropertyResolver().Return(mockResolver).AnyTimes()
 	return mockDD
 }
 
@@ -72,10 +55,6 @@ func newMockConn(ctrl *gomock.Controller) (struct {
 	}{Conn: mockConn, QueryerContext: mockQueryer}
 	return conn, mockQueryer
 }
-
-// =============================================================================
-// AuroraTopologyUtils tests (dialect-agnostic via MockTopologyDialect)
-// =============================================================================
 
 func TestAuroraTopologyUtils_GetHostRole(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -270,10 +249,6 @@ func TestAuroraTopologyUtils_IsWriterInstance(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, isWriter)
 }
-
-// =============================================================================
-// MultiAzTopologyUtils tests (dialect-agnostic via MockMultiAzTopologyDialect)
-// =============================================================================
 
 func TestMultiAzTopologyUtils_GetHostRole(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -470,10 +445,6 @@ func TestMultiAzTopologyUtils_QueryForTopology(t *testing.T) {
 	assert.Equal(t, host_info_util.READER, hosts[1].Role)
 }
 
-// =============================================================================
-// ParseInstanceTemplates tests
-// =============================================================================
-
 func TestParseInstanceTemplates_ValidSingleEntry(t *testing.T) {
 	result, err := driver_infrastructure.ParseInstanceTemplates(
 		"[us-east-1]?.us-east-1.rds.amazonaws.com:5432", 3306)
@@ -528,10 +499,6 @@ func TestParseInstanceTemplates_SkipsEmptyEntries(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)
 }
-
-// =============================================================================
-// GlobalAuroraTopologyUtils tests
-// =============================================================================
 
 func TestGlobalAuroraTopologyUtils_GetHostRole(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -865,10 +832,6 @@ func TestGlobalAuroraTopologyUtils_GetRegion_NoRows(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "", region)
 }
-
-// =============================================================================
-// TopologyComparisonKey tests
-// =============================================================================
 
 func TestTopologyComparisonKey_SameTopology(t *testing.T) {
 	host1, _ := host_info_util.NewHostInfoBuilder().SetHost("host-a").SetPort(5432).Build()
