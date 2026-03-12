@@ -113,7 +113,7 @@ func (p PgxDriverDialect) PrepareDsn(properties map[string]string, hostInfo *hos
 			if k == property_util.HOST.Name && !hostInfo.IsNil() {
 				value = hostInfo.Host
 			}
-			builder.WriteString(fmt.Sprintf("%s=%s", k, value))
+			fmt.Fprintf(&builder, "%s=%s", k, value)
 		}
 	}
 	return builder.String()

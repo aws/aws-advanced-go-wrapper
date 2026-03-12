@@ -53,7 +53,7 @@ type CustomEndpointMonitorImpl struct {
 	customEndpointHostInfo *host_info_util.HostInfo
 	endpointIdentifier     string
 	region                 region_util.Region
-	refreshRateMs          time.Duration
+	refreshRate            time.Duration
 	infoChangedCounter     telemetry.TelemetryCounter
 	rdsClient              *rds.Client
 
@@ -75,7 +75,7 @@ func NewCustomEndpointMonitorImpl(
 	customEndpointHostInfo *host_info_util.HostInfo,
 	endpointIdentifier string,
 	region region_util.Region,
-	refreshRateMs time.Duration,
+	refreshRate time.Duration,
 	infoChangedCounter telemetry.TelemetryCounter,
 	rdsClient *rds.Client,
 ) *CustomEndpointMonitorImpl {
@@ -84,7 +84,7 @@ func NewCustomEndpointMonitorImpl(
 		customEndpointHostInfo: customEndpointHostInfo,
 		endpointIdentifier:     endpointIdentifier,
 		region:                 region,
-		refreshRateMs:          refreshRateMs,
+		refreshRate:            refreshRate,
 		infoChangedCounter:     infoChangedCounter,
 		rdsClient:              rdsClient,
 	}
@@ -142,11 +142,11 @@ func (monitor *CustomEndpointMonitorImpl) Monitor() {
 		// Error checking
 		if err != nil {
 			slog.Error(error_util.GetMessage("CustomEndpointMonitorImpl.error", err))
-			monitor.sleep(monitor.refreshRateMs)
+			monitor.sleep(monitor.refreshRate)
 			continue
 		} else if resp == nil || resp.DBClusterEndpoints == nil {
 			slog.Error(error_util.GetMessage("CustomEndpointMonitorImpl.nilResponse"))
-			monitor.sleep(monitor.refreshRateMs)
+			monitor.sleep(monitor.refreshRate)
 			continue
 		} else if len(resp.DBClusterEndpoints) != 1 {
 			var endpointsString string
@@ -163,7 +163,7 @@ func (monitor *CustomEndpointMonitorImpl) Monitor() {
 				monitor.region,
 				len(resp.DBClusterEndpoints),
 				endpointsString))
-			monitor.sleep(monitor.refreshRateMs)
+			monitor.sleep(monitor.refreshRate)
 			continue
 		}
 
@@ -172,14 +172,14 @@ func (monitor *CustomEndpointMonitorImpl) Monitor() {
 		endpointInfo, err := NewCustomEndpointInfo(resp.DBClusterEndpoints[0])
 		if err != nil {
 			slog.Error(err.Error())
-			monitor.sleep(monitor.refreshRateMs)
+			monitor.sleep(monitor.refreshRate)
 			continue
 		}
 		cachedEndpointInfo, ok := customEndpointInfoCache.Get(monitor.getCustomEndpointInfoCacheKey())
 
 		if ok && endpointInfo.Equals(cachedEndpointInfo) {
 			elapsedTime := time.Since(start)
-			sleepDuration := monitor.refreshRateMs - elapsedTime
+			sleepDuration := monitor.refreshRate - elapsedTime
 			if sleepDuration < 0 {
 				sleepDuration = 0
 			}
@@ -205,7 +205,7 @@ func (monitor *CustomEndpointMonitorImpl) Monitor() {
 		monitor.infoChangedCounter.Inc(monitor.servicesContainer.GetPluginService().GetTelemetryContext())
 
 		elapsedTime := time.Since(start)
-		sleepDuration := monitor.refreshRateMs - elapsedTime
+		sleepDuration := monitor.refreshRate - elapsedTime
 		if sleepDuration < 0 {
 			sleepDuration = 0
 		}

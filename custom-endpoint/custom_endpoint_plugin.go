@@ -218,7 +218,7 @@ func (plugin *CustomEndpointPlugin) Execute(
 
 func (plugin *CustomEndpointPlugin) createMonitorIfAbsent(
 	props *utils.RWMap[string, string]) (CustomEndpointMonitor, error) {
-	refreshRateMs := time.Millisecond * time.Duration(property_util.GetRefreshRateValue(props, property_util.CUSTOM_ENDPOINT_INFO_REFRESH_RATE_MS))
+	refreshRate := time.Millisecond * time.Duration(property_util.GetRefreshRateValue(props, property_util.CUSTOM_ENDPOINT_INFO_REFRESH_RATE_MS))
 
 	// Capture values for the initializer closure
 	customEndpointHostInfo := plugin.customEndpointHostInfo
@@ -246,7 +246,7 @@ func (plugin *CustomEndpointPlugin) createMonitorIfAbsent(
 				customEndpointHostInfo,
 				endpointIdentifier,
 				region,
-				refreshRateMs,
+				refreshRate,
 				infoChangedCounter,
 				rdsClient,
 			), nil

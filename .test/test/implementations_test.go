@@ -83,8 +83,8 @@ func TestImplementations(t *testing.T) {
 	var _ driver_infrastructure.BlueGreenDialect = (*driver_infrastructure.AuroraPgDatabaseDialect)(nil)
 
 	// RowParser implementations
-	var _ driver_infrastructure.RowParser = mysql_driver.MySQLDriverDialect{}.GetRowParser()
-	var _ driver_infrastructure.RowParser = pgx_driver.PgxDriverDialect{}.GetRowParser()
+	var _ = mysql_driver.MySQLDriverDialect{}.GetRowParser()
+	var _ = pgx_driver.PgxDriverDialect{}.GetRowParser()
 
 	// DialectProvider implementations
 	var _ driver_infrastructure.DialectProvider = (*driver_infrastructure.DialectManager)(nil)

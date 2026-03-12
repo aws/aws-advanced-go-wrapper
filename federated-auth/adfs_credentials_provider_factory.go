@@ -106,7 +106,7 @@ func (a *AdfsCredentialsProviderFactory) GetUriAndParamsFromSignInPage(uri strin
 	if err != nil {
 		return "", nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	statusCode := resp.StatusCode
 	if statusCode/100 != 2 {
@@ -180,7 +180,7 @@ func (a *AdfsCredentialsProviderFactory) getSamlAssertionFromPost(uri string, pa
 	if resp == nil || err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	statusCode := resp.StatusCode
 	if statusCode/100 != 2 {

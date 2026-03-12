@@ -205,7 +205,7 @@ func TestFailoverWriterInTransactionWithBegin(t *testing.T) {
 	assert.Equal(t, error_util.GetMessage("Failover.transactionResolutionUnknownError"), txErr.Error())
 
 	// Verify that the transaction was rolled back by checking the table contents.
-	var count int = -1
+	var count = -1
 	err = db.QueryRow("SELECT COUNT(*) FROM test_failover_tx_rollback").Scan(&count)
 	assert.Nil(t, err)
 	assert.Equal(t, 0, count, "Transaction should have been rolled back, table should be empty.")

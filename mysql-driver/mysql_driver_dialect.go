@@ -95,7 +95,7 @@ func (m MySQLDriverDialect) PrepareDsn(properties map[string]string, hostInfo *h
 		if password != "" {
 			password = ":" + password
 		}
-		builder.WriteString(fmt.Sprintf("%s%s@", username, password))
+		fmt.Fprintf(&builder, "%s%s@", username, password)
 	}
 
 	if net != "" {
@@ -112,7 +112,7 @@ func (m MySQLDriverDialect) PrepareDsn(properties map[string]string, hostInfo *h
 		if !hostInfo.IsNil() {
 			address = hostInfo.Host
 		}
-		builder.WriteString(fmt.Sprintf("(%s%s)", address, port))
+		fmt.Fprintf(&builder, "(%s%s)", address, port)
 	}
 
 	builder.WriteString("/")
@@ -128,12 +128,12 @@ func (m MySQLDriverDialect) PrepareDsn(properties map[string]string, hostInfo *h
 			if params.Len() != 0 {
 				params.WriteString("&")
 			}
-			params.WriteString(fmt.Sprintf("%s=%s", k, v))
+			fmt.Fprintf(&params, "%s=%s", k, v)
 		}
 	}
 
 	if params.Len() != 0 {
-		builder.WriteString(fmt.Sprintf("?%s", params.String()))
+		fmt.Fprintf(&builder, "?%s", params.String())
 	}
 	return builder.String()
 }
