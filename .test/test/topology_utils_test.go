@@ -533,23 +533,6 @@ func TestParseInstanceTemplates_SkipsEmptyEntries(t *testing.T) {
 // GlobalAuroraTopologyUtils tests
 // =============================================================================
 
-func TestGlobalAuroraTopologyUtils_QueryForTopologyNotSupported(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockDialect := mock_driver_infrastructure.NewMockGlobalAuroraTopologyDialect(ctrl)
-	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
-	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
-
-	conn, _ := newMockConn(ctrl)
-	instanceTemplate, _ := host_info_util.NewHostInfoBuilder().SetHost("?").Build()
-
-	hosts, err := topologyUtils.QueryForTopology(conn, nil, instanceTemplate)
-	assert.Error(t, err)
-	assert.Nil(t, hosts)
-}
-
 func TestGlobalAuroraTopologyUtils_GetHostRole(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

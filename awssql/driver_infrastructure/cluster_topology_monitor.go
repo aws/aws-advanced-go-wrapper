@@ -58,7 +58,6 @@ var ClusterTopologyMonitorType = &MonitorType{Name: "ClusterTopologyMonitor"}
 
 type ClusterTopologyMonitorImpl struct {
 	servicesContainer              ServicesContainer
-	topologyUtils                  TopologyUtils
 	clusterId                      string
 	isVerifiedWriterConn           bool
 	highRefreshRateEndTimeInNanos  int64
@@ -91,65 +90,30 @@ type ClusterTopologyMonitorImpl struct {
 	topologyQueryStrategy          TopologyQueryStrategy
 }
 
-// topologyQueryStrategy provides pluggable behavior for topology querying
-// and instance template resolution.
+// TopologyQueryStrategy provides pluggable behavior for topology querying,
+// instance template resolution, and writer detection. This is the sole
+// topology dependency for ClusterTopologyMonitorImpl — the monitor does not
+// hold a TopologyUtils reference directly.
 type TopologyQueryStrategy interface {
 	// QueryForTopology fetches the current cluster topology using the given connection.
 	QueryForTopology(conn driver.Conn) ([]*host_info_util.HostInfo, error)
 	// GetInstanceTemplate returns the instance template for the given instance.
 	// Returns nil if the default clusterInstanceTemplate should be used.
 	GetInstanceTemplate(instanceId string, conn driver.Conn) (*host_info_util.HostInfo, error)
-}
-
-// rdsTopologyQueryStrategy is the standard strategy for RDS clusters (Aurora and Multi-AZ).
-type rdsTopologyQueryStrategy struct {
-	topologyUtils           TopologyUtils
-	initialHostInfo         *host_info_util.HostInfo
-	clusterInstanceTemplate *host_info_util.HostInfo
-}
-
-func (d *rdsTopologyQueryStrategy) QueryForTopology(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
-	return d.topologyUtils.QueryForTopology(conn, d.initialHostInfo, d.clusterInstanceTemplate)
-}
-
-func (d *rdsTopologyQueryStrategy) GetInstanceTemplate(_ string, _ driver.Conn) (*host_info_util.HostInfo, error) {
-	return nil, nil // nil signals: use the default clusterInstanceTemplate
-}
-
-// globalAuroraTopologyQueryStrategy implements TopologyQueryStrategy for
-// Global Aurora Databases. It uses the multi-region topology query and
-// resolves region-specific instance templates via RegionAwareTopologyUtils.
-type globalAuroraTopologyQueryStrategy struct {
-	topologyUtils             RegionAwareTopologyUtils
-	initialHostInfo           *host_info_util.HostInfo
-	clusterInstanceTemplate   *host_info_util.HostInfo
-	instanceTemplatesByRegion map[string]*host_info_util.HostInfo
-}
-
-func (s *globalAuroraTopologyQueryStrategy) QueryForTopology(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
-	return s.topologyUtils.QueryForTopologyByRegion(conn, s.initialHostInfo, s.instanceTemplatesByRegion)
-}
-
-func (s *globalAuroraTopologyQueryStrategy) GetInstanceTemplate(instanceId string, conn driver.Conn) (*host_info_util.HostInfo, error) {
-	region, err := s.topologyUtils.GetRegion(instanceId, conn)
-	if err != nil {
-		return nil, err
-	}
-	if region != "" {
-		template, found := s.instanceTemplatesByRegion[region]
-		if !found {
-			return nil, error_util.NewGenericAwsWrapperError(
-				error_util.GetMessage("GlobalAuroraTopologyMonitor.cannotFindRegionTemplate", region))
-		}
-		return template, nil
-	}
-	// Region not found for this instance; fall back to default template.
-	return nil, nil
+	// IsWriterInstance checks whether the given connection is to a writer instance.
+	IsWriterInstance(conn driver.Conn) (bool, error)
+	// GetInstanceId returns the instance identifier for the connected database instance.
+	// Returns (instanceId, instanceName) - empty strings if unable to determine.
+	GetInstanceId(conn driver.Conn) (string, string)
+	// CreateHost creates a HostInfo from topology data. Returns nil if creation fails.
+	CreateHost(
+		instanceId, instanceName string, isWriter bool, weight int,
+		lastUpdateTime time.Time, initialHost, instanceTemplate *host_info_util.HostInfo,
+	) *host_info_util.HostInfo
 }
 
 func NewClusterTopologyMonitorImpl(
 	servicesContainer ServicesContainer,
-	topologyUtils TopologyUtils,
 	clusterId string,
 	highRefreshRateNano time.Duration,
 	refreshRateNano time.Duration,
@@ -162,7 +126,6 @@ func NewClusterTopologyMonitorImpl(
 
 	return &ClusterTopologyMonitorImpl{
 		servicesContainer:              servicesContainer,
-		topologyUtils:                  topologyUtils,
 		clusterId:                      clusterId,
 		monitoringProps:                monitoringProps,
 		initialHostInfo:                initialHostInfo,
@@ -639,7 +602,7 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 		if c.monitoringConn.CompareAndSwap(emptyContainer, ConnectionContainer{conn}) {
 			slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.openedMonitoringConnection", c.initialHostInfo.GetHost()))
 
-			isWriterInstance, getWriterNameErr := c.topologyUtils.IsWriterInstance(conn)
+			isWriterInstance, getWriterNameErr := c.topologyQueryStrategy.IsWriterInstance(conn)
 			if getWriterNameErr == nil && isWriterInstance {
 				c.isVerifiedWriterConn = true
 
@@ -647,10 +610,10 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 					c.writerHostInfo.Store(c.initialHostInfo)
 					slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.writerMonitoringConnection", c.writerHostInfo.Load().GetHost()))
 				} else {
-					hostId, hostName := c.topologyUtils.GetInstanceId(conn)
+					hostId, hostName := c.topologyQueryStrategy.GetInstanceId(conn)
 					if hostId != "" || hostName != "" {
 						instanceTemplate := c.getInstanceTemplate(hostName, conn)
-						c.writerHostInfo.Store(c.topologyUtils.CreateHost(hostId, hostName, true, 0, time.Time{}, c.initialHostInfo, instanceTemplate))
+						c.writerHostInfo.Store(c.topologyQueryStrategy.CreateHost(hostId, hostName, true, 0, time.Time{}, c.initialHostInfo, instanceTemplate))
 						slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.writerMonitoringConnection", c.writerHostInfo.Load().GetHost()))
 					}
 				}
@@ -777,7 +740,7 @@ func (h *HostMonitoringRoutine) run() {
 		}
 
 		if conn != nil {
-			isWriter, err := h.monitor.topologyUtils.IsWriterInstance(conn)
+			isWriter, err := h.monitor.topologyQueryStrategy.IsWriterInstance(conn)
 			if err != nil {
 				h.monitor.closeConnection(conn)
 				conn = nil
