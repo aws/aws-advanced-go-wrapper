@@ -241,8 +241,8 @@ func (m *AuroraMySQLDatabaseDialect) GetHostListProviderSupplier() HostListProvi
 		initialDsn string,
 		servicesContainer ServicesContainer,
 	) (HostListProvider, error) {
-		parser := servicesContainer.GetPluginService().GetTargetDriverDialect().GetRowParser()
-		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewAuroraTopologyUtils(m, parser), props, servicesContainer, nil), nil
+		dialect := servicesContainer.GetPluginService().GetTargetDriverDialect()
+		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewAuroraTopologyUtils(m, dialect, props), props, servicesContainer, nil), nil
 	}
 }
 func (m *AuroraMySQLDatabaseDialect) GetBlueGreenStatusQuery() string {
@@ -298,8 +298,8 @@ func (g *GlobalAuroraMySQLDatabaseDialect) GetHostListProviderSupplier() HostLis
 		initialDsn string,
 		servicesContainer ServicesContainer,
 	) (HostListProvider, error) {
-		parser := servicesContainer.GetPluginService().GetTargetDriverDialect().GetRowParser()
-		return NewGlobalAuroraHostListProvider(servicesContainer.GetHostListProviderService(), NewGlobalAuroraTopologyUtils(g, parser), props, servicesContainer)
+		dialect := servicesContainer.GetPluginService().GetTargetDriverDialect()
+		return NewGlobalAuroraHostListProvider(servicesContainer.GetHostListProviderService(), NewGlobalAuroraTopologyUtils(g, dialect, props), props, servicesContainer)
 	}
 }
 
@@ -370,7 +370,7 @@ func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetHostListProviderSupplier() Ho
 		initialDsn string,
 		servicesContainer ServicesContainer,
 	) (HostListProvider, error) {
-		parser := servicesContainer.GetPluginService().GetTargetDriverDialect().GetRowParser()
-		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewMultiAzTopologyUtils(r, parser), props, servicesContainer, nil), nil
+		dialect := servicesContainer.GetPluginService().GetTargetDriverDialect()
+		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewMultiAzTopologyUtils(r, dialect, props), props, servicesContainer, nil), nil
 	}
 }

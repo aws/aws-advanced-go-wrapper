@@ -105,6 +105,8 @@ func (g *GlobalAuroraHostListProvider) getOrCreateMonitor() (ClusterTopologyMoni
 		instanceTemplatesByRegion: g.instanceTemplatesByRegion,
 	}
 
+	monitoringProps := getMonitoringProps(g.base.properties, g.base.servicesContainer.GetPluginService())
+
 	initializer := func(container ServicesContainer) (Monitor, error) {
 		monitor := NewClusterTopologyMonitorImpl(
 			container,
@@ -113,7 +115,7 @@ func (g *GlobalAuroraHostListProvider) getOrCreateMonitor() (ClusterTopologyMoni
 			highRefreshRateNano,
 			g.base.refreshRateNanos,
 			TOPOLOGY_CACHE_EXPIRATION_NANO,
-			g.base.properties,
+			monitoringProps,
 			g.base.initialHostInfo,
 			g.base.clusterInstanceTemplate,
 			g.base.servicesContainer.GetPluginService(),

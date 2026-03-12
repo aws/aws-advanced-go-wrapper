@@ -145,3 +145,7 @@ func (m MySQLDriverDialect) GetDriverRegistrationName() string {
 func (m MySQLDriverDialect) GetRowParser() driver_infrastructure.RowParser {
 	return defaultRowParser
 }
+
+func (m MySQLDriverDialect) GetPropertyResolver() driver_infrastructure.DriverPropertyResolver {
+	return defaultPropertyResolver
+}
