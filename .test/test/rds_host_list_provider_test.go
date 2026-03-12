@@ -141,6 +141,10 @@ func TestRefreshQueriesMonitorWhenNoCachedTopology(t *testing.T) {
 		"postgres://someUser:somePassword@localhost:5432/pgx_test?sslmode=disable&foo=bar&clusterId=pg_cluster")
 	mockPS.EXPECT().IsDialectConfirmed().Return(true).AnyTimes()
 
+	// Mock the driver dialect + resolver chain for getMonitoringProps.
+	mockDriverDialect := newMockDriverDialect(ctrl, nil)
+	mockPS.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).AnyTimes()
+
 	// Mock the monitor to return topology hosts.
 	monitorHost, _ := host_info_util.NewHostInfoBuilder().SetHost("monitor_host").SetRole(host_info_util.WRITER).Build()
 	mockMonitor := mock_driver_infrastructure.NewMockClusterTopologyMonitor(ctrl)
@@ -167,6 +171,10 @@ func TestForceRefreshAlwaysQueriesMonitor(t *testing.T) {
 	provider, mockPS, mockMonitorService, _, mockContainer, storageService := rdsTestSetup(ctrl,
 		"postgres://someUser:somePassword@localhost:5432/pgx_test?sslmode=disable&foo=bar&clusterId=pg_cluster")
 	mockPS.EXPECT().IsDialectConfirmed().Return(true).AnyTimes()
+
+	// Mock the driver dialect + resolver chain for getMonitoringProps.
+	mockDriverDialect := newMockDriverDialect(ctrl, nil)
+	mockPS.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).AnyTimes()
 
 	// Pre-populate cache with old data.
 	cachedHost, _ := host_info_util.NewHostInfoBuilder().SetHost("cached_host").SetRole(host_info_util.WRITER).Build()

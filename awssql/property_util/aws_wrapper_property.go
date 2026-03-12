@@ -189,6 +189,8 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	GDB_FAILOVER_HOME_REGION.Name:                   true,
 	ENABLE_CONNECT_FAILOVER.Name:                    true,
 	CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS.Name:      true,
+	CLUSTER_TOPOLOGY_CONNECT_TIMEOUT_MS.Name:        true,
+	CLUSTER_TOPOLOGY_SOCKET_TIMEOUT_MS.Name:         true,
 	WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS.Name:          true,
 	IAM_TOKEN_EXPIRATION_SEC.Name:                   true,
 	IDP_USERNAME.Name:                               true,
@@ -472,6 +474,20 @@ var CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS = AwsWrapperProperty{
 	Name:                "clusterTopologyHighRefreshRateMs",
 	description:         "Cluster topology high refresh rate in milliseconds.",
 	defaultValue:        "100",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var CLUSTER_TOPOLOGY_CONNECT_TIMEOUT_MS = AwsWrapperProperty{
+	Name:                "clusterTopologyConnectTimeoutMs",
+	description:         "Connect timeout in milliseconds for cluster topology monitoring connections.",
+	defaultValue:        "5000",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var CLUSTER_TOPOLOGY_SOCKET_TIMEOUT_MS = AwsWrapperProperty{
+	Name:                "clusterTopologySocketTimeoutMs",
+	description:         "Socket timeout in milliseconds for cluster topology monitoring connections.",
+	defaultValue:        "5000",
 	wrapperPropertyType: WRAPPER_TYPE_INT,
 }
 

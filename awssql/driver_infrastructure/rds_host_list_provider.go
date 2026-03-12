@@ -117,9 +117,33 @@ func (r *RdsHostListProvider) init() {
 	r.isInitialized = true
 }
 
+// getMonitoringProps copies user props and overlays driver-specific timeout
+// parameters for monitoring connections (connect timeout and socket timeout).
+func getMonitoringProps(props *utils.RWMap[string, string], pluginService PluginService) *utils.RWMap[string, string] {
+	monitoringProps := utils.NewRWMapFromMap(props.GetAllEntries())
+
+	targetDriver := pluginService.GetTargetDriverDialect()
+	resolver := targetDriver.GetPropertyResolver()
+
+	connectTimeoutMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.CLUSTER_TOPOLOGY_CONNECT_TIMEOUT_MS)
+	socketTimeoutMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.CLUSTER_TOPOLOGY_SOCKET_TIMEOUT_MS)
+
+	driverProps := resolver.CreateProps(
+		WithProperty(ConnectTimeout, connectTimeoutMs),
+		WithProperty(SocketTimeout, socketTimeoutMs),
+	)
+	for k, v := range driverProps {
+		monitoringProps.Put(k, v)
+	}
+
+	return monitoringProps
+}
+
 func (r *RdsHostListProvider) getOrCreateMonitor() (ClusterTopologyMonitor, error) {
 	r.init()
 	highRefreshRateNano := time.Millisecond * time.Duration(property_util.GetRefreshRateValue(r.properties, property_util.CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS))
+
+	monitoringProps := getMonitoringProps(r.properties, r.servicesContainer.GetPluginService())
 
 	initializer := func(container ServicesContainer) (Monitor, error) {
 		monitor := NewClusterTopologyMonitorImpl(
@@ -129,7 +153,7 @@ func (r *RdsHostListProvider) getOrCreateMonitor() (ClusterTopologyMonitor, erro
 			highRefreshRateNano,
 			r.refreshRateNanos,
 			TOPOLOGY_CACHE_EXPIRATION_NANO,
-			r.properties,
+			monitoringProps,
 			r.initialHostInfo,
 			r.clusterInstanceTemplate,
 			r.servicesContainer.GetPluginService(),

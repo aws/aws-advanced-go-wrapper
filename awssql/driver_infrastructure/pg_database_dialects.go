@@ -229,8 +229,8 @@ func (m *AuroraPgDatabaseDialect) GetHostListProviderSupplier() HostListProvider
 		initialDsn string,
 		servicesContainer ServicesContainer,
 	) (HostListProvider, error) {
-		parser := servicesContainer.GetPluginService().GetTargetDriverDialect().GetRowParser()
-		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewAuroraTopologyUtils(m, parser), props, servicesContainer, nil), nil
+		dialect := servicesContainer.GetPluginService().GetTargetDriverDialect()
+		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewAuroraTopologyUtils(m, dialect, props), props, servicesContainer, nil), nil
 	}
 }
 
@@ -300,8 +300,8 @@ func (g *GlobalAuroraPgDatabaseDialect) GetHostListProviderSupplier() HostListPr
 		initialDsn string,
 		servicesContainer ServicesContainer,
 	) (HostListProvider, error) {
-		parser := servicesContainer.GetPluginService().GetTargetDriverDialect().GetRowParser()
-		return NewGlobalAuroraHostListProvider(servicesContainer.GetHostListProviderService(), NewGlobalAuroraTopologyUtils(g, parser), props, servicesContainer)
+		dialect := servicesContainer.GetPluginService().GetTargetDriverDialect()
+		return NewGlobalAuroraHostListProvider(servicesContainer.GetHostListProviderService(), NewGlobalAuroraTopologyUtils(g, dialect, props), props, servicesContainer)
 	}
 }
 
@@ -352,8 +352,8 @@ func (r *RdsMultiAzClusterPgDatabaseDialect) GetHostListProviderSupplier() HostL
 		initialDsn string,
 		servicesContainer ServicesContainer,
 	) (HostListProvider, error) {
-		parser := servicesContainer.GetPluginService().GetTargetDriverDialect().GetRowParser()
-		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewMultiAzTopologyUtils(r, parser), props, servicesContainer, nil), nil
+		dialect := servicesContainer.GetPluginService().GetTargetDriverDialect()
+		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewMultiAzTopologyUtils(r, dialect, props), props, servicesContainer, nil), nil
 	}
 }
 

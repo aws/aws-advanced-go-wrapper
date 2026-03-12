@@ -154,16 +154,17 @@ func NewClusterTopologyMonitorImpl(
 	highRefreshRateNano time.Duration,
 	refreshRateNano time.Duration,
 	topologyCacheExpirationNano time.Duration,
-	props *utils.RWMap[string, string],
+	monitoringProps *utils.RWMap[string, string],
 	initialHostInfo *host_info_util.HostInfo,
 	clusterInstanceTemplate *host_info_util.HostInfo,
 	pluginService PluginService,
 	strategy TopologyQueryStrategy) *ClusterTopologyMonitorImpl {
+
 	return &ClusterTopologyMonitorImpl{
 		servicesContainer:              servicesContainer,
 		topologyUtils:                  topologyUtils,
 		clusterId:                      clusterId,
-		monitoringProps:                props,
+		monitoringProps:                monitoringProps,
 		initialHostInfo:                initialHostInfo,
 		clusterInstanceTemplate:        clusterInstanceTemplate,
 		pluginService:                  pluginService,
@@ -631,6 +632,7 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 		conn, err := c.pluginService.ForceConnect(c.initialHostInfo, c.monitoringProps)
 		if err != nil || conn == nil {
 			// Can't connect.
+			slog.Debug(error_util.GetMessage("ClusterTopologyMonitorImpl.monitoringConnectionFailed", c.initialHostInfo.GetHost(), err))
 			return nil, err
 		}
 
@@ -749,6 +751,7 @@ func (h *HostMonitoringRoutine) run() {
 		if conn == nil {
 			conn, err = h.monitor.pluginService.ForceConnect(h.hostInfo, h.monitor.monitoringProps)
 			if err != nil {
+				slog.Debug(error_util.GetMessage("HostMonitoringRoutine.connectionFailed", h.hostInfo.GetHost(), err))
 				h.monitor.pluginService.SetAvailability(h.hostInfo.AllAliases, host_info_util.UNAVAILABLE)
 				if h.monitor.pluginService.IsNetworkError(err) {
 					// Network issue expected during cluster failover. Retry on next iteration.
@@ -780,6 +783,14 @@ func (h *HostMonitoringRoutine) run() {
 				conn = nil
 				h.monitor.completedOneCycle.Put(h.hostInfo.HostId, true)
 				h.monitor.readerTopologiesById.Remove(h.hostInfo.HostId)
+			}
+
+			if isWriter {
+				// Double-check with pg_is_in_recovery() to verify the node is genuinely
+				// functioning as a writer. The first connection after failover may be stale.
+				if h.monitor.pluginService.GetHostRole(conn) != host_info_util.WRITER {
+					isWriter = false
+				}
 			}
 
 			if isWriter {

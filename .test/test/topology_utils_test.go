@@ -33,6 +33,33 @@ import (
 // Helper to create a mock connection (driver.Conn + driver.QueryerContext)
 // =============================================================================
 
+// stubPropertyResolver is a minimal DriverPropertyResolver for tests.
+// It reports socket timeout as supported via DSN so that topology utils
+// constructors resolve queryTimeoutMs to 0 (matching pre-refactor test behavior).
+type stubPropertyResolver struct{}
+
+func (s *stubPropertyResolver) GetPropertyName(key driver_infrastructure.DriverPropertyKey) string {
+	if key == driver_infrastructure.SocketTimeout {
+		return "timeout"
+	}
+	return ""
+}
+func (s *stubPropertyResolver) FormatValue(_ driver_infrastructure.DriverPropertyKey, _ int) string {
+	return ""
+}
+func (s *stubPropertyResolver) CreateProps(_ ...driver_infrastructure.DriverPropertyOption) map[string]string {
+	return nil
+}
+
+// newMockDriverDialect creates a MockDriverDialect that returns the given parser
+// and a stub resolver. Use this when constructing topology utils in tests.
+func newMockDriverDialect(ctrl *gomock.Controller, parser driver_infrastructure.RowParser) *mock_driver_infrastructure.MockDriverDialect {
+	mockDD := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
+	mockDD.EXPECT().GetRowParser().Return(parser).AnyTimes()
+	mockDD.EXPECT().GetPropertyResolver().Return(&stubPropertyResolver{}).AnyTimes()
+	return mockDD
+}
+
 func newMockConn(ctrl *gomock.Controller) (struct {
 	driver.Conn
 	driver.QueryerContext
@@ -56,7 +83,8 @@ func TestAuroraTopologyUtils_GetHostRole(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	isReaderQuery := "SELECT is_reader_query"
 	mockDialect.EXPECT().GetIsReaderQuery().Return(isReaderQuery).AnyTimes()
@@ -101,7 +129,8 @@ func TestAuroraTopologyUtils_QueryForTopology(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	topologyQuery := "SELECT topology_query"
 	mockDialect.EXPECT().GetTopologyQuery().Return(topologyQuery).AnyTimes()
@@ -164,7 +193,8 @@ func TestAuroraTopologyUtils_GetInstanceId(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	instanceIdQuery := "SELECT instance_id_query"
 	mockDialect.EXPECT().GetInstanceIdQuery().Return(instanceIdQuery).AnyTimes()
@@ -205,7 +235,8 @@ func TestAuroraTopologyUtils_IsWriterInstance(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	writerIdQuery := "SELECT writer_id_query"
 	mockDialect.EXPECT().GetWriterIdQuery().Return(writerIdQuery).AnyTimes()
@@ -250,7 +281,8 @@ func TestMultiAzTopologyUtils_GetHostRole(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockMultiAzTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewMultiAzTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewMultiAzTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	isReaderQuery := "SELECT is_reader_query"
 	mockDialect.EXPECT().GetIsReaderQuery().Return(isReaderQuery).AnyTimes()
@@ -295,7 +327,8 @@ func TestMultiAzTopologyUtils_GetInstanceId(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockMultiAzTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewMultiAzTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewMultiAzTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	instanceIdQuery := "SELECT instance_id_query"
 	mockDialect.EXPECT().GetInstanceIdQuery().Return(instanceIdQuery).AnyTimes()
@@ -336,7 +369,8 @@ func TestMultiAzTopologyUtils_IsWriterInstance(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockMultiAzTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewMultiAzTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewMultiAzTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	writerIdQuery := "SELECT writer_id_query"
 	mockDialect.EXPECT().GetWriterIdQuery().Return(writerIdQuery).AnyTimes()
@@ -372,7 +406,8 @@ func TestMultiAzTopologyUtils_QueryForTopology(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockMultiAzTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewMultiAzTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewMultiAzTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	topologyQuery := "SELECT topology_query"
 	writerIdQuery := "SELECT writer_id_query"
@@ -504,7 +539,8 @@ func TestGlobalAuroraTopologyUtils_QueryForTopologyNotSupported(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockGlobalAuroraTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	conn, _ := newMockConn(ctrl)
 	instanceTemplate, _ := host_info_util.NewHostInfoBuilder().SetHost("?").Build()
@@ -520,7 +556,8 @@ func TestGlobalAuroraTopologyUtils_GetHostRole(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockGlobalAuroraTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	isReaderQuery := "SELECT is_reader_query"
 	mockDialect.EXPECT().GetIsReaderQuery().Return(isReaderQuery).AnyTimes()
@@ -555,7 +592,8 @@ func TestGlobalAuroraTopologyUtils_GetInstanceId(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockGlobalAuroraTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	instanceIdQuery := "SELECT instance_id_query"
 	mockDialect.EXPECT().GetInstanceIdQuery().Return(instanceIdQuery).AnyTimes()
@@ -584,7 +622,8 @@ func TestGlobalAuroraTopologyUtils_IsWriterInstance(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockGlobalAuroraTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	writerIdQuery := "SELECT writer_id_query"
 	mockDialect.EXPECT().GetWriterIdQuery().Return(writerIdQuery).AnyTimes()
@@ -625,7 +664,8 @@ func TestGlobalAuroraTopologyUtils_QueryForTopologyByRegion(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockGlobalAuroraTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	topologyQuery := "SELECT topology_query"
 	mockDialect.EXPECT().GetTopologyQuery().Return(topologyQuery).AnyTimes()
@@ -690,7 +730,8 @@ func TestGlobalAuroraTopologyUtils_QueryForTopologyByRegion_MissingRegionTemplat
 
 	mockDialect := mock_driver_infrastructure.NewMockGlobalAuroraTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	topologyQuery := "SELECT topology_query"
 	mockDialect.EXPECT().GetTopologyQuery().Return(topologyQuery).AnyTimes()
@@ -736,7 +777,8 @@ func TestGlobalAuroraTopologyUtils_QueryForTopologyByRegion_DuplicateHostKeepsNe
 
 	mockDialect := mock_driver_infrastructure.NewMockGlobalAuroraTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	topologyQuery := "SELECT topology_query"
 	mockDialect.EXPECT().GetTopologyQuery().Return(topologyQuery).AnyTimes()
@@ -795,7 +837,8 @@ func TestGlobalAuroraTopologyUtils_GetRegion(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockGlobalAuroraTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	regionQuery := "SELECT AWS_REGION FROM ... WHERE SERVER_ID = ?"
 	mockDialect.EXPECT().GetRegionByInstanceIdQuery().Return(regionQuery).AnyTimes()
@@ -822,7 +865,8 @@ func TestGlobalAuroraTopologyUtils_GetRegion_NoRows(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockGlobalAuroraTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	regionQuery := "SELECT AWS_REGION FROM ... WHERE SERVER_ID = ?"
 	mockDialect.EXPECT().GetRegionByInstanceIdQuery().Return(regionQuery).AnyTimes()
