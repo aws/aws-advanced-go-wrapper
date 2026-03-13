@@ -114,7 +114,6 @@ func NewClusterTopologyMonitorImpl(
 	clusterInstanceTemplate *host_info_util.HostInfo,
 	pluginService PluginService,
 	strategy TopologyQueryStrategy) *ClusterTopologyMonitorImpl {
-
 	return &ClusterTopologyMonitorImpl{
 		servicesContainer:              servicesContainer,
 		clusterId:                      clusterId,
@@ -398,7 +397,7 @@ func (c *ClusterTopologyMonitorImpl) checkForStableReaderTopologies() {
 }
 
 // calculateBackoffWithJitter returns an exponential backoff duration with jitter.
-// backoff = min(initialBackoffMs * 2^min(attempt, 6), maxBackoffMs) * random(0.5, 1.0)
+// backoff = min(initialBackoffMs * 2^min(attempt, 6), maxBackoffMs) * random(0.5, 1.0).
 func calculateBackoffWithJitter(attempt int) time.Duration {
 	exp := math.Min(float64(attempt), 6)
 	backoff := float64(initialBackoffMs) * math.Round(math.Pow(2, exp))

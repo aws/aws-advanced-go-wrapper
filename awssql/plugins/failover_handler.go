@@ -16,7 +16,7 @@
 
 package plugins
 
-// FailoverHandler defines the behvaiour of failover-specific logic
+// FailoverHandler defines the behvaiour of failover-specific logic.
 type FailoverHandler interface {
 	// initFailoverMode initializes the failover mode based on connection properties and URL type.
 	initFailoverMode() error

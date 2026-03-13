@@ -112,7 +112,7 @@ func CopyHostList(hosts []*HostInfo) []*HostInfo {
 	return result
 }
 
-// TODO: Rename this
+// TODO: Rename this.
 func TopologyComparisonKey(hosts []*HostInfo) string {
 	sorted := make([]*HostInfo, len(hosts))
 	copy(sorted, hosts)

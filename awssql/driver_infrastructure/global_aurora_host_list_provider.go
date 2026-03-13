@@ -132,7 +132,7 @@ func (g *GlobalAuroraHostListProvider) ForceRefreshHostListWithTimeout(shouldVer
 
 // =============================================================================
 // TopologyQueryStrategy interface
-// =============================================================================
+// =============================================================================.
 type globalAuroraTopologyQueryStrategy struct {
 	topologyUtils             GlobalClusterTopologyUtils
 	initialHostInfo           *host_info_util.HostInfo
