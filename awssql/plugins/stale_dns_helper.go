@@ -18,9 +18,7 @@ package plugins
 
 import (
 	"database/sql/driver"
-	"fmt"
 	"log/slog"
-	"net"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
@@ -33,7 +31,6 @@ type StaleDnsHelper struct {
 	pluginService   driver_infrastructure.PluginService
 	staleDnsCounter telemetry.TelemetryCounter
 	writerHostInfo  *host_info_util.HostInfo
-	writerHostAddr  string
 }
 
 func NewStaleDnsHelper(pluginService driver_infrastructure.PluginService) (*StaleDnsHelper, error) {
@@ -60,21 +57,8 @@ func (s *StaleDnsHelper) GetVerifiedConnection(
 		return nil, err
 	}
 
-	ip, ipErr := net.LookupIP(host)
-	clusterInetAddress := ""
-	if ipErr == nil {
-		clusterInetAddress = fmt.Sprintf("%s", ip)
-		clusterInetAddress = clusterInetAddress[1 : len(clusterInetAddress)-1]
-	}
-
-	hostInetAddress := clusterInetAddress
-	slog.Info(error_util.GetMessage("StaleDnsHelper.clusterEndpointDns", hostInetAddress))
-
-	if hostInetAddress == "" {
-		return conn, err
-	}
-
-	if s.pluginService.GetHostRole(conn) == host_info_util.READER {
+	isConnectedToReader := s.pluginService.GetHostRole(conn) == host_info_util.READER
+	if isConnectedToReader {
 		// This if-statement is only reached if the connection url is a writer cluster endpoint.
 		// If the new connection resolves to a reader instance, this means the topology is outdated.
 		// Force refresh to update the topology.
@@ -105,22 +89,8 @@ func (s *StaleDnsHelper) GetVerifiedConnection(
 		return conn, nil
 	}
 
-	if s.writerHostAddr == "" {
-		ip, ipErr = net.LookupIP(s.writerHostInfo.Host)
-		if ipErr == nil {
-			s.writerHostAddr = fmt.Sprintf("%s", ip)
-			s.writerHostAddr = s.writerHostAddr[1 : len(s.writerHostAddr)-1]
-		}
-	}
-
-	slog.Info(error_util.GetMessage("StaleDnsHelper.writerInetAddress", s.writerHostAddr))
-
-	if s.writerHostAddr == "" {
-		return conn, nil
-	}
-
-	if s.writerHostAddr != clusterInetAddress {
-		// DNS resolves a cluster endpoint to a wrong writer opens a connection to a proper writer host
+	if isConnectedToReader {
+		// Reconnect to writer host if current connection is reader.
 
 		slog.Info(error_util.GetMessage("StaleDnsHelper.staleDnsDetected", s.writerHostInfo.String()))
 
