@@ -549,7 +549,7 @@ func (g *GlobalAuroraTopologyUtils) QueryForTopologyByRegion(
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	if len(rows.Columns()) == 0 {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("TopologyUtils.unexpectedTopologyQueryColumnCount"))
@@ -657,7 +657,7 @@ func (g *GlobalAuroraTopologyUtils) GetRegion(instanceId string, conn driver.Con
 	if err != nil {
 		return "", err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	row := make([]driver.Value, 1)
 	if rows.Next(row) == nil {
@@ -726,7 +726,10 @@ func parseHostPortPairWithRegionPrefix(urlWithRegionPrefix string, defaultPort i
 
 	port := defaultPort
 	if portIdx >= 0 && portIdx < len(matches) && matches[portIdx] != "" {
-		fmt.Sscanf(matches[portIdx], "%d", &port)
+		_, err := fmt.Sscanf(matches[portIdx], "%d", &port)
+		if err != nil {
+			return "", nil, err
+		}
 	}
 
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost(host).SetPort(port).Build()
