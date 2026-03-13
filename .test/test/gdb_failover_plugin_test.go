@@ -170,7 +170,7 @@ func TestGdbFailoverStrictWriter(t *testing.T) {
 		property_util.GDB_FAILOVER_INACTIVE_HOME_MODE.Name: "strict-writer",
 		property_util.ENABLE_CONNECT_FAILOVER.Name:         "false",
 	}, []*host_info_util.HostInfo{gdbWriterHost, gdbReaderHost}, false, host_info_util.WRITER, true, nil)
-	setup.plugin.InitFailoverMode()
+	assert.NoError(t, setup.plugin.InitFailoverMode())
 
 	err := setup.plugin.Failover()
 	assert.Error(t, err)
@@ -185,7 +185,7 @@ func TestGdbFailoverStrictWriterInTransaction(t *testing.T) {
 		property_util.GDB_FAILOVER_INACTIVE_HOME_MODE.Name: "strict-writer",
 		property_util.ENABLE_CONNECT_FAILOVER.Name:         "false",
 	}, []*host_info_util.HostInfo{gdbWriterHost, gdbReaderHost}, true, host_info_util.WRITER, true, nil)
-	setup.plugin.InitFailoverMode()
+	assert.NoError(t, setup.plugin.InitFailoverMode())
 
 	err := setup.plugin.Failover()
 	assert.Error(t, err)
@@ -201,7 +201,7 @@ func TestGdbFailoverStrictWriterConnectionFails(t *testing.T) {
 		property_util.ENABLE_CONNECT_FAILOVER.Name:         "false",
 	}, []*host_info_util.HostInfo{gdbWriterHost, gdbReaderHost}, false, host_info_util.WRITER, true,
 		errors.New("connection refused"))
-	setup.plugin.InitFailoverMode()
+	assert.NoError(t, setup.plugin.InitFailoverMode())
 
 	err := setup.plugin.Failover()
 	assert.Error(t, err)
@@ -216,7 +216,7 @@ func TestGdbFailoverStrictWriterIncorrectRole(t *testing.T) {
 		property_util.GDB_FAILOVER_INACTIVE_HOME_MODE.Name: "strict-writer",
 		property_util.ENABLE_CONNECT_FAILOVER.Name:         "false",
 	}, []*host_info_util.HostInfo{gdbWriterHost, gdbReaderHost}, false, host_info_util.READER, true, nil)
-	setup.plugin.InitFailoverMode()
+	assert.NoError(t, setup.plugin.InitFailoverMode())
 
 	err := setup.plugin.Failover()
 	assert.Error(t, err)
@@ -231,7 +231,7 @@ func TestGdbFailoverTopologyRefreshFails(t *testing.T) {
 		property_util.GDB_FAILOVER_INACTIVE_HOME_MODE.Name: "strict-writer",
 		property_util.ENABLE_CONNECT_FAILOVER.Name:         "false",
 	}, []*host_info_util.HostInfo{gdbWriterHost, gdbReaderHost}, false, host_info_util.WRITER, false, nil)
-	setup.plugin.InitFailoverMode()
+	assert.NoError(t, setup.plugin.InitFailoverMode())
 
 	err := setup.plugin.Failover()
 	assert.Error(t, err)
@@ -246,7 +246,7 @@ func TestGdbFailoverStrictHomeReader(t *testing.T) {
 		property_util.GDB_FAILOVER_INACTIVE_HOME_MODE.Name: "strict-home-reader",
 		property_util.ENABLE_CONNECT_FAILOVER.Name:         "false",
 	}, []*host_info_util.HostInfo{gdbWriterHost, gdbReaderHost, gdbOutOfHomeReaderHost}, false, host_info_util.READER, true, nil)
-	setup.plugin.InitFailoverMode()
+	assert.NoError(t, setup.plugin.InitFailoverMode())
 
 	err := setup.plugin.Failover()
 	assert.Error(t, err)
@@ -261,7 +261,7 @@ func TestGdbFailoverStrictOutOfHomeReader(t *testing.T) {
 		property_util.GDB_FAILOVER_INACTIVE_HOME_MODE.Name: "strict-out-of-home-reader",
 		property_util.ENABLE_CONNECT_FAILOVER.Name:         "false",
 	}, []*host_info_util.HostInfo{gdbWriterHost, gdbReaderHost, gdbOutOfHomeReaderHost}, false, host_info_util.READER, true, nil)
-	setup.plugin.InitFailoverMode()
+	assert.NoError(t, setup.plugin.InitFailoverMode())
 
 	err := setup.plugin.Failover()
 	assert.Error(t, err)
@@ -276,7 +276,7 @@ func TestGdbFailoverStrictAnyReader(t *testing.T) {
 		property_util.GDB_FAILOVER_INACTIVE_HOME_MODE.Name: "strict-any-reader",
 		property_util.ENABLE_CONNECT_FAILOVER.Name:         "false",
 	}, []*host_info_util.HostInfo{gdbWriterHost, gdbReaderHost, gdbOutOfHomeReaderHost}, false, host_info_util.READER, true, nil)
-	setup.plugin.InitFailoverMode()
+	assert.NoError(t, setup.plugin.InitFailoverMode())
 
 	err := setup.plugin.Failover()
 	assert.Error(t, err)
@@ -293,7 +293,7 @@ func TestGdbFailoverStrictReaderConnectionFails(t *testing.T) {
 		property_util.FAILOVER_TIMEOUT_MS.Name:             "2000",
 	}, []*host_info_util.HostInfo{gdbWriterHost, gdbReaderHost}, false, host_info_util.READER, true,
 		errors.New("connection refused"))
-	setup.plugin.InitFailoverMode()
+	assert.NoError(t, setup.plugin.InitFailoverMode())
 
 	err := setup.plugin.Failover()
 	assert.Error(t, err)
@@ -308,7 +308,7 @@ func TestGdbFailoverHomeReaderOrWriter(t *testing.T) {
 		property_util.GDB_FAILOVER_INACTIVE_HOME_MODE.Name: "home-reader-or-writer",
 		property_util.ENABLE_CONNECT_FAILOVER.Name:         "false",
 	}, []*host_info_util.HostInfo{gdbWriterHost, gdbReaderHost, gdbOutOfHomeReaderHost}, false, host_info_util.READER, true, nil)
-	setup.plugin.InitFailoverMode()
+	assert.NoError(t, setup.plugin.InitFailoverMode())
 
 	err := setup.plugin.Failover()
 	assert.Error(t, err)
@@ -323,7 +323,7 @@ func TestGdbFailoverHomeReaderOrWriterWithWriterRole(t *testing.T) {
 		property_util.GDB_FAILOVER_INACTIVE_HOME_MODE.Name: "home-reader-or-writer",
 		property_util.ENABLE_CONNECT_FAILOVER.Name:         "false",
 	}, []*host_info_util.HostInfo{gdbWriterHost, gdbReaderHost}, false, host_info_util.WRITER, true, nil)
-	setup.plugin.InitFailoverMode()
+	assert.NoError(t, setup.plugin.InitFailoverMode())
 
 	err := setup.plugin.Failover()
 	assert.Error(t, err)
@@ -338,7 +338,7 @@ func TestGdbFailoverOutOfHomeReaderOrWriter(t *testing.T) {
 		property_util.GDB_FAILOVER_INACTIVE_HOME_MODE.Name: "out-of-home-reader-or-writer",
 		property_util.ENABLE_CONNECT_FAILOVER.Name:         "false",
 	}, []*host_info_util.HostInfo{gdbWriterHost, gdbReaderHost, gdbOutOfHomeReaderHost}, false, host_info_util.READER, true, nil)
-	setup.plugin.InitFailoverMode()
+	assert.NoError(t, setup.plugin.InitFailoverMode())
 
 	err := setup.plugin.Failover()
 	assert.Error(t, err)
@@ -353,7 +353,7 @@ func TestGdbFailoverAnyReaderOrWriter(t *testing.T) {
 		property_util.GDB_FAILOVER_INACTIVE_HOME_MODE.Name: "any-reader-or-writer",
 		property_util.ENABLE_CONNECT_FAILOVER.Name:         "false",
 	}, []*host_info_util.HostInfo{gdbWriterHost, gdbReaderHost, gdbOutOfHomeReaderHost}, false, host_info_util.WRITER, true, nil)
-	setup.plugin.InitFailoverMode()
+	assert.NoError(t, setup.plugin.InitFailoverMode())
 
 	err := setup.plugin.Failover()
 	assert.Error(t, err)
@@ -370,7 +370,7 @@ func TestGdbFailoverReaderOrWriterConnectionFails(t *testing.T) {
 		property_util.FAILOVER_TIMEOUT_MS.Name:             "2000",
 	}, []*host_info_util.HostInfo{gdbWriterHost, gdbReaderHost}, false, host_info_util.WRITER, true,
 		errors.New("connection refused"))
-	setup.plugin.InitFailoverMode()
+	assert.NoError(t, setup.plugin.InitFailoverMode())
 
 	err := setup.plugin.Failover()
 	assert.Error(t, err)
@@ -392,7 +392,7 @@ func TestGdbFailoverInactiveHomeRegion(t *testing.T) {
 		property_util.GDB_FAILOVER_INACTIVE_HOME_MODE.Name: "strict-writer",
 		property_util.ENABLE_CONNECT_FAILOVER.Name:         "false",
 	}, []*host_info_util.HostInfo{writerInWest, readerInEast}, false, host_info_util.WRITER, true, nil)
-	setup.plugin.InitFailoverMode()
+	assert.NoError(t, setup.plugin.InitFailoverMode())
 
 	err := setup.plugin.Failover()
 	assert.Error(t, err)
@@ -414,7 +414,7 @@ func TestGdbFailoverInactiveHomeRegionReaderMode(t *testing.T) {
 		property_util.GDB_FAILOVER_INACTIVE_HOME_MODE.Name: "strict-any-reader",
 		property_util.ENABLE_CONNECT_FAILOVER.Name:         "false",
 	}, []*host_info_util.HostInfo{writerInWest, readerInEast}, false, host_info_util.READER, true, nil)
-	setup.plugin.InitFailoverMode()
+	assert.NoError(t, setup.plugin.InitFailoverMode())
 
 	err := setup.plugin.Failover()
 	assert.Error(t, err)
