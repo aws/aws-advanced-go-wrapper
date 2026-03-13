@@ -31,7 +31,7 @@ type MySQLDatabaseDialect struct {
 }
 
 func (m *MySQLDatabaseDialect) GetDialectUpdateCandidates() []string {
-	return []string{RDS_MYSQL_MULTI_AZ_CLUSTER_DIALECT, AURORA_MYSQL_DIALECT, RDS_MYSQL_DIALECT}
+	return []string{GLOBAL_AURORA_MYSQL_DIALECT, AURORA_MYSQL_DIALECT, RDS_MYSQL_MULTI_AZ_CLUSTER_DIALECT, RDS_MYSQL_DIALECT}
 }
 
 func (m *MySQLDatabaseDialect) GetDefaultPort() int {
@@ -65,8 +65,8 @@ func (m *MySQLDatabaseDialect) GetHostListProviderSupplier() HostListProviderSup
 		props *utils.RWMap[string, string],
 		initialDsn string,
 		servicesContainer ServicesContainer,
-	) HostListProvider {
-		return NewDsnHostListProvider(props, servicesContainer.GetHostListProviderService())
+	) (HostListProvider, error) {
+		return NewDsnHostListProvider(props, servicesContainer.GetHostListProviderService()), nil
 	}
 }
 
@@ -177,7 +177,7 @@ type RdsMySQLDatabaseDialect struct {
 }
 
 func (m *RdsMySQLDatabaseDialect) GetDialectUpdateCandidates() []string {
-	return []string{RDS_MYSQL_MULTI_AZ_CLUSTER_DIALECT, AURORA_MYSQL_DIALECT}
+	return []string{RDS_MYSQL_MULTI_AZ_CLUSTER_DIALECT, GLOBAL_AURORA_MYSQL_DIALECT, AURORA_MYSQL_DIALECT}
 }
 
 func (m *RdsMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
@@ -208,7 +208,7 @@ type AuroraMySQLDatabaseDialect struct {
 }
 
 func (m *AuroraMySQLDatabaseDialect) GetDialectUpdateCandidates() []string {
-	return []string{RDS_MYSQL_MULTI_AZ_CLUSTER_DIALECT}
+	return []string{GLOBAL_AURORA_MYSQL_DIALECT, RDS_MYSQL_MULTI_AZ_CLUSTER_DIALECT}
 }
 
 func (m *AuroraMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
@@ -240,9 +240,9 @@ func (m *AuroraMySQLDatabaseDialect) GetHostListProviderSupplier() HostListProvi
 		props *utils.RWMap[string, string],
 		initialDsn string,
 		servicesContainer ServicesContainer,
-	) HostListProvider {
-		parser := servicesContainer.GetPluginService().GetTargetDriverDialect().GetRowParser()
-		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewAuroraTopologyUtils(m, parser), props, servicesContainer)
+	) (HostListProvider, error) {
+		dialect := servicesContainer.GetPluginService().GetTargetDriverDialect()
+		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewAuroraTopologyUtils(m, dialect, props), props, servicesContainer, nil), nil
 	}
 }
 func (m *AuroraMySQLDatabaseDialect) GetBlueGreenStatusQuery() string {
@@ -252,6 +252,55 @@ func (m *AuroraMySQLDatabaseDialect) GetBlueGreenStatusQuery() string {
 func (m *AuroraMySQLDatabaseDialect) IsBlueGreenStatusAvailable(conn driver.Conn) bool {
 	topologyTableExistQuery := "SELECT 1 AS tmp FROM information_schema.tables WHERE table_schema = 'mysql' AND table_name = 'rds_topology'"
 	return utils.CheckExistenceQueries(conn, topologyTableExistQuery)
+}
+
+type GlobalAuroraMySQLDatabaseDialect struct {
+	AuroraMySQLDatabaseDialect
+}
+
+func (g *GlobalAuroraMySQLDatabaseDialect) IsDialect(conn driver.Conn) bool {
+	if !utils.CheckExistenceQueries(conn,
+		"SELECT 1 AS tmp FROM information_schema.tables WHERE"+
+			" upper(table_schema) = 'INFORMATION_SCHEMA' AND upper(table_name) = 'AURORA_GLOBAL_DB_STATUS'",
+		"SELECT 1 AS tmp FROM information_schema.tables WHERE"+
+			" upper(table_schema) = 'INFORMATION_SCHEMA' AND upper(table_name) = 'AURORA_GLOBAL_DB_INSTANCE_STATUS'") {
+		return false
+	}
+
+	regionCount := utils.GetFirstRowFromQuery(conn, "SELECT count(1) FROM information_schema.aurora_global_db_status")
+	if regionCount == nil {
+		return false
+	}
+	count, ok := regionCount[0].(int64)
+	if !ok {
+		return false
+	}
+	return count > 1
+}
+
+func (g *GlobalAuroraMySQLDatabaseDialect) GetDialectUpdateCandidates() []string {
+	return []string{}
+}
+
+func (g *GlobalAuroraMySQLDatabaseDialect) GetTopologyQuery() string {
+	return "SELECT SERVER_ID, CASE WHEN SESSION_ID = 'MASTER_SESSION_ID' THEN TRUE ELSE FALSE END, " +
+		"VISIBILITY_LAG_IN_MSEC, AWS_REGION " +
+		"FROM information_schema.aurora_global_db_instance_status "
+}
+
+func (g *GlobalAuroraMySQLDatabaseDialect) GetRegionByInstanceIdQuery() string {
+	return "SELECT AWS_REGION FROM information_schema.aurora_global_db_instance_status WHERE SERVER_ID = ?"
+}
+
+func (g *GlobalAuroraMySQLDatabaseDialect) GetHostListProviderSupplier() HostListProviderSupplier {
+	return func(
+		props *utils.RWMap[string, string],
+		initialDsn string,
+		servicesContainer ServicesContainer,
+	) (HostListProvider, error) {
+		dialect := servicesContainer.GetPluginService().GetTargetDriverDialect()
+		return NewGlobalAuroraHostListProvider(servicesContainer.GetHostListProviderService(), NewGlobalAuroraTopologyUtils(g, dialect, props), props, servicesContainer)
+	}
 }
 
 type RdsMultiAzClusterMySQLDatabaseDialect struct {
@@ -320,8 +369,8 @@ func (r *RdsMultiAzClusterMySQLDatabaseDialect) GetHostListProviderSupplier() Ho
 		props *utils.RWMap[string, string],
 		initialDsn string,
 		servicesContainer ServicesContainer,
-	) HostListProvider {
-		parser := servicesContainer.GetPluginService().GetTargetDriverDialect().GetRowParser()
-		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewMultiAzTopologyUtils(r, parser), props, servicesContainer)
+	) (HostListProvider, error) {
+		dialect := servicesContainer.GetPluginService().GetTargetDriverDialect()
+		return NewRdsHostListProvider(servicesContainer.GetHostListProviderService(), NewMultiAzTopologyUtils(r, dialect, props), props, servicesContainer, nil), nil
 	}
 }

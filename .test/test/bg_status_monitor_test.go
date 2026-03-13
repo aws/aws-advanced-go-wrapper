@@ -418,7 +418,7 @@ func collectTopologySetUp(hostInfo *host_info_util.HostInfo, ctrl *gomock.Contro
 
 	mockPluginService.EXPECT().GetDialect().Return(mockDialect).AnyTimes()
 	mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).AnyTimes()
-	mockPluginService.EXPECT().CreateHostListProvider(gomock.Any()).Return(mockHostListProvider).AnyTimes()
+	mockPluginService.EXPECT().CreateHostListProvider(gomock.Any()).Return(mockHostListProvider, nil).AnyTimes()
 
 	monitor := bg.NewTestBlueGreenStatusMonitor(
 		driver_infrastructure.SOURCE,
@@ -443,7 +443,7 @@ func TestBlueGreenStatusMonitorInitHostListProvider(t *testing.T) {
 		driver_infrastructure.BASELINE: 300000,
 	}
 	mockPluginService.EXPECT().GetDialect().Return(mockDialect).AnyTimes()
-	mockPluginService.EXPECT().CreateHostListProvider(gomock.Any()).Return(&driver_infrastructure.RdsHostListProvider{}).AnyTimes()
+	mockPluginService.EXPECT().CreateHostListProvider(gomock.Any()).Return(&driver_infrastructure.RdsHostListProvider{}, nil).AnyTimes()
 
 	monitor := bg.NewTestBlueGreenStatusMonitor(
 		driver_infrastructure.SOURCE,
@@ -700,7 +700,7 @@ func TestBlueGreenStatusMonitorCollectStatus(t *testing.T) {
 		mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).Times(2)
 		mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).Times(1)
 		mockDialect.EXPECT().IsBlueGreenStatusAvailable(gomock.Any()).Return(true)
-		mockPluginService.EXPECT().CreateHostListProvider(gomock.Any()).Return(&driver_infrastructure.RdsHostListProvider{})
+		mockPluginService.EXPECT().CreateHostListProvider(gomock.Any()).Return(&driver_infrastructure.RdsHostListProvider{}, nil)
 		mockDialect.EXPECT().GetBlueGreenStatusQuery().Return("SELECT version, endpoint, port, role, status FROM bg_status").AnyTimes()
 		mockDriverDialect.EXPECT().GetRowParser().Return(pgx_driver.PgxDriverDialect{}.GetRowParser()).AnyTimes()
 

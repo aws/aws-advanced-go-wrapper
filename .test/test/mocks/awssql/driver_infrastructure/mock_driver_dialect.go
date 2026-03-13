@@ -94,6 +94,20 @@ func (mr *MockDriverDialectMockRecorder) GetRowParser() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRowParser", reflect.TypeOf((*MockDriverDialect)(nil).GetRowParser))
 }
 
+// GetPropertyResolver mocks base method.
+func (m *MockDriverDialect) GetPropertyResolver() driver_infrastructure.DriverPropertyResolver {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPropertyResolver")
+	ret0, _ := ret[0].(driver_infrastructure.DriverPropertyResolver)
+	return ret0
+}
+
+// GetPropertyResolver indicates an expected call of GetPropertyResolver.
+func (mr *MockDriverDialectMockRecorder) GetPropertyResolver() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPropertyResolver", reflect.TypeOf((*MockDriverDialect)(nil).GetPropertyResolver))
+}
+
 // IsClosed mocks base method.
 func (m *MockDriverDialect) IsClosed(arg0 driver.Conn) bool {
 	m.ctrl.T.Helper()

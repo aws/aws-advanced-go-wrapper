@@ -36,8 +36,9 @@ import (
 func TestPgDatabaseDialect_GetDialectUpdateCandidates(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.PgDatabaseDialect{}
 	expectedCandidates := []string{
-		driver_infrastructure.RDS_PG_MULTI_AZ_CLUSTER_DIALECT,
+		driver_infrastructure.GLOBAL_AURORA_PG_DIALECT,
 		driver_infrastructure.AURORA_PG_DIALECT,
+		driver_infrastructure.RDS_PG_MULTI_AZ_CLUSTER_DIALECT,
 		driver_infrastructure.RDS_PG_DIALECT}
 	assert.ElementsMatch(t, expectedCandidates, testDatabaseDialect.GetDialectUpdateCandidates())
 }
@@ -112,8 +113,8 @@ func TestRdsPgDatabaseDialect_GetDialectUpdateCandidates(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.RdsPgDatabaseDialect{}
 	expectedCandidates := []string{
 		driver_infrastructure.RDS_PG_MULTI_AZ_CLUSTER_DIALECT,
-		driver_infrastructure.AURORA_PG_DIALECT,
-		driver_infrastructure.RDS_PG_DIALECT}
+		driver_infrastructure.GLOBAL_AURORA_PG_DIALECT,
+		driver_infrastructure.AURORA_PG_DIALECT}
 	assert.ElementsMatch(t, expectedCandidates, testDatabaseDialect.GetDialectUpdateCandidates())
 }
 
@@ -221,6 +222,7 @@ func TestRdsPgDatabaseDialect_GetHostListProviderSupplier(t *testing.T) {
 func TestAuroraRdsPgDatabaseDialect_GetDialectUpdateCandidates(t *testing.T) {
 	testDatabaseDialect := &driver_infrastructure.AuroraPgDatabaseDialect{}
 	expectedCandidates := []string{
+		driver_infrastructure.GLOBAL_AURORA_PG_DIALECT,
 		driver_infrastructure.RDS_PG_MULTI_AZ_CLUSTER_DIALECT,
 	}
 	assert.ElementsMatch(t, expectedCandidates, testDatabaseDialect.GetDialectUpdateCandidates())

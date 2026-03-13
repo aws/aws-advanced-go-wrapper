@@ -32,6 +32,7 @@ const (
 	AURORA_CONNECTION_TRACKER_PLUGIN_CODE          string = "auroraConnectionTracker"
 	DEVELOPER_PLUGIN_CODE                          string = "dev"
 	AURORA_INITIAL_CONNECTION_STRATEGY_PLUGIN_CODE string = "initialConnection"
+	GDB_FAILOVER_PLUGIN_CODE                       string = "gdbFailover"
 )
 
 type HostChangeOptions int
@@ -69,10 +70,12 @@ const (
 type DialectCode string
 
 const (
+	GLOBAL_AURORA_MYSQL_DIALECT        string = "global-aurora-mysql"
 	AURORA_MYSQL_DIALECT               string = "aurora-mysql"
 	RDS_MYSQL_DIALECT                  string = "rds-mysql"
 	MYSQL_DIALECT                      string = "mysql"
 	RDS_MYSQL_MULTI_AZ_CLUSTER_DIALECT string = "rds-multi-az-mysql-cluster"
+	GLOBAL_AURORA_PG_DIALECT           string = "global-aurora-pg"
 	AURORA_PG_DIALECT                  string = "aurora-pg"
 	RDS_PG_DIALECT                     string = "rds-pg"
 	PG_DIALECT                         string = "pg"

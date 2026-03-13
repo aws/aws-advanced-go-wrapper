@@ -66,6 +66,21 @@ func (mr *MockHostListProviderMockRecorder) ForceRefresh() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForceRefresh", reflect.TypeOf((*MockHostListProvider)(nil).ForceRefresh))
 }
 
+// ForceRefreshHostListWithTimeout mocks base method.
+func (m *MockHostListProvider) ForceRefreshHostListWithTimeout(arg0 bool, arg1 int) ([]*host_info_util.HostInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ForceRefreshHostListWithTimeout", arg0, arg1)
+	ret0, _ := ret[0].([]*host_info_util.HostInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ForceRefreshHostListWithTimeout indicates an expected call of ForceRefreshHostListWithTimeout.
+func (mr *MockHostListProviderMockRecorder) ForceRefreshHostListWithTimeout(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForceRefreshHostListWithTimeout", reflect.TypeOf((*MockHostListProvider)(nil).ForceRefreshHostListWithTimeout), arg0, arg1)
+}
+
 // GetClusterId mocks base method.
 func (m *MockHostListProvider) GetClusterId() (string, error) {
 	m.ctrl.T.Helper()

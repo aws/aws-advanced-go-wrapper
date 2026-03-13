@@ -87,7 +87,7 @@ func (p *PluginServiceImpl) SetHostListProvider(hostListProvider driver_infrastr
 	p.hostListProvider = hostListProvider
 }
 
-func (p *PluginServiceImpl) CreateHostListProvider(props *utils.RWMap[string, string]) driver_infrastructure.HostListProvider {
+func (p *PluginServiceImpl) CreateHostListProvider(props *utils.RWMap[string, string]) (driver_infrastructure.HostListProvider, error) {
 	return p.GetDialect().GetHostListProviderSupplier()(props, p.originalDsn, p.servicesContainer)
 }
 
@@ -110,7 +110,11 @@ func (p *PluginServiceImpl) UpdateDialect(conn driver.Conn) {
 	if originalDialect == p.dialect {
 		return
 	}
-	p.SetHostListProvider(p.CreateHostListProvider(p.props))
+	hlp, err := p.CreateHostListProvider(p.props)
+	if err != nil {
+		return
+	}
+	p.SetHostListProvider(hlp)
 	_ = p.RefreshHostList(conn)
 }
 
@@ -485,12 +489,7 @@ func (p *PluginServiceImpl) ForceRefreshHostListWithTimeout(shouldVerifyWriter b
 
 func (p *PluginServiceImpl) GetUpdatedHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) ([]*host_info_util.HostInfo, error) {
 	hostListProvider := p.GetHostListProvider()
-	blockingHostListProvider, ok := hostListProvider.(driver_infrastructure.BlockingHostListProvider)
-	if !ok {
-		return nil, error_util.NewFailoverFailedError(error_util.GetMessage("PluginServiceImpl.requiredBlockingHostListProvider", hostListProvider))
-	}
-
-	return blockingHostListProvider.ForceRefreshHostListWithTimeout(shouldVerifyWriter, timeoutMs)
+	return hostListProvider.ForceRefreshHostListWithTimeout(shouldVerifyWriter, timeoutMs)
 }
 
 func (p *PluginServiceImpl) GetTargetDriverDialect() driver_infrastructure.DriverDialect {

@@ -26,6 +26,7 @@ import (
 type HostListProvider interface {
 	Refresh() ([]*host_info_util.HostInfo, error)
 	ForceRefresh() ([]*host_info_util.HostInfo, error)
+	ForceRefreshHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) ([]*host_info_util.HostInfo, error)
 	GetHostRole(conn driver.Conn) host_info_util.HostRole
 	IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error)
 	GetClusterId() (string, error)
@@ -38,4 +39,4 @@ type HostListProviderSupplier func(
 	props *utils.RWMap[string, string],
 	initialDsn string,
 	servicesContainer ServicesContainer,
-) HostListProvider
+) (HostListProvider, error)

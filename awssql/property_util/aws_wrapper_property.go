@@ -17,7 +17,6 @@
 package property_util
 
 import (
-	"fmt"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -95,13 +94,13 @@ func convertValue[T any](propValue string, property AwsWrapperProperty) T {
 	case WRAPPER_TYPE_INT:
 		parsedValue, err = strconv.Atoi(propValue)
 		if err != nil {
-			slog.Warn(fmt.Sprintf("Using default value '%s' for property '%s' after encountering an error: '%s'.", property.defaultValue, property.Name, err.Error()))
+			slog.Warn(error_util.GetMessage("AwsWrapperProperty.defaultValueUsed", property.defaultValue, property.Name, err.Error()))
 			parsedValue, _ = strconv.Atoi(property.defaultValue)
 		}
 	case WRAPPER_TYPE_BOOL:
 		parsedValue, err = strconv.ParseBool(propValue)
 		if err != nil {
-			slog.Warn(fmt.Sprintf("Using default value '%s' for property '%s' after encountering an error: '%s'.", property.defaultValue, property.Name, err.Error()))
+			slog.Warn(error_util.GetMessage("AwsWrapperProperty.defaultValueUsed", property.defaultValue, property.Name, err.Error()))
 			parsedValue, _ = strconv.ParseBool(property.defaultValue)
 		}
 	default: // Default type is: WRAPPER_TYPE_STRING.
@@ -150,22 +149,23 @@ func GetRefreshRateValue(props *utils.RWMap[string, string], property AwsWrapper
 }
 
 var ALL_WRAPPER_PROPERTIES = map[string]bool{
-	USER.Name:                                       true,
-	PASSWORD.Name:                                   true,
-	HOST.Name:                                       true,
-	PORT.Name:                                       true,
-	DATABASE.Name:                                   true,
-	DRIVER_PROTOCOL.Name:                            true,
-	NET.Name:                                        true,
-	SINGLE_WRITER_DSN.Name:                          true,
-	PLUGINS.Name:                                    true,
-	AUTO_SORT_PLUGIN_ORDER.Name:                     true,
-	DIALECT.Name:                                    true,
-	TARGET_DRIVER_DIALECT.Name:                      true,
-	TARGET_DRIVER_AUTO_REGISTER.Name:                true,
-	CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name:           true,
-	CLUSTER_ID.Name:                                 true,
-	CLUSTER_INSTANCE_HOST_PATTERN.Name:              true,
+	USER.Name:                             true,
+	PASSWORD.Name:                         true,
+	HOST.Name:                             true,
+	PORT.Name:                             true,
+	DATABASE.Name:                         true,
+	DRIVER_PROTOCOL.Name:                  true,
+	NET.Name:                              true,
+	SINGLE_WRITER_DSN.Name:                true,
+	PLUGINS.Name:                          true,
+	AUTO_SORT_PLUGIN_ORDER.Name:           true,
+	DIALECT.Name:                          true,
+	TARGET_DRIVER_DIALECT.Name:            true,
+	TARGET_DRIVER_AUTO_REGISTER.Name:      true,
+	CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name: true,
+	CLUSTER_ID.Name:                       true,
+	CLUSTER_INSTANCE_HOST_PATTERN.Name:    true,
+	GLOBAL_CLUSTER_INSTANCE_HOST_PATTERNS.Name: true,
 	AWS_PROFILE.Name:                                true,
 	IAM_HOST.Name:                                   true,
 	IAM_EXPIRATION_SEC.Name:                         true,
@@ -184,8 +184,13 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	FAILOVER_TIMEOUT_MS.Name:                        true,
 	FAILOVER_MODE.Name:                              true,
 	FAILOVER_READER_HOST_SELECTOR_STRATEGY.Name:     true,
+	GDB_FAILOVER_ACTIVE_HOME_MODE.Name:              true,
+	GDB_FAILOVER_INACTIVE_HOME_MODE.Name:            true,
+	GDB_FAILOVER_HOME_REGION.Name:                   true,
 	ENABLE_CONNECT_FAILOVER.Name:                    true,
 	CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS.Name:      true,
+	CLUSTER_TOPOLOGY_CONNECT_TIMEOUT_MS.Name:        true,
+	CLUSTER_TOPOLOGY_SOCKET_TIMEOUT_MS.Name:         true,
 	WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS.Name:          true,
 	IAM_TOKEN_EXPIRATION_SEC.Name:                   true,
 	IDP_USERNAME.Name:                               true,
@@ -345,6 +350,16 @@ var CLUSTER_INSTANCE_HOST_PATTERN = AwsWrapperProperty{
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
+var GLOBAL_CLUSTER_INSTANCE_HOST_PATTERNS = AwsWrapperProperty{
+	Name: "globalClusterInstanceHostPatterns",
+	description: "Comma-separated list of the cluster instance DNS patterns that will be used to " +
+		"build complete instance endpoints. " +
+		"A \"?\" character in these patterns should be used as a placeholder for cluster instance names. " +
+		"This parameter is required for Global Aurora Databases. " +
+		"Each region in the Global Aurora Database should be specified in the list.",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
 var FAILURE_DETECTION_TIME_MS = AwsWrapperProperty{
 	Name:                "failureDetectionTimeMs",
 	description:         "Interval in millis between sending SQL to the server and the first probe to database host.",
@@ -428,6 +443,24 @@ var FAILOVER_READER_HOST_SELECTOR_STRATEGY = AwsWrapperProperty{
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
+var GDB_FAILOVER_ACTIVE_HOME_MODE = AwsWrapperProperty{
+	Name:                "activeHomeFailoverMode",
+	description:         "Set node role to follow during failover when GDB primary region is in home region.",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var GDB_FAILOVER_INACTIVE_HOME_MODE = AwsWrapperProperty{
+	Name:                "inactiveHomeFailoverMode",
+	description:         "Set node role to follow during failover when GDB primary region is not in home region.",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var GDB_FAILOVER_HOME_REGION = AwsWrapperProperty{
+	Name:                "failoverHomeRegion",
+	description:         "Set home region for failover.",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
 var ENABLE_CONNECT_FAILOVER = AwsWrapperProperty{
 	Name: "enableConnectFailover",
 	description: "Enable/disable cluster-aware failover if the initial connection to the database fails due to a " +
@@ -441,6 +474,20 @@ var CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS = AwsWrapperProperty{
 	Name:                "clusterTopologyHighRefreshRateMs",
 	description:         "Cluster topology high refresh rate in milliseconds.",
 	defaultValue:        "100",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var CLUSTER_TOPOLOGY_CONNECT_TIMEOUT_MS = AwsWrapperProperty{
+	Name:                "clusterTopologyConnectTimeoutMs",
+	description:         "Connect timeout in milliseconds for cluster topology monitoring connections.",
+	defaultValue:        "5000",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var CLUSTER_TOPOLOGY_SOCKET_TIMEOUT_MS = AwsWrapperProperty{
+	Name:                "clusterTopologySocketTimeoutMs",
+	description:         "Socket timeout in milliseconds for cluster topology monitoring connections.",
+	defaultValue:        "5000",
 	wrapperPropertyType: WRAPPER_TYPE_INT,
 }
 

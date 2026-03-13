@@ -132,7 +132,7 @@ func (monitor *LimitlessRouterMonitorImpl) Monitor() {
 			break
 		}
 		if len(newLimitlessRouters) < 1 {
-			slog.Warn("LimitlessRouterMonitorImpl.noRoutersFetched")
+			slog.Warn(error_util.GetMessage("LimitlessRouterMonitorImpl.noRoutersFetched"))
 			break
 		}
 
