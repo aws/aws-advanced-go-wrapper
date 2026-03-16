@@ -833,7 +833,7 @@ func TestGlobalAuroraTopologyUtils_GetRegion_NoRows(t *testing.T) {
 	assert.Equal(t, "", region)
 }
 
-func TestTopologyComparisonKey_SameTopology(t *testing.T) {
+func TestTopologyKey_SameTopology(t *testing.T) {
 	host1, _ := host_info_util.NewHostInfoBuilder().SetHost("host-a").SetPort(5432).Build()
 	host1.Role = host_info_util.WRITER
 	host1.Availability = host_info_util.AVAILABLE
@@ -842,13 +842,13 @@ func TestTopologyComparisonKey_SameTopology(t *testing.T) {
 	host2.Role = host_info_util.READER
 	host2.Availability = host_info_util.AVAILABLE
 
-	topology1 := []*host_info_util.HostInfo{host1, host2}
-	topology2 := []*host_info_util.HostInfo{host2, host1} // reversed order
+	topology1 := driver_infrastructure.NewTopology([]*host_info_util.HostInfo{host1, host2})
+	topology2 := driver_infrastructure.NewTopology([]*host_info_util.HostInfo{host2, host1}) // reversed order
 
-	assert.Equal(t, host_info_util.TopologyComparisonKey(topology1), host_info_util.TopologyComparisonKey(topology2))
+	assert.Equal(t, topology1.Key(), topology2.Key())
 }
 
-func TestTopologyComparisonKey_DifferentRoles(t *testing.T) {
+func TestTopologyKey_DifferentRoles(t *testing.T) {
 	host1, _ := host_info_util.NewHostInfoBuilder().SetHost("host-a").SetPort(5432).Build()
 	host1.Role = host_info_util.WRITER
 	host1.Availability = host_info_util.AVAILABLE
@@ -857,13 +857,13 @@ func TestTopologyComparisonKey_DifferentRoles(t *testing.T) {
 	host2.Role = host_info_util.READER
 	host2.Availability = host_info_util.AVAILABLE
 
-	key1 := host_info_util.TopologyComparisonKey([]*host_info_util.HostInfo{host1})
-	key2 := host_info_util.TopologyComparisonKey([]*host_info_util.HostInfo{host2})
+	key1 := driver_infrastructure.NewTopology([]*host_info_util.HostInfo{host1}).Key()
+	key2 := driver_infrastructure.NewTopology([]*host_info_util.HostInfo{host2}).Key()
 
 	assert.NotEqual(t, key1, key2)
 }
 
-func TestTopologyComparisonKey_IgnoresWeight(t *testing.T) {
+func TestTopologyKey_IgnoresWeight(t *testing.T) {
 	host1, _ := host_info_util.NewHostInfoBuilder().SetHost("host-a").SetPort(5432).Build()
 	host1.Role = host_info_util.READER
 	host1.Availability = host_info_util.AVAILABLE
@@ -874,13 +874,13 @@ func TestTopologyComparisonKey_IgnoresWeight(t *testing.T) {
 	host2.Availability = host_info_util.AVAILABLE
 	host2.Weight = 999
 
-	key1 := host_info_util.TopologyComparisonKey([]*host_info_util.HostInfo{host1})
-	key2 := host_info_util.TopologyComparisonKey([]*host_info_util.HostInfo{host2})
+	key1 := driver_infrastructure.NewTopology([]*host_info_util.HostInfo{host1}).Key()
+	key2 := driver_infrastructure.NewTopology([]*host_info_util.HostInfo{host2}).Key()
 
 	assert.Equal(t, key1, key2)
 }
 
-func TestTopologyComparisonKey_EmptyTopology(t *testing.T) {
-	key := host_info_util.TopologyComparisonKey([]*host_info_util.HostInfo{})
+func TestTopologyKey_EmptyTopology(t *testing.T) {
+	key := driver_infrastructure.NewTopology([]*host_info_util.HostInfo{}).Key()
 	assert.Equal(t, "", key)
 }

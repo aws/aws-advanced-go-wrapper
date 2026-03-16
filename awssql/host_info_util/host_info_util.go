@@ -19,7 +19,6 @@ package host_info_util
 import (
 	"fmt"
 	"slices"
-	"sort"
 	"strings"
 )
 
@@ -110,16 +109,4 @@ func CopyHostList(hosts []*HostInfo) []*HostInfo {
 	result := make([]*HostInfo, len(hosts))
 	copy(result, hosts)
 	return result
-}
-
-// TODO: Rename this.
-func TopologyComparisonKey(hosts []*HostInfo) string {
-	sorted := make([]*HostInfo, len(hosts))
-	copy(sorted, hosts)
-	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Host < sorted[j].Host })
-	var b strings.Builder
-	for _, h := range sorted {
-		fmt.Fprintf(&b, "%s:%d:%s:%s|", h.Host, h.Port, h.Availability, h.Role)
-	}
-	return b.String()
 }

@@ -361,7 +361,7 @@ func (c *ClusterTopologyMonitorImpl) checkForStableReaderTopologies() {
 	var referenceKey string
 	first := true
 	for _, topology := range allTopologies {
-		key := host_info_util.TopologyComparisonKey(topology)
+		key := NewTopology(topology).Key()
 		if first {
 			referenceKey = key
 			first = false
