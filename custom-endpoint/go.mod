@@ -1,6 +1,6 @@
 module github.com/aws/aws-advanced-go-wrapper/custom-endpoint
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/aws/aws-advanced-go-wrapper/auth-helpers v1.0.5
@@ -25,7 +25,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.8 // indirect
 	github.com/aws/smithy-go v1.24.2 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.6.1 // indirect
-	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
 )
 
 replace github.com/aws/aws-advanced-go-wrapper/awssql => ../awssql

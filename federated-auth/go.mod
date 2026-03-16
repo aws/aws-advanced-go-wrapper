@@ -1,6 +1,6 @@
 module github.com/aws/aws-advanced-go-wrapper/federated-auth
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/PuerkitoBio/goquery v1.11.0
@@ -27,7 +27,7 @@ require (
 	github.com/aws/smithy-go v1.24.2 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.6.1 // indirect
 	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
 )
 
 replace github.com/aws/aws-advanced-go-wrapper/awssql => ../awssql
