@@ -117,7 +117,16 @@ func (iamAuthPlugin *IamAuthPlugin) connectInternal(
 		property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.IAM_DEFAULT_PORT),
 		*hostInfo, iamAuthPlugin.servicesContainer.GetPluginService().GetDialect().GetDefaultPort())
 
-	region := region_util.GetRegion(host, props, property_util.IAM_REGION)
+	var regionProvider region_util.RegionProvider
+	if utils.IsGlobalDbWriterClusterDns(host) {
+		regionProvider = auth_helpers.NewGdbRegionProvider(nil)
+	} else {
+		regionProvider = &region_util.DefaultRegionProvider{}
+	}
+	region, regionErr := regionProvider.GetRegion(host, props, property_util.IAM_REGION)
+	if regionErr != nil {
+		return nil, regionErr
+	}
 	if region == "" {
 		return nil, errors.New(error_util.GetMessage("IamAuthPlugin.unableToDetermineRegion", property_util.IAM_REGION.Name))
 	}
