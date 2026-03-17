@@ -65,10 +65,6 @@ type DriverPropertyResolver interface {
 	CreateProps(opts ...DriverPropertyOption) map[string]string
 }
 
-func SupportsSocketTimeoutViaDsn(dialect DriverDialect) bool {
-	return dialect.GetPropertyResolver().GetPropertyName(SocketTimeout) != ""
-}
-
 // DriverPropertyOption represents a logical property key-value pair to be translated
 // into a driver-specific DSN parameter.
 type DriverPropertyOption struct {
@@ -78,4 +74,13 @@ type DriverPropertyOption struct {
 
 func WithProperty(key DriverPropertyKey, value int) DriverPropertyOption {
 	return DriverPropertyOption{Key: key, Value: value}
+}
+
+// =============================================================================
+// Driver Dialect Helper Functions
+// =============================================================================
+
+// Checks whether or if a driver has a valid socket timeout connection parameter.
+func SupportsSocketTimeoutViaDsn(driverDialect DriverDialect) bool {
+	return driverDialect.GetPropertyResolver().GetPropertyName(SocketTimeout) != ""
 }

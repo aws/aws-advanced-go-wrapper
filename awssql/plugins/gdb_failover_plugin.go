@@ -366,6 +366,7 @@ func (h *globalDbFailoverHandler) failoverToWriter(writerCandidate *host_info_ut
 
 	err = p.servicesContainer.GetPluginService().SetCurrentConnection(writerCandidateConn, writerCandidate, nil)
 	if err != nil {
+		_ = writerCandidateConn.Close()
 		p.failoverWriterFailedCounter.Inc(ctx)
 		return err
 	}

@@ -127,11 +127,8 @@ func (r *RdsHostListProvider) init() {
 	r.isInitialized = true
 }
 
-func getMonitoringProps(props *utils.RWMap[string, string], pluginService PluginService) *utils.RWMap[string, string] {
+func getMonitoringProps(props *utils.RWMap[string, string], resolver DriverPropertyResolver) *utils.RWMap[string, string] {
 	monitoringProps := utils.NewRWMapFromMap(props.GetAllEntries())
-
-	targetDriver := pluginService.GetTargetDriverDialect()
-	resolver := targetDriver.GetPropertyResolver()
 
 	connectTimeoutMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.CLUSTER_TOPOLOGY_CONNECT_TIMEOUT_MS)
 	socketTimeoutMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.CLUSTER_TOPOLOGY_SOCKET_TIMEOUT_MS)
@@ -158,7 +155,7 @@ func createClusterTopologyMonitor(
 ) (ClusterTopologyMonitor, error) {
 	highRefreshRateNano := time.Millisecond * time.Duration(
 		property_util.GetRefreshRateValue(props, property_util.CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS))
-	monitoringProps := getMonitoringProps(props, servicesContainer.GetPluginService())
+	monitoringProps := getMonitoringProps(props, servicesContainer.GetPluginService().GetTargetDriverDialect().GetPropertyResolver())
 
 	initializer := func(container ServicesContainer) (Monitor, error) {
 		monitor := NewClusterTopologyMonitorImpl(

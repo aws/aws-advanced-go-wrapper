@@ -120,3 +120,22 @@ func TestCacheMap_CleanUpExpired(t *testing.T) {
 	_, ok := cache.Get("old")
 	assert.False(t, ok)
 }
+
+func TestCacheMap_PutWithDefaultExpiration(t *testing.T) {
+	cache := utils.NewCacheWithDefaultExpiration[string](time.Minute)
+
+	cache.PutWithDefaultExpiration("key", "value")
+	got, ok := cache.Get("key")
+
+	assert.True(t, ok)
+	assert.Equal(t, "value", got)
+}
+
+func TestCacheMap_PutWithDefaultExpiration_Expires(t *testing.T) {
+	cache := utils.NewCacheWithDefaultExpiration[string](-1 * time.Second)
+
+	cache.PutWithDefaultExpiration("key", "value")
+	_, ok := cache.Get("key")
+
+	assert.False(t, ok)
+}

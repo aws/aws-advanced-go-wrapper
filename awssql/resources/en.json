@@ -98,7 +98,7 @@
   "Conn.doesNotImplementRequiredInterface": "The given connection does not implement the required interface '%v'.",
   "Conn.invalidTransactionIsolationLevel": "An invalid transaction isolation level was provided: '%v'.",
   "ConnectionPluginManager.unknownPluginCode": "Unknown plugin code: '%s'. Please ensure all plugin codes are valid and any required plugin modules have been imported.",
-  "ConnectionPluginChainBuilder.pluginsOrderRearranged": "Plugins order has been rearranged. The following order is in effect: '%v'.",
+  "ConnectionPluginChainBuilder.pluginsOrderRearranged": "Plugin order has been rearranged. The following order is in effect: '%v'.",
   "ConnectionProvider.unsupportedHostSelectorStrategy": "Unsupported host selection strategy '%v' specified for this connection provider '%T'. Please visit the documentation for all supported strategies.",
   "CustomEndpointInfo.nilDBClusterEndpointIdentifier": "Unexpected nil DBClusterEndpointIdentifier received from AWS RDS SDK.",
   "CustomEndpointInfo.nilDBClusterIdentifier": "Unexpected nil DBClusterIdentifier received from AWS RDS SDK.",

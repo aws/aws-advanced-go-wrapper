@@ -86,3 +86,22 @@ func TestHighestWeightHostSelectorGetHostGivenNoAvailableHosts(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Equal(t, error_util.GetMessage("HighestWeightHostSelector.noHostsMatchingRole", host_info_util.WRITER), err.Error())
 }
+
+// Verifies that the selector only considers eligible hosts (matching role and available),
+// ignoring ineligible hosts even if they have a higher weight.
+func TestHighestWeightHostSelectorIgnoresIneligibleHosts(t *testing.T) {
+	// Unavailable host has the highest weight — should be ignored.
+	unavailableHost, _ := host_info_util.NewHostInfoBuilder().SetHost("unavailable").SetWeight(100).SetAvailability(host_info_util.UNAVAILABLE).Build()
+	// Reader host has a high weight but wrong role — should be ignored when selecting writers.
+	readerHost, _ := host_info_util.NewHostInfoBuilder().SetHost("reader").SetWeight(50).SetRole(host_info_util.READER).Build()
+	// Two eligible writer hosts — the one with weight 10 should win.
+	writerLow, _ := host_info_util.NewHostInfoBuilder().SetHost("writer-low").SetWeight(5).Build()
+	writerHigh, _ := host_info_util.NewHostInfoBuilder().SetHost("writer-high").SetWeight(10).Build()
+	hostList := []*host_info_util.HostInfo{unavailableHost, readerHost, writerLow, writerHigh}
+
+	hostSelector := driver_infrastructure.HighestWeightHostSelector{}
+	selectedHost, err := hostSelector.GetHost(hostList, host_info_util.WRITER, nil)
+
+	assert.Nil(t, err)
+	assert.Equal(t, writerHigh, selectedHost)
+}

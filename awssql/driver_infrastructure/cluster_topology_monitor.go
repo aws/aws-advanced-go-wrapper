@@ -86,7 +86,7 @@ type ClusterTopologyMonitorImpl struct {
 	wg                             sync.WaitGroup
 	readerTopologiesById           *utils.RWMap[string, []*host_info_util.HostInfo]
 	completedOneCycle              *utils.RWMap[string, bool]
-	stableTopologiesStart          int64 // UnixNano; 0 means "not tracking"
+	stableTopologiesStart          atomic.Int64 // UnixNano; 0 means "not tracking"
 	topologyQueryStrategy          TopologyQueryStrategy
 }
 
@@ -201,7 +201,7 @@ func (c *ClusterTopologyMonitorImpl) Monitor() {
 					c.hostRoutinesStop.Store(true)
 					c.hostRoutinesWg.Wait()
 					c.hostRoutines.Clear()
-					c.stableTopologiesStart = 0
+					c.stableTopologiesStart.Store(0)
 					c.readerTopologiesById.Clear()
 					c.completedOneCycle.Clear()
 					continue
@@ -234,7 +234,7 @@ func (c *ClusterTopologyMonitorImpl) Monitor() {
 				c.hostRoutinesStop.Store(true)
 				c.hostRoutinesWg.Wait()
 				c.hostRoutines.Clear()
-				c.stableTopologiesStart = 0
+				c.stableTopologiesStart.Store(0)
 				c.readerTopologiesById.Clear()
 				c.completedOneCycle.Clear()
 			}
@@ -334,7 +334,7 @@ func (c *ClusterTopologyMonitorImpl) ProcessEvent(event Event) {
 func (c *ClusterTopologyMonitorImpl) checkForStableReaderTopologies() {
 	latestHosts := c.getStoredHosts()
 	if len(latestHosts) == 0 {
-		c.stableTopologiesStart = 0
+		c.stableTopologiesStart.Store(0)
 		return
 	}
 
@@ -343,7 +343,7 @@ func (c *ClusterTopologyMonitorImpl) checkForStableReaderTopologies() {
 	for _, h := range latestHosts {
 		completed, found := c.completedOneCycle.Get(h.HostId)
 		if !found || !completed {
-			c.stableTopologiesStart = 0
+			c.stableTopologiesStart.Store(0)
 			return
 		}
 	}
@@ -352,7 +352,7 @@ func (c *ClusterTopologyMonitorImpl) checkForStableReaderTopologies() {
 	// remove their entry, so only successful reports are checked.
 	allTopologies := c.readerTopologiesById.GetAllEntries()
 	if len(allTopologies) == 0 {
-		c.stableTopologiesStart = 0
+		c.stableTopologiesStart.Store(0)
 		return
 	}
 
@@ -367,19 +367,19 @@ func (c *ClusterTopologyMonitorImpl) checkForStableReaderTopologies() {
 			first = false
 		} else if key != referenceKey {
 			// Topologies don't match across readers.
-			c.stableTopologiesStart = 0
+			c.stableTopologiesStart.Store(0)
 			return
 		}
 	}
 
 	// All reader topologies match.
 	now := time.Now().UnixNano()
-	if c.stableTopologiesStart == 0 {
-		c.stableTopologiesStart = now
+	if c.stableTopologiesStart.Load() == 0 {
+		c.stableTopologiesStart.Store(now)
 	}
 
-	if now > c.stableTopologiesStart+stableTopologiesDurationNano.Nanoseconds() {
-		c.stableTopologiesStart = 0
+	if now > c.stableTopologiesStart.Load()+stableTopologiesDurationNano.Nanoseconds() {
+		c.stableTopologiesStart.Store(0)
 
 		// Use the first reader topology to update the cache.
 		var stableTopology []*host_info_util.HostInfo
@@ -391,7 +391,7 @@ func (c *ClusterTopologyMonitorImpl) checkForStableReaderTopologies() {
 		slog.Debug(utils.LogTopology(stableTopology,
 			error_util.GetMessage("ClusterTopologyMonitorImpl.matchingReaderTopologies",
 				stableTopologiesDurationNano.Milliseconds())))
-		c.updateHostsAvailability(stableTopology)
+		stableTopology = c.updateHostsAvailability(stableTopology)
 		c.updateTopologyCache(stableTopology)
 	}
 }
@@ -425,7 +425,7 @@ func (c *ClusterTopologyMonitorImpl) reset() {
 
 	c.hostRoutinesWriterHostInfo.Store(nil)
 	c.hostRoutinesLatestTopology.Store([]*host_info_util.HostInfo{})
-	c.stableTopologiesStart = 0
+	c.stableTopologiesStart.Store(0)
 	c.readerTopologiesById.Clear()
 	c.completedOneCycle.Clear()
 
@@ -559,18 +559,21 @@ func (c *ClusterTopologyMonitorImpl) getInstanceTemplate(instanceId string, conn
 	return c.clusterInstanceTemplate
 }
 
-func (c *ClusterTopologyMonitorImpl) updateHostsAvailability(hosts []*host_info_util.HostInfo) {
+func (c *ClusterTopologyMonitorImpl) updateHostsAvailability(hosts []*host_info_util.HostInfo) []*host_info_util.HostInfo {
 	if len(hosts) == 0 {
-		return
+		return hosts
 	}
-	for _, h := range hosts {
+	cloned := make([]*host_info_util.HostInfo, len(hosts))
+	for i, h := range hosts {
 		_, hasTopology := c.readerTopologiesById.Get(h.HostId)
+		availability := host_info_util.UNAVAILABLE
 		if hasTopology {
-			h.Availability = host_info_util.AVAILABLE
-		} else {
-			h.Availability = host_info_util.UNAVAILABLE
+			availability = host_info_util.AVAILABLE
 		}
+		clone, _ := host_info_util.NewHostInfoBuilder().CopyFrom(h).SetAvailability(availability).Build()
+		cloned[i] = clone
 	}
+	return cloned
 }
 
 func (c *ClusterTopologyMonitorImpl) updateTopologyCache(hosts []*host_info_util.HostInfo) {
@@ -805,7 +808,7 @@ func (h *HostMonitoringRoutine) readerRoutineFetchTopology(conn driver.Conn, wri
 	h.monitor.readerTopologiesById.Put(h.hostInfo.HostId, hosts)
 
 	if h.writerChanged {
-		h.monitor.updateHostsAvailability(hosts)
+		hosts = h.monitor.updateHostsAvailability(hosts)
 		h.monitor.updateTopologyCache(hosts)
 		slog.Debug(utils.LogTopology(hosts, ""))
 		return
@@ -819,7 +822,7 @@ func (h *HostMonitoringRoutine) readerRoutineFetchTopology(conn driver.Conn, wri
 		slog.Debug(error_util.GetMessage("HostMonitoringRoutine.writerHostChanged", writerHostInfo.GetHost(), latestWriterHostInfo.GetHost()))
 
 		// We can update topology cache and notify all waiting routines.
-		h.monitor.updateHostsAvailability(hosts)
+		hosts = h.monitor.updateHostsAvailability(hosts)
 		h.monitor.updateTopologyCache(hosts)
 		slog.Debug(utils.LogTopology(hosts, ""))
 	}
