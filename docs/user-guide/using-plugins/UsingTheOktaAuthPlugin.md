@@ -20,7 +20,7 @@ the SAML Assertion and grants access to the user.
 This plugin requires:
 
 1. Valid AWS credentials, as it does not create or modify any ADFS or IAM resources. All permissions and policies must be
-  correctly configured before using this plugin:
+  correctly configured before using this plugin. If you plan on using [Amazon Aurora Global Databases](https://aws.amazon.com/rds/aurora/global-database/) with this plugin, please see the [Using Okta Authentication with Global Databases](#using-okta-authentication-with-global-databases) section as well.
    1. Enable AWS IAM database authentication on an existing database or create a new database with AWS IAM database
         authentication on the AWS RDS Console:
        - If needed, review the documentation
@@ -75,3 +75,24 @@ Additional case-specific configuration can be handled by registering a tls.Confi
 ## Sample code
 
 [MySQL Example](../../../examples/okta_mysql_example.go), [PostgreSQL Example](../../../examples/okta_postgres_example.go).
+
+## Using Okta Authentication with Global Databases
+
+When using Okta authentication with [Amazon Aurora Global Databases](https://aws.amazon.com/rds/aurora/global-database/), the IAM user or role requires the additional `rds:DescribeGlobalClusters` permission. This permission allows the driver to resolve the Global Database endpoint to the appropriate regional cluster for IAM token generation.
+
+Example IAM policy:
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "rds-db:connect",
+                "rds:DescribeGlobalClusters"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```

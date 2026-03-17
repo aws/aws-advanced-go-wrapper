@@ -77,3 +77,8 @@ The `globalClusterInstanceHostPatterns` parameter is **required** for Aurora Glo
 ### Failover Behavior
 - **In-region failover**: Automatic failover within the same region
 - **Cross-region failover**: Planned failover to a different region
+
+### Authentication Plugins Compatible with GDB
+- [IAM Authentication Plugin](./using-plugins/UsingTheIamAuthenticationPlugin.md)
+- [Federated Authentication Plugin](./using-plugins/UsingTheFederatedAuthPlugin.md)
+- [Okta Authentication Plugin](./using-plugins/UsingTheOktaAuthPlugin.md)
