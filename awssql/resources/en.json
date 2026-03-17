@@ -321,5 +321,6 @@
   "GdbRegionProvider.unableToParseGlobalClusterId": "Unable to parse global cluster ID from host: '%s'.",
   "GdbRegionProvider.errorGettingDefaultCredentials": "Error getting default credentials provider: '%v'.",
   "GdbRegionProvider.errorFindingWriterClusterArn": "Error finding writer cluster ARN for cluster '%s': '%v'.",
-  "GdbRegionProvider.noWriterClusterFound": "No writer cluster found for global cluster '%s'."
+  "GdbRegionProvider.noWriterClusterFound": "No writer cluster found for global cluster '%s'.",
+  "GdbRegionProvider.errorLoadingDefaultAwsConfig": "GdbRegionProvider: error loading default AWS config: '%v'."
 }

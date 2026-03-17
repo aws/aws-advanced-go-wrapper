@@ -31,7 +31,7 @@ import (
 )
 
 var globalClusterIdPattern = regexp.MustCompile(
-	"(?i)^(?P<instance>.+)\\.(?:global-)?[a-zA-Z0-9]+\\.global\\.rds\\.amazonaws\\.com\\.?$")
+	`(?i)^(?P<instance>.+)\.(?:global-)?[a-zA-Z0-9]+\.global\.rds\.amazonaws\.com\.?$`)
 
 type RdsClientProvider func(credentialsProvider aws.CredentialsProvider) RdsDescribeGlobalClustersClient
 
@@ -58,7 +58,7 @@ func defaultRdsClientProvider(credentialsProvider aws.CredentialsProvider) RdsDe
 	}
 	cfg, err := config.LoadDefaultConfig(context.TODO(), opts...)
 	if err != nil {
-		slog.Warn("GdbRegionProvider: error loading default AWS config", "error", err)
+		slog.Warn(error_util.GetMessage("GdbRegionProvider.errorLoadingDefaultAwsConfig", err))
 		return rds.New(rds.Options{})
 	}
 	return rds.NewFromConfig(cfg)
