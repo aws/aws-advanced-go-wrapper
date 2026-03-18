@@ -109,6 +109,7 @@ func (r *ReadWriteSplittingPlugin) GetSubscribedMethods() []string {
 	return []string{plugin_helpers.CONNECT_METHOD,
 		plugin_helpers.INIT_HOST_PROVIDER_METHOD,
 		plugin_helpers.NOTIFY_CONNECTION_CHANGED_METHOD,
+		plugin_helpers.SET_READ_ONLY_METHOD,
 		utils.CONN_QUERY_CONTEXT,
 		utils.CONN_EXEC_CONTEXT,
 	}
@@ -203,18 +204,18 @@ func (r *ReadWriteSplittingPlugin) updateInternalConnectionInfo() error {
 
 func (r *ReadWriteSplittingPlugin) Execute(
 	_ driver.Conn,
-	_ string,
+	methodName string,
 	executeFunc driver_infrastructure.ExecuteFunc,
 	methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
-	query := utils.GetQueryFromSqlOrMethodArgs("", methodArgs)
-	readOnly, found := utils.DoesSetReadOnly(query,
-		r.servicesContainer.GetPluginService().GetDialect().DoesStatementSetReadOnly)
 
-	if found {
-		err := r.switchConnectionIfRequired(readOnly)
-		if err != nil {
-			r.closeIdleConnections()
-			return nil, nil, false, err
+	if methodName == plugin_helpers.SET_READ_ONLY_METHOD && len(methodArgs) > 0 {
+		if readOnly, ok := methodArgs[0].(bool); ok {
+			err := r.switchConnectionIfRequired(readOnly)
+			if err != nil {
+				r.closeIdleConnections()
+				return nil, nil, false, err
+			}
+			return executeFunc()
 		}
 	}
 

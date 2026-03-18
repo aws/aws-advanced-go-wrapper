@@ -25,7 +25,7 @@ To switch between readers and writer, pass in `awsctx.SetReadOnly` to the first 
 
 **Always pass in `awsctx.SetReadOnly` in your first query, and reset session settings before closing. Failing to do so may result in running a query in the wrong mode. While the default behavior of a newly-opened connection is to connect to the writer, if a recycled connection is returned by `sql.DB`, the `sql.Conn` object might be in ReadOnly mode.**
 
-**Furthermore, it is recommended to only pass in the `awsctx.SetReadOnly` setting when switching between reader and writer or vice versa. Passing in `awsctx.SetReadOnly` in every query when you are not switching does not change any results and there is some overhead when this value is passed in.**
+**Furthermore, it is recommended to only pass in the `awsctx.SetReadOnly` setting when switching between reader and writer or vice versa. Passing in `awsctx.SetReadOnly` in every query when you are not switching does not change any results, and there is some overhead when this value is passed in as the wrapper will route the request through the plugin chain each time.**
 
 The following is an example on how to use the plugin with `sql.Conn`.
 ```go

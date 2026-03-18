@@ -41,6 +41,7 @@ const (
 	INIT_HOST_PROVIDER_METHOD        = "initHostProvider"
 	NOTIFY_CONNECTION_CHANGED_METHOD = "notifyConnectionChanged"
 	NOTIFY_HOST_LIST_CHANGED_METHOD  = "notifyHostListChanged"
+	SET_READ_ONLY_METHOD             = "setReadOnly"
 )
 
 type PluginChain struct {

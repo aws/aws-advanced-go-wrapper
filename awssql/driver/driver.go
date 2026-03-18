@@ -351,8 +351,11 @@ func (c *AwsWrapperConn) setReadWriteModeFromCtx(ctx context.Context) (bool, err
 }
 
 func (c *AwsWrapperConn) setReadWriteMode(readOnly bool) error {
-	query, _ := c.pluginService.GetDialect().GetSetReadOnlyQuery(readOnly)
-	_, err := c.execContextInternal(context.TODO(), query, []driver.NamedValue{})
+	noOpFunc := func() (any, any, bool, error) {
+		return nil, nil, false, nil
+	}
+	_, _, _, err := ExecuteWithPlugins(
+		c.pluginService.GetCurrentConnection(), c.pluginManager, plugin_helpers.SET_READ_ONLY_METHOD, noOpFunc, readOnly)
 	return err
 }
 
