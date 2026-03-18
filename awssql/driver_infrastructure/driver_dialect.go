@@ -34,6 +34,7 @@ type DriverDialect interface {
 	RegisterDriver()
 	GetDriverRegistrationName() string
 	GetRowParser() RowParser
+	GetPropertyResolver() DriverPropertyResolver
 }
 
 // RowParser handles database-specific type conversions from driver.Value to Go types.
@@ -49,4 +50,37 @@ type RowParser interface {
 	ParseTime(val driver.Value) (time.Time, bool)
 	// ParseInt64 extracts an int64 from a driver.Value
 	ParseInt64(val driver.Value) (int64, bool)
+}
+
+type DriverPropertyKey int
+
+const (
+	ConnectTimeout DriverPropertyKey = iota
+	SocketTimeout
+)
+
+type DriverPropertyResolver interface {
+	GetPropertyName(key DriverPropertyKey) string
+	FormatValue(key DriverPropertyKey, value int) string
+	CreateProps(opts ...DriverPropertyOption) map[string]string
+}
+
+// DriverPropertyOption represents a logical property key-value pair to be translated
+// into a driver-specific DSN parameter.
+type DriverPropertyOption struct {
+	Key   DriverPropertyKey
+	Value int
+}
+
+func WithProperty(key DriverPropertyKey, value int) DriverPropertyOption {
+	return DriverPropertyOption{Key: key, Value: value}
+}
+
+// =============================================================================
+// Driver Dialect Helper Functions
+// =============================================================================
+
+// Checks whether or if a driver has a valid socket timeout connection parameter.
+func SupportsSocketTimeoutViaDsn(driverDialect DriverDialect) bool {
+	return driverDialect.GetPropertyResolver().GetPropertyName(SocketTimeout) != ""
 }

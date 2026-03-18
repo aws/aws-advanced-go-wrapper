@@ -88,8 +88,8 @@ func (t *mockAuroraMysqlDialect) GetHostListProviderSupplier() driver_infrastruc
 		props *utils.RWMap[string, string],
 		initialDsn string,
 		servicesContainer driver_infrastructure.ServicesContainer,
-	) driver_infrastructure.HostListProvider {
-		return failoverRdsHostListProvider
+	) (driver_infrastructure.HostListProvider, error) {
+		return failoverRdsHostListProvider, nil
 	}
 }
 
@@ -269,12 +269,13 @@ func initializeFailoverTest(
 	hostListProviderService := driver_infrastructure.HostListProviderService(pluginServiceImpl)
 	container.HostListProviderService = hostListProviderService
 
-	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(dialect, mysql_driver.MySQLDriverDialect{}.GetRowParser())
+	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(dialect, mysql_driver.NewMySQLDriverDialect(), combinedProps)
 	failoverRdsHostListProvider = driver_infrastructure.NewRdsHostListProvider(
 		hostListProviderService,
 		topologyUtils,
 		combinedProps,
 		container,
+		nil,
 	)
 	_, _ = failoverRdsHostListProvider.GetClusterId()
 	hostListProviderService.SetHostListProvider(failoverRdsHostListProvider)
@@ -286,7 +287,8 @@ func initializeFailoverTest(
 			ServicesContainer: container,
 		},
 	}
-	failoverPlugin, _ := plugins.NewFailoverPlugin(container, props)
+	failoverPlugin, _ := plugins.NewFailoverPlugin(container, props, driver_infrastructure.FAILOVER_PLUGIN_CODE,
+		func(p *plugins.FailoverPlugin) plugins.FailoverHandler { return plugins.NewRdsFailoverHandler(p) })
 	mockFailoverPlugin := &MockFailoverPlugin{FailoverPlugin: failoverPlugin}
 	_ = mockPluginManager.Init([]driver_infrastructure.ConnectionPlugin{mockFailoverPlugin, &defaultPlugin})
 	_ = mockPluginManager.InitHostProvider(props, hostListProviderService)
@@ -310,7 +312,7 @@ func TestFailoverWriter(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 	}
 	plugin, _ := initializeFailoverTest(t, props, false, true, false, false, false, false)
-	plugin.InitFailoverMode()
+	assert.NoError(t, plugin.InitFailoverMode())
 
 	err := plugin.Failover()
 	if err != nil {
@@ -333,7 +335,7 @@ func TestFailoverWriterInTransaction(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 	}
 	plugin, _ := initializeFailoverTest(t, props, true, true, false, false, false, false)
-	plugin.InitFailoverMode()
+	assert.NoError(t, plugin.InitFailoverMode())
 
 	err := plugin.Failover()
 	if err != nil {
@@ -357,7 +359,7 @@ func TestFailoverWriterFails(t *testing.T) {
 		property_util.FAILOVER_TIMEOUT_MS.Name:     "3000",
 	}
 	plugin, _ := initializeFailoverTest(t, props, false, true, false, true, false, false)
-	plugin.InitFailoverMode()
+	assert.NoError(t, plugin.InitFailoverMode())
 
 	err := plugin.Failover()
 	if err != nil {
@@ -382,7 +384,7 @@ func TestFailoverWriterTopologyUpdateFailure(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 	}
 	plugin, _ := initializeFailoverTest(t, props, false, true, false, false, true, false)
-	plugin.InitFailoverMode()
+	assert.NoError(t, plugin.InitFailoverMode())
 
 	err := plugin.Failover()
 	if err != nil {
@@ -405,7 +407,7 @@ func TestFailoverWriterIncorrectRole(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 	}
 	plugin, _ := initializeFailoverTest(t, props, false, false, false, false, false, false)
-	plugin.InitFailoverMode()
+	assert.NoError(t, plugin.InitFailoverMode())
 
 	err := plugin.Failover()
 	if err != nil {
@@ -429,7 +431,7 @@ func TestFailoverReader(t *testing.T) {
 		property_util.FAILOVER_MODE.Name:           "strict-reader",
 	}
 	plugin, _ := initializeFailoverTest(t, props, false, false, false, false, false, false)
-	plugin.InitFailoverMode()
+	assert.NoError(t, plugin.InitFailoverMode())
 
 	_, _, _, _ = plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, failoverExecFunc)
 	err := plugin.Failover()
@@ -454,7 +456,7 @@ func TestFailoverReaderInTransaction(t *testing.T) {
 		property_util.FAILOVER_MODE.Name:           "strict-reader",
 	}
 	plugin, _ := initializeFailoverTest(t, props, true, false, false, false, false, false)
-	plugin.InitFailoverMode()
+	assert.NoError(t, plugin.InitFailoverMode())
 
 	_, _, _, _ = plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, failoverExecFunc)
 	err := plugin.Failover()
@@ -480,7 +482,7 @@ func TestFailoverReaderFails(t *testing.T) {
 		property_util.FAILOVER_TIMEOUT_MS.Name:     "3000",
 	}
 	plugin, _ := initializeFailoverTest(t, props, false, false, false, true, false, false)
-	plugin.InitFailoverMode()
+	assert.NoError(t, plugin.InitFailoverMode())
 
 	_, _, _, _ = plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, failoverExecFunc)
 	err := plugin.Failover()
@@ -506,7 +508,7 @@ func TestFailoverReaderTopologyUpdateFailure(t *testing.T) {
 		property_util.FAILOVER_MODE.Name:           "strict-reader",
 	}
 	plugin, _ := initializeFailoverTest(t, props, false, true, false, false, true, false)
-	plugin.InitFailoverMode()
+	assert.NoError(t, plugin.InitFailoverMode())
 
 	err := plugin.Failover()
 	if err != nil {
@@ -531,7 +533,7 @@ func TestFailoverReaderIncorrectRole(t *testing.T) {
 		property_util.FAILOVER_TIMEOUT_MS.Name:     "3000",
 	}
 	plugin, _ := initializeFailoverTest(t, props, false, true, false, false, false, false)
-	plugin.InitFailoverMode()
+	assert.NoError(t, plugin.InitFailoverMode())
 
 	_, _, _, _ = plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, failoverExecFunc)
 	err := plugin.Failover()
@@ -556,7 +558,7 @@ func TestFailoverReaderUnsupportedStrategy(t *testing.T) {
 		property_util.FAILOVER_READER_HOST_SELECTOR_STRATEGY.Name: "unsupported",
 	}
 	plugin, _ := initializeFailoverTest(t, props, false, false, false, false, false, false)
-	plugin.InitFailoverMode()
+	assert.NoError(t, plugin.InitFailoverMode())
 
 	_, _, _, _ = plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, failoverExecFunc)
 	err := plugin.Failover()
@@ -580,7 +582,7 @@ func TestInvalidateCurrentConnectionWithNilConn(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 	}
 	plugin, pluginService := initializeFailoverTest(t, props, false, true, true, false, false, true)
-	plugin.InitFailoverMode()
+	assert.NoError(t, plugin.InitFailoverMode())
 
 	plugin.InvalidateCurrentConnection()
 	assert.Equal(t, 0, pluginService.isInTransactionCounter)
@@ -597,7 +599,7 @@ func TestInvalidateCurrentConnectionInTransaction(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 	}
 	plugin, pluginService := initializeFailoverTest(t, props, true, true, true, false, false, false)
-	plugin.InitFailoverMode()
+	assert.NoError(t, plugin.InitFailoverMode())
 
 	plugin.InvalidateCurrentConnection()
 	assert.Equal(t, 2, pluginService.isInTransactionCounter)
@@ -614,7 +616,7 @@ func TestInvalidateCurrentConnectionWithOpenConn(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 	}
 	plugin, pluginService := initializeFailoverTest(t, props, false, true, true, false, false, false)
-	plugin.InitFailoverMode()
+	assert.NoError(t, plugin.InitFailoverMode())
 
 	plugin.InvalidateCurrentConnection()
 	assert.Equal(t, 1, pluginService.isInTransactionCounter)
@@ -631,7 +633,7 @@ func TestExecuteWithFailoverDisabled(t *testing.T) {
 		property_util.DRIVER_PROTOCOL.Name:         "mysql",
 	}
 	plugin, _ := initializeFailoverTest(t, props, false, true, false, false, false, false)
-	plugin.InitFailoverMode()
+	assert.NoError(t, plugin.InitFailoverMode())
 
 	_, _, _, _ = plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, failoverExecFunc)
 

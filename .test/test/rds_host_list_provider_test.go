@@ -39,7 +39,7 @@ func rdsTestSetup(
 	*driver_infrastructure.RdsHostListProvider,
 	*mock_driver_infrastructure.MockPluginService,
 	*mock_driver_infrastructure.MockMonitorService,
-	*mock_driver_infrastructure.MockTopologyUtils,
+	*mock_driver_infrastructure.MockClusterTopologyUtils,
 	*mock_driver_infrastructure.MockServicesContainer,
 	*services.ExpiringStorage,
 ) {
@@ -57,14 +57,14 @@ func rdsTestSetup(
 	mockHLPService.EXPECT().SetInitialConnectionHostInfo(gomock.Any()).AnyTimes()
 	mockHLPService.EXPECT().GetDialect().Return(nil).AnyTimes()
 
-	mockTopologyUtils := mock_driver_infrastructure.NewMockTopologyUtils(ctrl)
+	mockTopologyUtils := mock_driver_infrastructure.NewMockClusterTopologyUtils(ctrl)
 
 	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
 	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
 	mockContainer.EXPECT().GetMonitorService().Return(mockMonitorService).AnyTimes()
 	mockContainer.EXPECT().GetStorageService().Return(storageService).AnyTimes()
 
-	provider := driver_infrastructure.NewRdsHostListProvider(mockHLPService, mockTopologyUtils, props, mockContainer)
+	provider := driver_infrastructure.NewRdsHostListProvider(mockHLPService, mockTopologyUtils, props, mockContainer, nil)
 
 	return provider, mockPluginService, mockMonitorService, mockTopologyUtils, mockContainer, storageService
 }
@@ -141,6 +141,10 @@ func TestRefreshQueriesMonitorWhenNoCachedTopology(t *testing.T) {
 		"postgres://someUser:somePassword@localhost:5432/pgx_test?sslmode=disable&foo=bar&clusterId=pg_cluster")
 	mockPS.EXPECT().IsDialectConfirmed().Return(true).AnyTimes()
 
+	// Mock the driver dialect + resolver chain for getMonitoringProps.
+	mockDriverDialect := newMockDriverDialect(ctrl, nil)
+	mockPS.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).AnyTimes()
+
 	// Mock the monitor to return topology hosts.
 	monitorHost, _ := host_info_util.NewHostInfoBuilder().SetHost("monitor_host").SetRole(host_info_util.WRITER).Build()
 	mockMonitor := mock_driver_infrastructure.NewMockClusterTopologyMonitor(ctrl)
@@ -167,6 +171,10 @@ func TestForceRefreshAlwaysQueriesMonitor(t *testing.T) {
 	provider, mockPS, mockMonitorService, _, mockContainer, storageService := rdsTestSetup(ctrl,
 		"postgres://someUser:somePassword@localhost:5432/pgx_test?sslmode=disable&foo=bar&clusterId=pg_cluster")
 	mockPS.EXPECT().IsDialectConfirmed().Return(true).AnyTimes()
+
+	// Mock the driver dialect + resolver chain for getMonitoringProps.
+	mockDriverDialect := newMockDriverDialect(ctrl, nil)
+	mockPS.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).AnyTimes()
 
 	// Pre-populate cache with old data.
 	cachedHost, _ := host_info_util.NewHostInfoBuilder().SetHost("cached_host").SetRole(host_info_util.WRITER).Build()

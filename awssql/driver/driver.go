@@ -48,6 +48,7 @@ var pluginFactoryByCode = map[string]driver_infrastructure.ConnectionPluginFacto
 	driver_infrastructure.AURORA_CONNECTION_TRACKER_PLUGIN_CODE:          plugins.NewAuroraConnectionTrackerPluginFactory(),
 	driver_infrastructure.AURORA_INITIAL_CONNECTION_STRATEGY_PLUGIN_CODE: plugins.NewAuroraInitialConnectionStrategyPluginFactory(),
 	driver_infrastructure.DEVELOPER_PLUGIN_CODE:                          plugins.NewDeveloperConnectionPluginFactory(),
+	driver_infrastructure.GDB_FAILOVER_PLUGIN_CODE:                       plugins.NewGlobalDbFailoverPluginFactory(),
 }
 
 var underlyingDriverList = map[string]driver.Driver{}

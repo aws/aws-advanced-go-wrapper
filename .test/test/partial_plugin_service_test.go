@@ -150,11 +150,12 @@ func TestCreateHostListProvider_PartialPluginService(t *testing.T) {
 	expectedHostListProvider := mock_driver_infrastructure.NewMockHostListProvider(ctrl)
 	mockDatabaseDialect.EXPECT().GetHostListProviderSupplier().Return(
 		driver_infrastructure.HostListProviderSupplier(
-			func(props *utils.RWMap[string, string], dsn string, container driver_infrastructure.ServicesContainer) driver_infrastructure.HostListProvider {
-				return expectedHostListProvider
+			func(props *utils.RWMap[string, string], dsn string, container driver_infrastructure.ServicesContainer) (driver_infrastructure.HostListProvider, error) {
+				return expectedHostListProvider, nil
 			}))
-	actualHostListProvider := partialPluginService.CreateHostListProvider(someProps)
+	actualHostListProvider, err := partialPluginService.CreateHostListProvider(someProps)
 
+	assert.NoError(t, err)
 	assert.Equal(t, expectedHostListProvider, actualHostListProvider)
 }
 

@@ -42,29 +42,46 @@ type RdsHostListProvider struct {
 	properties                    *utils.RWMap[string, string]
 	isInitialized                 bool
 	defaultTopologyQueryTimeoutMs int
-	// The following properties are initialized from the above in init().
-	initialHostList         []*host_info_util.HostInfo
-	initialHostInfo         *host_info_util.HostInfo
-	clusterId               string
-	clusterInstanceTemplate *host_info_util.HostInfo
-	refreshRateNanos        time.Duration
-	lock                    sync.Mutex
+	monitorCreator                func() (ClusterTopologyMonitor, error)
+	initialHostList               []*host_info_util.HostInfo
+	initialHostInfo               *host_info_util.HostInfo
+	clusterId                     string
+	clusterInstanceTemplate       *host_info_util.HostInfo
+	refreshRateNanos              time.Duration
+	lock                          sync.Mutex
 }
 
 func NewRdsHostListProvider(
 	hostListProviderService HostListProviderService,
-	topologyUtils TopologyUtils,
+	clusterTopologyUtils ClusterTopologyUtils,
 	properties *utils.RWMap[string, string],
 	servicesContainer ServicesContainer,
+	monitorCreator func() (ClusterTopologyMonitor, error),
 ) *RdsHostListProvider {
-	return &RdsHostListProvider{
+	r := &RdsHostListProvider{
 		hostListProviderService:       hostListProviderService,
-		topologyUtils:                 topologyUtils,
+		topologyUtils:                 clusterTopologyUtils,
 		properties:                    properties,
 		servicesContainer:             servicesContainer,
 		defaultTopologyQueryTimeoutMs: DEFAULT_TOPOLOGY_QUERY_TIMEOUT_MS,
 		isInitialized:                 false,
 	}
+	if monitorCreator != nil {
+		r.monitorCreator = monitorCreator
+	} else {
+		r.monitorCreator = func() (ClusterTopologyMonitor, error) {
+			r.init()
+			return createClusterTopologyMonitor(
+				r.servicesContainer, r.clusterId, r.properties,
+				r.initialHostInfo, r.clusterInstanceTemplate, r.refreshRateNanos,
+				&rdsTopologyQueryStrategy{
+					topologyUtils:           clusterTopologyUtils,
+					initialHostInfo:         r.initialHostInfo,
+					clusterInstanceTemplate: r.clusterInstanceTemplate,
+				})
+		}
+	}
+	return r
 }
 
 func (r *RdsHostListProvider) init() {
@@ -110,34 +127,57 @@ func (r *RdsHostListProvider) init() {
 	r.isInitialized = true
 }
 
-func (r *RdsHostListProvider) getOrCreateMonitor() ClusterTopologyMonitor {
-	r.init()
-	highRefreshRateNano := time.Millisecond * time.Duration(property_util.GetRefreshRateValue(r.properties, property_util.CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS))
+func getMonitoringProps(props *utils.RWMap[string, string], resolver DriverPropertyResolver) *utils.RWMap[string, string] {
+	monitoringProps := utils.NewRWMapFromMap(props.GetAllEntries())
+
+	connectTimeoutMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.CLUSTER_TOPOLOGY_CONNECT_TIMEOUT_MS)
+	socketTimeoutMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.CLUSTER_TOPOLOGY_SOCKET_TIMEOUT_MS)
+
+	driverProps := resolver.CreateProps(
+		WithProperty(ConnectTimeout, connectTimeoutMs),
+		WithProperty(SocketTimeout, socketTimeoutMs),
+	)
+	for k, v := range driverProps {
+		monitoringProps.Put(k, v)
+	}
+
+	return monitoringProps
+}
+
+func createClusterTopologyMonitor(
+	servicesContainer ServicesContainer,
+	clusterId string,
+	props *utils.RWMap[string, string],
+	initialHostInfo *host_info_util.HostInfo,
+	clusterInstanceTemplate *host_info_util.HostInfo,
+	refreshRateNanos time.Duration,
+	strategy TopologyQueryStrategy,
+) (ClusterTopologyMonitor, error) {
+	highRefreshRateNano := time.Millisecond * time.Duration(
+		property_util.GetRefreshRateValue(props, property_util.CLUSTER_TOPOLOGY_HIGH_REFRESH_RATE_MS))
+	monitoringProps := getMonitoringProps(props, servicesContainer.GetPluginService().GetTargetDriverDialect().GetPropertyResolver())
 
 	initializer := func(container ServicesContainer) (Monitor, error) {
 		monitor := NewClusterTopologyMonitorImpl(
 			container,
-			r.topologyUtils,
-			r.clusterId,
+			clusterId,
 			highRefreshRateNano,
-			r.refreshRateNanos,
+			refreshRateNanos,
 			TOPOLOGY_CACHE_EXPIRATION_NANO,
-			r.properties,
-			r.initialHostInfo,
-			r.clusterInstanceTemplate,
-			r.servicesContainer.GetPluginService())
+			monitoringProps,
+			initialHostInfo,
+			clusterInstanceTemplate,
+			servicesContainer.GetPluginService(),
+			strategy)
 		return monitor, nil
 	}
 
-	monitor, err := r.servicesContainer.GetMonitorService().RunIfAbsent(
-		ClusterTopologyMonitorType,
-		r.clusterId,
-		r.servicesContainer,
-		initializer)
+	monitor, err := servicesContainer.GetMonitorService().RunIfAbsent(
+		ClusterTopologyMonitorType, clusterId, servicesContainer, initializer)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return monitor.(ClusterTopologyMonitor)
+	return monitor.(ClusterTopologyMonitor), nil
 }
 
 // =============================================================================
@@ -153,7 +193,10 @@ func (r *RdsHostListProvider) forceRefreshMonitor(verifyTopology bool, timeoutMs
 	if !r.servicesContainer.GetPluginService().IsDialectConfirmed() {
 		return r.initialHostList, nil
 	}
-	monitor := r.getOrCreateMonitor()
+	monitor, err := r.monitorCreator()
+	if err != nil {
+		return nil, err
+	}
 	return monitor.ForceRefresh(verifyTopology, timeoutMs)
 }
 
@@ -224,12 +267,11 @@ func (r *RdsHostListProvider) StopMonitor() {
 	r.servicesContainer.GetMonitorService().StopAndRemove(ClusterTopologyMonitorType, r.clusterId)
 }
 
-// =============================================================================
-// BlockingHostListProvider Interface Implementation
-// =============================================================================
-
 func (r *RdsHostListProvider) ForceRefreshHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) ([]*host_info_util.HostInfo, error) {
-	monitor := r.getOrCreateMonitor()
+	monitor, err := r.monitorCreator()
+	if err != nil {
+		return nil, err
+	}
 	updatedHosts, err := monitor.ForceRefresh(shouldVerifyWriter, timeoutMs)
 	if err == nil && len(updatedHosts) > 0 {
 		TopologyStorageType.Set(r.servicesContainer.GetStorageService(), r.clusterId, NewTopology(updatedHosts))
@@ -295,4 +337,38 @@ func ClearAllRdsHostListProviderCaches(monitorService MonitorService) {
 	if monitorService != nil {
 		monitorService.StopAndRemoveByType(ClusterTopologyMonitorType)
 	}
+}
+
+// =============================================================================
+// RDS Topology Query Strategy
+// =============================================================================
+
+// rdsTopologyQueryStrategy is the standard strategy for RDS clusters (Aurora and Multi-AZ).
+type rdsTopologyQueryStrategy struct {
+	topologyUtils           ClusterTopologyUtils
+	initialHostInfo         *host_info_util.HostInfo
+	clusterInstanceTemplate *host_info_util.HostInfo
+}
+
+func (d *rdsTopologyQueryStrategy) QueryForTopology(conn driver.Conn) ([]*host_info_util.HostInfo, error) {
+	return d.topologyUtils.QueryForTopology(conn, d.initialHostInfo, d.clusterInstanceTemplate)
+}
+
+func (d *rdsTopologyQueryStrategy) GetInstanceTemplate(_ string, _ driver.Conn) (*host_info_util.HostInfo, error) {
+	return nil, nil // nil signals: use the default clusterInstanceTemplate
+}
+
+func (d *rdsTopologyQueryStrategy) IsWriterInstance(conn driver.Conn) (bool, error) {
+	return d.topologyUtils.IsWriterInstance(conn)
+}
+
+func (d *rdsTopologyQueryStrategy) GetInstanceId(conn driver.Conn) (string, string) {
+	return d.topologyUtils.GetInstanceId(conn)
+}
+
+func (d *rdsTopologyQueryStrategy) CreateHost(
+	instanceId, instanceName string, isWriter bool, weight int,
+	lastUpdateTime time.Time, initialHost, instanceTemplate *host_info_util.HostInfo,
+) *host_info_util.HostInfo {
+	return d.topologyUtils.CreateHost(instanceId, instanceName, isWriter, weight, lastUpdateTime, initialHost, instanceTemplate)
 }

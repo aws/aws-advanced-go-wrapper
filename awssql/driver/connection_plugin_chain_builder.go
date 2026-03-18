@@ -43,6 +43,7 @@ var pluginWeightByCode = map[string]int{
 	driver_infrastructure.BLUE_GREEN_PLUGIN_CODE:                         550,
 	driver_infrastructure.READ_WRITE_SPLITTING_PLUGIN_CODE:               600,
 	driver_infrastructure.FAILOVER_PLUGIN_CODE:                           700,
+	driver_infrastructure.GDB_FAILOVER_PLUGIN_CODE:                       710,
 	driver_infrastructure.EFM_PLUGIN_CODE:                                800,
 	driver_infrastructure.LIMITLESS_PLUGIN_CODE:                          950,
 	driver_infrastructure.IAM_PLUGIN_CODE:                                1000,
@@ -116,7 +117,7 @@ func (builder *ConnectionPluginChainBuilder) GetPlugins(
 	}
 	resultPlugins = append(resultPlugins, defaultPlugin)
 	if pluginsSorted {
-		slog.Info(fmt.Sprintf("Plugins order has been rearranged. The following order is in effect: '%v'.", getFactoryOrder(resultPlugins)))
+		slog.Info(error_util.GetMessage("ConnectionPluginChainBuilder.pluginsOrderRearranged", getFactoryOrder(resultPlugins)))
 	}
 
 	return resultPlugins, nil

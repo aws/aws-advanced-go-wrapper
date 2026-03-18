@@ -26,15 +26,24 @@ import (
 var CleanupIntervalNanos time.Duration = 10 * time.Minute
 
 type CacheMap[T any] struct {
-	cache            map[string]cacheValue[T]
-	cleanupTimeNanos time.Time
-	lock             sync.RWMutex
+	cache             map[string]cacheValue[T]
+	cleanupTimeNanos  time.Time
+	defaultExpiration time.Duration
+	lock              sync.RWMutex
 }
 
 func NewCache[T any]() *CacheMap[T] {
 	return &CacheMap[T]{
 		cache:            make(map[string]cacheValue[T]),
 		cleanupTimeNanos: time.Now().Add(CleanupIntervalNanos),
+	}
+}
+
+func NewCacheWithDefaultExpiration[T any](defaultExpiration time.Duration) *CacheMap[T] {
+	return &CacheMap[T]{
+		cache:             make(map[string]cacheValue[T]),
+		cleanupTimeNanos:  time.Now().Add(CleanupIntervalNanos),
+		defaultExpiration: defaultExpiration,
 	}
 }
 
@@ -48,6 +57,11 @@ func (c *CacheMap[T]) Put(key string, value T, expiration time.Duration) {
 	}
 	c.lock.Unlock()
 	defer c.CleanUp()
+}
+
+// PutWithDefaultExpiration stores a value using the default expiration set via NewCacheWithDefaultExpiration.
+func (c *CacheMap[T]) PutWithDefaultExpiration(key string, value T) {
+	c.Put(key, value, c.defaultExpiration)
 }
 
 func (c *CacheMap[T]) Get(key string) (T, bool) {

@@ -99,3 +99,7 @@ func (c *DsnHostListProvider) GetClusterId() (clusterId string, err error) {
 func (c *DsnHostListProvider) StopMonitor() {
 	// do nothing since this provider doesn't implement active monitoring
 }
+
+func (c *DsnHostListProvider) ForceRefreshHostListWithTimeout(_ bool, _ int) ([]*host_info_util.HostInfo, error) {
+	return c.ForceRefresh()
+}

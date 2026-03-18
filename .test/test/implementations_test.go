@@ -152,9 +152,7 @@ func TestImplementations(t *testing.T) {
 	// HostListProvider implementations
 	var _ driver_infrastructure.HostListProvider = (*driver_infrastructure.DsnHostListProvider)(nil)
 	var _ driver_infrastructure.HostListProvider = (*driver_infrastructure.RdsHostListProvider)(nil)
-
-	// BlockingHostListProvider implementations
-	var _ driver_infrastructure.BlockingHostListProvider = (*driver_infrastructure.RdsHostListProvider)(nil)
+	var _ driver_infrastructure.HostListProvider = (*driver_infrastructure.GlobalAuroraHostListProvider)(nil)
 
 	// =========================================================================
 	// Host Selectors
@@ -225,6 +223,7 @@ func TestImplementations(t *testing.T) {
 	var _ driver_infrastructure.ConnectionPluginFactory = (*read_write_splitting.ReadWriteSplittingPluginFactory)(nil)
 	var _ driver_infrastructure.ConnectionPluginFactory = (*custom_endpoint.CustomEndpointPluginFactory)(nil)
 	var _ driver_infrastructure.ConnectionPluginFactory = (*plugins.AuroraInitialConnectionStrategyPluginFactory)(nil)
+	var _ driver_infrastructure.ConnectionPluginFactory = (*plugins.GlobalDbFailoverPluginFactory)(nil)
 
 	// =========================================================================
 	// Connection Tracker

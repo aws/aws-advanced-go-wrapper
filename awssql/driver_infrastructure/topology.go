@@ -17,7 +17,10 @@
 package driver_infrastructure
 
 import (
+	"fmt"
 	"hash/fnv"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
@@ -50,6 +53,8 @@ func (t *Topology) GetHosts() []*host_info_util.HostInfo {
 }
 
 // HashCode returns a hash code for this Topology based on its hosts.
+// Unlike Fingerprint, this is order-sensitive — the same hosts in a different
+// order will produce a different hash.
 func (t *Topology) HashCode() uint64 {
 	if t == nil || len(t.hosts) == 0 {
 		return 0
@@ -91,4 +96,21 @@ func (t *Topology) Equals(other *Topology) bool {
 		}
 	}
 	return true
+}
+
+// Key returns an order-independent string representation of this topology
+// based on (Host, Port, Availability, Role). Weight is intentionally excluded
+// since it fluctuates and shouldn't affect topology equality.
+func (t *Topology) Key() string {
+	if t == nil || len(t.hosts) == 0 {
+		return ""
+	}
+	sorted := make([]*host_info_util.HostInfo, len(t.hosts))
+	copy(sorted, t.hosts)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Host < sorted[j].Host })
+	var b strings.Builder
+	for _, h := range sorted {
+		fmt.Fprintf(&b, "%s:%d:%s:%s|", h.Host, h.Port, h.Availability, h.Role)
+	}
+	return b.String()
 }

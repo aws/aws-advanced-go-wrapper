@@ -14,11 +14,14 @@
   limitations under the License.
 */
 
-package driver_infrastructure
+package plugins
 
-import "github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-
-type BlockingHostListProvider interface {
-	HostListProvider
-	ForceRefreshHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) ([]*host_info_util.HostInfo, error)
+// FailoverHandler defines the behaviour of failover-specific logic.
+type FailoverHandler interface {
+	// initFailoverMode initializes the failover mode based on connection properties and URL type.
+	initFailoverMode() error
+	// failover performs the actual failover procedure.
+	failover() error
+	// dealWithError inspects an error and triggers failover if appropriate.
+	dealWithError(err error) error
 }

@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/mysql-driver"
+	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 
 	"github.com/stretchr/testify/assert"
 )

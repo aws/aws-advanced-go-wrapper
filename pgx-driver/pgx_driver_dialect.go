@@ -126,3 +126,7 @@ func (p PgxDriverDialect) GetDriverRegistrationName() string {
 func (p PgxDriverDialect) GetRowParser() driver_infrastructure.RowParser {
 	return defaultRowParser
 }
+
+func (p PgxDriverDialect) GetPropertyResolver() driver_infrastructure.DriverPropertyResolver {
+	return defaultPropertyResolver
+}

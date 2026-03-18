@@ -466,7 +466,12 @@ func (b *BlueGreenStatusMonitor) InitHostListProvider() {
 		hostListProps.Put(property_util.HOST.Name, hostInfo.Host)
 	}
 	slog.Debug(error_util.GetMessage("BlueGreenDeployment.createHostListProvider", b.role, clusterId))
-	b.hostListProvider = b.pluginService.CreateHostListProvider(hostListProps)
+	hlp, err := b.pluginService.CreateHostListProvider(hostListProps)
+	if err != nil {
+		slog.Warn(error_util.GetMessage("BlueGreenDeployment.createHostListProvider", b.role, clusterId), "error", err)
+		return
+	}
+	b.hostListProvider = hlp
 }
 
 func (b *BlueGreenStatusMonitor) OpenConnection() {

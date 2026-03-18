@@ -31,7 +31,7 @@ func (h *HighestWeightHostSelector) GetHost(
 	role host_info_util.HostRole,
 	_ map[string]string) (*host_info_util.HostInfo, error) {
 	eligibleHosts := utils.FilterSlice(hosts, func(hostInfo *host_info_util.HostInfo) bool {
-		return role == hostInfo.Role && hostInfo.Availability == host_info_util.AVAILABLE
+		return (role == "" || role == hostInfo.Role) && hostInfo.Availability == host_info_util.AVAILABLE
 	})
 
 	if len(eligibleHosts) == 0 {
@@ -39,7 +39,7 @@ func (h *HighestWeightHostSelector) GetHost(
 	}
 
 	currHighestWeightHost := eligibleHosts[0]
-	for _, host := range hosts {
+	for _, host := range eligibleHosts {
 		if host.Weight > currHighestWeightHost.Weight {
 			currHighestWeightHost = host
 		}

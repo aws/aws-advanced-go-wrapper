@@ -35,7 +35,7 @@ type PluginConnectFunc func(
 
 type HostListProviderService interface {
 	IsStaticHostListProvider() bool
-	CreateHostListProvider(props *utils.RWMap[string, string]) HostListProvider
+	CreateHostListProvider(props *utils.RWMap[string, string]) (HostListProvider, error)
 	GetHostListProvider() HostListProvider
 	SetHostListProvider(hostListProvider HostListProvider)
 	SetInitialConnectionHostInfo(info *host_info_util.HostInfo)
@@ -60,7 +60,7 @@ type PluginService interface {
 	SetInTransaction(inTransaction bool)
 	GetCurrentTx() driver.Tx
 	SetCurrentTx(driver.Tx)
-	CreateHostListProvider(props *utils.RWMap[string, string]) HostListProvider
+	CreateHostListProvider(props *utils.RWMap[string, string]) (HostListProvider, error)
 	SetHostListProvider(hostListProvider HostListProvider)
 	SetInitialConnectionHostInfo(info *host_info_util.HostInfo)
 	IsStaticHostListProvider() bool

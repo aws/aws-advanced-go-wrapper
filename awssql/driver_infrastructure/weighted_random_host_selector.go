@@ -41,7 +41,7 @@ func (r *WeightedRandomHostSelector) GetHost(hosts []*host_info_util.HostInfo, r
 	}
 
 	eligibleHosts := utils.FilterSlice(hosts, func(hostInfo *host_info_util.HostInfo) bool {
-		return role == hostInfo.Role && hostInfo.Availability == host_info_util.AVAILABLE
+		return (role == "" || role == hostInfo.Role) && hostInfo.Availability == host_info_util.AVAILABLE
 	})
 	if len(eligibleHosts) == 0 {
 		return nil, errors.New(error_util.GetMessage("WeightedRandomHostSelector.noHostsMatchingRole", role))

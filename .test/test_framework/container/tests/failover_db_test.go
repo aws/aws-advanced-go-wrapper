@@ -19,10 +19,10 @@ package test
 import (
 	"context"
 	"log/slog"
+	"strconv"
 
 	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
 
-	"strconv"
 	"testing"
 	"time"
 
@@ -34,11 +34,35 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFailoverWriterDB(t *testing.T) {
+func TestFailoverDB(t *testing.T) {
+	for _, cfg := range failoverConfigs {
+		cfg := cfg // capture range variable
+		t.Run(cfg.name+"/Writer", func(t *testing.T) {
+			writerDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/WriterWithTelemetryOtel", func(t *testing.T) {
+			writerWithTelemetryOtelDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/WriterWithTelemetryXray", func(t *testing.T) {
+			writerWithTelemetryXrayDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/WriterInTransactionWithBegin", func(t *testing.T) {
+			writerInTransactionWithBeginDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/DisableProxies", func(t *testing.T) {
+			disableProxiesDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/EfmDisableAllInstances", func(t *testing.T) {
+			efmDisableAllInstancesDBTest(t, cfg)
+		})
+	}
+}
+
+func writerDBTest(t *testing.T, cfg failoverTestConfig) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
-	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	props := cfg.setupFn(t, environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint())
 	dsn := test_utils.GetDsn(environment, props)
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
@@ -71,7 +95,7 @@ func TestFailoverWriterDB(t *testing.T) {
 	assert.Equal(t, currWriterId, instanceId)
 }
 
-func TestFailoverWriterDBWithTelemetryOtel(t *testing.T) {
+func writerWithTelemetryOtelDBTest(t *testing.T, cfg failoverTestConfig) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
@@ -80,7 +104,7 @@ func TestFailoverWriterDBWithTelemetryOtel(t *testing.T) {
 	assert.NotNil(t, bsp)
 	defer func() { _ = bsp.Shutdown(context.TODO()) }()
 
-	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	props := cfg.setupFn(t, environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint())
 	props["enableTelemetry"] = "true"
 	props["telemetryTracesBackend"] = "OTLP"
 	props["telemetryMetricsBackend"] = "OTLP"
@@ -117,7 +141,7 @@ func TestFailoverWriterDBWithTelemetryOtel(t *testing.T) {
 	assert.Equal(t, currWriterId, instanceId)
 }
 
-func TestFailoverWriterDBWithTelemetryXray(t *testing.T) {
+func writerWithTelemetryXrayDBTest(t *testing.T, cfg failoverTestConfig) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
@@ -126,7 +150,7 @@ func TestFailoverWriterDBWithTelemetryXray(t *testing.T) {
 	assert.NotNil(t, bsp)
 	defer func() { _ = bsp.Shutdown(context.TODO()) }()
 
-	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	props := cfg.setupFn(t, environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint())
 	props["enableTelemetry"] = "true"
 	props["telemetryTracesBackend"] = "XRAY"
 	props["telemetryMetricsBackend"] = "OTLP"
@@ -163,13 +187,13 @@ func TestFailoverWriterDBWithTelemetryXray(t *testing.T) {
 	assert.Equal(t, currWriterId, instanceId)
 }
 
-func TestFailoverWriterInTransactionWithBegin(t *testing.T) {
+func writerInTransactionWithBeginDBTest(t *testing.T, cfg failoverTestConfig) {
 	auroraTestUtility, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
 	test_utils.SkipForMultiAzMySql(t, environment.Info().Request.Deployment, environment.Info().Request.Engine)
 
-	props := test_utils.GetPropsForProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	props := cfg.setupFn(t, environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint())
 
 	dsn := test_utils.GetDsn(environment, props)
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
@@ -231,7 +255,7 @@ func TestFailoverWriterInTransactionWithBegin(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestFailoverDisableProxies(t *testing.T) {
+func disableProxiesDBTest(t *testing.T, cfg failoverTestConfig) {
 	_, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
@@ -277,7 +301,7 @@ func TestFailoverDisableProxies(t *testing.T) {
 	assert.NotZero(t, newInstanceId)
 }
 
-func TestFailoverEfmDisableAllInstances(t *testing.T) {
+func efmDisableAllInstancesDBTest(t *testing.T, cfg failoverTestConfig) {
 	_, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)

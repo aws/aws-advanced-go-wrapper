@@ -29,9 +29,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// =============================================================================
-// Helper to create a mock connection (driver.Conn + driver.QueryerContext)
-// =============================================================================
+// newMockDriverDialect creates a MockDriverDialect that returns the given parser
+// and a mock resolver. Use this when constructing topology utils in tests.
+func newMockDriverDialect(ctrl *gomock.Controller, parser driver_infrastructure.RowParser) *mock_driver_infrastructure.MockDriverDialect {
+	mockDD := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
+	mockDD.EXPECT().GetRowParser().Return(parser).AnyTimes()
+
+	mockResolver := mock_driver_infrastructure.NewMockDriverPropertyResolver(ctrl)
+	mockResolver.EXPECT().GetPropertyName(gomock.Any()).Return("").AnyTimes()
+	mockResolver.EXPECT().FormatValue(gomock.Any(), gomock.Any()).Return("").AnyTimes()
+	mockResolver.EXPECT().CreateProps(gomock.Any()).Return(nil).AnyTimes()
+	mockDD.EXPECT().GetPropertyResolver().Return(mockResolver).AnyTimes()
+	return mockDD
+}
 
 func newMockConn(ctrl *gomock.Controller) (struct {
 	driver.Conn
@@ -46,17 +56,14 @@ func newMockConn(ctrl *gomock.Controller) (struct {
 	return conn, mockQueryer
 }
 
-// =============================================================================
-// AuroraTopologyUtils tests (dialect-agnostic via MockTopologyDialect)
-// =============================================================================
-
 func TestAuroraTopologyUtils_GetHostRole(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockDialect := mock_driver_infrastructure.NewMockTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	isReaderQuery := "SELECT is_reader_query"
 	mockDialect.EXPECT().GetIsReaderQuery().Return(isReaderQuery).AnyTimes()
@@ -101,7 +108,8 @@ func TestAuroraTopologyUtils_QueryForTopology(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	topologyQuery := "SELECT topology_query"
 	mockDialect.EXPECT().GetTopologyQuery().Return(topologyQuery).AnyTimes()
@@ -164,7 +172,8 @@ func TestAuroraTopologyUtils_GetInstanceId(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	instanceIdQuery := "SELECT instance_id_query"
 	mockDialect.EXPECT().GetInstanceIdQuery().Return(instanceIdQuery).AnyTimes()
@@ -205,7 +214,8 @@ func TestAuroraTopologyUtils_IsWriterInstance(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	writerIdQuery := "SELECT writer_id_query"
 	mockDialect.EXPECT().GetWriterIdQuery().Return(writerIdQuery).AnyTimes()
@@ -240,17 +250,14 @@ func TestAuroraTopologyUtils_IsWriterInstance(t *testing.T) {
 	assert.False(t, isWriter)
 }
 
-// =============================================================================
-// MultiAzTopologyUtils tests (dialect-agnostic via MockMultiAzTopologyDialect)
-// =============================================================================
-
 func TestMultiAzTopologyUtils_GetHostRole(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockDialect := mock_driver_infrastructure.NewMockMultiAzTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewMultiAzTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewMultiAzTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	isReaderQuery := "SELECT is_reader_query"
 	mockDialect.EXPECT().GetIsReaderQuery().Return(isReaderQuery).AnyTimes()
@@ -295,7 +302,8 @@ func TestMultiAzTopologyUtils_GetInstanceId(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockMultiAzTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewMultiAzTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewMultiAzTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	instanceIdQuery := "SELECT instance_id_query"
 	mockDialect.EXPECT().GetInstanceIdQuery().Return(instanceIdQuery).AnyTimes()
@@ -336,7 +344,8 @@ func TestMultiAzTopologyUtils_IsWriterInstance(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockMultiAzTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewMultiAzTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewMultiAzTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	writerIdQuery := "SELECT writer_id_query"
 	mockDialect.EXPECT().GetWriterIdQuery().Return(writerIdQuery).AnyTimes()
@@ -372,7 +381,8 @@ func TestMultiAzTopologyUtils_QueryForTopology(t *testing.T) {
 
 	mockDialect := mock_driver_infrastructure.NewMockMultiAzTopologyDialect(ctrl)
 	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
-	topologyUtils := driver_infrastructure.NewMultiAzTopologyUtils(mockDialect, mockParser)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewMultiAzTopologyUtils(mockDialect, mockDriverDialect, nil)
 
 	topologyQuery := "SELECT topology_query"
 	writerIdQuery := "SELECT writer_id_query"
@@ -433,4 +443,444 @@ func TestMultiAzTopologyUtils_QueryForTopology(t *testing.T) {
 	assert.Len(t, hosts, 2)
 	assert.Equal(t, host_info_util.WRITER, hosts[0].Role)
 	assert.Equal(t, host_info_util.READER, hosts[1].Role)
+}
+
+func TestParseInstanceTemplates_ValidSingleEntry(t *testing.T) {
+	result, err := driver_infrastructure.ParseInstanceTemplates(
+		"[us-east-1]?.us-east-1.rds.amazonaws.com:5432", 3306)
+	assert.NoError(t, err)
+	assert.Len(t, result, 1)
+	assert.Contains(t, result, "us-east-1")
+	assert.Equal(t, "?.us-east-1.rds.amazonaws.com", result["us-east-1"].Host)
+	assert.Equal(t, 5432, result["us-east-1"].Port)
+}
+
+func TestParseInstanceTemplates_ValidMultipleEntries(t *testing.T) {
+	result, err := driver_infrastructure.ParseInstanceTemplates(
+		"[us-east-1]?.us-east-1.rds.amazonaws.com:5432,[eu-west-1]?.eu-west-1.rds.amazonaws.com:5432", 3306)
+	assert.NoError(t, err)
+	assert.Len(t, result, 2)
+	assert.Contains(t, result, "us-east-1")
+	assert.Contains(t, result, "eu-west-1")
+}
+
+func TestParseInstanceTemplates_DefaultPort(t *testing.T) {
+	result, err := driver_infrastructure.ParseInstanceTemplates(
+		"[us-east-1]?.us-east-1.rds.amazonaws.com", 3306)
+	assert.NoError(t, err)
+	assert.Len(t, result, 1)
+	assert.Equal(t, 3306, result["us-east-1"].Port)
+}
+
+func TestParseInstanceTemplates_EmptyString(t *testing.T) {
+	result, err := driver_infrastructure.ParseInstanceTemplates("", 3306)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
+func TestParseInstanceTemplates_InfersRegionFromHost(t *testing.T) {
+	result, err := driver_infrastructure.ParseInstanceTemplates(
+		"?.cluster-xyz.us-east-2.rds.amazonaws.com:5432", 3306)
+	assert.NoError(t, err)
+	assert.Len(t, result, 1)
+	assert.Contains(t, result, "us-east-2")
+}
+
+func TestParseInstanceTemplates_WhitespaceHandling(t *testing.T) {
+	result, err := driver_infrastructure.ParseInstanceTemplates(
+		" [us-east-1]?.us-east-1.rds.amazonaws.com:5432 , [eu-west-1]?.eu-west-1.rds.amazonaws.com:5432 ", 3306)
+	assert.NoError(t, err)
+	assert.Len(t, result, 2)
+}
+
+func TestParseInstanceTemplates_SkipsEmptyEntries(t *testing.T) {
+	result, err := driver_infrastructure.ParseInstanceTemplates(
+		"[us-east-1]?.us-east-1.rds.amazonaws.com:5432,,", 3306)
+	assert.NoError(t, err)
+	assert.Len(t, result, 1)
+}
+
+func TestGlobalAuroraTopologyUtils_GetHostRole(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDialect := mock_driver_infrastructure.NewMockGlobalAuroraTopologyDialect(ctrl)
+	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
+
+	isReaderQuery := "SELECT is_reader_query"
+	mockDialect.EXPECT().GetIsReaderQuery().Return(isReaderQuery).AnyTimes()
+
+	conn, mockQueryer := newMockConn(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	// writer
+	mockQueryer.EXPECT().QueryContext(gomock.Any(), isReaderQuery, gomock.Nil()).Return(mockRows, nil)
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = int64(0)
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+	mockParser.EXPECT().ParseBool(int64(0)).Return(false, true)
+	assert.Equal(t, host_info_util.WRITER, topologyUtils.GetHostRole(conn))
+
+	// reader
+	mockQueryer.EXPECT().QueryContext(gomock.Any(), isReaderQuery, gomock.Nil()).Return(mockRows, nil)
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = int64(1)
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+	mockParser.EXPECT().ParseBool(int64(1)).Return(true, true)
+	assert.Equal(t, host_info_util.READER, topologyUtils.GetHostRole(conn))
+}
+
+func TestGlobalAuroraTopologyUtils_GetInstanceId(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDialect := mock_driver_infrastructure.NewMockGlobalAuroraTopologyDialect(ctrl)
+	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
+
+	instanceIdQuery := "SELECT instance_id_query"
+	mockDialect.EXPECT().GetInstanceIdQuery().Return(instanceIdQuery).AnyTimes()
+
+	conn, mockQueryer := newMockConn(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	mockQueryer.EXPECT().QueryContext(gomock.Any(), instanceIdQuery, gomock.Nil()).Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"server_id", "server_id"})
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = "myinstance"
+		dest[1] = "myinstance"
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+	mockParser.EXPECT().ParseString("myinstance").Return("myinstance", true).Times(2)
+
+	id, name := topologyUtils.GetInstanceId(conn)
+	assert.Equal(t, "myinstance", id)
+	assert.Equal(t, "myinstance", name)
+}
+
+func TestGlobalAuroraTopologyUtils_IsWriterInstance(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDialect := mock_driver_infrastructure.NewMockGlobalAuroraTopologyDialect(ctrl)
+	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
+
+	writerIdQuery := "SELECT writer_id_query"
+	mockDialect.EXPECT().GetWriterIdQuery().Return(writerIdQuery).AnyTimes()
+
+	conn, mockQueryer := newMockConn(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	// Is writer (non-empty server_id)
+	mockQueryer.EXPECT().QueryContext(gomock.Any(), writerIdQuery, gomock.Nil()).Return(mockRows, nil)
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = "myinstance"
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+	mockParser.EXPECT().ParseString("myinstance").Return("myinstance", true)
+
+	isWriter, err := topologyUtils.IsWriterInstance(conn)
+	assert.NoError(t, err)
+	assert.True(t, isWriter)
+
+	// Not writer (empty server_id)
+	mockQueryer.EXPECT().QueryContext(gomock.Any(), writerIdQuery, gomock.Nil()).Return(mockRows, nil)
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = ""
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+	mockParser.EXPECT().ParseString("").Return("", true)
+
+	isWriter, err = topologyUtils.IsWriterInstance(conn)
+	assert.NoError(t, err)
+	assert.False(t, isWriter)
+}
+
+func TestGlobalAuroraTopologyUtils_QueryForTopologyByRegion(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDialect := mock_driver_infrastructure.NewMockGlobalAuroraTopologyDialect(ctrl)
+	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
+
+	topologyQuery := "SELECT topology_query"
+	mockDialect.EXPECT().GetTopologyQuery().Return(topologyQuery).AnyTimes()
+
+	conn, mockQueryer := newMockConn(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	usEastTemplate, _ := host_info_util.NewHostInfoBuilder().SetHost("?.us-east-1.rds.amazonaws.com").SetPort(5432).Build()
+	euWestTemplate, _ := host_info_util.NewHostInfoBuilder().SetHost("?.eu-west-1.rds.amazonaws.com").SetPort(5432).Build()
+	instanceTemplatesByRegion := map[string]*host_info_util.HostInfo{
+		"us-east-1": usEastTemplate,
+		"eu-west-1": euWestTemplate,
+	}
+
+	mockQueryer.EXPECT().QueryContext(gomock.Any(), topologyQuery, gomock.Any()).Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"server_id", "is_writer", "visibility_lag_in_msec", "aws_region"}).AnyTimes()
+
+	// Row 1: writer in us-east-1
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = "writer-instance"
+		dest[1] = true
+		dest[2] = 0.0
+		dest[3] = "us-east-1"
+		return nil
+	})
+	mockParser.EXPECT().ParseString("writer-instance").Return("writer-instance", true)
+	mockParser.EXPECT().ParseBool(true).Return(true, true)
+	mockParser.EXPECT().ParseFloat64(0.0).Return(0.0, true)
+	mockParser.EXPECT().ParseString("us-east-1").Return("us-east-1", true)
+
+	// Row 2: reader in eu-west-1
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = "reader-instance"
+		dest[1] = false
+		dest[2] = 50.0
+		dest[3] = "eu-west-1"
+		return nil
+	})
+	mockParser.EXPECT().ParseString("reader-instance").Return("reader-instance", true)
+	mockParser.EXPECT().ParseBool(false).Return(false, true)
+	mockParser.EXPECT().ParseFloat64(50.0).Return(50.0, true)
+	mockParser.EXPECT().ParseString("eu-west-1").Return("eu-west-1", true)
+
+	// No more rows
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip)
+	mockRows.EXPECT().Close().Return(nil)
+
+	initialHost, _ := host_info_util.NewHostInfoBuilder().SetHost("initial.us-east-1.rds.amazonaws.com").SetPort(5432).Build()
+	hosts, err := topologyUtils.QueryForTopologyByRegion(conn, initialHost, instanceTemplatesByRegion)
+
+	assert.NoError(t, err)
+	assert.Len(t, hosts, 2)
+
+	// Verify writer is first (verifyWriter sorts writer to front)
+	assert.Equal(t, host_info_util.WRITER, hosts[0].Role)
+	assert.Equal(t, host_info_util.READER, hosts[1].Role)
+}
+
+func TestGlobalAuroraTopologyUtils_QueryForTopologyByRegion_MissingRegionTemplate(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDialect := mock_driver_infrastructure.NewMockGlobalAuroraTopologyDialect(ctrl)
+	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
+
+	topologyQuery := "SELECT topology_query"
+	mockDialect.EXPECT().GetTopologyQuery().Return(topologyQuery).AnyTimes()
+
+	conn, mockQueryer := newMockConn(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	// Only us-east-1 template, but row has eu-west-1
+	usEastTemplate, _ := host_info_util.NewHostInfoBuilder().SetHost("?.us-east-1.rds.amazonaws.com").SetPort(5432).Build()
+	instanceTemplatesByRegion := map[string]*host_info_util.HostInfo{
+		"us-east-1": usEastTemplate,
+	}
+
+	mockQueryer.EXPECT().QueryContext(gomock.Any(), topologyQuery, gomock.Any()).Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"server_id", "is_writer", "visibility_lag_in_msec", "aws_region"}).AnyTimes()
+
+	// Row with unknown region — should be skipped
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = "instance-1"
+		dest[1] = false
+		dest[2] = 0.0
+		dest[3] = "eu-west-1"
+		return nil
+	})
+	mockParser.EXPECT().ParseString("instance-1").Return("instance-1", true)
+	mockParser.EXPECT().ParseBool(false).Return(false, true)
+	mockParser.EXPECT().ParseFloat64(0.0).Return(0.0, true)
+	mockParser.EXPECT().ParseString("eu-west-1").Return("eu-west-1", true)
+
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip)
+	mockRows.EXPECT().Close().Return(nil)
+
+	initialHost, _ := host_info_util.NewHostInfoBuilder().SetHost("initial.us-east-1.rds.amazonaws.com").SetPort(5432).Build()
+	hosts, err := topologyUtils.QueryForTopologyByRegion(conn, initialHost, instanceTemplatesByRegion)
+
+	assert.NoError(t, err)
+	assert.Len(t, hosts, 0)
+}
+
+func TestGlobalAuroraTopologyUtils_QueryForTopologyByRegion_DuplicateHostKeepsNewer(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDialect := mock_driver_infrastructure.NewMockGlobalAuroraTopologyDialect(ctrl)
+	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
+
+	topologyQuery := "SELECT topology_query"
+	mockDialect.EXPECT().GetTopologyQuery().Return(topologyQuery).AnyTimes()
+
+	conn, mockQueryer := newMockConn(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	usEastTemplate, _ := host_info_util.NewHostInfoBuilder().SetHost("?.us-east-1.rds.amazonaws.com").SetPort(5432).Build()
+	instanceTemplatesByRegion := map[string]*host_info_util.HostInfo{
+		"us-east-1": usEastTemplate,
+	}
+
+	mockQueryer.EXPECT().QueryContext(gomock.Any(), topologyQuery, gomock.Any()).Return(mockRows, nil)
+	mockRows.EXPECT().Columns().Return([]string{"server_id", "is_writer", "visibility_lag_in_msec", "aws_region"}).AnyTimes()
+
+	// Two rows with the same host — second should win since it's newer
+	// Both are writers so verifyWriter doesn't filter the result out
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = "instance-1"
+		dest[1] = true
+		dest[2] = 0.0
+		dest[3] = "us-east-1"
+		return nil
+	})
+	mockParser.EXPECT().ParseString("instance-1").Return("instance-1", true)
+	mockParser.EXPECT().ParseBool(true).Return(true, true)
+	mockParser.EXPECT().ParseFloat64(0.0).Return(0.0, true)
+	mockParser.EXPECT().ParseString("us-east-1").Return("us-east-1", true)
+
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = "instance-1"
+		dest[1] = true
+		dest[2] = 10.0
+		dest[3] = "us-east-1"
+		return nil
+	})
+	mockParser.EXPECT().ParseString("instance-1").Return("instance-1", true)
+	mockParser.EXPECT().ParseBool(true).Return(true, true)
+	mockParser.EXPECT().ParseFloat64(10.0).Return(10.0, true)
+	mockParser.EXPECT().ParseString("us-east-1").Return("us-east-1", true)
+
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip)
+	mockRows.EXPECT().Close().Return(nil)
+
+	initialHost, _ := host_info_util.NewHostInfoBuilder().SetHost("initial.us-east-1.rds.amazonaws.com").SetPort(5432).Build()
+	hosts, err := topologyUtils.QueryForTopologyByRegion(conn, initialHost, instanceTemplatesByRegion)
+
+	assert.NoError(t, err)
+	// Duplicate host should be deduplicated
+	assert.Len(t, hosts, 1)
+}
+
+func TestGlobalAuroraTopologyUtils_GetRegion(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDialect := mock_driver_infrastructure.NewMockGlobalAuroraTopologyDialect(ctrl)
+	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
+
+	regionQuery := "SELECT AWS_REGION FROM ... WHERE SERVER_ID = ?"
+	mockDialect.EXPECT().GetRegionByInstanceIdQuery().Return(regionQuery).AnyTimes()
+
+	conn, mockQueryer := newMockConn(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	mockQueryer.EXPECT().QueryContext(gomock.Any(), regionQuery, gomock.Any()).Return(mockRows, nil)
+	mockRows.EXPECT().Next(gomock.Any()).DoAndReturn(func(dest []driver.Value) error {
+		dest[0] = "us-east-1"
+		return nil
+	})
+	mockRows.EXPECT().Close().Return(nil)
+	mockParser.EXPECT().ParseString("us-east-1").Return("us-east-1", true)
+
+	region, err := topologyUtils.GetRegion("myinstance", conn)
+	assert.NoError(t, err)
+	assert.Equal(t, "us-east-1", region)
+}
+
+func TestGlobalAuroraTopologyUtils_GetRegion_NoRows(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDialect := mock_driver_infrastructure.NewMockGlobalAuroraTopologyDialect(ctrl)
+	mockParser := mock_driver_infrastructure.NewMockRowParser(ctrl)
+	mockDriverDialect := newMockDriverDialect(ctrl, mockParser)
+	topologyUtils := driver_infrastructure.NewGlobalAuroraTopologyUtils(mockDialect, mockDriverDialect, nil)
+
+	regionQuery := "SELECT AWS_REGION FROM ... WHERE SERVER_ID = ?"
+	mockDialect.EXPECT().GetRegionByInstanceIdQuery().Return(regionQuery).AnyTimes()
+
+	conn, mockQueryer := newMockConn(ctrl)
+	mockRows := mock_database_sql_driver.NewMockRows(ctrl)
+
+	mockQueryer.EXPECT().QueryContext(gomock.Any(), regionQuery, gomock.Any()).Return(mockRows, nil)
+	mockRows.EXPECT().Next(gomock.Any()).Return(driver.ErrSkip)
+	mockRows.EXPECT().Close().Return(nil)
+
+	region, err := topologyUtils.GetRegion("nonexistent", conn)
+	assert.NoError(t, err)
+	assert.Equal(t, "", region)
+}
+
+func TestTopologyKey_SameTopology(t *testing.T) {
+	host1, _ := host_info_util.NewHostInfoBuilder().SetHost("host-a").SetPort(5432).Build()
+	host1.Role = host_info_util.WRITER
+	host1.Availability = host_info_util.AVAILABLE
+
+	host2, _ := host_info_util.NewHostInfoBuilder().SetHost("host-b").SetPort(5432).Build()
+	host2.Role = host_info_util.READER
+	host2.Availability = host_info_util.AVAILABLE
+
+	topology1 := driver_infrastructure.NewTopology([]*host_info_util.HostInfo{host1, host2})
+	topology2 := driver_infrastructure.NewTopology([]*host_info_util.HostInfo{host2, host1}) // reversed order
+
+	assert.Equal(t, topology1.Key(), topology2.Key())
+}
+
+func TestTopologyKey_DifferentRoles(t *testing.T) {
+	host1, _ := host_info_util.NewHostInfoBuilder().SetHost("host-a").SetPort(5432).Build()
+	host1.Role = host_info_util.WRITER
+	host1.Availability = host_info_util.AVAILABLE
+
+	host2, _ := host_info_util.NewHostInfoBuilder().SetHost("host-a").SetPort(5432).Build()
+	host2.Role = host_info_util.READER
+	host2.Availability = host_info_util.AVAILABLE
+
+	key1 := driver_infrastructure.NewTopology([]*host_info_util.HostInfo{host1}).Key()
+	key2 := driver_infrastructure.NewTopology([]*host_info_util.HostInfo{host2}).Key()
+
+	assert.NotEqual(t, key1, key2)
+}
+
+func TestTopologyKey_IgnoresWeight(t *testing.T) {
+	host1, _ := host_info_util.NewHostInfoBuilder().SetHost("host-a").SetPort(5432).Build()
+	host1.Role = host_info_util.READER
+	host1.Availability = host_info_util.AVAILABLE
+	host1.Weight = 100
+
+	host2, _ := host_info_util.NewHostInfoBuilder().SetHost("host-a").SetPort(5432).Build()
+	host2.Role = host_info_util.READER
+	host2.Availability = host_info_util.AVAILABLE
+	host2.Weight = 999
+
+	key1 := driver_infrastructure.NewTopology([]*host_info_util.HostInfo{host1}).Key()
+	key2 := driver_infrastructure.NewTopology([]*host_info_util.HostInfo{host2}).Key()
+
+	assert.Equal(t, key1, key2)
+}
+
+func TestTopologyKey_EmptyTopology(t *testing.T) {
+	key := driver_infrastructure.NewTopology([]*host_info_util.HostInfo{}).Key()
+	assert.Equal(t, "", key)
 }

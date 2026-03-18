@@ -34,12 +34,14 @@ var KnownDialectsByCode = map[string]DatabaseDialect{
 	RDS_MYSQL_DIALECT:                  &RdsMySQLDatabaseDialect{},
 	RDS_PG_DIALECT:                     &RdsPgDatabaseDialect{},
 	AURORA_MYSQL_DIALECT:               &AuroraMySQLDatabaseDialect{},
+	GLOBAL_AURORA_MYSQL_DIALECT:        &GlobalAuroraMySQLDatabaseDialect{},
 	AURORA_PG_DIALECT:                  &AuroraPgDatabaseDialect{},
+	GLOBAL_AURORA_PG_DIALECT:           &GlobalAuroraPgDatabaseDialect{},
 	RDS_MYSQL_MULTI_AZ_CLUSTER_DIALECT: &RdsMultiAzClusterMySQLDatabaseDialect{},
 	RDS_PG_MULTI_AZ_CLUSTER_DIALECT:    &RdsMultiAzClusterPgDatabaseDialect{},
 }
 
-var knownEndpointDialectsCache = utils.NewCache[string]()
+var knownEndpointDialectsCache = utils.NewCacheWithDefaultExpiration[string](ENDPOINT_CACHE_EXPIRATION)
 var ENDPOINT_CACHE_EXPIRATION = time.Hour * 24
 
 type DialectProvider interface {
@@ -89,11 +91,19 @@ func (d *DialectManager) GetDialect(dsn string, props *utils.RWMap[string, strin
 			return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DatabaseDialectManager.missingWrapperDriver", AWS_MYSQL_DRIVER_CODE))
 		}
 
+		if rdsUrlType == utils.RDS_GLOBAL_WRITER_CLUSTER {
+			d.canUpdate = false
+			d.dialectCode = GLOBAL_AURORA_MYSQL_DIALECT
+			d.dialect = KnownDialectsByCode[GLOBAL_AURORA_MYSQL_DIALECT]
+			knownEndpointDialectsCache.PutWithDefaultExpiration(dsn, GLOBAL_AURORA_MYSQL_DIALECT)
+			d.logCurrentDialect()
+			return d.dialect, nil
+		}
 		if rdsUrlType.IsRdsCluster {
 			d.canUpdate = true
 			d.dialectCode = AURORA_MYSQL_DIALECT
 			d.dialect = KnownDialectsByCode[AURORA_MYSQL_DIALECT]
-			knownEndpointDialectsCache.Put(dsn, AURORA_MYSQL_DIALECT, ENDPOINT_CACHE_EXPIRATION)
+			knownEndpointDialectsCache.PutWithDefaultExpiration(dsn, AURORA_MYSQL_DIALECT)
 			d.logCurrentDialect()
 			return d.dialect, nil
 		}
@@ -116,11 +126,19 @@ func (d *DialectManager) GetDialect(dsn string, props *utils.RWMap[string, strin
 			return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DatabaseDialectManager.missingWrapperDriver", AWS_PGX_DRIVER_CODE))
 		}
 
+		if rdsUrlType == utils.RDS_GLOBAL_WRITER_CLUSTER {
+			d.canUpdate = false
+			d.dialectCode = GLOBAL_AURORA_PG_DIALECT
+			d.dialect = KnownDialectsByCode[GLOBAL_AURORA_PG_DIALECT]
+			knownEndpointDialectsCache.PutWithDefaultExpiration(dsn, GLOBAL_AURORA_PG_DIALECT)
+			d.logCurrentDialect()
+			return d.dialect, nil
+		}
 		if rdsUrlType.IsRdsCluster {
 			d.canUpdate = true
 			d.dialectCode = AURORA_PG_DIALECT
 			d.dialect = KnownDialectsByCode[AURORA_PG_DIALECT]
-			knownEndpointDialectsCache.Put(dsn, AURORA_PG_DIALECT, ENDPOINT_CACHE_EXPIRATION)
+			knownEndpointDialectsCache.PutWithDefaultExpiration(dsn, AURORA_PG_DIALECT)
 			d.logCurrentDialect()
 			return d.dialect, nil
 		}
@@ -153,8 +171,8 @@ func (d *DialectManager) GetDialectForUpdate(conn driver.Conn, originalHost stri
 			d.dialectCode = candidateCode
 			d.dialect = dialectCandidate
 
-			knownEndpointDialectsCache.Put(originalHost, d.dialectCode, ENDPOINT_CACHE_EXPIRATION)
-			knownEndpointDialectsCache.Put(newHost, d.dialectCode, ENDPOINT_CACHE_EXPIRATION)
+			knownEndpointDialectsCache.PutWithDefaultExpiration(originalHost, d.dialectCode)
+			knownEndpointDialectsCache.PutWithDefaultExpiration(newHost, d.dialectCode)
 
 			d.logCurrentDialect()
 			return d.dialect
@@ -162,8 +180,8 @@ func (d *DialectManager) GetDialectForUpdate(conn driver.Conn, originalHost stri
 	}
 
 	d.canUpdate = false
-	knownEndpointDialectsCache.Put(originalHost, d.dialectCode, ENDPOINT_CACHE_EXPIRATION)
-	knownEndpointDialectsCache.Put(newHost, d.dialectCode, ENDPOINT_CACHE_EXPIRATION)
+	knownEndpointDialectsCache.PutWithDefaultExpiration(originalHost, d.dialectCode)
+	knownEndpointDialectsCache.PutWithDefaultExpiration(newHost, d.dialectCode)
 
 	d.logCurrentDialect()
 	return d.dialect
