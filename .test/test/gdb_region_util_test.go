@@ -158,7 +158,7 @@ func TestGdbRegionProvider_GetRegion_NoWriterFound(t *testing.T) {
 	region, err := provider.GetRegion("my-gdb.global-abc123.global.rds.amazonaws.com", emptyProps, property_util.IAM_REGION)
 
 	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "no writer cluster found")
+	assert.Contains(t, err.Error(), "No writer cluster found")
 	assert.Equal(t, region_util.Region(""), region)
 }
 
@@ -194,7 +194,7 @@ func TestGdbRegionProvider_GetRegion_NonGlobalHost(t *testing.T) {
 	region, err := provider.GetRegion("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com", emptyProps, property_util.IAM_REGION)
 
 	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "unable to parse global cluster ID")
+	assert.Contains(t, err.Error(), "Unable to parse global cluster ID")
 	assert.Equal(t, region_util.Region(""), region)
 }
 
@@ -246,7 +246,7 @@ func TestGdbRegionProvider_GetRegion_EmptyClusters(t *testing.T) {
 	region, err := provider.GetRegion("my-gdb.global-abc123.global.rds.amazonaws.com", emptyProps, property_util.IAM_REGION)
 
 	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "no writer cluster found")
+	assert.Contains(t, err.Error(), "No writer cluster found")
 	assert.Equal(t, region_util.Region(""), region)
 }
 
