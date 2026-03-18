@@ -317,5 +317,10 @@
   "Utils.rollbackError": "Error occurred when attempting rollback: '%s'.",
   "Utils.topology": "%s \n%s",
   "WeightedRandomHostSelector.noHostsMatchingRole": "Weighted Random strategy was unable to select a host. No available hosts were found matching the requested '%v' role.",
-  "WeightedRandomHostSelector.unableToGetHost": "Weighted Random strategy was unable to select a host."
+  "WeightedRandomHostSelector.unableToGetHost": "Weighted Random strategy was unable to select a host.",
+  "GdbRegionProvider.unableToParseGlobalClusterId": "Unable to parse global cluster ID from host: '%s'.",
+  "GdbRegionProvider.errorGettingDefaultCredentials": "Error getting default credentials provider: '%v'.",
+  "GdbRegionProvider.errorFindingWriterClusterArn": "Error finding writer cluster ARN for cluster '%s': '%v'.",
+  "GdbRegionProvider.noWriterClusterFound": "No writer cluster found for global cluster '%s'.",
+  "GdbRegionProvider.errorLoadingDefaultAwsConfig": "GdbRegionProvider: error loading default AWS config: '%v'."
 }

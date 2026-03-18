@@ -32,6 +32,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
+	"github.com/aws/aws-sdk-go-v2/aws"
 )
 
 func init() {
@@ -133,7 +134,21 @@ func (f *FederatedAuthPlugin) connectInternal(
 		*hostInfo,
 		f.servicesContainer.GetPluginService().GetDialect().GetDefaultPort())
 
-	region := region_util.GetRegion(host, props, property_util.IAM_REGION)
+	var credentialsProvider aws.CredentialsProvider
+	var regionProvider region_util.RegionProvider
+	if utils.IsGlobalDbWriterClusterDns(host) {
+		credentialsProvider, err = f.credentialsProviderFactory.GetAwsCredentialsProvider(host, "", props)
+		if err != nil {
+			return nil, err
+		}
+		regionProvider = auth_helpers.NewGdbRegionProvider(credentialsProvider)
+	} else {
+		regionProvider = &region_util.DefaultRegionProvider{}
+	}
+	region, regionErr := regionProvider.GetRegion(host, props, property_util.IAM_REGION)
+	if regionErr != nil {
+		return nil, regionErr
+	}
 	if region == "" {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("FederatedAuthPlugin.unableToDetermineRegion", property_util.IAM_REGION.Name))
 	}

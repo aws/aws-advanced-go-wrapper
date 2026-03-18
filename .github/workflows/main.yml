@@ -70,7 +70,7 @@ jobs:
       - name: 'Test with Go'
         working-directory: ${{ github.workspace }}/.test
         run: |
-          go test ./test/... -coverpkg=$coverpkg -coverprofile=coverage_raw -json > TestResults.json
+          go test -v ./test/... -coverpkg=$coverpkg -coverprofile=coverage_raw -json > TestResults.json
 
       - name: Check test coverage threshold
         working-directory: ${{ github.workspace }}/.test
