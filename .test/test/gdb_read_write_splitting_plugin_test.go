@@ -39,6 +39,8 @@ const (
 	reader2HostUSEast1 = "my-cluster2.cluster-ro-def.us-east-1.rds.amazonaws.com"
 	writerHostEUWest1  = "my-cluster.cluster-abc.eu-west-1.rds.amazonaws.com"
 	readerHostEUWest1  = "my-cluster.cluster-ro-abc.eu-west-1.rds.amazonaws.com"
+
+	globalEndpointHost = "my-global-cluster.global-abc123.global.rds.amazonaws.com"
 )
 
 func TestNewGdbReadWriteSplittingPluginFactory(t *testing.T) {
@@ -367,6 +369,85 @@ func TestGdbPlugin_Connect_MissingHomeRegion(t *testing.T) {
 
 	// Non-RDS host and no property — region can't be determined.
 	hostInfo := &host_info_util.HostInfo{Host: "localhost"}
+
+	conn, err := plugin.Connect(hostInfo, props, true, func(_ *utils.RWMap[string, string]) (driver.Conn, error) {
+		return nil, nil
+	})
+	assert.Error(t, err)
+	assert.Nil(t, conn)
+	assert.Contains(t, err.Error(), "home region could not be determined")
+}
+
+func TestGdbStrategy_OnConnect_GlobalEndpoint_WithRegionProp(t *testing.T) {
+	props := MakeMapFromKeysAndVals(
+		property_util.GDB_RW_HOME_REGION.Name, "us-east-1",
+	)
+	strategy := read_write_splitting.NewGdbReadWriteSplittingStrategy(props)
+
+	hostInfo := &host_info_util.HostInfo{Host: globalEndpointHost}
+	err := strategy.OnConnect(hostInfo, props)
+	assert.NoError(t, err)
+}
+
+func TestGdbStrategy_OnConnect_GlobalEndpoint_WithoutRegionProp(t *testing.T) {
+	props := MakeMapFromKeysAndVals()
+	strategy := read_write_splitting.NewGdbReadWriteSplittingStrategy(props)
+
+	hostInfo := &host_info_util.HostInfo{Host: globalEndpointHost}
+	err := strategy.OnConnect(hostInfo, props)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "home region could not be determined")
+}
+
+func TestGdbPlugin_Connect_GlobalEndpoint_WithRegionProp(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	props := MakeMapFromKeysAndVals(
+		property_util.GDB_RW_HOME_REGION.Name, "us-east-1",
+	)
+
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	mockHostProvider := mock_driver_infrastructure.NewMockHostListProviderService(ctrl)
+	mockPluginService.EXPECT().AcceptsStrategy(gomock.Any()).Return(true)
+	mockHostProvider.EXPECT().IsStaticHostListProvider().Return(true)
+
+	strategy := read_write_splitting.NewGdbReadWriteSplittingStrategy(props)
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(
+		mockContainer, props,
+		driver_infrastructure.GDB_READ_WRITE_SPLITTING_PLUGIN_CODE,
+		strategy)
+	_ = plugin.InitHostProvider(nil, mockHostProvider, func() error { return nil })
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	hostInfo := &host_info_util.HostInfo{Host: globalEndpointHost}
+
+	conn, err := plugin.Connect(hostInfo, props, true, func(_ *utils.RWMap[string, string]) (driver.Conn, error) {
+		return mockConn, nil
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, mockConn, conn)
+}
+
+func TestGdbPlugin_Connect_GlobalEndpoint_MissingRegionProp(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	props := MakeMapFromKeysAndVals()
+
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+
+	strategy := read_write_splitting.NewGdbReadWriteSplittingStrategy(props)
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(
+		mockContainer, props,
+		driver_infrastructure.GDB_READ_WRITE_SPLITTING_PLUGIN_CODE,
+		strategy)
+
+	hostInfo := &host_info_util.HostInfo{Host: globalEndpointHost}
 
 	conn, err := plugin.Connect(hostInfo, props, true, func(_ *utils.RWMap[string, string]) (driver.Conn, error) {
 		return nil, nil
