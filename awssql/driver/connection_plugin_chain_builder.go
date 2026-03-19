@@ -42,6 +42,7 @@ var pluginWeightByCode = map[string]int{
 	driver_infrastructure.AURORA_CONNECTION_TRACKER_PLUGIN_CODE:          400,
 	driver_infrastructure.BLUE_GREEN_PLUGIN_CODE:                         550,
 	driver_infrastructure.READ_WRITE_SPLITTING_PLUGIN_CODE:               600,
+	driver_infrastructure.GDB_READ_WRITE_SPLITTING_PLUGIN_CODE:           610,
 	driver_infrastructure.FAILOVER_PLUGIN_CODE:                           700,
 	driver_infrastructure.GDB_FAILOVER_PLUGIN_CODE:                       710,
 	driver_infrastructure.EFM_PLUGIN_CODE:                                800,
