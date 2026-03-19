@@ -50,11 +50,8 @@ func NewGdbReadWriteSplittingPluginFactory() driver_infrastructure.ConnectionPlu
 	return GdbReadWriteSplittingPluginFactory{}
 }
 
-// GdbReadWriteSplittingStrategy implements ReadWriteSplittingStrategy
-// with region-aware filtering for Aurora Global Databases.
-// It embeds DefaultReadWriteSplittingStrategy for the base topology logic.
 type GdbReadWriteSplittingStrategy struct {
-	DefaultReadWriteSplittingStrategy
+	RdsReadWriteSplittingStrategy
 	homeRegion           region_util.Region
 	restrictWriterToHome bool
 	restrictReaderToHome bool
@@ -145,7 +142,6 @@ func (s *GdbReadWriteSplittingStrategy) GetReaderConnection(
 		}
 	}
 
-	// Delegate to the embedded default strategy for the retry/connect logic.
-	return s.DefaultReadWriteSplittingStrategy.GetReaderConnection(
+	return s.RdsReadWriteSplittingStrategy.GetReaderConnection(
 		servicesContainer, props, filtered, readerSelectorStrategy, pluginToSkip)
 }

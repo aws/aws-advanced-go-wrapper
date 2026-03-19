@@ -37,7 +37,7 @@ func (factory ReadWriteSplittingPluginFactory) GetInstance(servicesContainer dri
 	return NewReadWriteSplittingPlugin(
 		servicesContainer, props,
 		driver_infrastructure.READ_WRITE_SPLITTING_PLUGIN_CODE,
-		&DefaultReadWriteSplittingStrategy{}), nil
+		&RdsReadWriteSplittingStrategy{}), nil
 }
 
 func (factory ReadWriteSplittingPluginFactory) ClearCaches() {
@@ -47,10 +47,7 @@ func NewReadWriteSplittingPluginFactory() driver_infrastructure.ConnectionPlugin
 	return ReadWriteSplittingPluginFactory{}
 }
 
-// ReadWriteSplittingStrategy defines how reader and writer connections are
-// obtained. Implementations control filtering, validation, and connection
-// creation. The plugin delegates to the strategy and never branches on
-// the concrete type.
+// ReadWriteSplittingStrategy defines how reader and writer connections are obtained.
 type ReadWriteSplittingStrategy interface {
 	// OnConnect is called during Connect to allow strategy-specific initialization.
 	OnConnect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string]) error
@@ -122,7 +119,6 @@ func (r *ReadWriteSplittingPlugin) Connect(
 	props *utils.RWMap[string, string],
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-
 	if err := r.strategy.OnConnect(hostInfo, props); err != nil {
 		return nil, err
 	}
@@ -458,4 +454,61 @@ func (r *ReadWriteSplittingPlugin) setWriterConnection(conn driver.Conn, host *h
 func (r *ReadWriteSplittingPlugin) setReaderConnection(conn driver.Conn, host *host_info_util.HostInfo) {
 	r.readerConnection = conn
 	r.readerHostInfo = host
+}
+
+type RdsReadWriteSplittingStrategy struct{}
+
+func (s *RdsReadWriteSplittingStrategy) OnConnect(
+	_ *host_info_util.HostInfo,
+	_ *utils.RWMap[string, string],
+) error {
+	return nil
+}
+
+func (s *RdsReadWriteSplittingStrategy) GetWriterConnection(
+	servicesContainer driver_infrastructure.ServicesContainer,
+	props *utils.RWMap[string, string],
+	hosts []*host_info_util.HostInfo,
+	pluginToSkip driver_infrastructure.ConnectionPlugin,
+) (driver.Conn, *host_info_util.HostInfo, error) {
+	writerHost := host_info_util.GetWriter(hosts)
+	if writerHost == nil {
+		return nil, nil, error_util.NewGenericAwsWrapperError(
+			error_util.GetMessage("ReadWriteSplittingPlugin.noWriterFound"))
+	}
+	conn, err := servicesContainer.GetPluginService().Connect(writerHost, props, pluginToSkip)
+	if err != nil {
+		return nil, nil, err
+	}
+	return conn, writerHost, nil
+}
+
+func (s *RdsReadWriteSplittingStrategy) GetReaderConnection(
+	servicesContainer driver_infrastructure.ServicesContainer,
+	props *utils.RWMap[string, string],
+	hosts []*host_info_util.HostInfo,
+	readerSelectorStrategy string,
+	pluginToSkip driver_infrastructure.ConnectionPlugin,
+) (driver.Conn, *host_info_util.HostInfo, error) {
+	connAttempts := len(hosts) * 2
+	for range connAttempts {
+		hostInfo, err := servicesContainer.GetPluginService().GetHostInfoByStrategy(
+			host_info_util.READER, readerSelectorStrategy, hosts)
+		if err != nil {
+			if hostInfo != nil {
+				slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.failedToConnectToReader", hostInfo.GetUrl()))
+			} else {
+				slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.failedToConnectToReader", "unknown host"))
+			}
+			continue
+		}
+
+		conn, err := servicesContainer.GetPluginService().Connect(hostInfo, props, pluginToSkip)
+		if err == nil {
+			return conn, hostInfo, nil
+		}
+	}
+
+	return nil, nil, error_util.NewGenericAwsWrapperError(
+		error_util.GetMessage("ReadWriteSplittingPlugin.noReadersAvailable"))
 }
