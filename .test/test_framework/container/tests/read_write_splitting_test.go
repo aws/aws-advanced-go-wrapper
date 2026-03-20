@@ -748,10 +748,10 @@ func TestReadWriteSplitting_FailoverReaderToWriter(t *testing.T) {
 
 	// Expect failover to writer for reads
 	_, err = executeInstanceQuery(setup.env, conn, context.TODO(), 60)
-	assert.Error(t, err)
+	require.Error(t, err)
 	awsWrapperError, ok := err.(*error_util.AwsWrapperError)
-	assert.True(t, ok)
-	assert.True(t, awsWrapperError.IsFailoverErrorType())
+	require.True(t, ok)
+	require.True(t, awsWrapperError.IsFailoverErrorType())
 
 	instanceId, err := executeInstanceQuery(setup.env, conn, context.TODO(), 60)
 	assert.NoError(t, err)

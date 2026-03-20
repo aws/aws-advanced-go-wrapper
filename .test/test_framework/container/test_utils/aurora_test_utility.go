@@ -223,11 +223,15 @@ func (a AuroraTestUtility) TriggerFailover(initialWriter string, clusterId strin
 	if RDS_MULTI_AZ_CLUSTER == deployment {
 		slog.Debug("TriggerFailover() - RDS_MULTI_AZ_CLUSTER deployment detected. Simulating temporary failure")
 		a.SimulateTemporaryFailure()
-		return nil
 	} else {
 		slog.Debug(fmt.Sprintf("TriggerFailover() - dbengine deployment %v detected. FailoverClusterAndWaitTillWriterChanged", deployment))
-		return a.FailoverClusterAndWaitTillWriterChanged(initialWriter, clusterId, targetWriterId)
+		err = a.FailoverClusterAndWaitTillWriterChanged(initialWriter, clusterId, targetWriterId)
+		if err != nil {
+			return err
+		}
 	}
+
+	return VerifyClusterStatus()
 }
 
 func (a AuroraTestUtility) SimulateTemporaryFailure() {
