@@ -668,7 +668,7 @@ func rwsWriterFailoverConnTest(t *testing.T, cfg readWriteSplittingTestConfig) {
 	defer setup.cleanup(t)
 
 	dsn := test_utils.GetDsn(setup.env,
-		cfg.setupProxiedFn(t, setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, 5))
+		cfg.setupProxiedFn(t, setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, 2))
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
 	defer func() { _ = db.Close() }()
@@ -722,7 +722,7 @@ func rwsFailoverToNewReaderConnTest(t *testing.T, cfg readWriteSplittingTestConf
 
 	test_utils.SkipForMultiAzMySql(t, setup.env.Info().Request.Deployment, setup.env.Info().Request.Engine)
 
-	props := cfg.setupProxiedFn(t, setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, 5)
+	props := cfg.setupProxiedFn(t, setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, 2)
 	if cfg.pluginType == GdbReadWriteSplittingPluginMode {
 		props["activeHomeFailoverMode"] = "home-reader-or-writer"
 		props["inactiveHomeFailoverMode"] = "home-reader-or-writer"
@@ -865,7 +865,7 @@ func rwsPooledConnectionFailoverConnTest(t *testing.T, cfg readWriteSplittingTes
 	defer provider.ReleaseResources()
 
 	dsn := test_utils.GetDsn(setup.env,
-		cfg.setupProxiedFn(t, setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, 4))
+		cfg.setupProxiedFn(t, setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, 2))
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
 	defer func() { _ = db.Close() }()
@@ -908,7 +908,7 @@ func rwsPooledConnectionFailoverInTransactionConnTest(t *testing.T, cfg readWrit
 	defer driver_infrastructure.ResetCustomConnectionProvider()
 
 	dsn := test_utils.GetDsn(setup.env,
-		cfg.setupProxiedFn(t, setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, 5))
+		cfg.setupProxiedFn(t, setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, 2))
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
 	defer func() { _ = db.Close() }()
