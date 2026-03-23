@@ -32,7 +32,6 @@ const (
 type readWriteSplittingTestConfig struct {
 	name           string
 	pluginType     ReadWriteSplittingPluginType
-	plugins        string
 	setupFn        func(t *testing.T, env *test_utils.TestEnvironment) map[string]string
 	setupProxiedFn func(t *testing.T, env *test_utils.TestEnvironment, host string, connectTimeout int) map[string]string
 }
@@ -41,7 +40,6 @@ var readWriteSplittingConfigs = []readWriteSplittingTestConfig{
 	{
 		name:       "ReadWriteSplitting",
 		pluginType: ReadWriteSplittingPluginMode,
-		plugins:    "readWriteSplitting,efm,failover",
 		setupFn: func(t *testing.T, env *test_utils.TestEnvironment) map[string]string {
 			return map[string]string{"plugins": "readWriteSplitting,efm,failover"}
 		},
@@ -49,19 +47,20 @@ var readWriteSplittingConfigs = []readWriteSplittingTestConfig{
 			return test_utils.GetPropsForProxyWithConnectTimeout(env, host, "readWriteSplitting,efm,failover", connectTimeout)
 		},
 	},
-	{
-		name:       "GdbReadWriteSplitting",
-		pluginType: GdbReadWriteSplittingPluginMode,
-		plugins:    "gdbReadWriteSplitting,efm,gdbFailover",
-		setupFn: func(t *testing.T, env *test_utils.TestEnvironment) map[string]string {
-			return map[string]string{"plugins": "gdbReadWriteSplitting,efm,gdbFailover"}
-		},
-		setupProxiedFn: func(t *testing.T, env *test_utils.TestEnvironment, host string, connectTimeout int) map[string]string {
-			props := test_utils.GetPropsForProxyWithConnectTimeout(env, host, "gdbReadWriteSplitting,efm,gdbFailover", connectTimeout)
-			props["activeHomeFailoverMode"] = "strict-writer"
-			props["inactiveHomeFailoverMode"] = "strict-writer"
-			props["failoverTimeoutMs"] = "60000"
-			return props
-		},
-	},
+	// TODO: enable once gdb test framework is enabled.
+	// {
+	// 	name:       "GdbReadWriteSplitting",
+	// 	pluginType: GdbReadWriteSplittingPluginMode,
+	// 	plugins:    "gdbReadWriteSplitting,efm,gdbFailover",
+	// 	setupFn: func(t *testing.T, env *test_utils.TestEnvironment) map[string]string {
+	// 		return map[string]string{"plugins": "gdbReadWriteSplitting,efm,gdbFailover"}
+	// 	},
+	// 	setupProxiedFn: func(t *testing.T, env *test_utils.TestEnvironment, host string, connectTimeout int) map[string]string {
+	// 		props := test_utils.GetPropsForProxyWithConnectTimeout(env, host, "gdbReadWriteSplitting,efm,gdbFailover", connectTimeout)
+	// 		props["activeHomeFailoverMode"] = "strict-writer"
+	// 		props["inactiveHomeFailoverMode"] = "strict-writer"
+	// 		props["failoverTimeoutMs"] = "60000"
+	// 		return props
+	// 	},
+	// },
 }

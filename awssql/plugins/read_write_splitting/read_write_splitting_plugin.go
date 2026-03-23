@@ -341,24 +341,19 @@ func (r *ReadWriteSplittingPlugin) switchToWriterConnection(hosts []*host_info_u
 		return nil
 	}
 
-	writerHost := host_info_util.GetWriter(hosts)
-	if writerHost == nil {
-		return error_util.NewGenericAwsWrapperError(error_util.GetMessage("ReadWriteSplittingPlugin.noWriterFound"))
-	}
-
 	r.inReadWriteSplit = true
 	if !r.isConnectionUsable(r.writerConnection) {
 		if err := r.getNewWriterConnection(hosts); err != nil {
 			return err
 		}
 	} else {
-		err := r.switchCurrentConnectionTo(r.writerConnection, writerHost)
+		err := r.switchCurrentConnectionTo(r.writerConnection, r.writerHostInfo)
 		if err != nil {
 			return err
 		}
 	}
 
-	slog.Info(error_util.GetMessage("ReadWriteSplittingPlugin.switchedFromReaderToWriter", writerHost.GetUrl()))
+	slog.Info(error_util.GetMessage("ReadWriteSplittingPlugin.switchedFromReaderToWriter", r.writerHostInfo.GetUrl()))
 	return nil
 }
 
@@ -496,9 +491,9 @@ func (s *RdsReadWriteSplittingStrategy) GetReaderConnection(
 			host_info_util.READER, readerSelectorStrategy, hosts)
 		if err != nil {
 			if hostInfo != nil {
-				slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.failedToConnectToReader", hostInfo.GetUrl()))
+				slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.failedToSelectReaderHost", hostInfo.GetUrl()))
 			} else {
-				slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.failedToConnectToReader", "unknown host"))
+				slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.failedToSelectReaderHost", ""))
 			}
 			continue
 		}

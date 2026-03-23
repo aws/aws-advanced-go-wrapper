@@ -56,7 +56,6 @@ type GdbReadWriteSplittingStrategy struct {
 	restrictWriterToHome bool
 	restrictReaderToHome bool
 	isInit               bool
-	props                *utils.RWMap[string, string]
 }
 
 func NewGdbReadWriteSplittingStrategy(props *utils.RWMap[string, string]) *GdbReadWriteSplittingStrategy {
@@ -65,7 +64,6 @@ func NewGdbReadWriteSplittingStrategy(props *utils.RWMap[string, string]) *GdbRe
 			props, property_util.GDB_RW_RESTRICT_WRITER_TO_HOME_REGION),
 		restrictReaderToHome: property_util.GetVerifiedWrapperPropertyValue[bool](
 			props, property_util.GDB_RW_RESTRICT_READER_TO_HOME_REGION),
-		props: props,
 	}
 }
 
