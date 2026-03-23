@@ -40,7 +40,7 @@ var failoverConfigs = []failoverTestConfig{
 		name:       "Failover",
 		pluginType: FailoverPluginMode,
 		setupFn: func(t *testing.T, env *test_utils.TestEnvironment, host string) map[string]string {
-			return test_utils.GetPropsForProxy(env, host, "failover", 5)
+			return test_utils.GetPropsForProxy(env, host, "failover,", 5)
 		},
 	},
 	{

@@ -64,13 +64,13 @@ func GetPropsForProxyWithConnectTimeout(env *TestEnvironment, host, plugins stri
 }
 
 func AddDriverConnectTimeoutToProps(env *TestEnvironment, props map[string]string, timeout int) map[string]string {
-	timeoutStr := strconv.Itoa(timeout - 1)
+	timeoutStr := strconv.Itoa(timeout + 1)
 	var timeoutParam string
 	switch env.Info().Request.Engine {
 	case PG:
 		timeoutParam = "connect_timeout"
 	case MYSQL:
-		timeoutParam = "readTimeout"
+		timeoutParam = "timeout"
 		timeoutStr += "s"
 	}
 	props[timeoutParam] = timeoutStr
