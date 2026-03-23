@@ -72,11 +72,14 @@ func AddDriverConnectTimeoutToProps(env *TestEnvironment, props map[string]strin
 	switch env.Info().Request.Engine {
 	case PG:
 		timeoutParam = "connect_timeout"
+		props[timeoutParam] = timeoutStr
 	case MYSQL:
 		timeoutParam = "timeout"
+		socketTimeoutParam := "readTimeout"
 		timeoutStr += "s"
+		props[timeoutParam] = timeoutStr
+		props[socketTimeoutParam] = timeoutStr
 	}
-	props[timeoutParam] = timeoutStr
 	return props
 }
 
