@@ -176,8 +176,6 @@ func (r *ReadWriteSplittingPlugin) NotifyConnectionChanged(
 			err.Error()))
 	}
 
-	// Close idle connections if the connection object changed to something
-	// that is not one of our cached connections (matches JDBC behavior).
 	if _, ok := changes[driver_infrastructure.CONNECTION_OBJECT_CHANGED]; ok {
 		currentConn := r.servicesContainer.GetPluginService().GetCurrentConnection()
 		isCachedConnection := currentConn == r.writerConnection || currentConn == r.readerConnection
@@ -218,7 +216,6 @@ func (r *ReadWriteSplittingPlugin) Execute(
 	methodName string,
 	executeFunc driver_infrastructure.ExecuteFunc,
 	methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
-
 	if methodName == plugin_helpers.SET_READ_ONLY_METHOD && len(methodArgs) > 0 {
 		if readOnly, ok := methodArgs[0].(bool); ok {
 			err := r.switchConnectionIfRequired(readOnly)
