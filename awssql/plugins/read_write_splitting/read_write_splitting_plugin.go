@@ -112,6 +112,7 @@ func (r *ReadWriteSplittingPlugin) GetSubscribedMethods() []string {
 		plugin_helpers.SET_READ_ONLY_METHOD,
 		utils.CONN_QUERY_CONTEXT,
 		utils.CONN_EXEC_CONTEXT,
+		utils.CONN_RESET_SESSION,
 	}
 }
 
@@ -168,11 +169,21 @@ func (r *ReadWriteSplittingPlugin) InitHostProvider(
 }
 
 func (r *ReadWriteSplittingPlugin) NotifyConnectionChanged(
-	_ map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {
+	changes map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {
 	err := r.updateInternalConnectionInfo()
 	if err != nil {
 		slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.updateInternalConnectionInfoFailed",
 			err.Error()))
+	}
+
+	// Close idle connections if the connection object changed to something
+	// that is not one of our cached connections (matches JDBC behavior).
+	if _, ok := changes[driver_infrastructure.CONNECTION_OBJECT_CHANGED]; ok {
+		currentConn := r.servicesContainer.GetPluginService().GetCurrentConnection()
+		isCachedConnection := currentConn == r.writerConnection || currentConn == r.readerConnection
+		if !isCachedConnection {
+			r.closeIdleConnections()
+		}
 	}
 
 	if r.inReadWriteSplit {
@@ -217,6 +228,17 @@ func (r *ReadWriteSplittingPlugin) Execute(
 			}
 			return executeFunc()
 		}
+	}
+
+	if methodName == utils.CONN_RESET_SESSION {
+		if r.inReadWriteSplit {
+			err := r.switchConnectionIfRequired(false)
+			if err != nil {
+				r.closeIdleConnections()
+				return nil, nil, false, err
+			}
+		}
+		return executeFunc()
 	}
 
 	wrappedReturnValue, wrappedReturnValue2, wrappedOk, wrappedErr = executeFunc()

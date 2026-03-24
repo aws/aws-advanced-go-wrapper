@@ -864,8 +864,10 @@ func rwsPooledConnectionFailoverConnTest(t *testing.T, cfg readWriteSplittingTes
 	defer driver_infrastructure.ResetCustomConnectionProvider()
 	defer provider.ReleaseResources()
 
+	props := cfg.setupProxiedFn(t, setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, 2)
+	props["failoverTimeoutMs"] = "10000"
 	dsn := test_utils.GetDsn(setup.env,
-		cfg.setupProxiedFn(t, setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, 2))
+		props)
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
 	defer func() { _ = db.Close() }()
@@ -874,18 +876,18 @@ func rwsPooledConnectionFailoverConnTest(t *testing.T, cfg readWriteSplittingTes
 	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
-	originalWriterId, err := executeInstanceQueryWrite(setup.env, conn, 5)
+	originalWriterId, err := executeInstanceQueryWrite(setup.env, conn, 60)
 	require.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(originalWriterId, ""))
 
 	test_utils.DisableAllConnectivity()
 	time.Sleep(5 * time.Second)
 
-	_, err = executeInstanceQueryReadOnly(setup.env, conn, 5)
+	_, err = executeInstanceQueryReadOnly(setup.env, conn, 60)
 	require.Error(t, err)
 	awsWrapperError, ok := err.(*error_util.AwsWrapperError)
-	assert.True(t, ok)
-	assert.True(t, awsWrapperError.IsFailoverErrorType())
+	require.True(t, ok)
+	require.True(t, awsWrapperError.IsFailoverErrorType())
 
 	test_utils.EnableAllConnectivity(true)
 	err = test_utils.VerifyClusterStatus()

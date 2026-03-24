@@ -29,6 +29,7 @@ var MySqlNetworkErrorMessages = []string{
 	"invalid connection",
 	"bad connection",
 	"broken pipe",
+	"context deadline exceeded",
 }
 
 type MySQLErrorHandler struct {

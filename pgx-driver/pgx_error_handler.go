@@ -45,6 +45,7 @@ var PgNetworkErrorMessages = []string{
 	"use of closed network connection",
 	"broken pipe",
 	"bad connection",
+	"context deadline exceeded",
 }
 
 type PgxErrorHandler struct {

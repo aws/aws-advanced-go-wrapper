@@ -21,11 +21,9 @@ In the `database/sql` library, there are 4 main types that are used to run a que
 
 #### sql.Conn
 
-To switch between readers and writer, pass in `awsctx.SetReadOnly` to the first query of your batch, and any subsequent queries will run on that desired instance. 
+To switch between readers and writer, pass in `awsctx.SetReadOnly` to the first query of your batch, and any subsequent queries will run on that desired instance. Every new or recycled connection defaults to write mode.
 
-**Always pass in `awsctx.SetReadOnly` in your first query, and reset session settings before closing. Failing to do so may result in running a query in the wrong mode. While the default behavior of a newly-opened connection is to connect to the writer, if a recycled connection is returned by `sql.DB`, the `sql.Conn` object might be in ReadOnly mode.**
-
-**Furthermore, it is recommended to only pass in the `awsctx.SetReadOnly` setting when switching between reader and writer or vice versa. Passing in `awsctx.SetReadOnly` in every query when you are not switching does not change any results, and there is some overhead when this value is passed in as the wrapper will route the request through the plugin chain each time.**
+**It is recommended to only pass in the `awsctx.SetReadOnly` setting when switching between reader and writer or vice versa. Passing in `awsctx.SetReadOnly` in every query when you are not switching does not change any results, and there is some overhead when this value is passed in as the wrapper will route the request through the plugin chain each time.**
 
 The following is an example on how to use the plugin with `sql.Conn`.
 ```go
@@ -42,8 +40,6 @@ result, err = conn.Query("SELECT 1") // Will query against reader instance
 result, err = conn.QueryContext(writeCtx, "INSERT INTO...") // Will switch to writer instance
 result, err = conn.Exec("...") // Will execute against writer instance
 
-// Reset session
-conn.ResetSession()
 conn.Close()
 ```
 
