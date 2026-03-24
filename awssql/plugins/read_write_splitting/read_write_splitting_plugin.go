@@ -112,7 +112,6 @@ func (r *ReadWriteSplittingPlugin) GetSubscribedMethods() []string {
 		plugin_helpers.SET_READ_ONLY_METHOD,
 		utils.CONN_QUERY_CONTEXT,
 		utils.CONN_EXEC_CONTEXT,
-		utils.CONN_RESET_SESSION,
 	}
 }
 
@@ -225,17 +224,6 @@ func (r *ReadWriteSplittingPlugin) Execute(
 			}
 			return executeFunc()
 		}
-	}
-
-	if methodName == utils.CONN_RESET_SESSION {
-		if r.inReadWriteSplit {
-			err := r.switchConnectionIfRequired(false)
-			if err != nil {
-				r.closeIdleConnections()
-				return nil, nil, false, err
-			}
-		}
-		return executeFunc()
 	}
 
 	wrappedReturnValue, wrappedReturnValue2, wrappedOk, wrappedErr = executeFunc()
