@@ -53,6 +53,8 @@ func GetPropsForProxy(env *TestEnvironment, host, plugins string, timeout int) m
 		"failureDetectionCount":            "3",
 		"failureDetectionTimeMs":           "1000",
 		"failoverTimeoutMs":                "15000",
+		"clusterTopologySocketTimeoutMs":   strconv.Itoa(timeout * 1000),
+		"clusterTopologyConnectTimeoutMs":  strconv.Itoa(timeout * 1000),
 		monitoringParam + timeoutParam:     timeoutStr,
 		property_util.DRIVER_PROTOCOL.Name: driverProtocol,
 	}
@@ -64,16 +66,20 @@ func GetPropsForProxyWithConnectTimeout(env *TestEnvironment, host, plugins stri
 }
 
 func AddDriverConnectTimeoutToProps(env *TestEnvironment, props map[string]string, timeout int) map[string]string {
-	timeoutStr := strconv.Itoa(timeout - 1)
+	// timeout should be longer than the monitoring parameters and the clusterConnect timeout parameter
+	timeoutStr := strconv.Itoa(timeout + 1)
 	var timeoutParam string
 	switch env.Info().Request.Engine {
 	case PG:
 		timeoutParam = "connect_timeout"
+		props[timeoutParam] = timeoutStr
 	case MYSQL:
-		timeoutParam = "readTimeout"
+		timeoutParam = "timeout"
+		socketTimeoutParam := "readTimeout"
 		timeoutStr += "s"
+		props[timeoutParam] = timeoutStr
+		props[socketTimeoutParam] = timeoutStr
 	}
-	props[timeoutParam] = timeoutStr
 	return props
 }
 

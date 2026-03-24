@@ -41,14 +41,14 @@ var (
 	writeCtx    = context.WithValue(context.Background(), awsctx.SetReadOnly, false)
 )
 
-type testSetup struct {
+type rwsTestSetup struct {
 	env               *test_utils.TestEnvironment
 	auroraTestUtility *test_utils.AuroraTestUtility
 	db                *sql.DB
 	conn              *sql.Conn
 }
 
-func setupTest(t *testing.T, minInstances int) *testSetup {
+func rwsSetupTest(t *testing.T, cfg readWriteSplittingTestConfig, minInstances int) *rwsTestSetup {
 	err := test_utils.BasicSetup(t.Name())
 	require.NoError(t, err)
 
@@ -58,7 +58,7 @@ func setupTest(t *testing.T, minInstances int) *testSetup {
 	test_utils.SkipIfInsufficientInstances(t, env, minInstances)
 
 	auroraTestUtility := test_utils.NewAuroraTestUtility(env.Info())
-	props := map[string]string{"plugins": "readWriteSplitting,efm,failover"}
+	props := cfg.setupFn(t, env)
 	dsn := test_utils.GetDsn(env, props)
 
 	db, err := test_utils.OpenDb(env.Info().Request.Engine, dsn)
@@ -67,10 +67,10 @@ func setupTest(t *testing.T, minInstances int) *testSetup {
 	conn, err := db.Conn(context.TODO())
 	require.NoError(t, err)
 
-	return &testSetup{env, auroraTestUtility, db, conn}
+	return &rwsTestSetup{env, auroraTestUtility, db, conn}
 }
 
-func (s *testSetup) cleanup(t *testing.T) {
+func (s *rwsTestSetup) cleanup(t *testing.T) {
 	if s.conn != nil {
 		_ = s.conn.Close()
 	}
@@ -80,7 +80,7 @@ func (s *testSetup) cleanup(t *testing.T) {
 	test_utils.BasicCleanup(t.Name())
 }
 
-func setupProxiedTest(t *testing.T, minInstances int) *testSetup {
+func rwsSetupProxiedTest(t *testing.T, minInstances int) *rwsTestSetup {
 	utils.SetPreparedHostFunc(func(host string) string {
 		if strings.HasSuffix(host, ".proxied") {
 			return strings.TrimSuffix(host, ".proxied")
@@ -97,7 +97,7 @@ func setupProxiedTest(t *testing.T, minInstances int) *testSetup {
 	test_utils.SkipForTestEnvironmentFeatures(t, env.Info().Request.Features, test_utils.LIMITLESS_DEPLOYMENT)
 	test_utils.SkipIfInsufficientInstances(t, env, minInstances)
 
-	return &testSetup{env: env, auroraTestUtility: test_utils.NewAuroraTestUtility(env.Info())}
+	return &rwsTestSetup{env: env, auroraTestUtility: test_utils.NewAuroraTestUtility(env.Info())}
 }
 
 func executeInstanceQuery(env *test_utils.TestEnvironment, rowQuerier test_utils.RowQuerier, ctx context.Context, timeout int) (string, error) {
@@ -113,8 +113,89 @@ func executeInstanceQueryWrite(env *test_utils.TestEnvironment, rowQuerier test_
 	return executeInstanceQuery(env, rowQuerier, writeCtx, timeout)
 }
 
-func TestReadWriteSplitting_SetReadOnlyCtxTrue(t *testing.T) {
-	setup := setupTest(t, 2)
+func TestReadWriteSplittingDB(t *testing.T) {
+	for _, cfg := range readWriteSplittingConfigs {
+		cfg := cfg // capture range variable
+		t.Run(cfg.name+"/SetReadOnlyCtxTrue", func(t *testing.T) {
+			rwsSetReadOnlyCtxTrueDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/SetReadOnlyCtxFalse", func(t *testing.T) {
+			rwsSetReadOnlyCtxFalseDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/SetReadOnlyCtxNoCtx", func(t *testing.T) {
+			rwsSetReadOnlyCtxNoCtxDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/TxSetReadOnlyTrueCtx", func(t *testing.T) {
+			rwsTxSetReadOnlyTrueCtxDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/TxSetReadOnlyFalseCtx", func(t *testing.T) {
+			rwsTxSetReadOnlyFalseCtxDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/TxSetReadOnlyNoCtx", func(t *testing.T) {
+			rwsTxSetReadOnlyNoCtxDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/TxSetReadOnlyTrueOpt", func(t *testing.T) {
+			rwsTxSetReadOnlyTrueOptDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/TxSetReadOnlyFalseOpt", func(t *testing.T) {
+			rwsTxSetReadOnlyFalseOptDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/TxNoOpt", func(t *testing.T) {
+			rwsTxNoOptDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/StmtDb", func(t *testing.T) {
+			rwsStmtDbDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/StmtConn", func(t *testing.T) {
+			rwsStmtConnDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/StmtTx", func(t *testing.T) {
+			rwsStmtTxDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/SetReadOnlyCtxSwitchFalseTrueNoCtx", func(t *testing.T) {
+			rwsSetReadOnlyCtxSwitchFalseTrueNoCtxDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/SetReadOnlyFalseInReadOnlyTransaction", func(t *testing.T) {
+			rwsSetReadOnlyFalseInReadOnlyTransactionDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/SetReadOnlyTrueInTransaction", func(t *testing.T) {
+			rwsSetReadOnlyTrueInTransactionDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/ExecuteWithCachedConnection", func(t *testing.T) {
+			rwsExecuteWithCachedConnectionDBTest(t, cfg)
+		})
+		t.Run(cfg.name+"/OneInstance", func(t *testing.T) {
+			rwsOneInstanceDBTest(t, cfg)
+		})
+	}
+}
+
+func TestReadWriteSplittingConn(t *testing.T) {
+	for _, cfg := range readWriteSplittingConfigs {
+		cfg := cfg // capture range variable
+		t.Run(cfg.name+"/NoReaders", func(t *testing.T) {
+			rwsNoReadersConnTest(t, cfg)
+		})
+		t.Run(cfg.name+"/WriterFailover", func(t *testing.T) {
+			rwsWriterFailoverConnTest(t, cfg)
+		})
+		t.Run(cfg.name+"/FailoverToNewReader", func(t *testing.T) {
+			rwsFailoverToNewReaderConnTest(t, cfg)
+		})
+		t.Run(cfg.name+"/FailoverReaderToWriter", func(t *testing.T) {
+			rwsFailoverReaderToWriterConnTest(t, cfg)
+		})
+		t.Run(cfg.name+"/PooledConnectionFailover", func(t *testing.T) {
+			rwsPooledConnectionFailoverConnTest(t, cfg)
+		})
+		t.Run(cfg.name+"/PooledConnectionFailoverInTransaction", func(t *testing.T) {
+			rwsPooledConnectionFailoverInTransactionConnTest(t, cfg)
+		})
+	}
+}
+
+func rwsSetReadOnlyCtxTrueDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
 	instanceId, err := executeInstanceQueryReadOnly(setup.env, setup.conn, 5)
@@ -127,8 +208,8 @@ func TestReadWriteSplitting_SetReadOnlyCtxTrue(t *testing.T) {
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
 
-func TestReadWriteSplitting_SetReadOnlyCtxFalse(t *testing.T) {
-	setup := setupTest(t, 2)
+func rwsSetReadOnlyCtxFalseDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
 	instanceId, err := executeInstanceQueryWrite(setup.env, setup.db, 5)
@@ -141,8 +222,8 @@ func TestReadWriteSplitting_SetReadOnlyCtxFalse(t *testing.T) {
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
 
-func TestReadWriteSplitting_SetReadOnlyCtxNoCtx(t *testing.T) {
-	setup := setupTest(t, 2)
+func rwsSetReadOnlyCtxNoCtxDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
 	instanceId, err := executeInstanceQuery(setup.env, setup.db, context.TODO(), 5)
@@ -155,8 +236,8 @@ func TestReadWriteSplitting_SetReadOnlyCtxNoCtx(t *testing.T) {
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
 
-func TestReadWriteSplitting_TxSetReadOnlyTrueCtx(t *testing.T) {
-	setup := setupTest(t, 2)
+func rwsTxSetReadOnlyTrueCtxDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
 	tx, err := setup.db.BeginTx(readOnlyCtx, nil)
@@ -169,8 +250,8 @@ func TestReadWriteSplitting_TxSetReadOnlyTrueCtx(t *testing.T) {
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
 
-func TestReadWriteSplitting_TxSetReadOnlyFalseCtx(t *testing.T) {
-	setup := setupTest(t, 2)
+func rwsTxSetReadOnlyFalseCtxDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
 	tx, err := setup.db.BeginTx(writeCtx, nil)
@@ -183,8 +264,8 @@ func TestReadWriteSplitting_TxSetReadOnlyFalseCtx(t *testing.T) {
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
 
-func TestReadWriteSplitting_TxSetReadOnlyNoCtx(t *testing.T) {
-	setup := setupTest(t, 2)
+func rwsTxSetReadOnlyNoCtxDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
 	tx, err := setup.db.BeginTx(context.TODO(), nil)
@@ -197,8 +278,8 @@ func TestReadWriteSplitting_TxSetReadOnlyNoCtx(t *testing.T) {
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
 
-func TestReadWriteSplitting_TxSetReadOnlyTrueOpt(t *testing.T) {
-	setup := setupTest(t, 2)
+func rwsTxSetReadOnlyTrueOptDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
 	tx, err := setup.db.BeginTx(context.TODO(), &sql.TxOptions{ReadOnly: true})
@@ -211,8 +292,8 @@ func TestReadWriteSplitting_TxSetReadOnlyTrueOpt(t *testing.T) {
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
 
-func TestReadWriteSplitting_TxSetReadOnlyFalseOpt(t *testing.T) {
-	setup := setupTest(t, 2)
+func rwsTxSetReadOnlyFalseOptDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
 	tx, err := setup.db.BeginTx(context.TODO(), &sql.TxOptions{ReadOnly: false})
@@ -225,8 +306,8 @@ func TestReadWriteSplitting_TxSetReadOnlyFalseOpt(t *testing.T) {
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
 
-func TestReadWriteSplitting_TxNoOpt(t *testing.T) {
-	setup := setupTest(t, 2)
+func rwsTxNoOptDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
 	tx, err := setup.db.BeginTx(context.TODO(), &sql.TxOptions{ReadOnly: false})
@@ -239,8 +320,8 @@ func TestReadWriteSplitting_TxNoOpt(t *testing.T) {
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
 
-func TestReadWriteSplitting_StmtDb(t *testing.T) {
-	setup := setupTest(t, 2)
+func rwsStmtDbDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
 	instanceQuery, err := test_utils.GetInstanceIdSql(
@@ -267,8 +348,8 @@ func TestReadWriteSplitting_StmtDb(t *testing.T) {
 	assert.NoError(t, stmt.Close())
 }
 
-func TestReadWriteSplitting_StmtConn(t *testing.T) {
-	setup := setupTest(t, 2)
+func rwsStmtConnDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
 	instanceQuery, err := test_utils.GetInstanceIdSql(
@@ -394,8 +475,8 @@ func TestReadWriteSplitting_StmtConn(t *testing.T) {
 	assert.NoError(t, conn.Close())
 }
 
-func TestReadWriteSplitting_StmtTx(t *testing.T) {
-	setup := setupTest(t, 2)
+func rwsStmtTxDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
 	instanceQuery, err := test_utils.GetInstanceIdSql(
@@ -455,8 +536,8 @@ func TestReadWriteSplitting_StmtTx(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestReadWriteSplitting_SetReadOnlyCtxSwitchFalseTrueNoCtx(t *testing.T) {
-	setup := setupTest(t, 2)
+func rwsSetReadOnlyCtxSwitchFalseTrueNoCtxDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
 	// Test no context (should be writer)
@@ -475,8 +556,8 @@ func TestReadWriteSplitting_SetReadOnlyCtxSwitchFalseTrueNoCtx(t *testing.T) {
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
 
-func TestReadWriteSplitting_SetReadOnlyFalseInReadOnlyTransaction(t *testing.T) {
-	setup := setupTest(t, 2)
+func rwsSetReadOnlyFalseInReadOnlyTransactionDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
 	// Start read-only transaction
@@ -489,8 +570,8 @@ func TestReadWriteSplitting_SetReadOnlyFalseInReadOnlyTransaction(t *testing.T) 
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
 
-func TestReadWriteSplitting_SetReadOnlyTrueInTransaction(t *testing.T) {
-	setup := setupTest(t, 2)
+func rwsSetReadOnlyTrueInTransactionDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
 	// Start read-only transaction
@@ -503,8 +584,8 @@ func TestReadWriteSplitting_SetReadOnlyTrueInTransaction(t *testing.T) {
 	assert.Equal(t, error_util.GetMessage("ReadWriteSplittingPlugin.setReadOnlyFalseInTransaction"), err.Error())
 }
 
-func TestReadWriteSplitting_ExecuteWithCachedConnection(t *testing.T) {
-	setup := setupTest(t, 2)
+func rwsExecuteWithCachedConnectionDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
 	// Execute query with cached connection
@@ -536,8 +617,8 @@ func TestReadWriteSplitting_ExecuteWithCachedConnection(t *testing.T) {
 	assert.Equal(t, firstReaderId, instanceId)
 }
 
-func TestReadWriteSplitting_OneInstance(t *testing.T) {
-	setup := setupTest(t, 1)
+func rwsOneInstanceDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupTest(t, cfg, 1)
 	defer setup.cleanup(t)
 
 	if setup.env.Info().Request.InstanceCount != 1 {
@@ -551,12 +632,12 @@ func TestReadWriteSplitting_OneInstance(t *testing.T) {
 	assert.Equal(t, readerInstance, writerInstance)
 }
 
-func TestReadWriteSplitting_NoReaders(t *testing.T) {
-	setup := setupProxiedTest(t, 3)
+func rwsNoReadersConnTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupProxiedTest(t, 3)
 	defer setup.cleanup(t)
 
 	dsn := test_utils.GetDsn(setup.env,
-		test_utils.GetPropsForProxyWithConnectTimeout(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 2))
+		cfg.setupProxiedFn(t, setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, 2))
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
 	defer func() { _ = db.Close() }()
@@ -582,12 +663,12 @@ func TestReadWriteSplitting_NoReaders(t *testing.T) {
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(readerId, ""))
 }
 
-func TestReadWriteSplitting_WriterFailover(t *testing.T) {
-	setup := setupProxiedTest(t, 3)
+func rwsWriterFailoverConnTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupProxiedTest(t, 3)
 	defer setup.cleanup(t)
 
 	dsn := test_utils.GetDsn(setup.env,
-		test_utils.GetPropsForProxyWithConnectTimeout(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 5))
+		cfg.setupProxiedFn(t, setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, 2))
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
 	defer func() { _ = db.Close() }()
@@ -614,7 +695,6 @@ func TestReadWriteSplitting_WriterFailover(t *testing.T) {
 
 	// Perform failover
 	test_utils.EnableAllConnectivity(true)
-	//err = setup.auroraTestUtility.FailoverClusterAndWaitTillWriterChanged(originalWriterId, "", "")
 	err = setup.auroraTestUtility.TriggerFailover(originalWriterId, "", "")
 	require.NoError(t, err)
 
@@ -636,17 +716,19 @@ func TestReadWriteSplitting_WriterFailover(t *testing.T) {
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
 
-func TestReadWriteSplitting_FailoverToNewReader(t *testing.T) {
-	setup := setupProxiedTest(t, 3)
+func rwsFailoverToNewReaderConnTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupProxiedTest(t, 3)
 	defer setup.cleanup(t)
 
 	test_utils.SkipForMultiAzMySql(t, setup.env.Info().Request.Deployment, setup.env.Info().Request.Engine)
 
-	props := test_utils.GetPropsForProxyWithConnectTimeout(
-		setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint,
-		"readWriteSplitting,efm,failover",
-		5)
-	props[property_util.FAILOVER_MODE.Name] = "reader-or-writer"
+	props := cfg.setupProxiedFn(t, setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, 2)
+	if cfg.pluginType == GdbReadWriteSplittingPluginMode {
+		props["activeHomeFailoverMode"] = "home-reader-or-writer"
+		props["inactiveHomeFailoverMode"] = "home-reader-or-writer"
+	} else {
+		props[property_util.FAILOVER_MODE.Name] = "reader-or-writer"
+	}
 	props[property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name] = "5000"
 	dsn := test_utils.GetDsn(setup.env, props)
 
@@ -708,17 +790,13 @@ func TestReadWriteSplitting_FailoverToNewReader(t *testing.T) {
 	assert.Equal(t, otherReaderId, currentId)
 }
 
-func TestReadWriteSplitting_FailoverReaderToWriter(t *testing.T) {
-	setup := setupProxiedTest(t, 3)
+func rwsFailoverReaderToWriterConnTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupProxiedTest(t, 3)
 	defer setup.cleanup(t)
 
 	test_utils.SkipForDeployment(t, test_utils.RDS_MULTI_AZ_CLUSTER, setup.env.Info().Request.Deployment)
 
-	props := test_utils.GetPropsForProxyWithConnectTimeout(
-		setup.env,
-		setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint,
-		"readWriteSplitting,efm,failover",
-		2)
+	props := cfg.setupProxiedFn(t, setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, 2)
 	props[property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name] = "5000"
 	dsn := test_utils.GetDsn(setup.env, props)
 
@@ -771,24 +849,23 @@ func TestReadWriteSplitting_FailoverReaderToWriter(t *testing.T) {
 	assert.NotEqual(t, originalWriterId, instanceId)
 }
 
-func setInternalPoolProvider(poolOptions ...internal_pool.InternalPoolOption) *internal_pool.InternalPooledConnectionProvider {
+func rwsSetInternalPoolProvider(poolOptions ...internal_pool.InternalPoolOption) *internal_pool.InternalPooledConnectionProvider {
 	options := internal_pool.NewInternalPoolOptions(poolOptions...)
 	provider := internal_pool.NewInternalPooledConnectionProvider(options, 0)
 	driver_infrastructure.SetCustomConnectionProvider(provider)
 	return provider
 }
 
-func TestPooledConnection_Failover(t *testing.T) {
-	setup := setupProxiedTest(t, 3)
+func rwsPooledConnectionFailoverConnTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupProxiedTest(t, 3)
 	defer setup.cleanup(t)
 
-	provider := setInternalPoolProvider()
+	provider := rwsSetInternalPoolProvider()
 	defer driver_infrastructure.ResetCustomConnectionProvider()
 	defer provider.ReleaseResources()
 
-	dsn := test_utils.GetDsn(
-		setup.env,
-		test_utils.GetPropsForProxyWithConnectTimeout(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 4))
+	dsn := test_utils.GetDsn(setup.env,
+		cfg.setupProxiedFn(t, setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, 2))
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
 	defer func() { _ = db.Close() }()
@@ -823,15 +900,15 @@ func TestPooledConnection_Failover(t *testing.T) {
 	assert.Equal(t, originalWriterId, newWriterId)
 }
 
-func TestPooledConnection_FailoverInTransaction(t *testing.T) {
-	setup := setupProxiedTest(t, 3)
+func rwsPooledConnectionFailoverInTransactionConnTest(t *testing.T, cfg readWriteSplittingTestConfig) {
+	setup := rwsSetupProxiedTest(t, 3)
 	defer setup.cleanup(t)
 
-	setInternalPoolProvider()
+	rwsSetInternalPoolProvider()
 	defer driver_infrastructure.ResetCustomConnectionProvider()
 
 	dsn := test_utils.GetDsn(setup.env,
-		test_utils.GetPropsForProxyWithConnectTimeout(setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, "readWriteSplitting,efm,failover", 5))
+		cfg.setupProxiedFn(t, setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, 2))
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
 	defer func() { _ = db.Close() }()

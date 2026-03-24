@@ -221,6 +221,9 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	RESET_SESSION_STATE_ON_CLOSE.Name:               true,
 	ROLLBACK_ON_SWITCH.Name:                         true,
 	READER_HOST_SELECTOR_STRATEGY.Name:              true,
+	GDB_RW_HOME_REGION.Name:                         true,
+	GDB_RW_RESTRICT_WRITER_TO_HOME_REGION.Name:      true,
+	GDB_RW_RESTRICT_READER_TO_HOME_REGION.Name:      true,
 	BG_CONNECT_TIMEOUT_MS.Name:                      true,
 	BGD_ID.Name:                                     true,
 	BG_INTERVAL_BASELINE_MS.Name:                    true,
@@ -751,6 +754,26 @@ var READER_HOST_SELECTOR_STRATEGY = AwsWrapperProperty{
 	description:         "The strategy that should be used to select a new reader host when opening a new connection with the rw-splitting plugin.",
 	defaultValue:        "random",
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var GDB_RW_HOME_REGION = AwsWrapperProperty{
+	Name:                "gdbRwHomeRegion",
+	description:         "Specifies the home region for GDB read/write splitting.",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var GDB_RW_RESTRICT_WRITER_TO_HOME_REGION = AwsWrapperProperty{
+	Name:                "gdbRwRestrictWriterToHomeRegion",
+	description:         "Prevents connections to a writer node outside of the defined home region.",
+	defaultValue:        "true",
+	wrapperPropertyType: WRAPPER_TYPE_BOOL,
+}
+
+var GDB_RW_RESTRICT_READER_TO_HOME_REGION = AwsWrapperProperty{
+	Name:                "gdbRwRestrictReaderToHomeRegion",
+	description:         "Prevents connections to a reader node outside of the defined home region.",
+	defaultValue:        "true",
+	wrapperPropertyType: WRAPPER_TYPE_BOOL,
 }
 
 var BG_CONNECT_TIMEOUT_MS = AwsWrapperProperty{

@@ -33,6 +33,7 @@ const (
 	DEVELOPER_PLUGIN_CODE                          string = "dev"
 	AURORA_INITIAL_CONNECTION_STRATEGY_PLUGIN_CODE string = "initialConnection"
 	GDB_FAILOVER_PLUGIN_CODE                       string = "gdbFailover"
+	GDB_READ_WRITE_SPLITTING_PLUGIN_CODE           string = "gdbReadWriteSplitting"
 )
 
 type HostChangeOptions int
