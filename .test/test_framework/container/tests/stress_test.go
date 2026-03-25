@@ -48,7 +48,7 @@ func setupStressTest(t *testing.T) (map[string]string, *test_utils.TestEnvironme
 	test_utils.SkipIfInsufficientInstances(t, env, 2)
 
 	props := map[string]string{
-		"host":                       env.Info().ProxyDatabaseInfo.Instances[0].Host(),
+		"host":                       env.Info().ProxyDatabaseInfo.ClusterEndpoint,
 		"port":                       strconv.Itoa(env.Info().ProxyDatabaseInfo.InstanceEndpointPort),
 		"clusterInstanceHostPattern": "?." + env.Info().ProxyDatabaseInfo.InstanceEndpointSuffix,
 	}
