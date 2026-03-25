@@ -499,9 +499,9 @@ func (s *RdsReadWriteSplittingStrategy) GetReaderConnection(
 			host_info_util.READER, readerSelectorStrategy, hosts)
 		if err != nil {
 			if hostInfo != nil {
-				slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.failedToConnectToReader", hostInfo.GetUrl()))
+				slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.failedToSelectReaderHost", hostInfo.GetUrl()))
 			} else {
-				slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.failedToConnectToReader", "unknown host"))
+				slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.failedToSelectReaderHost", "unknown host"))
 			}
 			continue
 		}
