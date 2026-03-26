@@ -20,10 +20,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"path/filepath"
-	"runtime"
 	"sync"
 
+	"github.com/aws/aws-advanced-go-wrapper/awssql/resources"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"
 )
@@ -39,13 +38,10 @@ func getLocalizer() (*i18n.Localizer, error) {
 		return globalLocalizer, nil
 	}
 
-	_, filename, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(filename)
-	path := filepath.Join(dir, "../resources/en.json")
 	bundle := i18n.NewBundle(language.English)
 	bundle.RegisterUnmarshalFunc("json", json.Unmarshal)
 
-	_, err := bundle.LoadMessageFile(path)
+	err := resources.LoadMessages(bundle, "en.json")
 	if err != nil {
 		return nil, errors.New("could not load messages file")
 	}
