@@ -45,7 +45,6 @@ type rwsTestSetup struct {
 	env               *test_utils.TestEnvironment
 	auroraTestUtility *test_utils.AuroraTestUtility
 	db                *sql.DB
-	conn              *sql.Conn
 }
 
 func rwsSetupTest(t *testing.T, cfg readWriteSplittingTestConfig, minInstances int) *rwsTestSetup {
@@ -63,17 +62,12 @@ func rwsSetupTest(t *testing.T, cfg readWriteSplittingTestConfig, minInstances i
 
 	db, err := test_utils.OpenDb(env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
+	db.SetMaxOpenConns(1)
 
-	conn, err := db.Conn(context.TODO())
-	require.NoError(t, err)
-
-	return &rwsTestSetup{env, auroraTestUtility, db, conn}
+	return &rwsTestSetup{env: env, auroraTestUtility: auroraTestUtility, db: db}
 }
 
 func (s *rwsTestSetup) cleanup(t *testing.T) {
-	if s.conn != nil {
-		_ = s.conn.Close()
-	}
 	if s.db != nil {
 		_ = s.db.Close()
 	}
@@ -198,12 +192,16 @@ func rwsSetReadOnlyCtxTrueDBTest(t *testing.T, cfg readWriteSplittingTestConfig)
 	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
-	instanceId, err := executeInstanceQueryReadOnly(setup.env, setup.conn, 5)
+	conn, err := setup.db.Conn(context.TODO())
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+
+	instanceId, err := executeInstanceQueryReadOnly(setup.env, conn, 5)
 	assert.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Verify that subsequent queries without context has expected results
-	instanceId, err = executeInstanceQuery(setup.env, setup.conn, context.TODO(), 5)
+	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
 	assert.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
@@ -217,7 +215,11 @@ func rwsSetReadOnlyCtxFalseDBTest(t *testing.T, cfg readWriteSplittingTestConfig
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Verify that subsequent queries without context has expected results
-	instanceId, err = executeInstanceQuery(setup.env, setup.conn, context.TODO(), 5)
+	conn, err := setup.db.Conn(context.TODO())
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+
+	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
@@ -231,7 +233,11 @@ func rwsSetReadOnlyCtxNoCtxDBTest(t *testing.T, cfg readWriteSplittingTestConfig
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Verify that subsequent queries without context has expected results
-	instanceId, err = executeInstanceQuery(setup.env, setup.conn, context.TODO(), 5)
+	conn, err := setup.db.Conn(context.TODO())
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+
+	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
@@ -560,12 +566,16 @@ func rwsSetReadOnlyFalseInReadOnlyTransactionDBTest(t *testing.T, cfg readWriteS
 	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
+	conn, err := setup.db.Conn(context.TODO())
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+
 	// Start read-only transaction
-	_, err := setup.conn.ExecContext(context.TODO(), "START TRANSACTION READ ONLY")
+	_, err = conn.ExecContext(context.TODO(), "START TRANSACTION READ ONLY")
 	require.NoError(t, err)
 
 	// Test query that we are still connected to writer
-	instanceId, err := executeInstanceQueryWrite(setup.env, setup.conn, 5)
+	instanceId, err := executeInstanceQueryWrite(setup.env, conn, 5)
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
@@ -574,12 +584,16 @@ func rwsSetReadOnlyTrueInTransactionDBTest(t *testing.T, cfg readWriteSplittingT
 	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
+	conn, err := setup.db.Conn(context.TODO())
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+
 	// Start read-only transaction
-	_, err := setup.conn.ExecContext(readOnlyCtx, "START TRANSACTION READ ONLY")
+	_, err = conn.ExecContext(readOnlyCtx, "START TRANSACTION READ ONLY")
 	require.NoError(t, err)
 
 	// Test that we cannot switch to read only true while in transaction
-	_, err = executeInstanceQueryWrite(setup.env, setup.conn, 5)
+	_, err = executeInstanceQueryWrite(setup.env, conn, 5)
 	assert.Error(t, err)
 	assert.Equal(t, error_util.GetMessage("ReadWriteSplittingPlugin.setReadOnlyFalseInTransaction"), err.Error())
 }
@@ -588,30 +602,34 @@ func rwsExecuteWithCachedConnectionDBTest(t *testing.T, cfg readWriteSplittingTe
 	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
+	conn, err := setup.db.Conn(context.TODO())
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+
 	// Execute query with cached connection
-	firstReaderId, err := executeInstanceQueryReadOnly(setup.env, setup.conn, 5)
+	firstReaderId, err := executeInstanceQueryReadOnly(setup.env, conn, 5)
 	assert.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(firstReaderId, ""))
 
 	// Execute with setReadOnly false
-	instanceId, err := executeInstanceQueryWrite(setup.env, setup.conn, 5)
+	instanceId, err := executeInstanceQueryWrite(setup.env, conn, 5)
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 	assert.NotEqual(t, firstReaderId, instanceId)
 
 	// Execute with setReadOnly true, verify reader is the same as original
-	instanceId, err = executeInstanceQueryReadOnly(setup.env, setup.conn, 5)
+	instanceId, err = executeInstanceQueryReadOnly(setup.env, conn, 5)
 	assert.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 	assert.Equal(t, firstReaderId, instanceId)
 
 	// Repeat one more time
-	instanceId, err = executeInstanceQueryWrite(setup.env, setup.conn, 5)
+	instanceId, err = executeInstanceQueryWrite(setup.env, conn, 5)
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 	assert.NotEqual(t, firstReaderId, instanceId)
 
-	instanceId, err = executeInstanceQueryReadOnly(setup.env, setup.conn, 5)
+	instanceId, err = executeInstanceQueryReadOnly(setup.env, conn, 5)
 	assert.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 	assert.Equal(t, firstReaderId, instanceId)
@@ -625,9 +643,13 @@ func rwsOneInstanceDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
 		t.Skipf("Skipping integration test %s, instanceCount = %v.", t.Name(), setup.env.Info().Request.InstanceCount)
 	}
 
-	readerInstance, err := executeInstanceQueryReadOnly(setup.env, setup.conn, 5)
+	conn, err := setup.db.Conn(context.TODO())
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+
+	readerInstance, err := executeInstanceQueryReadOnly(setup.env, conn, 5)
 	assert.NoError(t, err)
-	writerInstance, err := executeInstanceQueryWrite(setup.env, setup.conn, 5)
+	writerInstance, err := executeInstanceQueryWrite(setup.env, conn, 5)
 	assert.NoError(t, err)
 	assert.Equal(t, readerInstance, writerInstance)
 }
