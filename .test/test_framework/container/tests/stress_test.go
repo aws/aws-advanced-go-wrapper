@@ -42,13 +42,15 @@ func setupStressTest(t *testing.T) (map[string]string, *test_utils.TestEnvironme
 	awsDriver.ClearCaches()
 	err := test_utils.BasicSetupInfoLog(t.Name())
 	assert.NoError(t, err)
+	err = test_utils.VerifyClusterStatus()
+	assert.NoError(t, err)
 	env, err := test_utils.GetCurrentTestEnvironment()
 	assert.NoError(t, err)
 	test_utils.SkipForTestEnvironmentFeatures(t, env.Info().Request.Features, test_utils.LIMITLESS_DEPLOYMENT)
 	test_utils.SkipIfInsufficientInstances(t, env, 2)
 
 	props := map[string]string{
-		"host":                       env.Info().ProxyDatabaseInfo.ClusterEndpoint,
+		"host":                       env.Info().ProxyDatabaseInfo.Instances[0].Host(),
 		"port":                       strconv.Itoa(env.Info().ProxyDatabaseInfo.InstanceEndpointPort),
 		"clusterInstanceHostPattern": "?." + env.Info().ProxyDatabaseInfo.InstanceEndpointSuffix,
 	}
