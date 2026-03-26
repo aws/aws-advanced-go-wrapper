@@ -191,11 +191,8 @@ func ExecuteInstanceQueryContextWithTimeout(
 	rowQuerier RowQuerier,
 	seconds int,
 	ctx context.Context) (string, error) {
-	if engine == PG {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, time.Second*time.Duration(seconds))
-		defer cancel()
-	}
+	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(seconds))
+	defer cancel()
 	var instanceId string
 	query, err := GetInstanceIdSql(engine, deployment)
 	if err != nil || query == "" {
