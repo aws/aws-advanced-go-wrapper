@@ -41,6 +41,8 @@ var (
 	writeCtx    = context.WithValue(context.Background(), awsctx.SetReadOnly, false)
 )
 
+const rwsQueryTimeoutSeconds = 15
+
 type rwsTestSetup struct {
 	env               *test_utils.TestEnvironment
 	auroraTestUtility *test_utils.AuroraTestUtility
@@ -63,6 +65,7 @@ func rwsSetupTest(t *testing.T, cfg readWriteSplittingTestConfig, minInstances i
 	db, err := test_utils.OpenDb(env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
 	db.SetMaxOpenConns(1)
+	require.NoError(t, db.Ping())
 
 	return &rwsTestSetup{env: env, auroraTestUtility: auroraTestUtility, db: db}
 }
@@ -196,12 +199,12 @@ func rwsSetReadOnlyCtxTrueDBTest(t *testing.T, cfg readWriteSplittingTestConfig)
 	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
-	instanceId, err := executeInstanceQueryReadOnly(setup.env, conn, 5)
+	instanceId, err := executeInstanceQueryReadOnly(setup.env, conn, rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Verify that subsequent queries without context has expected results
-	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
+	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
@@ -210,7 +213,7 @@ func rwsSetReadOnlyCtxFalseDBTest(t *testing.T, cfg readWriteSplittingTestConfig
 	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
-	instanceId, err := executeInstanceQueryWrite(setup.env, setup.db, 5)
+	instanceId, err := executeInstanceQueryWrite(setup.env, setup.db, rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
@@ -219,7 +222,7 @@ func rwsSetReadOnlyCtxFalseDBTest(t *testing.T, cfg readWriteSplittingTestConfig
 	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
-	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
+	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
@@ -228,7 +231,7 @@ func rwsSetReadOnlyCtxNoCtxDBTest(t *testing.T, cfg readWriteSplittingTestConfig
 	setup := rwsSetupTest(t, cfg, 2)
 	defer setup.cleanup(t)
 
-	instanceId, err := executeInstanceQuery(setup.env, setup.db, context.TODO(), 5)
+	instanceId, err := executeInstanceQuery(setup.env, setup.db, context.TODO(), rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
@@ -237,7 +240,7 @@ func rwsSetReadOnlyCtxNoCtxDBTest(t *testing.T, cfg readWriteSplittingTestConfig
 	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
-	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
+	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
@@ -249,7 +252,7 @@ func rwsTxSetReadOnlyTrueCtxDBTest(t *testing.T, cfg readWriteSplittingTestConfi
 	tx, err := setup.db.BeginTx(readOnlyCtx, nil)
 	require.NoError(t, err)
 
-	instanceId, err := executeInstanceQuery(setup.env, tx, context.TODO(), 5)
+	instanceId, err := executeInstanceQuery(setup.env, tx, context.TODO(), rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	err = tx.Commit()
 	assert.NoError(t, err)
@@ -263,7 +266,7 @@ func rwsTxSetReadOnlyFalseCtxDBTest(t *testing.T, cfg readWriteSplittingTestConf
 	tx, err := setup.db.BeginTx(writeCtx, nil)
 	require.NoError(t, err)
 
-	instanceId, err := executeInstanceQuery(setup.env, tx, context.TODO(), 5)
+	instanceId, err := executeInstanceQuery(setup.env, tx, context.TODO(), rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	err = tx.Commit()
 	assert.NoError(t, err)
@@ -277,7 +280,7 @@ func rwsTxSetReadOnlyNoCtxDBTest(t *testing.T, cfg readWriteSplittingTestConfig)
 	tx, err := setup.db.BeginTx(context.TODO(), nil)
 	require.NoError(t, err)
 
-	instanceId, err := executeInstanceQuery(setup.env, tx, context.TODO(), 5)
+	instanceId, err := executeInstanceQuery(setup.env, tx, context.TODO(), rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	err = tx.Commit()
 	assert.NoError(t, err)
@@ -291,7 +294,7 @@ func rwsTxSetReadOnlyTrueOptDBTest(t *testing.T, cfg readWriteSplittingTestConfi
 	tx, err := setup.db.BeginTx(context.TODO(), &sql.TxOptions{ReadOnly: true})
 	require.NoError(t, err)
 
-	instanceId, err := executeInstanceQuery(setup.env, tx, context.TODO(), 5)
+	instanceId, err := executeInstanceQuery(setup.env, tx, context.TODO(), rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	err = tx.Commit()
 	assert.NoError(t, err)
@@ -305,7 +308,7 @@ func rwsTxSetReadOnlyFalseOptDBTest(t *testing.T, cfg readWriteSplittingTestConf
 	tx, err := setup.db.BeginTx(context.TODO(), &sql.TxOptions{ReadOnly: false})
 	require.NoError(t, err)
 
-	instanceId, err := executeInstanceQuery(setup.env, tx, context.TODO(), 5)
+	instanceId, err := executeInstanceQuery(setup.env, tx, context.TODO(), rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	err = tx.Commit()
 	assert.NoError(t, err)
@@ -319,7 +322,7 @@ func rwsTxNoOptDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
 	tx, err := setup.db.BeginTx(context.TODO(), &sql.TxOptions{ReadOnly: false})
 	require.NoError(t, err)
 
-	instanceId, err := executeInstanceQuery(setup.env, tx, context.TODO(), 5)
+	instanceId, err := executeInstanceQuery(setup.env, tx, context.TODO(), rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	err = tx.Commit()
 	assert.NoError(t, err)
@@ -379,7 +382,7 @@ func rwsStmtConnDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
 	assert.NoError(t, stmt.Close())
 
 	// Assert that Conn has switched to reader after statement
-	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
+	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), rwsQueryTimeoutSeconds)
 	require.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
@@ -392,7 +395,7 @@ func rwsStmtConnDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
 	assert.NoError(t, stmt.Close())
 
 	// Assert that Conn has switched to writer after statement
-	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
+	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), rwsQueryTimeoutSeconds)
 	require.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 	_ = conn.Close()
@@ -402,7 +405,7 @@ func rwsStmtConnDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
 	require.NoError(t, err)
 
 	// switch conn to reader
-	readerId, err := executeInstanceQueryReadOnly(setup.env, conn, 5)
+	readerId, err := executeInstanceQueryReadOnly(setup.env, conn, rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(readerId, ""))
 
@@ -414,12 +417,12 @@ func rwsStmtConnDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
 	assert.NoError(t, stmt.Close())
 
 	// Assert that Conn is still connected to the reader
-	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
+	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), rwsQueryTimeoutSeconds)
 	require.NoError(t, err)
 	assert.Equal(t, readerId, instanceId)
 
 	// switch conn to writer
-	writerId, err := executeInstanceQueryWrite(setup.env, conn, 5)
+	writerId, err := executeInstanceQueryWrite(setup.env, conn, rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(writerId, ""))
 
@@ -431,7 +434,7 @@ func rwsStmtConnDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
 
 	assert.NoError(t, stmt.Close())
 	// Assert that Conn is still connected to the writer
-	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
+	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), rwsQueryTimeoutSeconds)
 	require.NoError(t, err)
 	assert.Equal(t, writerId, instanceId)
 	_ = conn.Close()
@@ -441,7 +444,7 @@ func rwsStmtConnDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
 	require.NoError(t, err)
 
 	// switch conn to reader
-	readerId, err = executeInstanceQueryReadOnly(setup.env, conn, 5)
+	readerId, err = executeInstanceQueryReadOnly(setup.env, conn, rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(readerId, ""))
 
@@ -455,12 +458,12 @@ func rwsStmtConnDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
 	assert.NoError(t, stmt.Close())
 
 	// Assert that Conn is still connected to the writer
-	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
+	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), rwsQueryTimeoutSeconds)
 	require.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// switch conn to writer
-	writerId, err = executeInstanceQueryWrite(setup.env, conn, 5)
+	writerId, err = executeInstanceQueryWrite(setup.env, conn, rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(writerId, ""))
 
@@ -475,7 +478,7 @@ func rwsStmtConnDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
 	assert.NoError(t, stmt.Close())
 
 	// Assert that Conn is still connected to the reader
-	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), 5)
+	instanceId, err = executeInstanceQuery(setup.env, conn, context.TODO(), rwsQueryTimeoutSeconds)
 	require.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 	assert.NoError(t, conn.Close())
@@ -547,17 +550,17 @@ func rwsSetReadOnlyCtxSwitchFalseTrueNoCtxDBTest(t *testing.T, cfg readWriteSpli
 	defer setup.cleanup(t)
 
 	// Test no context (should be writer)
-	instanceId, err := executeInstanceQuery(setup.env, setup.db, context.TODO(), 5)
+	instanceId, err := executeInstanceQuery(setup.env, setup.db, context.TODO(), rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Test switching to read-only mode
-	instanceId, err = executeInstanceQueryReadOnly(setup.env, setup.db, 5)
+	instanceId, err = executeInstanceQueryReadOnly(setup.env, setup.db, rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 
 	// Test switching back to write mode
-	instanceId, err = executeInstanceQueryWrite(setup.env, setup.db, 5)
+	instanceId, err = executeInstanceQueryWrite(setup.env, setup.db, rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
@@ -575,7 +578,7 @@ func rwsSetReadOnlyFalseInReadOnlyTransactionDBTest(t *testing.T, cfg readWriteS
 	require.NoError(t, err)
 
 	// Test query that we are still connected to writer
-	instanceId, err := executeInstanceQueryWrite(setup.env, conn, 5)
+	instanceId, err := executeInstanceQueryWrite(setup.env, conn, rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 }
@@ -593,7 +596,7 @@ func rwsSetReadOnlyTrueInTransactionDBTest(t *testing.T, cfg readWriteSplittingT
 	require.NoError(t, err)
 
 	// Test that we cannot switch to read only true while in transaction
-	_, err = executeInstanceQueryWrite(setup.env, conn, 5)
+	_, err = executeInstanceQueryWrite(setup.env, conn, rwsQueryTimeoutSeconds)
 	assert.Error(t, err)
 	assert.Equal(t, error_util.GetMessage("ReadWriteSplittingPlugin.setReadOnlyFalseInTransaction"), err.Error())
 }
@@ -607,29 +610,29 @@ func rwsExecuteWithCachedConnectionDBTest(t *testing.T, cfg readWriteSplittingTe
 	defer func() { _ = conn.Close() }()
 
 	// Execute query with cached connection
-	firstReaderId, err := executeInstanceQueryReadOnly(setup.env, conn, 5)
+	firstReaderId, err := executeInstanceQueryReadOnly(setup.env, conn, rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(firstReaderId, ""))
 
 	// Execute with setReadOnly false
-	instanceId, err := executeInstanceQueryWrite(setup.env, conn, 5)
+	instanceId, err := executeInstanceQueryWrite(setup.env, conn, rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 	assert.NotEqual(t, firstReaderId, instanceId)
 
 	// Execute with setReadOnly true, verify reader is the same as original
-	instanceId, err = executeInstanceQueryReadOnly(setup.env, conn, 5)
+	instanceId, err = executeInstanceQueryReadOnly(setup.env, conn, rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 	assert.Equal(t, firstReaderId, instanceId)
 
 	// Repeat one more time
-	instanceId, err = executeInstanceQueryWrite(setup.env, conn, 5)
+	instanceId, err = executeInstanceQueryWrite(setup.env, conn, rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 	assert.NotEqual(t, firstReaderId, instanceId)
 
-	instanceId, err = executeInstanceQueryReadOnly(setup.env, conn, 5)
+	instanceId, err = executeInstanceQueryReadOnly(setup.env, conn, rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	assert.False(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
 	assert.Equal(t, firstReaderId, instanceId)
@@ -647,9 +650,9 @@ func rwsOneInstanceDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
 	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
-	readerInstance, err := executeInstanceQueryReadOnly(setup.env, conn, 5)
+	readerInstance, err := executeInstanceQueryReadOnly(setup.env, conn, rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
-	writerInstance, err := executeInstanceQueryWrite(setup.env, conn, 5)
+	writerInstance, err := executeInstanceQueryWrite(setup.env, conn, rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	assert.Equal(t, readerInstance, writerInstance)
 }
@@ -669,7 +672,7 @@ func rwsNoReadersConnTest(t *testing.T, cfg readWriteSplittingTestConfig) {
 	defer func() { _ = conn.Close() }()
 
 	// Get writer and disable all readers
-	writerId, err := executeInstanceQueryWrite(setup.env, conn, 5)
+	writerId, err := executeInstanceQueryWrite(setup.env, conn, rwsQueryTimeoutSeconds)
 	require.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(writerId, ""))
 
@@ -699,7 +702,7 @@ func rwsWriterFailoverConnTest(t *testing.T, cfg readWriteSplittingTestConfig) {
 	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
-	originalWriterId, err := executeInstanceQueryWrite(setup.env, conn, 5)
+	originalWriterId, err := executeInstanceQueryWrite(setup.env, conn, rwsQueryTimeoutSeconds)
 	require.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(originalWriterId, ""))
 
@@ -830,7 +833,7 @@ func rwsFailoverReaderToWriterConnTest(t *testing.T, cfg readWriteSplittingTestC
 	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
-	originalWriterId, err := executeInstanceQueryWrite(setup.env, conn, 5)
+	originalWriterId, err := executeInstanceQueryWrite(setup.env, conn, rwsQueryTimeoutSeconds)
 	require.NoError(t, err)
 
 	readerId, err := executeInstanceQueryReadOnly(setup.env, conn, 60)
@@ -941,14 +944,14 @@ func rwsPooledConnectionFailoverInTransactionConnTest(t *testing.T, cfg readWrit
 	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
-	originalWriterId, err := executeInstanceQueryWrite(setup.env, conn, 5)
+	originalWriterId, err := executeInstanceQueryWrite(setup.env, conn, rwsQueryTimeoutSeconds)
 	require.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(originalWriterId, ""))
 
 	_, err = conn.ExecContext(context.TODO(), "START TRANSACTION READ ONLY")
 	require.NoError(t, err)
 
-	_, err = executeInstanceQueryReadOnly(setup.env, conn, 5)
+	_, err = executeInstanceQueryReadOnly(setup.env, conn, rwsQueryTimeoutSeconds)
 	require.NoError(t, err)
 
 	err = setup.auroraTestUtility.TriggerFailover(originalWriterId, "", "")
@@ -960,7 +963,7 @@ func rwsPooledConnectionFailoverInTransactionConnTest(t *testing.T, cfg readWrit
 	assert.True(t, ok)
 	assert.True(t, awsWrapperError.IsFailoverErrorType())
 
-	newWriter, err := executeInstanceQuery(setup.env, conn, context.TODO(), 5)
+	newWriter, err := executeInstanceQuery(setup.env, conn, context.TODO(), rwsQueryTimeoutSeconds)
 	assert.NoError(t, err)
 	// Different behaviour for multi-AZ b/c it simulates failover which reconnects to the original instance.
 	if setup.env.Info().Request.Deployment == test_utils.RDS_MULTI_AZ_CLUSTER {
