@@ -216,5 +216,5 @@ func getDsnForEfmIntegrationTest(environment *test_utils.TestEnvironment, host s
 }
 
 func getDsnForTestsWithProxy(environment *test_utils.TestEnvironment, host string, plugins string) string {
-	return test_utils.GetDsn(environment, test_utils.GetPropsForProxy(environment, host, plugins, TEST_FAILURE_DETECTION_INTERVAL_SECONDS))
+	return test_utils.GetDsn(environment, test_utils.GetPropsForProxyWithConnectTimeout(environment, host, plugins, TEST_FAILURE_DETECTION_INTERVAL_SECONDS))
 }
