@@ -339,7 +339,6 @@ func (c *ClusterTopologyMonitorImpl) checkForStableReaderTopologies() {
 	}
 
 	// Check that every host monitor has completed at least one cycle.
-	// We shouldn't conclude stability until every monitor has had a chance to report.
 	for _, h := range latestHosts {
 		completed, found := c.completedOneCycle.Get(h.HostId)
 		if !found || !completed {
@@ -348,8 +347,6 @@ func (c *ClusterTopologyMonitorImpl) checkForStableReaderTopologies() {
 		}
 	}
 
-	// Get all reader-reported topologies. Monitors that encountered errors
-	// remove their entry, so only successful reports are checked.
 	allTopologies := c.readerTopologiesById.GetAllEntries()
 	if len(allTopologies) == 0 {
 		c.stableTopologiesStart.Store(0)
@@ -708,7 +705,6 @@ func (h *HostMonitoringRoutine) run() {
 			conn, err = h.monitor.pluginService.ForceConnect(h.hostInfo, h.monitor.monitoringProps)
 			if err != nil {
 				slog.Debug(error_util.GetMessage("HostMonitoringRoutine.connectionFailed", h.hostInfo.GetHost(), err))
-				h.monitor.pluginService.SetAvailability(h.hostInfo.AllAliases, host_info_util.UNAVAILABLE)
 				if h.monitor.pluginService.IsNetworkError(err) {
 					// Network issue expected during cluster failover. Retry on next iteration.
 					time.Sleep(time.Millisecond * 100)

@@ -199,13 +199,13 @@ func runFailoverTest(
 		}(fn)
 	}
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	err := auroraTestUtility.TriggerFailover("", "", "")
 	assert.NoError(t, err)
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	err = auroraTestUtility.TriggerFailover("", "", "")
 	assert.NoError(t, err)
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	close(stop)
 	wg.Wait()

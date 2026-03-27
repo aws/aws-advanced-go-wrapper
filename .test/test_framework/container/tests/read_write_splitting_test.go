@@ -690,7 +690,6 @@ func rwsWriterFailoverConnTest(t *testing.T, cfg readWriteSplittingTestConfig) {
 	defer setup.cleanup(t)
 
 	props := cfg.setupProxiedFn(t, setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, 2)
-	props[property_util.CLUSTER_TOPOLOGY_REFRESH_RATE_MS.Name] = "3000"
 	dsn := test_utils.GetDsn(setup.env, props)
 	db, err := test_utils.OpenDb(setup.env.Info().Request.Engine, dsn)
 	require.NoError(t, err)
@@ -732,9 +731,6 @@ func rwsWriterFailoverConnTest(t *testing.T, cfg readWriteSplittingTestConfig) {
 	instanceId, err = executeInstanceQueryWrite(setup.env, conn, 60)
 	require.NoError(t, err)
 	assert.True(t, setup.auroraTestUtility.IsDbInstanceWriter(instanceId, ""))
-
-	// Allow topology to refresh and mark readers as available
-	time.Sleep(5 * time.Second)
 
 	// Verify reader connection
 	instanceId, err = executeInstanceQueryReadOnly(setup.env, conn, 60)
