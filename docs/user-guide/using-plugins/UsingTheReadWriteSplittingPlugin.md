@@ -15,7 +15,7 @@ When using the Read/Write Splitting Plugin against Aurora clusters, you do not h
 
 ### Using the Read/Write Splitting Plugin
 
-To switch between a writer and a reader connection, a context key of `awsctx.SetReadOnly` is provided. This can be set to `true` to switch to a read-only connection, and `false` to switch back to the writer instance. These can be set using `QueryContext`, `ExecContext`, or `QueryRowContext`.  
+To switch between a writer and a reader connection, a context key of `awsctx.SetReadOnly` is provided. This can be set to `true` to switch to a read-only connection, and `false` to switch back to the writer instance. These can be set using `QueryContext`, `ExecContext`, or `QueryRowContext`.  **Note: Passing in the ctx is the only way to toggle read-only mode. Running queries that alter session settings like `SET SESSION TRANSACTION READ ONLY` will not change the connection to the reader instance.**
 
 In the `database/sql` library, there are 4 main types that are used to run a query: `sql.Conn`, `sql.Tx`, `sql.Stmt`, and `sql.DB`. Only the first 3 are recommended to be used with the Read/Write Splitting Plugin. Please see the following sections on how to use the plugin for each of these types.
 
