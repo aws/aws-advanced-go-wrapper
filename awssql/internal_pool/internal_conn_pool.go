@@ -19,12 +19,13 @@ package internal_pool
 import (
 	"context"
 	"database/sql/driver"
-	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 )
+
+const resetSessionTimeout = 5 * time.Second
 
 type internalPooledConn struct {
 	driver.Conn
@@ -57,12 +58,6 @@ func (pc *internalPooledConn) Close() error {
 
 	// Unlimited idle
 	if pc.pool.maxIdleConns == 0 || len(pc.pool.idleConns) < pc.pool.maxIdleConns {
-		// We must reset the session before it is brought back to the pool
-		err := pc.ResetSession(context.Background())
-		if err != nil {
-			slog.Warn(error_util.GetMessage("InternalPooledConn.CannotResetSession"))
-			return pc.Conn.Close()
-		}
 		pc.pool.idleConns = append(pc.pool.idleConns, pc)
 		return nil
 	}
@@ -83,8 +78,8 @@ func (pc *internalPooledConn) ResetSession(ctx context.Context) error {
 	if resetter, ok := pc.Conn.(driver.SessionResetter); ok {
 		return resetter.ResetSession(ctx)
 	}
-	return error_util.NewGenericAwsWrapperError(
-		error_util.GetMessage("InternalPooledConn.UnsupportedOperation", "driver.SessionResetter"))
+	// Driver does not support SessionResetter; treat as success
+	return nil
 }
 
 func (pc *internalPooledConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
@@ -129,33 +124,49 @@ func NewConnPool(factory func() (driver.Conn, error), opts *InternalPoolConfig) 
 
 func (p *InternalConnPool) Get() (driver.Conn, error) {
 	p.mu.Lock()
-	defer p.mu.Unlock()
 
 	if p.closed {
+		p.mu.Unlock()
 		return nil, driver.ErrBadConn
 	}
 
 	now := time.Now()
-	newIdle := p.idleConns[:0]
-	var pc *internalPooledConn
 
-	for _, candidate := range p.idleConns {
-		if p.isConnExpired(candidate, now) {
-			_ = candidate.Conn.Close()
+	for len(p.idleConns) > 0 {
+		pc := p.idleConns[0]
+		p.idleConns[0] = nil // clear reference for GC
+		p.idleConns = p.idleConns[1:]
+
+		if p.isConnExpired(pc, now) {
+			p.mu.Unlock()
+			_ = pc.Conn.Close()
+			p.mu.Lock()
+			if p.closed {
+				return nil, driver.ErrBadConn
+			}
 			continue
 		}
-		if pc == nil {
-			pc = candidate
-		} else {
-			newIdle = append(newIdle, candidate)
-		}
-	}
-	p.idleConns = newIdle
 
-	if pc != nil {
+		// Release lock before doing network I/O for session reset
+		p.mu.Unlock()
+
+		ctx, cancel := context.WithTimeout(context.Background(), resetSessionTimeout)
+		err := pc.ResetSession(ctx)
+		cancel()
+		if err != nil {
+			_ = pc.Conn.Close()
+			p.mu.Lock()
+			if p.closed {
+				return nil, driver.ErrBadConn
+			}
+			continue
+		}
+
 		pc.returned = false
 		return pc, nil
 	}
+
+	p.mu.Unlock()
 
 	conn, err := p.newConnFunc()
 	if err != nil {
@@ -173,6 +184,10 @@ func (p *InternalConnPool) Get() (driver.Conn, error) {
 func (p *InternalConnPool) Close() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+
+	if p.closed {
+		return nil
+	}
 
 	p.closed = true
 	var err error

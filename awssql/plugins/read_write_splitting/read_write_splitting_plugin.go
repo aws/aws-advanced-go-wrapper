@@ -109,6 +109,7 @@ func (r *ReadWriteSplittingPlugin) GetSubscribedMethods() []string {
 	return []string{plugin_helpers.CONNECT_METHOD,
 		plugin_helpers.INIT_HOST_PROVIDER_METHOD,
 		plugin_helpers.NOTIFY_CONNECTION_CHANGED_METHOD,
+		plugin_helpers.SET_READ_ONLY_METHOD,
 		utils.CONN_QUERY_CONTEXT,
 		utils.CONN_EXEC_CONTEXT,
 	}
@@ -167,11 +168,19 @@ func (r *ReadWriteSplittingPlugin) InitHostProvider(
 }
 
 func (r *ReadWriteSplittingPlugin) NotifyConnectionChanged(
-	_ map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {
+	changes map[driver_infrastructure.HostChangeOptions]bool) driver_infrastructure.OldConnectionSuggestedAction {
 	err := r.updateInternalConnectionInfo()
 	if err != nil {
 		slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.updateInternalConnectionInfoFailed",
 			err.Error()))
+	}
+
+	if _, ok := changes[driver_infrastructure.CONNECTION_OBJECT_CHANGED]; ok {
+		currentConn := r.servicesContainer.GetPluginService().GetCurrentConnection()
+		isCachedConnection := currentConn == r.writerConnection || currentConn == r.readerConnection
+		if !isCachedConnection {
+			r.closeIdleConnections()
+		}
 	}
 
 	if r.inReadWriteSplit {
@@ -203,18 +212,17 @@ func (r *ReadWriteSplittingPlugin) updateInternalConnectionInfo() error {
 
 func (r *ReadWriteSplittingPlugin) Execute(
 	_ driver.Conn,
-	_ string,
+	methodName string,
 	executeFunc driver_infrastructure.ExecuteFunc,
 	methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
-	query := utils.GetQueryFromSqlOrMethodArgs("", methodArgs)
-	readOnly, found := utils.DoesSetReadOnly(query,
-		r.servicesContainer.GetPluginService().GetDialect().DoesStatementSetReadOnly)
-
-	if found {
-		err := r.switchConnectionIfRequired(readOnly)
-		if err != nil {
-			r.closeIdleConnections()
-			return nil, nil, false, err
+	if methodName == plugin_helpers.SET_READ_ONLY_METHOD && len(methodArgs) > 0 {
+		if readOnly, ok := methodArgs[0].(bool); ok {
+			err := r.switchConnectionIfRequired(readOnly)
+			if err != nil {
+				r.closeIdleConnections()
+				return nil, nil, false, err
+			}
+			return executeFunc()
 		}
 	}
 
@@ -493,7 +501,7 @@ func (s *RdsReadWriteSplittingStrategy) GetReaderConnection(
 			if hostInfo != nil {
 				slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.failedToSelectReaderHost", hostInfo.GetUrl()))
 			} else {
-				slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.failedToSelectReaderHost", ""))
+				slog.Warn(error_util.GetMessage("ReadWriteSplittingPlugin.failedToSelectReaderHost", "unknown host"))
 			}
 			continue
 		}

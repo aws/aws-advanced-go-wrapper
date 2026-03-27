@@ -15,7 +15,7 @@ When using the Read/Write Splitting Plugin against Aurora clusters, you do not h
 
 ### Using the Read/Write Splitting Plugin
 
-To switch between a writer and a reader connection, a context key of `awsctx.SetReadOnly` is provided. This can be set to `true` to switch to a read-only connection, and `false` to switch back to the writer instance. These can be set using `QueryContext`, `ExecContext`, or `QueryRowContext`.  
+To switch between a writer and a reader connection, a context key of `awsctx.SetReadOnly` is provided. This can be set to `true` to switch to a read-only connection, and `false` to switch back to the writer instance. These can be set using `QueryContext`, `ExecContext`, or `QueryRowContext`.  **Note: Passing in the ctx is the only way to toggle read-only mode. Running queries that alter session settings like `SET SESSION TRANSACTION READ ONLY` will not change the connection to the reader instance.**
 
 In the `database/sql` library, there are 4 main types that are used to run a query: `sql.Conn`, `sql.Tx`, `sql.Stmt`, and `sql.DB`. Only the first 3 are recommended to be used with the Read/Write Splitting Plugin. Please see the following sections on how to use the plugin for each of these types.
 
@@ -23,9 +23,9 @@ In the `database/sql` library, there are 4 main types that are used to run a que
 
 To switch between readers and writer, pass in `awsctx.SetReadOnly` to the first query of your batch, and any subsequent queries will run on that desired instance. 
 
-**Always pass in `awsctx.SetReadOnly` in your first query, and reset session settings before closing. Failing to do so may result in running a query in the wrong mode. While the default behavior of a newly-opened connection is to connect to the writer, if a recycled connection is returned by `sql.DB`, the `sql.Conn` object might be in ReadOnly mode.**
+**Always pass in `awsctx.SetReadOnly` in your first query. Failing to do so may result in running a query in the wrong mode. While the default behavior of a newly-opened connection is to connect to the writer, if a recycled connection is returned by `sql.DB`, the `sql.Conn` object might be in ReadOnly mode.**
 
-**Furthermore, it is recommended to only pass in the `awsctx.SetReadOnly` setting when switching between reader and writer or vice versa. Passing in `awsctx.SetReadOnly` in every query when you are not switching does not change any results and there is some overhead when this value is passed in.**
+**Furthermore, it is recommended to only pass in the `awsctx.SetReadOnly` setting when switching between reader and writer or vice versa. Passing in `awsctx.SetReadOnly` in every query when you are not switching does not change any results, and there is some overhead when this value is passed in as the wrapper will route the request through the plugin chain each time.**
 
 The following is an example on how to use the plugin with `sql.Conn`.
 ```go
@@ -42,8 +42,6 @@ result, err = conn.Query("SELECT 1") // Will query against reader instance
 result, err = conn.QueryContext(writeCtx, "INSERT INTO...") // Will switch to writer instance
 result, err = conn.Exec("...") // Will execute against writer instance
 
-// Reset session
-conn.ResetSession()
 conn.Close()
 ```
 

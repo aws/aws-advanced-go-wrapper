@@ -25,6 +25,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/read_write_splitting"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
@@ -486,14 +487,11 @@ func TestGdbPlugin_Execute_SwitchToReaderFiltered(t *testing.T) {
 
 	mockWriterConn := mock_database_sql_driver.NewMockConn(ctrl)
 	mockReaderConn := mock_database_sql_driver.NewMockConn(ctrl)
-	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
 
 	mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).AnyTimes()
 	mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).AnyTimes()
 	mockPluginService.EXPECT().RefreshHostList(gomock.Any()).Return(nil).AnyTimes()
-	mockPluginService.EXPECT().GetDialect().Return(mockDialect).AnyTimes()
-	mockDialect.EXPECT().DoesStatementSetReadOnly(gomock.Any()).Return(true, true).AnyTimes()
 	mockPluginService.EXPECT().IsInTransaction().Return(false).AnyTimes()
 	mockPluginService.EXPECT().GetHosts().Return(hosts).AnyTimes()
 
@@ -513,7 +511,7 @@ func TestGdbPlugin_Execute_SwitchToReaderFiltered(t *testing.T) {
 	mockPluginService.EXPECT().SetCurrentConnection(mockReaderConn, readerHome, nil).Return(nil)
 
 	executeFunc := func() (any, any, bool, error) { return nil, nil, false, nil }
-	val1, val2, ok, err := plugin.Execute(nil, "QueryContext", executeFunc, "SET TRANSACTION READ ONLY")
+	val1, val2, ok, err := plugin.Execute(nil, plugin_helpers.SET_READ_ONLY_METHOD, executeFunc, true)
 
 	assert.NoError(t, err)
 	assert.False(t, ok)

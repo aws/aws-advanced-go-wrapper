@@ -329,13 +329,9 @@ func TestReadWriteSplittingPlugin_Execute_Success(t *testing.T) {
 		mockContainer, nil,
 		driver_infrastructure.READ_WRITE_SPLITTING_PLUGIN_CODE,
 		&read_write_splitting.RdsReadWriteSplittingStrategy{})
-	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
-
-	mockPluginService.EXPECT().GetDialect().Return(mockDialect).AnyTimes()
-	mockDialect.EXPECT().DoesStatementSetReadOnly(gomock.Any()).Return(false, false).AnyTimes()
 
 	executeFunc := func() (any, any, bool, error) { return nil, nil, false, nil }
-	val1, val2, ok, err := plugin.Execute(nil, "QueryContext", executeFunc, "SELECT * FROM test")
+	val1, val2, ok, err := plugin.Execute(nil, "QueryContext", executeFunc)
 
 	assert.NoError(t, err)
 	assert.False(t, ok)
@@ -361,15 +357,12 @@ func TestReadWriteSplittingPlugin_Execute_SwitchReadOnly(t *testing.T) {
 		&read_write_splitting.RdsReadWriteSplittingStrategy{})
 	mockWriterConn := mock_database_sql_driver.NewMockConn(ctrl)
 	mockReaderConn := mock_database_sql_driver.NewMockConn(ctrl)
-	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
 
 	// Setup common mocks
 	mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).AnyTimes()
 	mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).AnyTimes()
 	mockPluginService.EXPECT().RefreshHostList(gomock.Any()).Return(nil).AnyTimes()
-	mockPluginService.EXPECT().GetDialect().Return(mockDialect).AnyTimes()
-	mockDialect.EXPECT().DoesStatementSetReadOnly(gomock.Any()).Return(true, true).AnyTimes()
 	mockPluginService.EXPECT().IsInTransaction().Return(false).AnyTimes()
 	mockPluginService.EXPECT().GetHosts().Return(hosts).AnyTimes()
 
@@ -381,7 +374,7 @@ func TestReadWriteSplittingPlugin_Execute_SwitchReadOnly(t *testing.T) {
 	mockPluginService.EXPECT().SetCurrentConnection(mockReaderConn, hostReader1, nil).Return(nil)
 
 	executeFunc := func() (any, any, bool, error) { return nil, nil, false, nil }
-	val1, val2, ok, err := plugin.Execute(nil, "QueryContext", executeFunc, "SELECT * FROM test")
+	val1, val2, ok, err := plugin.Execute(nil, plugin_helpers.SET_READ_ONLY_METHOD, executeFunc, true)
 
 	assert.NoError(t, err)
 	assert.False(t, ok)
@@ -402,15 +395,12 @@ func TestReadWriteSplittingPlugin_Execute_ReadOnlyNoReader(t *testing.T) {
 		driver_infrastructure.READ_WRITE_SPLITTING_PLUGIN_CODE,
 		&read_write_splitting.RdsReadWriteSplittingStrategy{})
 	mockWriterConn := mock_database_sql_driver.NewMockConn(ctrl)
-	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
 
 	// Setup mocks
 	mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).AnyTimes()
 	mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).AnyTimes()
 	mockPluginService.EXPECT().RefreshHostList(gomock.Any()).Return(nil).AnyTimes()
-	mockPluginService.EXPECT().GetDialect().Return(mockDialect).AnyTimes()
-	mockDialect.EXPECT().DoesStatementSetReadOnly(gomock.Any()).Return(true, true).AnyTimes()
 	mockPluginService.EXPECT().IsInTransaction().Return(false).AnyTimes()
 	mockPluginService.EXPECT().GetHosts().Return([]*host_info_util.HostInfo{hostWriter1}).AnyTimes()
 
@@ -420,7 +410,7 @@ func TestReadWriteSplittingPlugin_Execute_ReadOnlyNoReader(t *testing.T) {
 	mockPluginService.EXPECT().Connect(hostWriter1, gomock.Any(), gomock.Any()).Return(mockWriterConn, nil)
 
 	executeFunc := func() (any, any, bool, error) { return nil, nil, false, nil }
-	val1, val2, ok, err := plugin.Execute(nil, "QueryContext", executeFunc, "SELECT * FROM test")
+	val1, val2, ok, err := plugin.Execute(nil, plugin_helpers.SET_READ_ONLY_METHOD, executeFunc, true)
 
 	assert.NoError(t, err)
 	assert.False(t, ok)
@@ -446,15 +436,12 @@ func TestReadWriteSplittingPlugin_Execute_SwitchWriter(t *testing.T) {
 		&read_write_splitting.RdsReadWriteSplittingStrategy{})
 	mockWriterConn := mock_database_sql_driver.NewMockConn(ctrl)
 	mockReaderConn := mock_database_sql_driver.NewMockConn(ctrl)
-	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
 
 	// Setup mocks
 	mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).AnyTimes()
 	mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).AnyTimes()
 	mockPluginService.EXPECT().RefreshHostList(gomock.Any()).Return(nil).AnyTimes()
-	mockPluginService.EXPECT().GetDialect().Return(mockDialect).AnyTimes()
-	mockDialect.EXPECT().DoesStatementSetReadOnly(gomock.Any()).Return(false, true)
 	mockPluginService.EXPECT().IsInTransaction().Return(false).AnyTimes()
 	mockPluginService.EXPECT().GetHosts().Return(hosts).AnyTimes()
 
@@ -465,7 +452,7 @@ func TestReadWriteSplittingPlugin_Execute_SwitchWriter(t *testing.T) {
 	mockPluginService.EXPECT().SetCurrentConnection(mockWriterConn, hostWriter1, nil).Return(nil)
 
 	executeFunc := func() (any, any, bool, error) { return nil, nil, false, nil }
-	val1, val2, ok, err := plugin.Execute(nil, "QueryContext", executeFunc, "SELECT * FROM test")
+	val1, val2, ok, err := plugin.Execute(nil, plugin_helpers.SET_READ_ONLY_METHOD, executeFunc, false)
 
 	assert.NoError(t, err)
 	assert.False(t, ok)
@@ -492,12 +479,10 @@ func TestReadWriteSplittingPlugin_Execute_SwitchReaderWriterReaderThenClose(t *t
 	mockReaderConn := mock_database_sql_driver.NewMockConn(ctrl)
 
 	// Setup common mocks
-	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
 
 	mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).AnyTimes()
 	mockPluginService.EXPECT().RefreshHostList(gomock.Any()).Return(nil).AnyTimes()
-	mockPluginService.EXPECT().GetDialect().Return(mockDialect).AnyTimes()
 	mockPluginService.EXPECT().IsInTransaction().Return(false).AnyTimes()
 	mockPluginService.EXPECT().GetHosts().Return([]*host_info_util.HostInfo{
 		hostReader1, hostReader2, hostWriter1,
@@ -508,7 +493,6 @@ func TestReadWriteSplittingPlugin_Execute_SwitchReaderWriterReaderThenClose(t *t
 	}
 
 	// First execution: Switch to reader
-	mockDialect.EXPECT().DoesStatementSetReadOnly(gomock.Any()).Return(true, true)
 	mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).Times(2)
 	mockPluginService.EXPECT().GetCurrentConnection().Return(mockWriterConn).Times(3)
 	mockPluginService.EXPECT().GetCurrentHostInfo().Return(hostWriter1, nil).Times(2)
@@ -516,34 +500,32 @@ func TestReadWriteSplittingPlugin_Execute_SwitchReaderWriterReaderThenClose(t *t
 	mockPluginService.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Any()).Return(mockReaderConn, nil)
 	mockPluginService.EXPECT().SetCurrentConnection(mockReaderConn, hostReader1, nil).Return(nil)
 
-	val1, val2, ok, err := plugin.Execute(nil, "QueryContext", executeFunc, "SELECT * FROM test")
+	val1, val2, ok, err := plugin.Execute(nil, plugin_helpers.SET_READ_ONLY_METHOD, executeFunc, true)
 	assert.NoError(t, err)
 	assert.False(t, ok)
 	assert.Nil(t, val1)
 	assert.Nil(t, val2)
 
 	// Second execution: Switch to writer
-	mockDialect.EXPECT().DoesStatementSetReadOnly(gomock.Any()).Return(false, true)
 	mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).Times(2)
 	mockPluginService.EXPECT().GetCurrentConnection().Return(mockReaderConn).Times(3)
 	mockPluginService.EXPECT().GetCurrentHostInfo().Return(hostReader1, nil).Times(2)
 	mockPluginService.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Any()).Return(mockWriterConn, nil)
 	mockPluginService.EXPECT().SetCurrentConnection(mockWriterConn, hostWriter1, nil).Return(nil)
 
-	val1, val2, ok, err = plugin.Execute(nil, "QueryContext", executeFunc, "SELECT * FROM test")
+	val1, val2, ok, err = plugin.Execute(nil, plugin_helpers.SET_READ_ONLY_METHOD, executeFunc, false)
 	assert.NoError(t, err)
 	assert.False(t, ok)
 	assert.Nil(t, val1)
 	assert.Nil(t, val2)
 
-	// Third execution: Switch back to reader
-	mockDialect.EXPECT().DoesStatementSetReadOnly(gomock.Any()).Return(true, true)
+	// Third execution: Switch back to reader (cached)
 	mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).Times(3)
 	mockPluginService.EXPECT().GetCurrentConnection().Return(mockWriterConn).Times(3)
 	mockPluginService.EXPECT().GetCurrentHostInfo().Return(hostWriter1, nil).Times(2)
 	mockPluginService.EXPECT().SetCurrentConnection(mockReaderConn, hostReader1, nil).Return(nil)
 
-	val1, val2, ok, err = plugin.Execute(nil, "QueryContext", executeFunc, "SELECT * FROM test")
+	val1, val2, ok, err = plugin.Execute(nil, plugin_helpers.SET_READ_ONLY_METHOD, executeFunc, true)
 	assert.NoError(t, err)
 	assert.False(t, ok)
 	assert.Nil(t, val1)
@@ -551,7 +533,6 @@ func TestReadWriteSplittingPlugin_Execute_SwitchReaderWriterReaderThenClose(t *t
 
 	// Fourth execution: Close all connections by asserting connection closed error
 	randomMockConnection := mock_database_sql_driver.NewMockConn(ctrl)
-	mockDialect.EXPECT().DoesStatementSetReadOnly(gomock.Any()).Return(true, true)
 	mockPluginService.EXPECT().GetCurrentConnection().Return(randomMockConnection).Times(3)
 	mockDriverDialect.EXPECT().IsClosed(randomMockConnection).Return(true)
 	mockDriverDialect.EXPECT().IsClosed(mockReaderConn).Return(false)
@@ -559,7 +540,7 @@ func TestReadWriteSplittingPlugin_Execute_SwitchReaderWriterReaderThenClose(t *t
 	mockDriverDialect.EXPECT().IsClosed(mockWriterConn).Return(false)
 	mockWriterConn.EXPECT().Close()
 
-	val1, val2, ok, err = plugin.Execute(nil, "QueryContext", executeFunc, "SELECT * FROM test")
+	val1, val2, ok, err = plugin.Execute(nil, plugin_helpers.SET_READ_ONLY_METHOD, executeFunc, true)
 	assert.Error(t, err)
 	assert.False(t, ok)
 	assert.Nil(t, val1)
@@ -586,14 +567,11 @@ func TestReadWriteSplittingPlugin_InitHostProvider_AfterReaderSetup(t *testing.T
 	mockReaderConn := mock_database_sql_driver.NewMockConn(ctrl)
 
 	// Setup mocks
-	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
 
 	mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).AnyTimes()
 	mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).AnyTimes()
 	mockPluginService.EXPECT().RefreshHostList(gomock.Any()).Return(nil).AnyTimes()
-	mockPluginService.EXPECT().GetDialect().Return(mockDialect).AnyTimes()
-	mockDialect.EXPECT().DoesStatementSetReadOnly(gomock.Any()).Return(true, true).AnyTimes()
 	mockPluginService.EXPECT().IsInTransaction().Return(false).AnyTimes()
 	mockPluginService.EXPECT().GetHosts().Return([]*host_info_util.HostInfo{
 		hostReader1, hostReader2, hostWriter1,
@@ -609,7 +587,7 @@ func TestReadWriteSplittingPlugin_InitHostProvider_AfterReaderSetup(t *testing.T
 		return nil, nil, false, nil
 	}
 
-	val1, val2, ok, err := plugin.Execute(nil, "QueryContext", executeFunc, "SELECT * FROM test")
+	val1, val2, ok, err := plugin.Execute(nil, plugin_helpers.SET_READ_ONLY_METHOD, executeFunc, true)
 
 	assert.NoError(t, err)
 	assert.False(t, ok)
@@ -649,15 +627,12 @@ func TestReadWriteSplittingPlugin_FailToConnectToCachedReader(t *testing.T) {
 	mockWriterConn := mock_database_sql_driver.NewMockConn(ctrl)
 	mockReaderConn := mock_database_sql_driver.NewMockConn(ctrl)
 	mockNewReaderConn := mock_database_sql_driver.NewMockConn(ctrl)
-	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
 
 	// Setup common mocks
 	mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).AnyTimes()
 	mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).AnyTimes()
 	mockPluginService.EXPECT().RefreshHostList(gomock.Any()).Return(nil).AnyTimes()
-	mockPluginService.EXPECT().GetDialect().Return(mockDialect).AnyTimes()
-	mockDialect.EXPECT().DoesStatementSetReadOnly(gomock.Any()).Return(true, true).AnyTimes()
 	mockPluginService.EXPECT().IsInTransaction().Return(false).AnyTimes()
 	mockPluginService.EXPECT().GetHosts().Return(hosts).AnyTimes()
 
@@ -670,7 +645,7 @@ func TestReadWriteSplittingPlugin_FailToConnectToCachedReader(t *testing.T) {
 	mockPluginService.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Any()).Return(mockReaderConn, nil)
 	mockPluginService.EXPECT().SetCurrentConnection(mockReaderConn, hosts[0], nil).Return(nil)
 
-	val1, val2, ok, err := plugin.Execute(nil, "QueryContext", executeFunc, "SELECT * FROM test")
+	val1, val2, ok, err := plugin.Execute(nil, plugin_helpers.SET_READ_ONLY_METHOD, executeFunc, true)
 	assert.NoError(t, err)
 	assert.False(t, ok)
 	assert.Nil(t, val1)
@@ -685,7 +660,7 @@ func TestReadWriteSplittingPlugin_FailToConnectToCachedReader(t *testing.T) {
 	mockPluginService.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Any()).Return(mockNewReaderConn, nil)
 	mockPluginService.EXPECT().SetCurrentConnection(mockNewReaderConn, hosts[1], nil).Return(nil)
 
-	val1, val2, ok, err = plugin.Execute(nil, "QueryContext", executeFunc, "SELECT * FROM test")
+	val1, val2, ok, err = plugin.Execute(nil, plugin_helpers.SET_READ_ONLY_METHOD, executeFunc, true)
 	assert.NoError(t, err)
 	assert.False(t, ok)
 	assert.Nil(t, val1)
@@ -709,22 +684,19 @@ func TestReadWriteSplittingPlugin_NoWriterFound(t *testing.T) {
 		driver_infrastructure.READ_WRITE_SPLITTING_PLUGIN_CODE,
 		&read_write_splitting.RdsReadWriteSplittingStrategy{})
 	mockReaderConn := mock_database_sql_driver.NewMockConn(ctrl)
-	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
 
 	// Setup mocks
 	mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).AnyTimes()
 	mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).AnyTimes()
 	mockPluginService.EXPECT().RefreshHostList(gomock.Any()).Return(nil).AnyTimes()
-	mockPluginService.EXPECT().GetDialect().Return(mockDialect).AnyTimes()
-	mockDialect.EXPECT().DoesStatementSetReadOnly(gomock.Any()).Return(false, true)
 	mockPluginService.EXPECT().IsInTransaction().Return(false).AnyTimes()
 	mockPluginService.EXPECT().GetHosts().Return(hosts).AnyTimes()
-	mockPluginService.EXPECT().GetCurrentConnection().Return(mockReaderConn).Times(4)
-	mockPluginService.EXPECT().GetCurrentHostInfo().Return(hosts[0], nil).Times(2)
+	mockPluginService.EXPECT().GetCurrentConnection().Return(mockReaderConn).AnyTimes()
+	mockPluginService.EXPECT().GetCurrentHostInfo().Return(hosts[0], nil).AnyTimes()
 
 	executeFunc := func() (any, any, bool, error) { return nil, nil, false, nil }
-	val1, val2, ok, err := plugin.Execute(nil, "QueryContext", executeFunc, "INSERT INTO test VALUES (1)")
+	val1, val2, ok, err := plugin.Execute(nil, plugin_helpers.SET_READ_ONLY_METHOD, executeFunc, false)
 
 	assert.Error(t, err)
 	assert.False(t, ok)
@@ -750,23 +722,20 @@ func TestReadWriteSplittingPlugin_WriterFallback(t *testing.T) {
 		driver_infrastructure.READ_WRITE_SPLITTING_PLUGIN_CODE,
 		&read_write_splitting.RdsReadWriteSplittingStrategy{})
 	mockWriterConn := mock_database_sql_driver.NewMockConn(ctrl)
-	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
 
 	// Setup mocks
 	mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).AnyTimes()
 	mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).AnyTimes()
 	mockPluginService.EXPECT().RefreshHostList(gomock.Any()).Return(nil).AnyTimes()
-	mockPluginService.EXPECT().GetDialect().Return(mockDialect).AnyTimes()
-	mockDialect.EXPECT().DoesStatementSetReadOnly(gomock.Any()).Return(true, true)
 	mockPluginService.EXPECT().IsInTransaction().Return(false).AnyTimes()
 	mockPluginService.EXPECT().GetHosts().Return(hosts).AnyTimes()
-	mockPluginService.EXPECT().GetCurrentConnection().Return(mockWriterConn).Times(2)
-	mockPluginService.EXPECT().GetCurrentHostInfo().Return(hosts[1], nil).Times(2)
+	mockPluginService.EXPECT().GetCurrentConnection().Return(mockWriterConn).AnyTimes()
+	mockPluginService.EXPECT().GetCurrentHostInfo().Return(hosts[1], nil).AnyTimes()
 	mockPluginService.EXPECT().GetHostInfoByStrategy(gomock.Any(), gomock.Any(), gomock.Any()).Return(hosts[0], errors.New("no readers available")).AnyTimes()
 
 	executeFunc := func() (any, any, bool, error) { return nil, nil, false, nil }
-	val1, val2, ok, err := plugin.Execute(nil, "QueryContext", executeFunc, "SELECT * FROM test")
+	val1, val2, ok, err := plugin.Execute(nil, plugin_helpers.SET_READ_ONLY_METHOD, executeFunc, true)
 
 	assert.NoError(t, err)
 	assert.False(t, ok)
@@ -785,21 +754,17 @@ func TestReadWriteSplittingPlugin_FailoverError(t *testing.T) {
 		mockContainer, nil,
 		driver_infrastructure.READ_WRITE_SPLITTING_PLUGIN_CODE,
 		&read_write_splitting.RdsReadWriteSplittingStrategy{})
-	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
-	mockDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
 
 	// Setup mocks
-	mockPluginService.EXPECT().GetDialect().Return(mockDialect).AnyTimes()
-	mockDialect.EXPECT().DoesStatementSetReadOnly(gomock.Any()).Return(false, false).AnyTimes()
 	mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).AnyTimes()
 	mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).AnyTimes()
-	mockPluginService.EXPECT().GetCurrentConnection().Return(mockConn).Times(2)
+	mockPluginService.EXPECT().GetCurrentConnection().Return(nil).AnyTimes()
 
 	failoverError := &error_util.AwsWrapperError{ErrorType: error_util.FailoverSuccessError.ErrorType}
 	executeFunc := func() (any, any, bool, error) { return nil, nil, false, failoverError }
 
-	val1, val2, ok, err := plugin.Execute(nil, "QueryContext", executeFunc, "SELECT * FROM test")
+	val1, val2, ok, err := plugin.Execute(nil, "QueryContext", executeFunc)
 
 	assert.Error(t, err)
 	assert.False(t, ok)

@@ -618,11 +618,8 @@ func TestAwsWrapperConn_BeginTx(t *testing.T) {
 	mockDriverTx := mock_database_sql_driver.NewMockTx(ctrl)
 	mockDriverResults := mock_database_sql_driver.NewMockResult(ctrl)
 	mockPluginManager, mockPluginService := setupmocks_awsWrapperConn_executeWithPlugins(ctrl, mockDriverResults, mockDriverTx)
-	mockDatabaseDialect := mock_driver_infrastructure.NewMockDatabaseDialect(ctrl)
 	dbEngine := driver_infrastructure.PG
-	mockDatabaseDialect.EXPECT().GetSetReadOnlyQuery(gomock.Any()).Return("SELECT 1", nil)
 	mockPluginService.EXPECT().SetCurrentTx(gomock.Any())
-	mockPluginService.EXPECT().GetDialect().Return(mockDatabaseDialect)
 
 	awsWrapperconn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, dbEngine)
 
