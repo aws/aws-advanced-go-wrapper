@@ -52,7 +52,7 @@ func GetPropsForProxy(env *TestEnvironment, host, plugins string, timeout int) m
 		"failureDetectionIntervalMs":       strconv.Itoa(timeout * 1000),
 		"failureDetectionCount":            "3",
 		"failureDetectionTimeMs":           "1000",
-		"failoverTimeoutMs":                "15000",
+		"failoverTimeoutMs":                "25000",
 		"clusterTopologySocketTimeoutMs":   strconv.Itoa(timeout * 1000),
 		"clusterTopologyConnectTimeoutMs":  strconv.Itoa(timeout * 1000),
 		monitoringParam + timeoutParam:     timeoutStr,
