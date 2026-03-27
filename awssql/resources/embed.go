@@ -18,10 +18,14 @@ package resources
 
 import (
 	"embed"
+
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 //go:embed *.json
 var jsonResources embed.FS //nolint:unused
 
-func init() {
+func LoadMessages(bundle *i18n.Bundle, filename string) error {
+	_, err := bundle.LoadMessageFileFS(jsonResources, filename)
+	return err
 }
