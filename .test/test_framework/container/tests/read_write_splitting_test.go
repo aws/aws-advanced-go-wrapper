@@ -658,7 +658,7 @@ func rwsOneInstanceDBTest(t *testing.T, cfg readWriteSplittingTestConfig) {
 }
 
 func rwsNoReadersConnTest(t *testing.T, cfg readWriteSplittingTestConfig) {
-	setup := rwsSetupProxiedTest(t, 3)
+	setup := rwsSetupProxiedTest(t, 10)
 	defer setup.cleanup(t)
 
 	dsn := test_utils.GetDsn(setup.env,
@@ -689,7 +689,7 @@ func rwsNoReadersConnTest(t *testing.T, cfg readWriteSplittingTestConfig) {
 }
 
 func rwsWriterFailoverConnTest(t *testing.T, cfg readWriteSplittingTestConfig) {
-	setup := rwsSetupProxiedTest(t, 3)
+	setup := rwsSetupProxiedTest(t, 10)
 	defer setup.cleanup(t)
 
 	props := cfg.setupProxiedFn(t, setup.env, setup.env.Info().ProxyDatabaseInfo.ClusterEndpoint, 2)
@@ -742,7 +742,7 @@ func rwsWriterFailoverConnTest(t *testing.T, cfg readWriteSplittingTestConfig) {
 }
 
 func rwsFailoverToNewReaderConnTest(t *testing.T, cfg readWriteSplittingTestConfig) {
-	setup := rwsSetupProxiedTest(t, 3)
+	setup := rwsSetupProxiedTest(t, 10)
 	defer setup.cleanup(t)
 
 	test_utils.SkipForMultiAzMySql(t, setup.env.Info().Request.Deployment, setup.env.Info().Request.Engine)
@@ -816,7 +816,7 @@ func rwsFailoverToNewReaderConnTest(t *testing.T, cfg readWriteSplittingTestConf
 }
 
 func rwsFailoverReaderToWriterConnTest(t *testing.T, cfg readWriteSplittingTestConfig) {
-	setup := rwsSetupProxiedTest(t, 3)
+	setup := rwsSetupProxiedTest(t, 10)
 	defer setup.cleanup(t)
 
 	test_utils.SkipForDeployment(t, test_utils.RDS_MULTI_AZ_CLUSTER, setup.env.Info().Request.Deployment)
@@ -882,7 +882,7 @@ func rwsSetInternalPoolProvider(poolOptions ...internal_pool.InternalPoolOption)
 }
 
 func rwsPooledConnectionFailoverConnTest(t *testing.T, cfg readWriteSplittingTestConfig) {
-	setup := rwsSetupProxiedTest(t, 3)
+	setup := rwsSetupProxiedTest(t, 10)
 	defer setup.cleanup(t)
 
 	provider := rwsSetInternalPoolProvider()
@@ -928,7 +928,7 @@ func rwsPooledConnectionFailoverConnTest(t *testing.T, cfg readWriteSplittingTes
 }
 
 func rwsPooledConnectionFailoverInTransactionConnTest(t *testing.T, cfg readWriteSplittingTestConfig) {
-	setup := rwsSetupProxiedTest(t, 3)
+	setup := rwsSetupProxiedTest(t, 10)
 	defer setup.cleanup(t)
 
 	rwsSetInternalPoolProvider()
