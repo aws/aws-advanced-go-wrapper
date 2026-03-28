@@ -464,7 +464,7 @@ func (c *ClusterTopologyMonitorImpl) ForceRefresh(verifyTopology bool, timeoutMs
 		c.closeConnection(monitoringConn)
 	}
 
-	return c.waitForTopologyUpdate(timeoutMs)
+	return c.waitForTopologyUpdate(verifyTopology, timeoutMs)
 }
 
 func (c *ClusterTopologyMonitorImpl) getStoredHosts() []*host_info_util.HostInfo {
@@ -483,7 +483,7 @@ func (c *ClusterTopologyMonitorImpl) getStoredTopology() *Topology {
 	return topology
 }
 
-func (c *ClusterTopologyMonitorImpl) waitForTopologyUpdate(timeoutMs int) ([]*host_info_util.HostInfo, error) {
+func (c *ClusterTopologyMonitorImpl) waitForTopologyUpdate(verifyWriter bool, timeoutMs int) ([]*host_info_util.HostInfo, error) {
 	currentTopology := c.getStoredTopology()
 
 	// Notify monitoring routines that topology should be refreshed immediately.
@@ -501,10 +501,16 @@ func (c *ClusterTopologyMonitorImpl) waitForTopologyUpdate(timeoutMs int) ([]*ho
 	// Note: we are checking reference equality instead of value equality.
 	// We will break out of the loop if there is a new entry in the topology cache,
 	// even if the value of the hosts in latestTopology is the same as currentTopology.
+	// When verifyWriter is true, we also wait until the writer has been verified with
+	// an actual connection (isVerifiedWriterConn), not just seen in a reader's topology query.
 	var latestTopology *Topology
 	for {
 		latestTopology = c.getStoredTopology()
-		if currentTopology != latestTopology || time.Now().After(end) {
+		topologyChanged := currentTopology != latestTopology
+		if topologyChanged && (!verifyWriter || c.isVerifiedWriterConn) {
+			break
+		}
+		if time.Now().After(end) {
 			break
 		}
 
