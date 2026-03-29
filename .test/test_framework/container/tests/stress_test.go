@@ -21,7 +21,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -49,11 +48,9 @@ func setupStressTest(t *testing.T) (map[string]string, *test_utils.TestEnvironme
 	test_utils.SkipForTestEnvironmentFeatures(t, env.Info().Request.Features, test_utils.LIMITLESS_DEPLOYMENT)
 	test_utils.SkipIfInsufficientInstances(t, env, 2)
 
-	props := map[string]string{
-		"host":                       env.Info().ProxyDatabaseInfo.Instances[0].Host(),
-		"port":                       strconv.Itoa(env.Info().ProxyDatabaseInfo.InstanceEndpointPort),
-		"clusterInstanceHostPattern": "?." + env.Info().ProxyDatabaseInfo.InstanceEndpointSuffix,
-	}
+	props := test_utils.GetPropsForProxy(env, env.Info().ProxyDatabaseInfo.Instances[0].Host(), "", 10)
+	// Remove the empty plugins entry so individual tests can set their own
+	delete(props, "plugins")
 
 	return props, env
 }
