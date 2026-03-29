@@ -67,6 +67,7 @@ func writerDBTest(t *testing.T, cfg failoverTestConfig) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
+	db.SetMaxOpenConns(1)
 	defer func() { _ = db.Close() }()
 
 	// Verify connection works.
@@ -113,6 +114,7 @@ func writerWithTelemetryOtelDBTest(t *testing.T, cfg failoverTestConfig) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
+	db.SetMaxOpenConns(1)
 	defer func() { _ = db.Close() }()
 
 	// Verify connection works.
@@ -159,6 +161,7 @@ func writerWithTelemetryXrayDBTest(t *testing.T, cfg failoverTestConfig) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
+	db.SetMaxOpenConns(1)
 	defer func() { _ = db.Close() }()
 
 	// Verify connection works.
@@ -199,6 +202,7 @@ func writerInTransactionWithBeginDBTest(t *testing.T, cfg failoverTestConfig) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
+	db.SetMaxOpenConns(1)
 	defer func() { _ = db.Close() }()
 
 	// Check that we are connected to the writer.
@@ -227,6 +231,9 @@ func writerInTransactionWithBeginDBTest(t *testing.T, cfg failoverTestConfig) {
 	_, txErr := tx.Exec("INSERT INTO test_failover_tx_rollback VALUES (2, 'should fail to execute')")
 	require.Error(t, txErr)
 	assert.Equal(t, error_util.GetMessage("Failover.transactionResolutionUnknownError"), txErr.Error())
+
+	// Rollback the failed transaction to release the connection back to the pool.
+	_ = tx.Rollback()
 
 	// Verify that the transaction was rolled back by checking the table contents.
 	var count = -1
@@ -263,6 +270,7 @@ func disableProxiesDBTest(t *testing.T, cfg failoverTestConfig) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
+	db.SetMaxOpenConns(1)
 	defer func() { _ = db.Close() }()
 
 	// Verify connection works.
@@ -309,6 +317,7 @@ func efmDisableAllInstancesDBTest(t *testing.T, cfg failoverTestConfig) {
 	db, err := test_utils.OpenDb(environment.Info().Request.Engine, dsn)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
+	db.SetMaxOpenConns(1)
 	defer func() { _ = db.Close() }()
 
 	// Verify connection works.

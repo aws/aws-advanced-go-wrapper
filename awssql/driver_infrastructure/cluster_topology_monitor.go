@@ -339,7 +339,6 @@ func (c *ClusterTopologyMonitorImpl) checkForStableReaderTopologies() {
 	}
 
 	// Check that every host monitor has completed at least one cycle.
-	// We shouldn't conclude stability until every monitor has had a chance to report.
 	for _, h := range latestHosts {
 		completed, found := c.completedOneCycle.Get(h.HostId)
 		if !found || !completed {
@@ -348,8 +347,6 @@ func (c *ClusterTopologyMonitorImpl) checkForStableReaderTopologies() {
 		}
 	}
 
-	// Get all reader-reported topologies. Monitors that encountered errors
-	// remove their entry, so only successful reports are checked.
 	allTopologies := c.readerTopologiesById.GetAllEntries()
 	if len(allTopologies) == 0 {
 		c.stableTopologiesStart.Store(0)
@@ -467,7 +464,7 @@ func (c *ClusterTopologyMonitorImpl) ForceRefresh(verifyTopology bool, timeoutMs
 		c.closeConnection(monitoringConn)
 	}
 
-	return c.waitForTopologyUpdate(timeoutMs)
+	return c.waitForTopologyUpdate(verifyTopology, timeoutMs)
 }
 
 func (c *ClusterTopologyMonitorImpl) getStoredHosts() []*host_info_util.HostInfo {
@@ -486,7 +483,7 @@ func (c *ClusterTopologyMonitorImpl) getStoredTopology() *Topology {
 	return topology
 }
 
-func (c *ClusterTopologyMonitorImpl) waitForTopologyUpdate(timeoutMs int) ([]*host_info_util.HostInfo, error) {
+func (c *ClusterTopologyMonitorImpl) waitForTopologyUpdate(verifyWriter bool, timeoutMs int) ([]*host_info_util.HostInfo, error) {
 	currentTopology := c.getStoredTopology()
 
 	// Notify monitoring routines that topology should be refreshed immediately.
@@ -504,10 +501,16 @@ func (c *ClusterTopologyMonitorImpl) waitForTopologyUpdate(timeoutMs int) ([]*ho
 	// Note: we are checking reference equality instead of value equality.
 	// We will break out of the loop if there is a new entry in the topology cache,
 	// even if the value of the hosts in latestTopology is the same as currentTopology.
+	// When verifyWriter is true, we also wait until the writer has been verified with
+	// an actual connection (isVerifiedWriterConn), not just seen in a reader's topology query.
 	var latestTopology *Topology
 	for {
 		latestTopology = c.getStoredTopology()
-		if currentTopology != latestTopology || time.Now().After(end) {
+		topologyChanged := currentTopology != latestTopology
+		if topologyChanged && (!verifyWriter || c.isVerifiedWriterConn) {
+			break
+		}
+		if time.Now().After(end) {
 			break
 		}
 
@@ -708,7 +711,6 @@ func (h *HostMonitoringRoutine) run() {
 			conn, err = h.monitor.pluginService.ForceConnect(h.hostInfo, h.monitor.monitoringProps)
 			if err != nil {
 				slog.Debug(error_util.GetMessage("HostMonitoringRoutine.connectionFailed", h.hostInfo.GetHost(), err))
-				h.monitor.pluginService.SetAvailability(h.hostInfo.AllAliases, host_info_util.UNAVAILABLE)
 				if h.monitor.pluginService.IsNetworkError(err) {
 					// Network issue expected during cluster failover. Retry on next iteration.
 					time.Sleep(time.Millisecond * 100)

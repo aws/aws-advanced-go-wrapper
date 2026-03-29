@@ -44,7 +44,9 @@ var readWriteSplittingConfigs = []readWriteSplittingTestConfig{
 			return map[string]string{"plugins": "readWriteSplitting,efm,failover"}
 		},
 		setupProxiedFn: func(t *testing.T, env *test_utils.TestEnvironment, host string, connectTimeout int) map[string]string {
-			return test_utils.GetPropsForProxyWithConnectTimeout(env, host, "readWriteSplitting,efm,failover", connectTimeout)
+			props := test_utils.GetPropsForProxyWithConnectTimeout(env, host, "readWriteSplitting,efm,failover", connectTimeout)
+			props["failoverTimeoutMs"] = "60000"
+			return props
 		},
 	},
 	{

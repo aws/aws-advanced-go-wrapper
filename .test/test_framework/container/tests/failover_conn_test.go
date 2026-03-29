@@ -411,7 +411,11 @@ func efmDisableInstanceConnTest(t *testing.T, cfg failoverTestConfig) {
 	_, environment, err := failoverSetup(t)
 	defer test_utils.BasicCleanup(t.Name())
 	assert.Nil(t, err)
-	dsn := getDsnForTestsWithProxy(environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(), "efm,failover")
+	props := test_utils.GetPropsForProxyWithConnectTimeout(
+		environment, environment.Info().ProxyDatabaseInfo.WriterInstanceEndpoint(),
+		"efm,failover", TEST_FAILURE_DETECTION_INTERVAL_SECONDS)
+	props["failoverTimeoutMs"] = "10000"
+	dsn := test_utils.GetDsn(environment, props)
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
