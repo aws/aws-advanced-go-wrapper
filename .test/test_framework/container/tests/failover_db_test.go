@@ -74,21 +74,22 @@ func writerDBTest(t *testing.T, cfg failoverTestConfig) {
 	err = db.Ping()
 	require.NoError(t, err, "Failed to open database connection.")
 
-	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
-	assert.Nil(t, err)
-	assert.NotZero(t, instanceId)
-
-	// Trigger failover synchronously and wait for writer to change.
-	triggerFailoverError := auroraTestUtility.TriggerFailover("", "", "")
+	// Failover and check that it has failed over.
+	failoverComplete := make(chan struct{})
+	var triggerFailoverError error
+	go func() {
+		time.Sleep(5 * time.Second) // Give the query time to reach the database.
+		triggerFailoverError = auroraTestUtility.TriggerFailover("", "", "")
+		close(failoverComplete)
+	}()
+	_, queryError := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, test_utils.GetSleepSql(environment.Info().Request.Engine, 60), 61)
+	<-failoverComplete
 	require.NoError(t, triggerFailoverError, "Request to DB to failover did not succeed.")
-
-	// The next query on the existing connection should detect the failover.
-	_, queryError := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
 	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryError.Error())
 
 	// Assert that we are connected to the new writer after failover.
-	instanceId, err = test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
+	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
 	assert.Nil(t, err)
 	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
 	assert.Nil(t, err)
@@ -120,21 +121,22 @@ func writerWithTelemetryOtelDBTest(t *testing.T, cfg failoverTestConfig) {
 	err = db.Ping()
 	require.NoError(t, err, "Failed to open database connection.")
 
-	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
-	assert.Nil(t, err)
-	assert.NotZero(t, instanceId)
-
-	// Trigger failover synchronously and wait for writer to change.
-	triggerFailoverError := auroraTestUtility.TriggerFailover("", "", "")
+	// Failover and check that it has failed over.
+	failoverComplete := make(chan struct{})
+	var triggerFailoverError error
+	go func() {
+		time.Sleep(5 * time.Second) // Give the query time to reach the database.
+		triggerFailoverError = auroraTestUtility.TriggerFailover("", "", "")
+		close(failoverComplete)
+	}()
+	_, queryError := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, test_utils.GetSleepSql(environment.Info().Request.Engine, 60), 61)
+	<-failoverComplete
 	require.NoError(t, triggerFailoverError, "Request to DB to failover did not succeed.")
-
-	// The next query on the existing connection should detect the failover.
-	_, queryError := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
 	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryError.Error())
 
 	// Assert that we are connected to the new writer after failover.
-	instanceId, err = test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
+	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
 	assert.Nil(t, err)
 	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
 	assert.Nil(t, err)
@@ -166,21 +168,22 @@ func writerWithTelemetryXrayDBTest(t *testing.T, cfg failoverTestConfig) {
 	err = db.Ping()
 	require.NoError(t, err, "Failed to open database connection.")
 
-	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
-	assert.Nil(t, err)
-	assert.NotZero(t, instanceId)
-
-	// Trigger failover synchronously and wait for writer to change.
-	triggerFailoverError := auroraTestUtility.TriggerFailover("", "", "")
+	// Failover and check that it has failed over.
+	failoverComplete := make(chan struct{})
+	var triggerFailoverError error
+	go func() {
+		time.Sleep(5 * time.Second) // Give the query time to reach the database.
+		triggerFailoverError = auroraTestUtility.TriggerFailover("", "", "")
+		close(failoverComplete)
+	}()
+	_, queryError := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, test_utils.GetSleepSql(environment.Info().Request.Engine, 60), 61)
+	<-failoverComplete
 	require.NoError(t, triggerFailoverError, "Request to DB to failover did not succeed.")
-
-	// The next query on the existing connection should detect the failover.
-	_, queryError := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
 	assert.Equal(t, error_util.GetMessage("Failover.connectionChangedError"), queryError.Error())
 
 	// Assert that we are connected to the new writer after failover.
-	instanceId, err = test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
+	instanceId, err := test_utils.ExecuteInstanceQueryDB(environment.Info().Request.Engine, environment.Info().Request.Deployment, db)
 	assert.Nil(t, err)
 	currWriterId, err := auroraTestUtility.GetClusterWriterInstanceId("")
 	assert.Nil(t, err)
