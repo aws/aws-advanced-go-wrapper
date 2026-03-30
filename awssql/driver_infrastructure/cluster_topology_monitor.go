@@ -59,7 +59,7 @@ var ClusterTopologyMonitorType = &MonitorType{Name: "ClusterTopologyMonitor"}
 type ClusterTopologyMonitorImpl struct {
 	servicesContainer              ServicesContainer
 	clusterId                      string
-	isVerifiedWriterConn           bool
+	isVerifiedWriterConn           atomic.Bool
 	highRefreshRateEndTimeInNanos  int64
 	highRefreshRateNano            time.Duration
 	refreshRateNano                time.Duration
@@ -170,7 +170,7 @@ func (c *ClusterTopologyMonitorImpl) Monitor() {
 					hosts, _ = c.openAnyConnectionAndUpdateTopology()
 				}
 
-				if len(hosts) != 0 && !c.isVerifiedWriterConn {
+				if len(hosts) != 0 && !c.isVerifiedWriterConn.Load() {
 					for _, hostInfo := range hosts {
 						hostMonitor := &HostMonitoringRoutine{
 							monitor:        c,
@@ -195,7 +195,7 @@ func (c *ClusterTopologyMonitorImpl) Monitor() {
 					c.closeConnection(c.loadConn(c.monitoringConn))
 					c.monitoringConn.Store(ConnectionContainer{writerConn})
 					c.writerHostInfo.Store(writerConnHostInfo)
-					c.isVerifiedWriterConn = true
+					c.isVerifiedWriterConn.Store(true)
 					c.highRefreshRateEndTimeInNanos = time.Now().Add(highRefreshPeriodAfterPanicNano).Unix()
 
 					c.hostRoutinesStop.Store(true)
@@ -244,7 +244,7 @@ func (c *ClusterTopologyMonitorImpl) Monitor() {
 				// Can't get topology, switch to panic mode.
 				c.closeConnection(c.loadConn(c.monitoringConn))
 				c.monitoringConn.Store(emptyContainer)
-				c.isVerifiedWriterConn = false
+				c.isVerifiedWriterConn.Store(false)
 				c.writerHostInfo.Store(nil)
 				continue
 			}
@@ -429,7 +429,7 @@ func (c *ClusterTopologyMonitorImpl) reset() {
 	// Reset monitoring connection
 	c.closeConnection(c.loadConn(c.monitoringConn))
 	c.monitoringConn.Store(emptyContainer)
-	c.isVerifiedWriterConn = false
+	c.isVerifiedWriterConn.Store(false)
 	c.writerHostInfo.Store(nil)
 	c.highRefreshRateEndTimeInNanos = 0
 	c.requestToUpdateTopology.Store(false)
@@ -460,7 +460,7 @@ func (c *ClusterTopologyMonitorImpl) ForceRefresh(verifyTopology bool, timeoutMs
 	if verifyTopology {
 		monitoringConn := c.loadConn(c.monitoringConn)
 		c.monitoringConn.Store(emptyContainer)
-		c.isVerifiedWriterConn = false
+		c.isVerifiedWriterConn.Store(false)
 		c.closeConnection(monitoringConn)
 	}
 
@@ -507,7 +507,7 @@ func (c *ClusterTopologyMonitorImpl) waitForTopologyUpdate(verifyWriter bool, ti
 	for {
 		latestTopology = c.getStoredTopology()
 		topologyChanged := currentTopology != latestTopology
-		if topologyChanged && (!verifyWriter || c.isVerifiedWriterConn) {
+		if topologyChanged && (!verifyWriter || c.isVerifiedWriterConn.Load()) {
 			break
 		}
 		if time.Now().After(end) {
@@ -600,7 +600,7 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 
 			isWriterInstance, getWriterNameErr := c.topologyQueryStrategy.IsWriterInstance(conn)
 			if getWriterNameErr == nil && isWriterInstance {
-				c.isVerifiedWriterConn = true
+				c.isVerifiedWriterConn.Store(true)
 
 				if utils.IsRdsInstance(c.initialHostInfo.GetHost()) {
 					c.writerHostInfo.Store(c.initialHostInfo)
@@ -627,7 +627,7 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 		connToClose := c.loadConn(c.monitoringConn)
 		c.monitoringConn.Store(emptyContainer)
 		c.closeConnection(connToClose)
-		c.isVerifiedWriterConn = false
+		c.isVerifiedWriterConn.Store(false)
 		c.writerHostInfo.Store(nil)
 	}
 
@@ -635,7 +635,7 @@ func (c *ClusterTopologyMonitorImpl) openAnyConnectionAndUpdateTopology() ([]*ho
 }
 
 func (c *ClusterTopologyMonitorImpl) isInPanicMode() bool {
-	return c.loadConn(c.monitoringConn) == nil || !c.isVerifiedWriterConn
+	return c.loadConn(c.monitoringConn) == nil || !c.isVerifiedWriterConn.Load()
 }
 
 func (c *ClusterTopologyMonitorImpl) delay(useHighRefreshRate bool) {
