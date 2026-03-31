@@ -212,36 +212,49 @@ func (r *RdsHostListProvider) GetHostRole(conn driver.Conn) host_info_util.HostR
 func (r *RdsHostListProvider) IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error) {
 	r.init()
 	_, instanceName := r.topologyUtils.GetInstanceId(conn)
-	if instanceName != "" {
-		topology, err := r.Refresh()
-		if err != nil {
-			return nil, err
-		}
-		forcedRefresh := false
-		if len(topology) == 0 {
-			topology, err = r.ForceRefresh()
-			forcedRefresh = true
-		}
-		if err != nil {
-			return nil, err
-		}
-		if len(topology) == 0 {
-			return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("RdsHostListProvider.unableToGatherTopology"))
-		}
-		foundHost := utils.FindHostInTopology(topology, instanceName, r.getHostEndpoint(instanceName))
+	if instanceName == "" {
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("RdsHostListProvider.unableToGetHostName"))
+	}
 
-		if foundHost.IsNil() && !forcedRefresh {
-			topology, err = r.ForceRefresh()
-			if err != nil {
-				return nil, err
-			}
-			foundHost = utils.FindHostInTopology(topology, instanceName, r.getHostEndpoint(instanceName))
+	topology, err := r.Refresh()
+	if err != nil {
+		return nil, err
+	}
+	forcedRefresh := false
+	if len(topology) == 0 {
+		topology, err = r.ForceRefresh()
+		forcedRefresh = true
+	}
+	if err != nil {
+		return nil, err
+	}
+	if len(topology) == 0 {
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("RdsHostListProvider.unableToGatherTopology"))
+	}
+
+	foundHost := findHostByHostId(topology, instanceName)
+
+	if foundHost.IsNil() && !forcedRefresh {
+		topology, err = r.ForceRefresh()
+		if err != nil {
+			return nil, err
 		}
-		if !foundHost.IsNil() {
-			return foundHost, nil
+		foundHost = findHostByHostId(topology, instanceName)
+	}
+	if !foundHost.IsNil() {
+		return foundHost, nil
+	}
+
+	return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("RdsHostListProvider.unableToGetHostName"))
+}
+
+func findHostByHostId(hosts []*host_info_util.HostInfo, hostId string) *host_info_util.HostInfo {
+	for _, host := range hosts {
+		if host.HostId == hostId {
+			return host
 		}
 	}
-	return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("RdsHostListProvider.unableToGetHostName"))
+	return nil
 }
 
 func (r *RdsHostListProvider) IsStaticHostListProvider() bool {
@@ -319,11 +332,6 @@ func (r *RdsHostListProvider) getStoredHosts() []*host_info_util.HostInfo {
 		return nil
 	}
 	return topology.GetHosts()
-}
-
-func (r *RdsHostListProvider) getHostEndpoint(hostName string) string {
-	host := r.clusterInstanceTemplate.Host
-	return strings.ReplaceAll(host, "?", hostName)
 }
 
 // =============================================================================
