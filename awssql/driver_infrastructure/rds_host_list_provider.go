@@ -211,7 +211,7 @@ func (r *RdsHostListProvider) GetHostRole(conn driver.Conn) host_info_util.HostR
 
 func (r *RdsHostListProvider) IdentifyConnection(conn driver.Conn) (*host_info_util.HostInfo, error) {
 	r.init()
-	_, instanceName := r.topologyUtils.GetInstanceId(conn)
+	instanceId, instanceName := r.topologyUtils.GetInstanceId(conn)
 	if instanceName == "" {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("RdsHostListProvider.unableToGetHostName"))
 	}
@@ -232,14 +232,14 @@ func (r *RdsHostListProvider) IdentifyConnection(conn driver.Conn) (*host_info_u
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("RdsHostListProvider.unableToGatherTopology"))
 	}
 
-	foundHost := findHostByHostId(topology, instanceName)
+	foundHost := findHost(topology, instanceId, instanceName)
 
 	if foundHost.IsNil() && !forcedRefresh {
 		topology, err = r.ForceRefresh()
 		if err != nil {
 			return nil, err
 		}
-		foundHost = findHostByHostId(topology, instanceName)
+		foundHost = findHost(topology, instanceId, instanceName)
 	}
 	if !foundHost.IsNil() {
 		return foundHost, nil
@@ -248,9 +248,9 @@ func (r *RdsHostListProvider) IdentifyConnection(conn driver.Conn) (*host_info_u
 	return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("RdsHostListProvider.unableToGetHostName"))
 }
 
-func findHostByHostId(hosts []*host_info_util.HostInfo, hostId string) *host_info_util.HostInfo {
+func findHost(hosts []*host_info_util.HostInfo, instanceId string, instanceName string) *host_info_util.HostInfo {
 	for _, host := range hosts {
-		if host.HostId == hostId {
+		if instanceId == host.HostId || instanceName == host.HostId || instanceName == host.Host {
 			return host
 		}
 	}
