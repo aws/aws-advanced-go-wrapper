@@ -339,6 +339,7 @@ func (c *ClusterTopologyMonitorImpl) checkForStableReaderTopologies() {
 	}
 
 	// Check that every host monitor has completed at least one cycle.
+	// We shouldn't conclude stability until every monitor has had a chance to report.
 	for _, h := range latestHosts {
 		completed, found := c.completedOneCycle.Get(h.HostId)
 		if !found || !completed {
@@ -347,6 +348,8 @@ func (c *ClusterTopologyMonitorImpl) checkForStableReaderTopologies() {
 		}
 	}
 
+	// Get all reader-reported topologies. Monitors that encountered errors
+	// remove their entry, so only successful reports are checked.
 	allTopologies := c.readerTopologiesById.GetAllEntries()
 	if len(allTopologies) == 0 {
 		c.stableTopologiesStart.Store(0)
