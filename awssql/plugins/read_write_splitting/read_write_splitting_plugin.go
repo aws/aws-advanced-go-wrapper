@@ -262,7 +262,6 @@ func (r *ReadWriteSplittingPlugin) switchConnectionIfRequired(readOnly bool) err
 	}
 
 	hosts := r.servicesContainer.GetPluginService().GetHosts()
-
 	if len(hosts) == 0 {
 		return error_util.NewGenericAwsWrapperError(
 			error_util.GetMessage("ReadWriteSplittingPlugin.emptyHostList"))
@@ -287,6 +286,7 @@ func (r *ReadWriteSplittingPlugin) switchConnectionIfRequired(readOnly bool) err
 			}
 			return nil
 		}
+		return nil
 	}
 
 	// Not readOnly
