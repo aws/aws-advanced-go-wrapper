@@ -40,14 +40,14 @@ var failoverConfigs = []failoverTestConfig{
 		name:       "Failover",
 		pluginType: FailoverPluginMode,
 		setupFn: func(t *testing.T, env *test_utils.TestEnvironment, host string) map[string]string {
-			return test_utils.GetPropsForProxy(env, host, "failover", 5)
+			return test_utils.GetPropsForProxy(env, host, "failover", 10)
 		},
 	},
 	{
 		name:       "GdbFailover",
 		pluginType: GdbFailoverPluginMode,
 		setupFn: func(t *testing.T, env *test_utils.TestEnvironment, host string) map[string]string {
-			props := test_utils.GetPropsForProxy(env, host, "gdbFailover", 5)
+			props := test_utils.GetPropsForProxy(env, host, "gdbFailover", 10)
 			// via a writer cluster endpoint (RDS_WRITER_CLUSTER / RDS_GLOBAL_WRITER_CLUSTER).
 			props["activeHomeFailoverMode"] = "strict-writer"
 			props["inactiveHomeFailoverMode"] = "strict-writer"
