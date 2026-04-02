@@ -452,13 +452,19 @@ func (p *PluginServiceImpl) setHostList(newHosts []*host_info_util.HostInfo) {
 	}
 }
 
-func (p *PluginServiceImpl) updateHostAvailability(hosts []*host_info_util.HostInfo) {
-	for _, host := range hosts {
+func (p *PluginServiceImpl) updateHostAvailability(hosts []*host_info_util.HostInfo) []*host_info_util.HostInfo {
+	result := make([]*host_info_util.HostInfo, len(hosts))
+	for i, host := range hosts {
 		availability, ok := hostAvailabilityExpiringCache.Get(host.GetHostAndPort())
-		if ok {
-			host.Availability = availability
+		if ok && availability != host.Availability {
+			hostCopy := *host
+			hostCopy.Availability = availability
+			result[i] = &hostCopy
+		} else {
+			result[i] = host
 		}
 	}
+	return result
 }
 
 func (p *PluginServiceImpl) Connect(
@@ -479,7 +485,7 @@ func (p *PluginServiceImpl) ForceRefreshHostListWithTimeout(shouldVerifyWriter b
 		return false, err
 	}
 	if len(updatedHostList) != 0 {
-		p.updateHostAvailability(updatedHostList)
+		updatedHostList = p.updateHostAvailability(updatedHostList)
 		p.setHostList(updatedHostList)
 		return true, nil
 	}

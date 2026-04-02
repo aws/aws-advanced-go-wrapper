@@ -63,7 +63,6 @@ type AwsSecretsManagerPlugin struct {
 	plugins.BaseConnectionPlugin
 	servicesContainer               driver_infrastructure.ServicesContainer
 	props                           *utils.RWMap[string, string]
-	secret                          AwsRdsSecrets
 	SecretsCacheKey                 string
 	region                          region_util.Region
 	endpoint                        string
@@ -167,7 +166,7 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectInternal(
 	hostInfo *host_info_util.HostInfo,
 	props *utils.RWMap[string, string],
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
-	secretsWasFetched, err := awsSecretsManagerPlugin.updateSecrets(hostInfo, props, false)
+	secret, secretsWasFetched, err := awsSecretsManagerPlugin.updateSecrets(hostInfo, props, false)
 
 	if err != nil {
 		slog.Debug(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.failedToFetchCredentials"))
@@ -175,8 +174,8 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectInternal(
 	}
 
 	// try and connect
-	awsSecretsManagerPlugin.applySecretToProperties(props)
-	conn, err := connectFunc(props)
+	connProps := awsSecretsManagerPlugin.applySecretToProperties(props, secret)
+	conn, err := connectFunc(connProps)
 
 	if err == nil {
 		if !secretsWasFetched {
@@ -188,28 +187,30 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectInternal(
 	if awsSecretsManagerPlugin.servicesContainer.GetPluginService().IsLoginError(err) && !secretsWasFetched {
 		// Login unsuccessful with cached credentials
 		// Try to re-fetch credentials and try again
-		secretsWasFetched, err = awsSecretsManagerPlugin.updateSecrets(hostInfo, props, true)
+		secret, secretsWasFetched, err = awsSecretsManagerPlugin.updateSecrets(hostInfo, props, true)
 
 		if secretsWasFetched {
 			slog.Debug(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.retryingAfterFetchingNewSecret"))
 
-			awsSecretsManagerPlugin.applySecretToProperties(props)
-			return connectFunc(props)
+			connProps = awsSecretsManagerPlugin.applySecretToProperties(props, secret)
+			return connectFunc(connProps)
 		}
 	}
 
 	return nil, err
 }
 
-func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) applySecretToProperties(props *utils.RWMap[string, string]) {
-	property_util.USER.Set(props, awsSecretsManagerPlugin.secret.Username)
-	property_util.PASSWORD.Set(props, awsSecretsManagerPlugin.secret.Password)
+func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) applySecretToProperties(props *utils.RWMap[string, string], secret AwsRdsSecrets) *utils.RWMap[string, string] {
+	connProps := utils.NewRWMapFromCopy(props)
+	property_util.USER.Set(connProps, secret.Username)
+	property_util.PASSWORD.Set(connProps, secret.Password)
+	return connProps
 }
 
 func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) updateSecrets(
 	hostInfo *host_info_util.HostInfo,
 	props *utils.RWMap[string, string],
-	forceReFetch bool) (bool, error) {
+	forceReFetch bool) (AwsRdsSecrets, bool, error) {
 	parentCtx := awsSecretsManagerPlugin.servicesContainer.GetPluginService().GetTelemetryContext()
 	telemetryFactory := awsSecretsManagerPlugin.servicesContainer.GetPluginService().GetTelemetryFactory()
 	telemetryCtx, ctx := telemetryFactory.OpenTelemetryContext(
@@ -236,15 +237,14 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) updateSecrets(
 			slog.Error(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.failedToFetchDbCredentials"))
 			telemetryCtx.SetSuccess(false)
 			telemetryCtx.SetError(err)
-			return fetched, err
+			return AwsRdsSecrets{}, fetched, err
 		}
 	} else {
 		slog.Debug(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.useCachedSecret"))
 	}
 
 	telemetryCtx.SetSuccess(true)
-	awsSecretsManagerPlugin.secret = secret
-	return fetched, nil
+	return secret, fetched, nil
 }
 
 func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) fetchLatestCredentials(

@@ -47,17 +47,6 @@ func LogTopology(hosts []*host_info_util.HostInfo, msgPrefix string) string {
 	return fmt.Sprintf("%s\n %s%s", msgPrefix, "Topology: ", sb.String())
 }
 
-func FindHostInTopology(hosts []*host_info_util.HostInfo, hostNames ...string) *host_info_util.HostInfo {
-	for _, host := range hosts {
-		for _, hostName := range hostNames {
-			if host.Host == hostName {
-				return host
-			}
-		}
-	}
-	return nil
-}
-
 // ExecQueryDirectly Directly executes query on conn.
 func ExecQueryDirectly(conn driver.Conn, query string) error {
 	execerCtx, ok := conn.(driver.ExecerContext)

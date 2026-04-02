@@ -229,21 +229,23 @@ func TestRdsIdentifyConnection(t *testing.T) {
 
 	mockConn := &MockConn{}
 
-	// When dialect is not confirmed, Refresh returns initial hosts (localhost).
-	// GetInstanceId returns "localhost" so it should find it in the initial host list.
-	mockPS.EXPECT().IsDialectConfirmed().Return(false).Times(1) // Refresh in getTopology
+	// Pre-populate cache with a host that has hostId set, since IdentifyConnection now matches by hostId.
+	initialHost, _ := host_info_util.NewHostInfoBuilder().SetHost("localhost").SetHostId("localhost").SetRole(host_info_util.WRITER).Build()
+	driver_infrastructure.TopologyStorageType.Set(storageService, "pg_cluster",
+		driver_infrastructure.NewTopology([]*host_info_util.HostInfo{initialHost}))
+
+	mockPS.EXPECT().IsDialectConfirmed().Return(true).AnyTimes()
 	mockTopologyUtils.EXPECT().GetInstanceId(mockConn).Return("localhost", "localhost")
 
 	currentConnection, err := provider.IdentifyConnection(mockConn)
 	assert.Nil(t, err)
 	assert.Equal(t, "localhost", currentConnection.Host)
 
-	// Now pre-populate cache and switch to dialect confirmed so Refresh reads from cache.
-	cachedHost, _ := host_info_util.NewHostInfoBuilder().SetHost("cached_host").SetRole(host_info_util.WRITER).Build()
+	// Now update cache with a different host.
+	cachedHost, _ := host_info_util.NewHostInfoBuilder().SetHost("cached_host").SetHostId("cached_host").SetRole(host_info_util.WRITER).Build()
 	driver_infrastructure.TopologyStorageType.Set(storageService, "pg_cluster",
 		driver_infrastructure.NewTopology([]*host_info_util.HostInfo{cachedHost}))
 
-	mockPS.EXPECT().IsDialectConfirmed().Return(true).AnyTimes()
 	mockTopologyUtils.EXPECT().GetInstanceId(mockConn).Return("cached_host", "cached_host")
 
 	currentConnection, err = provider.IdentifyConnection(mockConn)
