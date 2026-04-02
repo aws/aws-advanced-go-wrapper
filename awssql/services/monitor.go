@@ -17,6 +17,7 @@
 package services
 
 import (
+	"sync/atomic"
 	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
@@ -42,7 +43,7 @@ func DefaultMonitorSettings() *driver_infrastructure.MonitorSettings {
 type monitorItem struct {
 	monitor         driver_infrastructure.Monitor
 	monitorSupplier func() (driver_infrastructure.Monitor, error)
-	expiresAt       time.Time
+	expiresAt       atomic.Int64 // unix nano timestamp
 }
 
 // cacheContainer holds a cache of monitors with related settings.
@@ -97,7 +98,7 @@ func (m *MonitorManager) ProcessEvent(event driver_infrastructure.Event) {
 			// Extend expiration for the monitor with this key
 			item, ok := container.cache.Get(accessEvent.Key)
 			if ok && item != nil {
-				item.expiresAt = time.Now().Add(container.settings.ExpirationTimeout)
+				item.expiresAt.Store(time.Now().Add(container.settings.ExpirationTimeout).UnixNano())
 			}
 		})
 
@@ -141,7 +142,7 @@ func (m *MonitorManager) RunIfAbsent(
 	existingItem, exists := cacheContainer.cache.Get(key)
 	if exists && existingItem != nil {
 		// Extend expiration
-		existingItem.expiresAt = time.Now().Add(cacheContainer.settings.ExpirationTimeout)
+		existingItem.expiresAt.Store(time.Now().Add(cacheContainer.settings.ExpirationTimeout).UnixNano())
 		return existingItem.monitor, nil
 	}
 
@@ -158,8 +159,8 @@ func (m *MonitorManager) RunIfAbsent(
 	item := &monitorItem{
 		monitor:         monitor,
 		monitorSupplier: monitorSupplier,
-		expiresAt:       time.Now().Add(cacheContainer.settings.ExpirationTimeout),
 	}
+	item.expiresAt.Store(time.Now().Add(cacheContainer.settings.ExpirationTimeout).UnixNano())
 
 	cacheContainer.cache.PutIfAbsent(key, item)
 	monitor.Start()
@@ -273,7 +274,7 @@ func (m *MonitorManager) checkMonitors() {
 			if item.monitor.GetState() == driver_infrastructure.MonitorStateStopped {
 				return true
 			}
-			return now.After(item.expiresAt) && item.monitor.CanDispose()
+			return now.After(time.Unix(0, item.expiresAt.Load())) && item.monitor.CanDispose()
 		})
 		for _, entry := range stopped {
 			entry.Value.monitor.Stop()
@@ -310,8 +311,8 @@ func (m *MonitorManager) handleMonitorError(container *cacheContainer, key any, 
 		newItem := &monitorItem{
 			monitor:         newMonitor,
 			monitorSupplier: errorItem.monitorSupplier,
-			expiresAt:       time.Now().Add(container.settings.ExpirationTimeout),
 		}
+		newItem.expiresAt.Store(time.Now().Add(container.settings.ExpirationTimeout).UnixNano())
 
 		container.cache.PutIfAbsent(key, newItem)
 		newMonitor.Start()
