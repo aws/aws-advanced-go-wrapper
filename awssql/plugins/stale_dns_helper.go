@@ -49,7 +49,7 @@ func (s *StaleDnsHelper) GetVerifiedConnection(
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	conn, err := connectFunc(props)
 
-	if !utils.IsWriterClusterDns(host) {
+	if !utils.IsWriterClusterDns(host) && !utils.IsGlobalDbWriterClusterDns(host) {
 		return conn, err
 	}
 

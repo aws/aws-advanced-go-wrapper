@@ -118,7 +118,7 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) Connect(
 	}
 
 	if urlType == utils.RDS_WRITER_CLUSTER ||
-		isInitialConnection && plugin.verifyOpenConnectionType == host_info_util.WRITER {
+		isInitialConnection || urlType == utils.RDS_GLOBAL_WRITER_CLUSTER && plugin.verifyOpenConnectionType == host_info_util.WRITER {
 		writerCandidateConn, err := plugin.getVerifiedWriterConnection(props, isInitialConnection, connectFunc)
 		if err != nil {
 			return nil, err
