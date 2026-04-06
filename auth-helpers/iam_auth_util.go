@@ -19,8 +19,8 @@ package auth_helpers
 import (
 	"fmt"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/region_util"
 )
 
 func GetIamHost(iamHost string, hostInfo host_info_util.HostInfo) string {

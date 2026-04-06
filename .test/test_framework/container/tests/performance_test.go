@@ -31,10 +31,10 @@ import (
 	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
-	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
+	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils"
 
 	"github.com/stretchr/testify/assert"
 )

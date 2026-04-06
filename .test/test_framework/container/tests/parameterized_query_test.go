@@ -25,8 +25,8 @@ import (
 	"testing"
 
 	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

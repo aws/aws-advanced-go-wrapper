@@ -16,7 +16,7 @@
 
 package driver_infrastructure
 
-import "github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
+import "github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils/telemetry"
 
 // ServicesContainer provides access to all services needed by plugins and monitors.
 // This interface allows for easy mocking in tests.

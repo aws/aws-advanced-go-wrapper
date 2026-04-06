@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
 	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"

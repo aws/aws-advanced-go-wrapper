@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
 )
 
 const resetSessionTimeout = 5 * time.Second

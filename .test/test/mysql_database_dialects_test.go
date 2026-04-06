@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils"
 
 	mock_database_sql_driver "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/database_sql_driver"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )

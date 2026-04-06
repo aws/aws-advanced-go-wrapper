@@ -20,7 +20,7 @@ import (
 	"database/sql/driver"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
 )
 
 var defaultRowParser driver_infrastructure.RowParser = &pgxRowParser{}

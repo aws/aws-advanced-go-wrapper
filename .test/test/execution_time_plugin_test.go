@@ -21,8 +21,8 @@ import (
 	"time"
 
 	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/plugin_helpers"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/plugin_helpers"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/plugins"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )

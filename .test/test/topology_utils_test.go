@@ -23,8 +23,8 @@ import (
 
 	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
 	mock_database_sql_driver "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/database_sql_driver"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )

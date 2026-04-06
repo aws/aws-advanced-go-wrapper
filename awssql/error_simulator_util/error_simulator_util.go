@@ -20,10 +20,10 @@ import (
 	"database/sql"
 	"database/sql/driver"
 
-	awsdriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/error_simulator"
+	awsdriver "github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/plugins/error_simulator"
 )
 
 func GetErrorSimulatorFromSqlConn(conn *sql.Conn) (error_simulator.ErrorSimulator, error) {

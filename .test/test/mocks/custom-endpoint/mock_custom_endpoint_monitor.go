@@ -23,7 +23,7 @@ package mock_custom_endpoint
 import (
 	reflect "reflect"
 
-	driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+	driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
 	gomock "github.com/golang/mock/gomock"
 )
 

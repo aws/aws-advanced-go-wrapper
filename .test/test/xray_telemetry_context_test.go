@@ -20,7 +20,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils/telemetry"
 	"github.com/aws/aws-advanced-go-wrapper/xray"
 	"github.com/stretchr/testify/assert"
 )

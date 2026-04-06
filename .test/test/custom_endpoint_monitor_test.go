@@ -22,9 +22,9 @@ import (
 
 	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
 	mock_telemetry "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/util/telemetry"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/region_util"
 	custom_endpoint "github.com/aws/aws-advanced-go-wrapper/custom-endpoint"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"

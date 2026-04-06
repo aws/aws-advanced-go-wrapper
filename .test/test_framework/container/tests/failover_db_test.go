@@ -26,7 +26,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
 	_ "github.com/aws/aws-advanced-go-wrapper/otlp"
 	_ "github.com/aws/aws-advanced-go-wrapper/xray"
 

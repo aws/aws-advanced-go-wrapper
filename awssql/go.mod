@@ -1,4 +1,4 @@
-module github.com/aws/aws-advanced-go-wrapper/awssql
+module github.com/aws/aws-advanced-go-wrapper/awssql/v2
 
 go 1.24.0
 

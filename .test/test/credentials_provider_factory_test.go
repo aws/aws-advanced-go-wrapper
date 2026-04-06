@@ -20,7 +20,7 @@ import (
 	"errors"
 
 	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils"
 
 	"testing"
 

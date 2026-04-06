@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/services"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/services"
 	"github.com/stretchr/testify/assert"
 )
 

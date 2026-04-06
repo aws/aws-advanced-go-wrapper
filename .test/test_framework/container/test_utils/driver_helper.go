@@ -27,7 +27,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
 	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 )

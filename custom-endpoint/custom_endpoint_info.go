@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
 	"github.com/aws/aws-sdk-go-v2/service/rds/types"
 )
 

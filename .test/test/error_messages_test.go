@@ -21,8 +21,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
 	"github.com/stretchr/testify/assert"
 )
 

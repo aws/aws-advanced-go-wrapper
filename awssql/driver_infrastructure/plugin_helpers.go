@@ -20,9 +20,9 @@ import (
 	"context"
 	"database/sql/driver"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils/telemetry"
 )
 
 type ConnectFunc func(props *utils.RWMap[string, string]) (driver.Conn, error)

@@ -22,8 +22,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
 )
 
 var defaultRowParser driver_infrastructure.RowParser = &mySQLRowParser{}

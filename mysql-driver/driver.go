@@ -21,8 +21,8 @@ import (
 	"database/sql/driver"
 	"sync"
 
-	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
 	"github.com/go-sql-driver/mysql"
 )
 

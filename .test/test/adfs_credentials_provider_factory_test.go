@@ -27,8 +27,8 @@ import (
 	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
 	mock_telemetry "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/util/telemetry"
 	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
 	federated_auth "github.com/aws/aws-advanced-go-wrapper/federated-auth"
 	"github.com/golang/mock/gomock"
 

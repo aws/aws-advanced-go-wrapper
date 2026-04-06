@@ -22,7 +22,7 @@ import (
 	"log"
 
 	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
 	_ "github.com/aws/aws-advanced-go-wrapper/iam"
 	_ "github.com/aws/aws-advanced-go-wrapper/pgx-driver" // awssql pgx driver
 	"github.com/aws/aws-sdk-go-v2/aws"

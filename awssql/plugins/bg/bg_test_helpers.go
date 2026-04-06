@@ -20,10 +20,10 @@ import (
 	"database/sql/driver"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils"
 )
 
 type TestBlueGreenStatusMonitor struct {

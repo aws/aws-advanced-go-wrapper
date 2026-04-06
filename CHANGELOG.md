@@ -130,3 +130,52 @@ The Amazon Web Services (AWS) Advanced Go Wrapper allows an application to take 
 * `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.5](otlp/CHANGELOG.md#105---2026-02-03)
 * `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.0.5](pgx-driver/CHANGELOG.md#105---2026-02-03)
 * `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.5](xray/CHANGELOG.md#105---2026-02-03)
+
+# Release (2026-04-06)
+## General Highlights
+### :boom: Breaking Changes
+
+> [!WARNING]\
+> This release removes the suggested ClusterId functionality ([PR #355](https://github.com/aws/aws-advanced-go-wrapper/pull/355)).
+> #### Suggested ClusterId Functionality
+> Prior to this change, the wrapper would generate a unique cluster ID based on the connection string and the cluster topology; however, in some cases (such as custom endpoints, IP addresses, and CNAME aliases, etc), the wrapper would generate an incorrect identifier. This change was needed to prevent applications with several clusters from accidentally relying on incorrect topology during failover which could result in the wrapper failing to complete failover successfully.
+> #### Migration
+> | Number of Database Clusters in Use | Requires Changes | Action Items                                                                                                                                                                                                                                                                                                                                                                            |
+> |------------------------------------|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+> | Single database cluster            | No               | No changes required                                                                                                                                                                                                                                                                                                                                                                     |
+> | Multiple database clusters         | Yes              | Review all connection strings and add mandatory `clusterId` parameter. See [Cluster ID documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/ClusterId.md) for configuration details |
+
+### :magic_wand: Added
+* Global Database (GDB) Support, including:
+  * Aurora GDB Host List Provider Infrastructure ([PR #355](https://github.com/aws/aws-advanced-go-wrapper/pull/355)). For more information, see the [Global Databases documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/GlobalDatabases.md).
+  * GDB Failover Plugin ([PR #381](https://github.com/aws/aws-advanced-go-wrapper/pull/381)). For more information, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheGdbFailoverPlugin.md).
+  * GDB Auth Support ([PR #398](https://github.com/aws/aws-advanced-go-wrapper/pull/398)):
+    * [IAM Authentication Plugin](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheIamAuthenticationPlugin.md#using-iam-authentication-with-global-databases)
+    * [Okta Authentication Plugin](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheOktaAuthPlugin.md#using-okta-authentication-with-global-databases)
+    * [Federated Authentication Plugin](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheFederatedAuthPlugin.md#using-federated-authentication-with-global-databases)
+  * GDB Read/Write Splitting Plugin ([PR #401](https://github.com/aws/aws-advanced-go-wrapper/pull/401)). For more information, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheGdbReadWriteSplittingPlugin.md).
+* Failover Plugin: `clusterTopologyConnectTimeoutMs` and `clusterTopologySocketTimeoutMs` connection parameters for configuring topology query timeouts ([PR #381](https://github.com/aws/aws-advanced-go-wrapper/pull/381)). For more information, see the [Failover Plugin documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheFailoverPlugin.md).
+
+### :bug: Fixed
+* Wrong host ID in host info ([PR #333](https://github.com/aws/aws-advanced-go-wrapper/pull/333)).
+* Do not consider XX000 errors as network-related errors ([PR #334](https://github.com/aws/aws-advanced-go-wrapper/pull/334)).
+* Minor blue/green fixes ([PR #343](https://github.com/aws/aws-advanced-go-wrapper/pull/343)).
+* Fix issue with blue/green metadata for PG databases ([PR #348](https://github.com/aws/aws-advanced-go-wrapper/pull/348)).
+* Read messages from embedded FS ([PR #409](https://github.com/aws/aws-advanced-go-wrapper/pull/409)).
+
+### :crab: Changed
+* Remove IP Address checking in staleDnsHelper ([PR #363](https://github.com/aws/aws-advanced-go-wrapper/pull/363)).
+* Read/Write Splitting no longer uses a query to toggle between read and read/write mode ([PR #407](https://github.com/aws/aws-advanced-go-wrapper/pull/407)).
+
+## Module Highlights
+* `https://github.com/aws/aws-advanced-go-wrapper/auth-helpers`: [v1.1.0](auth-helpers/CHANGELOG.md#110---2026-04-06)
+* `https://github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager`: [v1.1.1](aws-secrets-manager/CHANGELOG.md#111---2026-04-06)
+* `https://github.com/aws/aws-advanced-go-wrapper/awssql/v2`: [v2.0.0](awssql/CHANGELOG.md#200---2026-04-06)
+* `https://github.com/aws/aws-advanced-go-wrapper/custom-endpoint`: [v1.0.3](custom-endpoint/CHANGELOG.md#103---2026-04-06)
+* `https://github.com/aws/aws-advanced-go-wrapper/federated-auth`: [v1.1.0](federated-auth/CHANGELOG.md#110---2026-04-06)
+* `https://github.com/aws/aws-advanced-go-wrapper/iam`: [v1.1.0](iam/CHANGELOG.md#110---2026-04-06)
+* `https://github.com/aws/aws-advanced-go-wrapper/mysql-driver`: [v1.1.0](mysql-driver/CHANGELOG.md#110---2026-04-06)
+* `https://github.com/aws/aws-advanced-go-wrapper/okta`: [v1.1.0](okta/CHANGELOG.md#110---2026-04-06)
+* `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.6](otlp/CHANGELOG.md#106---2026-04-06)
+* `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.1.0](pgx-driver/CHANGELOG.md#110---2026-04-06)
+* `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.6](xray/CHANGELOG.md#106---2026-04-06)

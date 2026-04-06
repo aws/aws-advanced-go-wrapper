@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
 	_ "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 )
 

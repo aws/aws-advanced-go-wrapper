@@ -27,9 +27,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### :crab: Changed
 * Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v1.4.0
 
-[1.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver/1.0.0
-[1.0.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver/1.0.1
-[1.0.2]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver/1.0.2
-[1.0.3]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver/1.0.3
-[1.0.4]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver/1.0.4
-[1.0.5]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver/1.0.5
+## [1.1.0] - 2026-04-06
+### :boom: Breaking Changes
+
+> [!WARNING]\
+> This release updates the `awssql` dependency to v2.0.0, which removes the suggested ClusterId functionality ([PR #355](https://github.com/aws/aws-advanced-go-wrapper/pull/355)).
+> #### Suggested ClusterId Functionality
+> Prior to this change, the wrapper would generate a unique cluster ID based on the connection string and the cluster topology; however, in some cases (such as custom endpoints, IP addresses, and CNAME aliases, etc), the wrapper would generate an incorrect identifier. This change was needed to prevent applications with several clusters from accidentally relying on incorrect topology during failover which could result in the wrapper failing to complete failover successfully.
+> #### Migration
+> | Number of Database Clusters in Use | Requires Changes | Action Items                                                                                                                                                                                                                                                                                                                                                                            |
+> |------------------------------------|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+> | Single database cluster            | No               | No changes required                                                                                                                                                                                                                                                                                                                                                                     |
+> | Multiple database clusters         | Yes              | Review all connection strings and add mandatory `clusterId` parameter. See [Cluster ID documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/ClusterId.md) for configuration details |
+
+### :crab: Changed
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.0.0
+
+[1.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver%2Fv1.0.0
+[1.0.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver%2Fv1.0.1
+[1.0.2]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver%2Fv1.0.2
+[1.0.3]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver%2Fv1.0.3
+[1.0.4]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver%2Fv1.0.4
+[1.0.5]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver%2Fv1.0.5
+[1.1.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver%2Fv1.1.0

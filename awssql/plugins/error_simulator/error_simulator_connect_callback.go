@@ -17,7 +17,7 @@
 package error_simulator
 
 import (
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
 )
 
 type ErrorSimulatorConnectCallback interface {

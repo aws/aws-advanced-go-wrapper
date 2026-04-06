@@ -21,9 +21,9 @@ import (
 
 	"strings"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/region_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"

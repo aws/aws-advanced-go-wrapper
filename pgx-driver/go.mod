@@ -3,7 +3,7 @@ module github.com/aws/aws-advanced-go-wrapper/pgx-driver
 go 1.24.0
 
 require (
-	github.com/aws/aws-advanced-go-wrapper/awssql v1.4.0
+	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.0.0
 	github.com/jackc/pgx/v5 v5.8.0
 )
 
@@ -16,4 +16,4 @@ require (
 	golang.org/x/text v0.34.0 // indirect
 )
 
-replace github.com/aws/aws-advanced-go-wrapper/awssql => ../awssql
+replace github.com/aws/aws-advanced-go-wrapper/awssql/v2 => ../awssql

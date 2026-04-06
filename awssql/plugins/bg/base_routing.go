@@ -21,8 +21,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
 )
 
 const SLEEP_CHUNK_DURATION = 50 * time.Millisecond

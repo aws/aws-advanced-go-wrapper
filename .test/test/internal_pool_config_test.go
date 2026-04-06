@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/internal_pool"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/internal_pool"
 	"github.com/stretchr/testify/assert"
 )
 
