@@ -94,6 +94,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
     * [Okta Authentication Plugin](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheOktaAuthPlugin.md#using-okta-authentication-with-global-databases)
     * [Federated Authentication Plugin](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheFederatedAuthPlugin.md#using-federated-authentication-with-global-databases)
   * GDB Read/Write Splitting Plugin ([PR #401](https://github.com/aws/aws-advanced-go-wrapper/pull/401)). For more information, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheGdbReadWriteSplittingPlugin.md).
+* Failover Plugin: `clusterTopologyConnectTimeoutMs` and `clusterTopologySocketTimeoutMs` connection parameters for configuring topology query timeouts ([PR #381](https://github.com/aws/aws-advanced-go-wrapper/pull/381)). For more information, see the [Failover Plugin documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheFailoverPlugin.md).
 
 ### :bug: Fixed
 * Wrong host ID in host info ([PR #333](https://github.com/aws/aws-advanced-go-wrapper/pull/333)).
