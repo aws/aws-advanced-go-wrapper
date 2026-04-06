@@ -19,7 +19,7 @@ package mysql_driver
 import (
 	"fmt"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
 )
 
 var defaultPropertyResolver driver_infrastructure.DriverPropertyResolver = &mysqlPropertyResolver{}

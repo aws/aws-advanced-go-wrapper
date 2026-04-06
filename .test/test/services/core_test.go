@@ -19,7 +19,7 @@ package services
 import (
 	"testing"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/services"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/services"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -16,7 +16,7 @@
 
 package limitless
 
-import "github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+import "github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
 
 func IsDialectLimitless(databaseDialect driver_infrastructure.DatabaseDialect) bool {
 	_, isDialectLimitless := databaseDialect.(driver_infrastructure.AuroraLimitlessDialect)

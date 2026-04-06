@@ -17,8 +17,8 @@
 package services
 
 import (
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils/telemetry"
 )
 
 // FullServicesContainer holds all services needed by plugins and monitors.

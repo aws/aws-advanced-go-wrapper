@@ -25,7 +25,7 @@ import (
 	"time"
 
 	mock_database_sql_driver "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/database_sql_driver"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/internal_pool"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/internal_pool"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )

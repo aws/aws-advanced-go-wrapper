@@ -28,8 +28,8 @@ import (
 	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
-	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/google/uuid"

@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
+	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver"
 	"github.com/aws/aws-xray-sdk-go/strategy/sampling"
 	"github.com/aws/aws-xray-sdk-go/xray"
 	"github.com/aws/aws-xray-sdk-go/xraylog"

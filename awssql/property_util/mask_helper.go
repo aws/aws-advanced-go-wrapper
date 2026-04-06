@@ -21,7 +21,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils"
 )
 
 var SENSITIVE_PROPERTIES = map[string]struct{}{

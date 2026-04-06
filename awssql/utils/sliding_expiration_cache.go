@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
 )
 
 type DisposalFunc[T any] func(T) bool

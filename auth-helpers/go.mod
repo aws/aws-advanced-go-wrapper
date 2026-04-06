@@ -3,7 +3,7 @@ module github.com/aws/aws-advanced-go-wrapper/auth-helpers
 go 1.24.0
 
 require (
-	github.com/aws/aws-advanced-go-wrapper/awssql v1.4.0
+	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.0.0
 	github.com/aws/aws-sdk-go-v2 v1.41.4
 	github.com/aws/aws-sdk-go-v2/config v1.32.12
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.12
@@ -27,4 +27,4 @@ require (
 	golang.org/x/text v0.34.0 // indirect
 )
 
-replace github.com/aws/aws-advanced-go-wrapper/awssql => ../awssql
+replace github.com/aws/aws-advanced-go-wrapper/awssql/v2 => ../awssql

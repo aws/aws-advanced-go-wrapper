@@ -19,7 +19,7 @@ package xray
 import (
 	"context"
 	"fmt"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils/telemetry"
 	"github.com/aws/aws-xray-sdk-go/xray"
 	"log/slog"
 )

@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
 )
 
 // TopologyStorageType is the storage type descriptor for cluster topology data.

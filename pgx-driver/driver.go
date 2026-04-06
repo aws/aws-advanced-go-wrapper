@@ -21,10 +21,10 @@ import (
 	"database/sql/driver"
 	"sync"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
 	"github.com/jackc/pgx/v5/stdlib"
 
-	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
+	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver"
 )
 
 type PgxDriver struct {

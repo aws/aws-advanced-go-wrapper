@@ -21,8 +21,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/host_info_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
 	"github.com/stretchr/testify/assert"
 )
 

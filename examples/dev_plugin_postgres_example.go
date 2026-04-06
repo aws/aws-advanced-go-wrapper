@@ -23,8 +23,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_simulator_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/plugins/error_simulator"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_simulator_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/plugins/error_simulator"
 	_ "github.com/aws/aws-advanced-go-wrapper/pgx-driver" // awssql pgx driver
 )
 

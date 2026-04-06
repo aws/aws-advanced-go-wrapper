@@ -20,7 +20,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils/telemetry"
 	"github.com/aws/aws-advanced-go-wrapper/otlp"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel"

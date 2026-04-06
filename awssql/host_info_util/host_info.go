@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
 )
 
 type HostAvailability string

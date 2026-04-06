@@ -22,9 +22,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_info"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_info"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils"
 )
 
 type PgDatabaseDialect struct {

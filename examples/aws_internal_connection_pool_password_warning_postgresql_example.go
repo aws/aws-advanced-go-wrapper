@@ -23,8 +23,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/internal_pool"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/internal_pool"
 	_ "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 )
 

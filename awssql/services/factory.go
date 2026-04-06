@@ -19,9 +19,9 @@ package services
 import (
 	"database/sql/driver"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils/telemetry"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils/telemetry"
 )
 
 // StandardContainerConfig holds configuration for creating a standard service container.

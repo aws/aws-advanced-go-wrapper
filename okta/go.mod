@@ -4,8 +4,8 @@ go 1.25.0
 
 require (
 	github.com/PuerkitoBio/goquery v1.12.0
-	github.com/aws/aws-advanced-go-wrapper/auth-helpers v1.0.5
-	github.com/aws/aws-advanced-go-wrapper/awssql v1.4.0
+	github.com/aws/aws-advanced-go-wrapper/auth-helpers v1.1.0
+	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.0.0
 	github.com/aws/aws-sdk-go-v2 v1.41.4
 )
 
@@ -31,6 +31,6 @@ require (
 	golang.org/x/text v0.35.0 // indirect
 )
 
-replace github.com/aws/aws-advanced-go-wrapper/awssql => ../awssql
+replace github.com/aws/aws-advanced-go-wrapper/awssql/v2 => ../awssql
 
 replace github.com/aws/aws-advanced-go-wrapper/auth-helpers => ../auth-helpers

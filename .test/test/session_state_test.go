@@ -19,7 +19,7 @@ package test
 import (
 	"testing"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
 	"github.com/stretchr/testify/assert"
 )
 

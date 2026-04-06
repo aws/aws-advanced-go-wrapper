@@ -23,11 +23,11 @@ import (
 	"log"
 	"time"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/awsctx"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/error_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/internal_pool"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/awsctx"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/internal_pool"
 	_ "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 )
 

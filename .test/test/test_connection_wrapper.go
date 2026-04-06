@@ -17,8 +17,8 @@
 package test
 
 import (
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
 )
 
 type TestConnectionWrapper struct {

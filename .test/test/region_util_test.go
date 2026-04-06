@@ -19,8 +19,8 @@ package test
 import (
 	"testing"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/property_util"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/region_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/region_util"
 	"github.com/stretchr/testify/assert"
 )
 

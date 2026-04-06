@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/resources"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/resources"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"
 )

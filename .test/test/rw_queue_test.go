@@ -20,7 +20,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/aws/aws-advanced-go-wrapper/awssql/utils"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils"
 	"github.com/stretchr/testify/assert"
 )
 
