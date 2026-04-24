@@ -6,7 +6,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.12.0
 	github.com/aws/aws-advanced-go-wrapper/auth-helpers v1.1.0
 	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.0.0
-	github.com/aws/aws-sdk-go-v2 v1.41.5
+	github.com/aws/aws-sdk-go-v2 v1.41.6
 )
 
 require (
@@ -25,7 +25,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.30.13 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.17 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.9 // indirect
-	github.com/aws/smithy-go v1.24.2 // indirect
+	github.com/aws/smithy-go v1.25.0 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.6.1 // indirect
 	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
