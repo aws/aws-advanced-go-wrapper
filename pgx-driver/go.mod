@@ -13,7 +13,7 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.6.1 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
+	golang.org/x/text v0.36.0 // indirect
 )
 
 replace github.com/aws/aws-advanced-go-wrapper/awssql/v2 => ../awssql
