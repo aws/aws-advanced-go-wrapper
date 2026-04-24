@@ -119,7 +119,6 @@
   "DatabaseDialect.usingRdsHostListProvider": "Failover is not enabled. Using RdsHostListProvider.",
   "DatabaseDialectManager.getDialectError": "Was not able to get a database dialect.",
   "DatabaseDialectManager.invalidDriverProtocol": "Invalid driver protocol from properties: %v.",
-  "DatabaseDialectManager.missingWrapperDriver": "The AWS Advanced Go Wrapper driver name '%s' has not been registered. Please ensure any required driver modules have been imported.",
   "DatabaseDialectManager.unknownDialectCode": "Unknown database dialect code: %v.",
   "DefaultConnectionPlugin.noHostsAvailable": "The default connection plugin received an empty host list from the plugin service.",
   "DefaultTelemetryFactory.invalidBackend": "Invalid telemetry backend: '%s'.",
