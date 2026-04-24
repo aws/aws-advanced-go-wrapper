@@ -4,9 +4,9 @@ go 1.25.0
 
 require (
 	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.0.0
-	go.opentelemetry.io/otel v1.42.0
-	go.opentelemetry.io/otel/metric v1.42.0
-	go.opentelemetry.io/otel/trace v1.42.0
+	go.opentelemetry.io/otel v1.43.0
+	go.opentelemetry.io/otel/metric v1.43.0
+	go.opentelemetry.io/otel/trace v1.43.0
 )
 
 require (
