@@ -48,22 +48,19 @@ func TestGetDialectFromConnectionParameter(t *testing.T) {
 // without requiring the wrapper driver to be registered.
 func TestGetDialectWithoutDriverRegistered(t *testing.T) {
 	tests := []struct {
-		name           string
-		dsn            string
-		driverName     string
-		driverProtocol string
+		name       string
+		dsn        string
+		driverName string
 	}{
 		{
-			name:           "postgres protocol resolves without awssql-pgx registered",
-			dsn:            pgTestDsn,
-			driverName:     driver_infrastructure.AWS_PGX_DRIVER_CODE,
-			driverProtocol: property_util.PGX_DRIVER_PROTOCOL,
+			name:       "Pg",
+			dsn:        pgTestDsn,
+			driverName: driver_infrastructure.AWS_PGX_DRIVER_CODE,
 		},
 		{
-			name:           "mysql protocol resolves without awssql-mysql registered",
-			dsn:            "someUser:somePassword@tcp(mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:3306)/myDatabase",
-			driverName:     driver_infrastructure.AWS_MYSQL_DRIVER_CODE,
-			driverProtocol: property_util.MYSQL_DRIVER_PROTOCOL,
+			name:       "MySql",
+			dsn:        "someUser:somePassword@tcp(mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:3306)/myDatabase",
+			driverName: driver_infrastructure.AWS_MYSQL_DRIVER_CODE,
 		},
 	}
 
@@ -75,12 +72,12 @@ func TestGetDialectWithoutDriverRegistered(t *testing.T) {
 			assert.Contains(t, err.Error(), "unknown driver")
 
 			// GetDialect should succeed even without the driver registered.
-			dialectManager := driver_infrastructure.DialectManager{}
-			props := test.MakeMapFromKeysAndVals(
-				property_util.DRIVER_PROTOCOL.Name, tc.driverProtocol,
-			)
-			_, err = dialectManager.GetDialect(tc.dsn, props)
+			props, parseErr := property_util.ParseDsn(tc.dsn)
+			require.NoError(t, parseErr)
 
+			dialectManager := driver_infrastructure.DialectManager{}
+			_, err = dialectManager.GetDialect(tc.dsn, props)
+			assert.NoError(t, err)
 			driver_infrastructure.ClearCaches()
 		})
 	}
