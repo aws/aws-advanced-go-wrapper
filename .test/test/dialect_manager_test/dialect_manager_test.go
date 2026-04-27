@@ -28,6 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var mysqlTestDsn = "someUser:somePassword@tcp(mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:3306)/myDatabase?foo=bar&pop=snap"
 var pgTestDsn = "postgres://someUser:somePassword@mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:5432/pgx_test?sslmode=disable&foo=bar"
 
 func TestGetDialectFromConnectionParameter(t *testing.T) {
@@ -48,19 +49,22 @@ func TestGetDialectFromConnectionParameter(t *testing.T) {
 // without requiring the wrapper driver to be registered.
 func TestGetDialectWithoutDriverRegistered(t *testing.T) {
 	tests := []struct {
-		name       string
-		dsn        string
-		driverName string
+		name            string
+		dsn             string
+		driverName      string
+		expectedDialect string
 	}{
 		{
-			name:       "Pg",
-			dsn:        pgTestDsn,
-			driverName: driver_infrastructure.AWS_PGX_DRIVER_CODE,
+			name:            "Pg",
+			dsn:             pgTestDsn,
+			driverName:      driver_infrastructure.AWS_PGX_DRIVER_CODE,
+			expectedDialect: driver_infrastructure.AURORA_PG_DIALECT,
 		},
 		{
-			name:       "MySql",
-			dsn:        "someUser:somePassword@tcp(mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:3306)/myDatabase",
-			driverName: driver_infrastructure.AWS_MYSQL_DRIVER_CODE,
+			name:            "MySql",
+			dsn:             mysqlTestDsn,
+			driverName:      driver_infrastructure.AWS_MYSQL_DRIVER_CODE,
+			expectedDialect: driver_infrastructure.AURORA_MYSQL_DIALECT,
 		},
 	}
 
@@ -76,8 +80,9 @@ func TestGetDialectWithoutDriverRegistered(t *testing.T) {
 			require.NoError(t, parseErr)
 
 			dialectManager := driver_infrastructure.DialectManager{}
-			_, err = dialectManager.GetDialect(tc.dsn, props)
-			assert.NoError(t, err)
+			dialect, err := dialectManager.GetDialect(tc.dsn, props)
+			require.NoError(t, err)
+			assert.Equal(t, driver_infrastructure.KnownDialectsByCode[tc.expectedDialect], dialect)
 			driver_infrastructure.ClearCaches()
 		})
 	}
