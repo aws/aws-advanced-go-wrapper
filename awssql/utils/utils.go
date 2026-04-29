@@ -18,7 +18,6 @@ package utils
 
 import (
 	"context"
-	"database/sql"
 	"database/sql/driver"
 	"fmt"
 	"log/slog"
@@ -288,16 +287,6 @@ func GetHostNameFromEndpoint(endpoint string) string {
 	}
 
 	return parsedEndpoint[0]
-}
-
-func FindRegisteredDriver(dialectCode string) bool {
-	registeredDrivers := sql.Drivers()
-	for _, registeredDriver := range registeredDrivers {
-		if registeredDriver == dialectCode {
-			return true
-		}
-	}
-	return false
 }
 
 func GetQueryFromSqlOrMethodArgs(sql string, methodArgs ...any) string {

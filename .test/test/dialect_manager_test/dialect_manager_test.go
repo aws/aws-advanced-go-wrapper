@@ -17,12 +17,12 @@
 package dialect_manager_test
 
 import (
+	"database/sql"
 	"strings"
 	"testing"
 
 	"github.com/aws/aws-advanced-go-wrapper/.test/test"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
-	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,32 +45,45 @@ func TestGetDialectFromConnectionParameter(t *testing.T) {
 	assert.True(t, strings.Contains(err.Error(), "Unknown database dialect code"))
 }
 
-func TestGetDialectUnregisteredDriverPgx(t *testing.T) {
-	findRegisteredDriver := func(dialectCode string) bool {
-		return false
+// Verifies that GetDialect resolves dialects based on driver protocol
+// without requiring the wrapper driver to be registered.
+func TestGetDialectWithoutDriverRegistered(t *testing.T) {
+	tests := []struct {
+		name            string
+		dsn             string
+		driverName      string
+		expectedDialect string
+	}{
+		{
+			name:            "Pg",
+			dsn:             pgTestDsn,
+			driverName:      driver_infrastructure.AWS_PGX_DRIVER_CODE,
+			expectedDialect: driver_infrastructure.AURORA_PG_DIALECT,
+		},
+		{
+			name:            "MySql",
+			dsn:             mysqlTestDsn,
+			driverName:      driver_infrastructure.AWS_MYSQL_DRIVER_CODE,
+			expectedDialect: driver_infrastructure.AURORA_MYSQL_DIALECT,
+		},
 	}
-	dialectManager := driver_infrastructure.DialectManager{FindRegisteredDriver: findRegisteredDriver}
 
-	props := test.MakeMapFromKeysAndVals(
-		property_util.DRIVER_PROTOCOL.Name, property_util.PGX_DRIVER_PROTOCOL,
-	)
-	dialect, err := dialectManager.GetDialect(pgTestDsn, props)
-	assert.Nil(t, dialect)
-	assert.Equal(t, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DatabaseDialectManager.missingWrapperDriver", driver_infrastructure.AWS_PGX_DRIVER_CODE)), err)
-	driver_infrastructure.ClearCaches()
-}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Precondition: verify the driver is not registered.
+			_, err := sql.Open(tc.driverName, tc.dsn)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "unknown driver")
 
-func TestGetDialectUnregisteredDriverMysql(t *testing.T) {
-	findRegisteredDriver := func(dialectCode string) bool {
-		return false
+			// GetDialect should succeed even without the driver registered.
+			props, parseErr := property_util.ParseDsn(tc.dsn)
+			require.NoError(t, parseErr)
+
+			dialectManager := driver_infrastructure.DialectManager{}
+			dialect, err := dialectManager.GetDialect(tc.dsn, props)
+			require.NoError(t, err)
+			assert.Equal(t, driver_infrastructure.KnownDialectsByCode[tc.expectedDialect], dialect)
+			driver_infrastructure.ClearCaches()
+		})
 	}
-	dialectManager := driver_infrastructure.DialectManager{FindRegisteredDriver: findRegisteredDriver}
-
-	props := test.MakeMapFromKeysAndVals(
-		property_util.DRIVER_PROTOCOL.Name, property_util.MYSQL_DRIVER_PROTOCOL,
-	)
-	dialect, err := dialectManager.GetDialect(mysqlTestDsn, props)
-	assert.Nil(t, dialect)
-	assert.Equal(t, err, error_util.NewGenericAwsWrapperError(error_util.GetMessage("DatabaseDialectManager.missingWrapperDriver", driver_infrastructure.AWS_MYSQL_DRIVER_CODE)))
-	driver_infrastructure.ClearCaches()
 }
