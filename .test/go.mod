@@ -7,6 +7,7 @@ require (
 	github.com/aws/aws-advanced-go-wrapper/auth-helpers v1.1.0
 	github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager v1.1.1
 	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.0.0
+	github.com/aws/aws-advanced-go-wrapper/bun-driver v0.0.0
 	github.com/aws/aws-advanced-go-wrapper/custom-endpoint v1.0.3
 	github.com/aws/aws-advanced-go-wrapper/federated-auth v1.1.0
 	github.com/aws/aws-advanced-go-wrapper/iam v1.1.0
@@ -94,17 +95,27 @@ require (
 	github.com/clipperhouse/displaywidth v0.10.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.6.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
+	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.19 // indirect
 	github.com/olekukonko/cat v0.0.0-20250911104152-50322a0618f6 // indirect
 	github.com/olekukonko/errors v1.2.0 // indirect
 	github.com/olekukonko/ll v0.1.6 // indirect
+	github.com/puzpuzpuz/xsync/v3 v3.5.1 // indirect
+	github.com/tmthrgd/go-hex v0.0.0-20190904060850-447a3041c3bc // indirect
+	github.com/uptrace/bun v1.2.18 // indirect
+	github.com/uptrace/bun/driver/pgdriver v1.2.18 // indirect
+	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
+	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	go.opentelemetry.io/otel/metric v1.43.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	mellium.im/sasl v0.3.2 // indirect
 )
 
 replace github.com/aws/aws-advanced-go-wrapper/awssql/v2 => ../awssql
+
+replace github.com/aws/aws-advanced-go-wrapper/bun-driver => ./../bun-driver
 
 replace github.com/aws/aws-advanced-go-wrapper/custom-endpoint => ./../custom-endpoint
 

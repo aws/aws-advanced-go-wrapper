@@ -91,6 +91,7 @@ const (
 )
 
 const (
-	AWS_PGX_DRIVER_CODE   string = "awssql-pgx"
-	AWS_MYSQL_DRIVER_CODE string = "awssql-mysql"
+	AWS_PGX_DRIVER_CODE    string = "awssql-pgx"
+	AWS_BUN_PG_DRIVER_CODE string = "awssql-bunpg"
+	AWS_MYSQL_DRIVER_CODE  string = "awssql-mysql"
 )
