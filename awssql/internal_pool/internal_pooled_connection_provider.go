@@ -30,9 +30,14 @@ import (
 
 type internalPoolKeyFunc func(*host_info_util.HostInfo, map[string]string) string
 
+type poolEntry struct {
+	pool *InternalConnPool
+	dsn  string
+}
+
 type InternalPooledConnectionProvider struct {
 	acceptedStrategies     map[string]driver_infrastructure.HostSelector
-	databasePools          *utils.SlidingExpirationCache[*InternalConnPool]
+	databasePools          *utils.SlidingExpirationCache[*poolEntry]
 	internalPoolOptions    *InternalPoolConfig
 	poolKeyFunc            internalPoolKeyFunc
 	poolExpirationDuration time.Duration
@@ -58,8 +63,8 @@ func NewInternalPooledConnectionProviderWithPoolKeyFunc(internalPoolOptions *Int
 	acceptedStrategies[driver_infrastructure.SELECTOR_ROUND_ROBIN] =
 		driver_infrastructure.GetRoundRobinHostSelector()
 
-	var disposalFunc utils.DisposalFunc[*InternalConnPool] = func(pool *InternalConnPool) bool {
-		_ = pool.Close()
+	var disposalFunc utils.DisposalFunc[*poolEntry] = func(entry *poolEntry) bool {
+		_ = entry.pool.Close()
 		return true
 	}
 	if poolExpirationDuration == 0 {
@@ -109,19 +114,27 @@ func (p *InternalPooledConnectionProvider) Connect(hostInfo *host_info_util.Host
 	driverName := driverDialect.GetDriverRegistrationName()
 	underlyingDriver := awsDriver.GetUnderlyingDriver(driverName)
 
-	computeFunc := func() *InternalConnPool {
+	computeFunc := func() *poolEntry {
 		connFunc := func() (driver.Conn, error) {
 			return underlyingDriver.Open(dsn)
 		}
 		pool := NewConnPool(connFunc, p.internalPoolOptions)
-		return pool
+		return &poolEntry{pool: pool, dsn: dsn}
 	}
 	key := p.getPoolKey(hostInfo, props)
 	poolKey := NewPoolKey(hostInfo.GetUrl(), driverName, key)
 
-	connPool := p.databasePools.ComputeIfAbsent(poolKey.String(),
+	entry := p.databasePools.ComputeIfAbsent(poolKey.String(),
 		computeFunc, p.poolExpirationDuration)
-	return connPool.Get()
+
+	if entry.dsn != dsn {
+		entry.dsn = dsn
+		entry.pool.SetNewConnFunc(func() (driver.Conn, error) {
+			return underlyingDriver.Open(dsn)
+		})
+	}
+
+	return entry.pool.Get()
 }
 
 func (p *InternalPooledConnectionProvider) getPoolKey(hostInfo *host_info_util.HostInfo, props map[string]string) string {

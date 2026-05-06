@@ -200,6 +200,12 @@ func (p *InternalConnPool) Close() error {
 	return err
 }
 
+func (p *InternalConnPool) SetNewConnFunc(f func() (driver.Conn, error)) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.newConnFunc = f
+}
+
 func (p *InternalConnPool) isConnExpired(pc *internalPooledConn, now time.Time) bool {
 	if p.maxLifetime > 0 && now.Sub(pc.createdAt) > p.maxLifetime {
 		return true
