@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-package bun_driver
+package bun_pg_driver
 
 import (
 	"testing"
@@ -100,7 +100,7 @@ func TestPrepareDsn_PasswordWithSpecialCharacters(t *testing.T) {
 	dialect := NewBunPgDriverDialect()
 	props := map[string]string{
 		"user":     "myuser",
-		"password": "p@ss/wo rd",
+		"password": "p@ss:wo/rd",
 		"host":     "myhost.rds.amazonaws.com",
 		"port":     "5432",
 		"database": "mydb",
@@ -108,11 +108,54 @@ func TestPrepareDsn_PasswordWithSpecialCharacters(t *testing.T) {
 
 	dsn := dialect.PrepareDsn(props, nilHostInfo)
 
-	assert.NotContains(t, dsn, "p@ss/wo rd", "password should be URL-escaped")
+	assert.Equal(t,
+		"postgres://myuser:p%40ss%3Awo%2Frd@myhost.rds.amazonaws.com:5432/mydb",
+		dsn)
 
 	drv := pgdriver.NewDriver()
 	_, err := drv.OpenConnector(dsn)
 	require.NoError(t, err, "pgdriver must parse DSN with escaped password: %s", dsn)
+}
+
+func TestPrepareDsn_UserWithSpecialCharacters(t *testing.T) {
+	dialect := NewBunPgDriverDialect()
+	props := map[string]string{
+		"user":     "svc:account@corp/team us-east-1",
+		"password": "secret",
+		"host":     "myhost.rds.amazonaws.com",
+		"port":     "5432",
+		"database": "mydb",
+	}
+
+	dsn := dialect.PrepareDsn(props, nilHostInfo)
+
+	assert.Equal(t,
+		"postgres://svc%3Aaccount%40corp%2Fteam%20us-east-1:secret@myhost.rds.amazonaws.com:5432/mydb",
+		dsn)
+
+	drv := pgdriver.NewDriver()
+	_, err := drv.OpenConnector(dsn)
+	require.NoError(t, err, "pgdriver must parse DSN with escaped user: %s", dsn)
+}
+
+func TestPrepareDsn_UserWithSpecialCharactersNoPassword(t *testing.T) {
+	dialect := NewBunPgDriverDialect()
+	props := map[string]string{
+		"user":     "svc:account@corp/team us-east-1",
+		"host":     "myhost.rds.amazonaws.com",
+		"port":     "5432",
+		"database": "mydb",
+	}
+
+	dsn := dialect.PrepareDsn(props, nilHostInfo)
+
+	assert.Equal(t,
+		"postgres://svc%3Aaccount%40corp%2Fteam%20us-east-1@myhost.rds.amazonaws.com:5432/mydb",
+		dsn)
+
+	drv := pgdriver.NewDriver()
+	_, err := drv.OpenConnector(dsn)
+	require.NoError(t, err, "pgdriver must parse DSN with escaped user, no password: %s", dsn)
 }
 
 func TestPrepareDsn_ExtraParamsAsQueryString(t *testing.T) {

@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-package bun_driver
+package bun_pg_driver
 
 import (
 	"database/sql"
@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils"
@@ -41,7 +42,7 @@ var bunPgPersistingProperties = []string{
 }
 
 type BunPgDriverDialect struct {
-	errorHandler *BunPgErrorHandler
+	errorHandler error_util.ErrorHandler
 }
 
 const (
@@ -123,10 +124,10 @@ func (d BunPgDriverDialect) PrepareDsn(properties map[string]string, hostInfo *h
 
 	var dsn strings.Builder
 	dsn.WriteString("postgres://")
-	dsn.WriteString(url.PathEscape(user))
 	if password != "" {
-		dsn.WriteString(":")
-		dsn.WriteString(url.PathEscape(password))
+		dsn.WriteString(url.UserPassword(user, password).String())
+	} else {
+		dsn.WriteString(url.User(user).String())
 	}
 	dsn.WriteString("@")
 	dsn.WriteString(host)

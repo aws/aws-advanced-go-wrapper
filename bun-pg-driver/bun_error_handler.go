@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-package bun_driver
+package bun_pg_driver
 
 import (
 	"errors"

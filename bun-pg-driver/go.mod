@@ -1,4 +1,4 @@
-module github.com/aws/aws-advanced-go-wrapper/bun-driver
+module github.com/aws/aws-advanced-go-wrapper/bun-pg-driver
 
 go 1.25.0
 

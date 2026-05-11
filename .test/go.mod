@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-advanced-go-wrapper/auth-helpers v1.1.0
 	github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager v1.1.1
 	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.0.0
-	github.com/aws/aws-advanced-go-wrapper/bun-driver v0.0.0
+	github.com/aws/aws-advanced-go-wrapper/bun-pg-driver v0.0.0
 	github.com/aws/aws-advanced-go-wrapper/custom-endpoint v1.0.3
 	github.com/aws/aws-advanced-go-wrapper/federated-auth v1.1.0
 	github.com/aws/aws-advanced-go-wrapper/iam v1.1.0
@@ -115,7 +115,7 @@ require (
 
 replace github.com/aws/aws-advanced-go-wrapper/awssql/v2 => ../awssql
 
-replace github.com/aws/aws-advanced-go-wrapper/bun-driver => ./../bun-driver
+replace github.com/aws/aws-advanced-go-wrapper/bun-pg-driver => ./../bun-pg-driver
 
 replace github.com/aws/aws-advanced-go-wrapper/custom-endpoint => ./../custom-endpoint
 

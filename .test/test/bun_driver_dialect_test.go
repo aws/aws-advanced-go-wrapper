@@ -21,12 +21,12 @@ import (
 	"testing"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
-	bun_driver "github.com/aws/aws-advanced-go-wrapper/bun-driver"
+	bun_pg_driver "github.com/aws/aws-advanced-go-wrapper/bun-pg-driver"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBunPrepareDsn(t *testing.T) {
-	driverDialect := &bun_driver.BunPgDriverDialect{}
+	driverDialect := &bun_pg_driver.BunPgDriverDialect{}
 
 	properties := map[string]string{
 		property_util.USER.Name:     "user",
@@ -49,7 +49,7 @@ func TestBunPrepareDsn(t *testing.T) {
 }
 
 func TestBunPrepareDsnWithoutPassword(t *testing.T) {
-	driverDialect := &bun_driver.BunPgDriverDialect{}
+	driverDialect := &bun_pg_driver.BunPgDriverDialect{}
 
 	properties := map[string]string{
 		property_util.USER.Name:     "user",
@@ -65,7 +65,7 @@ func TestBunPrepareDsnWithoutPassword(t *testing.T) {
 }
 
 func TestBunPrepareDsnDefaultPort(t *testing.T) {
-	driverDialect := &bun_driver.BunPgDriverDialect{}
+	driverDialect := &bun_pg_driver.BunPgDriverDialect{}
 
 	properties := map[string]string{
 		property_util.USER.Name:     "user",
@@ -79,7 +79,7 @@ func TestBunPrepareDsnDefaultPort(t *testing.T) {
 }
 
 func TestBunPrepareDsnExtraParams(t *testing.T) {
-	driverDialect := &bun_driver.BunPgDriverDialect{}
+	driverDialect := &bun_pg_driver.BunPgDriverDialect{}
 
 	properties := map[string]string{
 		property_util.USER.Name:     "user",
@@ -97,17 +97,17 @@ func TestBunPrepareDsnExtraParams(t *testing.T) {
 }
 
 func TestBunErrorHandler(t *testing.T) {
-	errorHandler := &bun_driver.BunPgErrorHandler{}
+	errorHandler := &bun_pg_driver.BunPgErrorHandler{}
 
 	// pgdriver.Error has unexported fields so we can't construct one with a
 	// specific SQLSTATE. Test the message-based fallback paths instead.
-	for _, message := range bun_driver.PgNetworkErrorMessages {
+	for _, message := range bun_pg_driver.PgNetworkErrorMessages {
 		err := errors.New(message)
 		assert.True(t, errorHandler.IsNetworkError(err), "expected network error for: %s", message)
 		assert.False(t, errorHandler.IsLoginError(err), "should not be login error for: %s", message)
 	}
 
-	for _, code := range bun_driver.AccessErrors {
+	for _, code := range bun_pg_driver.AccessErrors {
 		err := errors.New("authentication failed " + code)
 		assert.True(t, errorHandler.IsLoginError(err), "expected login error for code in message: %s", code)
 	}
