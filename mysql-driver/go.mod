@@ -10,7 +10,7 @@ require (
 require (
 	filippo.io/edwards25519 v1.1.1 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.6.1 // indirect
-	golang.org/x/text v0.36.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 )
 
 replace github.com/aws/aws-advanced-go-wrapper/awssql/v2 => ../awssql
