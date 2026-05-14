@@ -115,3 +115,50 @@ func TestInternalPooledConnectionProvider_Connect(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, conn)
 }
+
+func TestInternalPooledConnectionProvider_Connect_NewConnectionsUseUpdatedPassword(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDriver := mock_database_sql_driver.NewMockDriver(ctrl)
+	mockConn1 := mock_database_sql_driver.NewMockConn(ctrl)
+	mockConn2 := mock_database_sql_driver.NewMockConn(ctrl)
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
+
+	opts := internal_pool.NewInternalPoolOptions(
+		internal_pool.WithMaxIdleConns(0),
+	)
+	provider := internal_pool.NewInternalPooledConnectionProvider(opts, time.Minute)
+
+	hostInfo := &host_info_util.HostInfo{Host: "test.cluster-abc123.us-east-1.rds.amazonaws.com"}
+	propsOldToken := map[string]string{"user": "user", "password": "token1"}
+	propsNewToken := map[string]string{"user": "user", "password": "token2"}
+
+	driverName := "test-driver-dsn-update"
+	awsDriver.RegisterUnderlyingDriver(driverName, mockDriver)
+	defer awsDriver.RemoveUnderlyingDriver(driverName)
+
+	mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect)
+	mockDriverDialect.EXPECT().PrepareDsn(propsOldToken, hostInfo).Return("host=test user=user password=token1")
+	mockDriverDialect.EXPECT().GetDriverRegistrationName().Return(driverName)
+	mockDriver.EXPECT().Open("host=test user=user password=token1").Return(mockConn1, nil)
+
+	// Open initial connection with token1
+	conn1, err := provider.Connect(hostInfo, propsOldToken, mockPluginService)
+	assert.NoError(t, err)
+	assert.NotNil(t, conn1)
+
+	// Rotate token
+	mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect)
+	mockDriverDialect.EXPECT().PrepareDsn(propsNewToken, hostInfo).Return("host=test user=user password=token2")
+	mockDriverDialect.EXPECT().GetDriverRegistrationName().Return(driverName)
+	mockDriver.EXPECT().Open("host=test user=user password=token2").Return(mockConn2, nil)
+
+	conn2, err := provider.Connect(hostInfo, propsNewToken, mockPluginService)
+	assert.NoError(t, err)
+	assert.NotNil(t, conn2)
+
+	_ = conn1.Close()
+	_ = conn2.Close()
+}
