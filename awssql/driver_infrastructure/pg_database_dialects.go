@@ -264,12 +264,12 @@ func (g *GlobalAuroraPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	}
 
 	if !utils.CheckExistenceQueries(conn,
-		"SELECT 'aurora_global_db_status'::regproc",
-		"SELECT 'aurora_global_db_instance_status'::regproc") {
+		"SELECT 'pg_catalog.aurora_global_db_status'::regproc",
+		"SELECT 'pg_catalog.aurora_global_db_instance_status'::regproc") {
 		return false
 	}
 
-	regionCount := utils.GetFirstRowFromQuery(conn, "SELECT count(1) FROM aurora_global_db_status()")
+	regionCount := utils.GetFirstRowFromQuery(conn, "SELECT count(1) FROM pg_catalog.aurora_global_db_status()")
 	if regionCount == nil {
 		return false
 	}
@@ -287,11 +287,11 @@ func (g *GlobalAuroraPgDatabaseDialect) GetDialectUpdateCandidates() []string {
 func (g *GlobalAuroraPgDatabaseDialect) GetTopologyQuery() string {
 	return "SELECT SERVER_ID, CASE WHEN SESSION_ID OPERATOR(pg_catalog.=) 'MASTER_SESSION_ID' THEN TRUE ELSE FALSE END, " +
 		"VISIBILITY_LAG_IN_MSEC, AWS_REGION " +
-		"FROM aurora_global_db_instance_status()"
+		"FROM pg_catalog.aurora_global_db_instance_status()"
 }
 
 func (g *GlobalAuroraPgDatabaseDialect) GetRegionByInstanceIdQuery() string {
-	return "SELECT AWS_REGION FROM aurora_global_db_instance_status() WHERE SERVER_ID = $1"
+	return "SELECT AWS_REGION FROM pg_catalog.aurora_global_db_instance_status() WHERE SERVER_ID = $1"
 }
 
 func (g *GlobalAuroraPgDatabaseDialect) GetHostListProviderSupplier() HostListProviderSupplier {
