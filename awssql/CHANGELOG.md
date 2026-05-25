@@ -107,6 +107,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 * Remove IP Address checking in staleDnsHelper ([PR #363](https://github.com/aws/aws-advanced-go-wrapper/pull/363)).
 * Read/Write Splitting no longer uses a query to toggle between read and read/write mode ([PR #407](https://github.com/aws/aws-advanced-go-wrapper/pull/407)).
 
+## [2.0.1] - 2026-05-26
+### :crab: Changed
+* Refactor PG SQL queries to be fully qualified ([Commit #a07683f](https://github.com/aws/aws-advanced-go-wrapper/commit/a07683f09f69e972a460640e5cc3845de7a97489)). 
+
+### :bug: Fixed
+* Remove registered dialects check so that custom driver dialects will not be blocked ([PR #431](https://github.com/aws/aws-advanced-go-wrapper/pull/431)).
+
 [1.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.0.0
 [1.1.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.1.0
 [1.1.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.1.1
@@ -114,3 +121,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [1.3.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.3.0
 [1.4.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.4.0
 [2.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv2.0.0
+[2.0.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv2.0.1

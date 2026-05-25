@@ -3,8 +3,8 @@ module github.com/aws/aws-advanced-go-wrapper/iam
 go 1.25.0
 
 require (
-	github.com/aws/aws-advanced-go-wrapper/auth-helpers v1.1.0
-	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.0.0
+	github.com/aws/aws-advanced-go-wrapper/auth-helpers v1.1.1
+	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.0.1
 )
 
 require (
