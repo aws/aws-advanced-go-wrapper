@@ -39,6 +39,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 * Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.0.0
 * Update dependency `github.com/aws/aws-advanced-go-wrapper/auth-helpers` to v1.1.0
 
+## [1.1.1] - 2026-05-26
+### :crab: Changed
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.0.1
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/auth-helpers` to v1.1.1
+
 [1.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/iam%2Fv1.0.0
 [1.0.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/iam%2Fv1.0.1
 [1.0.2]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/iam%2Fv1.0.2
@@ -46,3 +51,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [1.0.4]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/iam%2Fv1.0.4
 [1.0.5]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/iam%2Fv1.0.5
 [1.1.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/iam%2Fv1.1.0
+[1.1.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/iam%2Fv1.1.1

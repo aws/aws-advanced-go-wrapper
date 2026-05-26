@@ -4,18 +4,18 @@ go 1.25.0
 
 require (
 	github.com/Shopify/toxiproxy v2.1.4+incompatible
-	github.com/aws/aws-advanced-go-wrapper/auth-helpers v1.1.0
-	github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager v1.1.1
-	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.0.0
+	github.com/aws/aws-advanced-go-wrapper/auth-helpers v1.1.1
+	github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager v1.1.2
+	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.0.1
 	github.com/aws/aws-advanced-go-wrapper/bun-pg-driver v0.0.0
-	github.com/aws/aws-advanced-go-wrapper/custom-endpoint v1.0.3
-	github.com/aws/aws-advanced-go-wrapper/federated-auth v1.1.0
-	github.com/aws/aws-advanced-go-wrapper/iam v1.1.0
-	github.com/aws/aws-advanced-go-wrapper/mysql-driver v1.1.0
-	github.com/aws/aws-advanced-go-wrapper/okta v1.1.0
-	github.com/aws/aws-advanced-go-wrapper/otlp v1.0.6
-	github.com/aws/aws-advanced-go-wrapper/pgx-driver v1.1.0
-	github.com/aws/aws-advanced-go-wrapper/xray v1.0.6
+	github.com/aws/aws-advanced-go-wrapper/custom-endpoint v1.0.4
+	github.com/aws/aws-advanced-go-wrapper/federated-auth v1.1.1
+	github.com/aws/aws-advanced-go-wrapper/iam v1.1.1
+	github.com/aws/aws-advanced-go-wrapper/mysql-driver v1.1.1
+	github.com/aws/aws-advanced-go-wrapper/okta v1.1.1
+	github.com/aws/aws-advanced-go-wrapper/otlp v1.0.7
+	github.com/aws/aws-advanced-go-wrapper/pgx-driver v1.1.1
+	github.com/aws/aws-advanced-go-wrapper/xray v1.0.7
 	github.com/aws/aws-sdk-go-v2 v1.41.6
 	github.com/aws/aws-sdk-go-v2/config v1.32.16
 	github.com/aws/aws-sdk-go-v2/service/rds v1.118.1

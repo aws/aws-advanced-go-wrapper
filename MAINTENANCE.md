@@ -58,7 +58,7 @@ That said, PRs with said back-ports are welcome and will follow the project's re
 No new releases will result from these changes, but interested parties can create their own distribution
 from the updated source after the PRs are merged.
 
-| Major Version (`awssql`) | Latest Minor Version | Status      | Initial Release  | Maintenance Window Start | Maintenance Window End |
-|--------------------------|----------------------|-------------|------------------|--------------------------|------------------------|
-| 1                        | 1.4.0                | Maintenance | Jul 31, 2025     | Apr 6, 2026              | Apr 6, 2027            |
-| 2                        | 2.0.0                | Current     | Apr 6, 2026      | N/A                      | N/A                    |
+| Major Version (`awssql`) | Latest Minor Version | Status      | Initial Release | Maintenance Window Start | Maintenance Window End |
+|--------------------------|----------------------|-------------|-----------------|--------------------------|------------------------|
+| 1                        | 1.4.0                | Maintenance | Jul 31, 2025    | Apr 6, 2026              | Apr 6, 2027            |
+| 2                        | 2.0.1                | Current     | Apr 6, 2026     | N/A                      | N/A                    |

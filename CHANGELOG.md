@@ -179,3 +179,24 @@ The Amazon Web Services (AWS) Advanced Go Wrapper allows an application to take 
 * `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.6](otlp/CHANGELOG.md#106---2026-04-06)
 * `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.1.0](pgx-driver/CHANGELOG.md#110---2026-04-06)
 * `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.6](xray/CHANGELOG.md#106---2026-04-06)
+
+# Release (2026-05-26)
+## General Highlights
+### :crab: Changed
+* Refactor PG SQL queries to be fully qualified ([Commit #a07683f](https://github.com/aws/aws-advanced-go-wrapper/commit/a07683f09f69e972a460640e5cc3845de7a97489)).
+
+### :bug: Fixed
+* Remove registered dialects check so that custom driver dialects will not be blocked ([PR #431](https://github.com/aws/aws-advanced-go-wrapper/pull/431)).
+
+## Module Highlights
+* `https://github.com/aws/aws-advanced-go-wrapper/auth-helpers`: [v1.1.1](auth-helpers/CHANGELOG.md#111---2026-05-26)
+* `https://github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager`: [v1.1.2](aws-secrets-manager/CHANGELOG.md#112---2026-05-26)
+* `https://github.com/aws/aws-advanced-go-wrapper/awssql/v2`: [v2.0.1](awssql/CHANGELOG.md#201---2026-05-26)
+* `https://github.com/aws/aws-advanced-go-wrapper/custom-endpoint`: [v1.0.4](custom-endpoint/CHANGELOG.md#104---2026-05-26)
+* `https://github.com/aws/aws-advanced-go-wrapper/federated-auth`: [v1.1.1](federated-auth/CHANGELOG.md#111---2026-05-26)
+* `https://github.com/aws/aws-advanced-go-wrapper/iam`: [v1.1.1](iam/CHANGELOG.md#111---2026-05-26)
+* `https://github.com/aws/aws-advanced-go-wrapper/mysql-driver`: [v1.1.1](mysql-driver/CHANGELOG.md#111---2026-05-26)
+* `https://github.com/aws/aws-advanced-go-wrapper/okta`: [v1.1.1](okta/CHANGELOG.md#111---2026-05-26)
+* `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.7](otlp/CHANGELOG.md#107---2026-05-26)
+* `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.1.1](pgx-driver/CHANGELOG.md#111---2026-05-26)
+* `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.7](xray/CHANGELOG.md#107---2026-05-26)
