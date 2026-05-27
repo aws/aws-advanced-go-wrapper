@@ -37,7 +37,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils/telemetry"
 )
 
-var pluginFactoryByCode = map[string]driver_infrastructure.ConnectionPluginFactory{
+var pluginFactoryByCode = utils.NewRWMapFromMap(map[string]driver_infrastructure.ConnectionPluginFactory{
 	driver_infrastructure.FAILOVER_PLUGIN_CODE:                           plugins.NewFailoverPluginFactory(),
 	driver_infrastructure.EFM_PLUGIN_CODE:                                efm.NewHostMonitoringPluginFactory(),
 	driver_infrastructure.LIMITLESS_PLUGIN_CODE:                          limitless.NewLimitlessPluginFactory(),
@@ -50,9 +50,9 @@ var pluginFactoryByCode = map[string]driver_infrastructure.ConnectionPluginFacto
 	driver_infrastructure.DEVELOPER_PLUGIN_CODE:                          plugins.NewDeveloperConnectionPluginFactory(),
 	driver_infrastructure.GDB_FAILOVER_PLUGIN_CODE:                       plugins.NewGlobalDbFailoverPluginFactory(),
 	driver_infrastructure.GDB_READ_WRITE_SPLITTING_PLUGIN_CODE:           read_write_splitting.NewGdbReadWriteSplittingPluginFactory(),
-}
+})
 
-var underlyingDriverList = map[string]driver.Driver{}
+var underlyingDriverList = utils.NewRWMap[string, driver.Driver]()
 
 type AwsWrapperDriver struct {
 	DriverDialect    driver_infrastructure.DriverDialect
@@ -97,7 +97,7 @@ func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 			OriginalURL:         dsn,
 			DriverDialect:       d.DriverDialect,
 			Props:               props,
-			PluginFactoryByCode: pluginFactoryByCode,
+			PluginFactoryByCode: pluginFactoryByCode.GetAllEntries(),
 		},
 	)
 	if err != nil {
@@ -146,33 +146,35 @@ func (d *AwsWrapperDriver) Open(dsn string) (driver.Conn, error) {
 }
 
 func UsePluginFactory(code string, pluginFactory driver_infrastructure.ConnectionPluginFactory) {
-	pluginFactoryByCode[code] = pluginFactory
+	pluginFactoryByCode.Put(code, pluginFactory)
 }
 
 func RemovePluginFactory(code string) {
-	delete(pluginFactoryByCode, code)
+	pluginFactoryByCode.Remove(code)
 }
 
-func RegisterUnderlyingDriver(name string, driver driver.Driver) {
-	underlyingDriverList[name] = driver
+func RegisterUnderlyingDriver(name string, d driver.Driver) {
+	underlyingDriverList.Put(name, d)
 }
 
 func RemoveUnderlyingDriver(name string) {
-	delete(underlyingDriverList, name)
+	underlyingDriverList.Remove(name)
 }
 
 func GetUnderlyingDriver(name string) driver.Driver {
-	return underlyingDriverList[name]
+	d, _ := underlyingDriverList.Get(name)
+	return d
 }
 
-// This cleans up all long-standing caches. To be called at the end of program, not each time a Conn is closed.
+// ClearCaches cleans up all long-standing caches. To be called at the end of
+// program, not each time a Conn is closed.
 func ClearCaches() {
 	services.Shutdown()
 	driver_infrastructure.ClearCaches()
 	plugin_helpers.ClearCaches()
-	for _, pluginFactory := range pluginFactoryByCode {
-		pluginFactory.ClearCaches()
-	}
+	pluginFactoryByCode.ForEach(func(_ string, factory driver_infrastructure.ConnectionPluginFactory) {
+		factory.ClearCaches()
+	})
 }
 
 type AwsWrapperConn struct {
