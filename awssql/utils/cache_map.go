@@ -78,32 +78,34 @@ func (c *CacheMap[T]) Get(key string) (T, bool) {
 }
 
 func (c *CacheMap[T]) ComputeIfAbsent(key string, computeFunc func() T, itemExpiration time.Duration) T {
-	c.lock.RLock()
-	item, ok := c.cache[key]
-	c.lock.RUnlock()
+	c.lock.Lock()
+	defer c.lock.Unlock()
 
-	if ok {
+	item, ok := c.cache[key]
+	if ok && !item.isExpired() {
 		return item.item
 	}
 
-	c.lock.Lock()
-	defer c.lock.Unlock()
+	newValue := computeFunc()
 	c.cache[key] = cacheValue[T]{
-		item:           computeFunc(),
+		item:           newValue,
 		expirationTime: time.Now().Add(itemExpiration),
 	}
-	return c.cache[key].item
+	return newValue
 }
 
 func (c *CacheMap[T]) PutIfAbsent(key string, value T, expiration time.Duration) {
-	c.lock.RLock()
-	_, ok := c.cache[key]
-	c.lock.RUnlock()
-
-	if !ok {
-		c.Put(key, value, expiration)
+	c.lock.Lock()
+	item, ok := c.cache[key]
+	if ok && !item.isExpired() {
+		c.lock.Unlock()
+		return
 	}
-	defer c.CleanUp()
+	c.cache[key] = cacheValue[T]{
+		item:           value,
+		expirationTime: time.Now().Add(expiration),
+	}
+	c.lock.Unlock()
 }
 
 func (c *CacheMap[T]) Remove(key string) {

@@ -134,10 +134,10 @@ func (d *DeveloperConnectionPlugin) raiseErrorOnConnectIfNeeded(
 	isInitialConnection bool) error {
 	errorSimulatorManager := error_simulator.GetErrorSimulatorManager()
 
-	if errorSimulatorManager.NextError != nil {
-		return d.raiseErrorOnConnect(error_simulator.GetErrorSimulatorManager().NextError)
-	} else if errorSimulatorManager.ConnectCallback != nil {
-		return d.raiseErrorOnConnect(errorSimulatorManager.ConnectCallback.GetErrorToRaise(hostInfo, props.GetAllEntries(), isInitialConnection))
+	if nextErr := errorSimulatorManager.GetNextError(); nextErr != nil {
+		return d.raiseErrorOnConnect(nextErr)
+	} else if cb := errorSimulatorManager.GetConnectCallback(); cb != nil {
+		return d.raiseErrorOnConnect(cb.GetErrorToRaise(hostInfo, props.GetAllEntries(), isInitialConnection))
 	}
 
 	return nil
@@ -148,7 +148,7 @@ func (d *DeveloperConnectionPlugin) raiseErrorOnConnect(err error) error {
 		return nil
 	}
 
-	error_simulator.GetErrorSimulatorManager().NextError = nil
+	error_simulator.GetErrorSimulatorManager().ConsumeNextError()
 	slog.Debug(error_util.GetMessage("DeveloperPlugin.raisedErrorOnConnect", err.Error()))
 
 	return err

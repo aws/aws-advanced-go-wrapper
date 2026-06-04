@@ -60,7 +60,7 @@ type ClusterTopologyMonitorImpl struct {
 	servicesContainer              ServicesContainer
 	clusterId                      string
 	isVerifiedWriterConn           atomic.Bool
-	highRefreshRateEndTimeInNanos  int64
+	highRefreshRateEndTimeInNanos  atomic.Int64
 	highRefreshRateNano            time.Duration
 	refreshRateNano                time.Duration
 	topologyCacheExpirationNano    time.Duration
@@ -196,7 +196,7 @@ func (c *ClusterTopologyMonitorImpl) Monitor() {
 					c.monitoringConn.Store(ConnectionContainer{writerConn})
 					c.writerHostInfo.Store(writerConnHostInfo)
 					c.isVerifiedWriterConn.Store(true)
-					c.highRefreshRateEndTimeInNanos = time.Now().Add(highRefreshPeriodAfterPanicNano).Unix()
+					c.highRefreshRateEndTimeInNanos.Store(time.Now().Add(highRefreshPeriodAfterPanicNano).Unix())
 
 					c.hostRoutinesStop.Store(true)
 					c.hostRoutinesWg.Wait()
@@ -249,12 +249,12 @@ func (c *ClusterTopologyMonitorImpl) Monitor() {
 				continue
 			}
 
-			if c.highRefreshRateEndTimeInNanos > 0 && time.Now().Unix() > c.highRefreshRateEndTimeInNanos {
-				c.highRefreshRateEndTimeInNanos = 0
+			if c.highRefreshRateEndTimeInNanos.Load() > 0 && time.Now().Unix() > c.highRefreshRateEndTimeInNanos.Load() {
+				c.highRefreshRateEndTimeInNanos.Store(0)
 			}
 
 			// Do not log topology while in high refresh rate.
-			if c.highRefreshRateEndTimeInNanos == 0 {
+			if c.highRefreshRateEndTimeInNanos.Load() == 0 {
 				hosts := c.getStoredHosts()
 				if hosts != nil {
 					slog.Debug(utils.LogTopology(hosts, ""))
@@ -434,7 +434,7 @@ func (c *ClusterTopologyMonitorImpl) reset() {
 	c.monitoringConn.Store(emptyContainer)
 	c.isVerifiedWriterConn.Store(false)
 	c.writerHostInfo.Store(nil)
-	c.highRefreshRateEndTimeInNanos = 0
+	c.highRefreshRateEndTimeInNanos.Store(0)
 	c.requestToUpdateTopology.Store(false)
 
 	// Clear topology cache
@@ -642,7 +642,7 @@ func (c *ClusterTopologyMonitorImpl) isInPanicMode() bool {
 }
 
 func (c *ClusterTopologyMonitorImpl) delay(useHighRefreshRate bool) {
-	if c.highRefreshRateEndTimeInNanos > 0 && time.Now().Unix() < c.highRefreshRateEndTimeInNanos {
+	if c.highRefreshRateEndTimeInNanos.Load() > 0 && time.Now().Unix() < c.highRefreshRateEndTimeInNanos.Load() {
 		useHighRefreshRate = true
 	}
 

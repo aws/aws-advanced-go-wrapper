@@ -20,7 +20,9 @@ import (
 	"context"
 	"database/sql/driver"
 	"errors"
+	"fmt"
 	"strings"
+	"sync"
 	"testing"
 
 	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
@@ -30,6 +32,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/plugins"
 	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 	"github.com/golang/mock/gomock"
 
@@ -713,4 +716,28 @@ func TestAwsWrapperConn_CheckedNamedValue(t *testing.T) {
 
 	err := awsWrapperconn.CheckNamedValue(nil)
 	assert.NoError(t, err)
+}
+
+func TestPluginFactoryByCode_ConcurrentAccess(t *testing.T) {
+	var wg sync.WaitGroup
+	iterations := 100
+
+	for i := 0; i < iterations; i++ {
+		wg.Add(3)
+		go func(id int) {
+			defer wg.Done()
+			code := fmt.Sprintf("test-plugin-%d", id)
+			awsDriver.UsePluginFactory(code, plugins.NewDeveloperConnectionPluginFactory())
+		}(i)
+		go func(id int) {
+			defer wg.Done()
+			code := fmt.Sprintf("test-plugin-%d", id)
+			awsDriver.RemovePluginFactory(code)
+		}(i)
+		go func() {
+			defer wg.Done()
+			awsDriver.ClearCaches()
+		}()
+	}
+	wg.Wait()
 }

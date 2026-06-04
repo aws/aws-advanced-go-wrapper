@@ -22,6 +22,7 @@ import (
 	"log/slog"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
@@ -39,9 +40,9 @@ type PluginServiceImpl struct {
 	servicesContainer   driver_infrastructure.ServicesContainer
 	driverDialect       driver_infrastructure.DriverDialect
 	props               *utils.RWMap[string, string]
-	currentConnection   *driver.Conn
+	currentConnection   atomic.Pointer[driver.Conn]
 	hostListProvider    driver_infrastructure.HostListProvider
-	currentHostInfo     *host_info_util.HostInfo
+	currentHostInfo     atomic.Pointer[host_info_util.HostInfo]
 	dialect             driver_infrastructure.DatabaseDialect
 	dialectProvider     driver_infrastructure.DialectProvider
 	isDialectConfirmed  bool
@@ -49,7 +50,7 @@ type PluginServiceImpl struct {
 	AllHosts            []*host_info_util.HostInfo
 	allHostsLock        *sync.RWMutex
 	initialHostInfo     *host_info_util.HostInfo
-	isInTransaction     bool
+	isInTransaction     atomic.Bool
 	currentTx           driver.Tx
 	sessionStateService driver_infrastructure.SessionStateService
 }
@@ -119,14 +120,15 @@ func (p *PluginServiceImpl) UpdateDialect(conn driver.Conn) {
 }
 
 func (p *PluginServiceImpl) GetCurrentConnection() driver.Conn {
-	if p.currentConnection == nil {
+	connPtr := p.currentConnection.Load()
+	if connPtr == nil {
 		return nil
 	}
-	return *p.currentConnection
+	return *connPtr
 }
 
 func (p *PluginServiceImpl) GetCurrentConnectionRef() *driver.Conn {
-	return p.currentConnection
+	return p.currentConnection.Load()
 }
 
 func (p *PluginServiceImpl) SetCurrentConnection(
@@ -140,10 +142,10 @@ func (p *PluginServiceImpl) SetCurrentConnection(
 		return error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginServiceImpl.nilHost"))
 	}
 	pluginManager := p.servicesContainer.GetPluginManager()
-	if p.currentConnection == nil {
+	if p.currentConnection.Load() == nil {
 		// Setting up an initial connection.
-		p.currentConnection = &conn
-		p.currentHostInfo = hostInfo
+		p.currentConnection.Store(&conn)
+		p.currentHostInfo.Store(hostInfo)
 		p.sessionStateService.Reset()
 
 		if p.initialHostInfo == nil {
@@ -155,7 +157,9 @@ func (p *PluginServiceImpl) SetCurrentConnection(
 		}
 		pluginManager.NotifyConnectionChanged(changes, skipNotificationForThisPlugin)
 	} else {
-		changes := p.compare(*p.currentConnection, p.currentHostInfo, conn, hostInfo)
+		oldConnPtr := p.currentConnection.Load()
+		oldHostInfo := p.currentHostInfo.Load()
+		changes := p.compare(*oldConnPtr, oldHostInfo, conn, hostInfo)
 
 		if len(changes) > 0 {
 			err := p.sessionStateService.Begin()
@@ -164,11 +168,11 @@ func (p *PluginServiceImpl) SetCurrentConnection(
 				return err
 			}
 
-			oldConnection := *p.currentConnection
+			oldConnection := *oldConnPtr
 			isInTransaction := p.IsInTransaction()
 
-			p.currentConnection = &conn
-			p.currentHostInfo = hostInfo
+			p.currentConnection.Store(&conn)
+			p.currentHostInfo.Store(hostInfo)
 			err = p.sessionStateService.ApplyCurrentSessionState(conn)
 			if err != nil {
 				return err
@@ -238,32 +242,34 @@ func (p *PluginServiceImpl) compareHostInfos(hostInfoA *host_info_util.HostInfo,
 }
 
 func (p *PluginServiceImpl) GetCurrentHostInfo() (*host_info_util.HostInfo, error) {
-	if p.currentHostInfo.IsNil() {
-		p.currentHostInfo = p.initialHostInfo
-		if p.currentHostInfo.IsNil() {
+	currentHost := p.currentHostInfo.Load()
+	if currentHost == nil || currentHost.IsNil() {
+		currentHost = p.initialHostInfo
+		if currentHost == nil || currentHost.IsNil() {
 			p.allHostsLock.RLock()
 			defer p.allHostsLock.RUnlock()
 			if len(p.AllHosts) == 0 {
 				return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginServiceImpl.hostListEmpty"))
 			}
 
-			p.currentHostInfo = host_info_util.GetWriter(p.AllHosts)
+			currentHost = host_info_util.GetWriter(p.AllHosts)
 			allowedHosts := p.GetHosts()
-			if p.currentHostInfo != nil && !host_info_util.IsHostInList(p.currentHostInfo, allowedHosts) {
+			if currentHost != nil && !host_info_util.IsHostInList(currentHost, allowedHosts) {
 				return nil, error_util.NewGenericAwsWrapperError(
-					error_util.GetMessage("PluginServiceImpl.currentHostNotAllowed", p.currentHostInfo.GetHostAndPort(), utils.LogTopology(allowedHosts, "")))
+					error_util.GetMessage("PluginServiceImpl.currentHostNotAllowed", currentHost.GetHostAndPort(), utils.LogTopology(allowedHosts, "")))
 			}
 
-			if p.currentHostInfo.IsNil() {
-				p.currentHostInfo = p.AllHosts[0]
+			if currentHost == nil || currentHost.IsNil() {
+				currentHost = p.AllHosts[0]
 			}
 		}
-		if p.currentHostInfo.IsNil() {
+		if currentHost == nil || currentHost.IsNil() {
 			return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginServiceImpl.nilHost"))
 		}
-		slog.Info(error_util.GetMessage("PluginServiceImpl.setCurrentHost", p.currentHostInfo.Host))
+		slog.Info(error_util.GetMessage("PluginServiceImpl.setCurrentHost", currentHost.Host))
+		p.currentHostInfo.Store(currentHost)
 	}
-	return p.currentHostInfo, nil
+	return currentHost, nil
 }
 
 func (p *PluginServiceImpl) GetAllHosts() []*host_info_util.HostInfo {
@@ -373,11 +379,11 @@ func (p *PluginServiceImpl) SetAvailability(hostAliases map[string]bool, availab
 }
 
 func (p *PluginServiceImpl) IsInTransaction() bool {
-	return p.isInTransaction
+	return p.isInTransaction.Load()
 }
 
 func (p *PluginServiceImpl) SetInTransaction(inTransaction bool) {
-	p.isInTransaction = inTransaction
+	p.isInTransaction.Store(inTransaction)
 }
 
 func (p *PluginServiceImpl) GetHostListProvider() driver_infrastructure.HostListProvider {
@@ -404,7 +410,10 @@ func (p *PluginServiceImpl) updateHostListIfNeeded(updatedHostList []*host_info_
 	if len(updatedHostList) == 0 {
 		return error_util.NewGenericAwsWrapperError(error_util.GetMessage("PluginServiceImpl.hostListEmpty"))
 	}
-	if !host_info_util.AreHostListsEqual(p.AllHosts, updatedHostList) {
+	p.allHostsLock.RLock()
+	hostsEqual := host_info_util.AreHostListsEqual(p.AllHosts, updatedHostList)
+	p.allHostsLock.RUnlock()
+	if !hostsEqual {
 		p.updateHostAvailability(updatedHostList)
 		p.setHostList(updatedHostList)
 	}
@@ -471,11 +480,11 @@ func (p *PluginServiceImpl) Connect(
 	hostInfo *host_info_util.HostInfo,
 	props *utils.RWMap[string, string],
 	pluginToSkip driver_infrastructure.ConnectionPlugin) (driver.Conn, error) {
-	return p.servicesContainer.GetPluginManager().Connect(hostInfo, props, p.currentConnection == nil, pluginToSkip)
+	return p.servicesContainer.GetPluginManager().Connect(hostInfo, props, p.currentConnection.Load() == nil, pluginToSkip)
 }
 
 func (p *PluginServiceImpl) ForceConnect(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string]) (driver.Conn, error) {
-	return p.servicesContainer.GetPluginManager().ForceConnect(hostInfo, props, p.currentConnection == nil)
+	return p.servicesContainer.GetPluginManager().ForceConnect(hostInfo, props, p.currentConnection.Load() == nil)
 }
 
 func (p *PluginServiceImpl) ForceRefreshHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) (bool, error) {
@@ -614,9 +623,9 @@ func (p *PluginServiceImpl) UpdateState(sql string, methodArgs ...any) {
 
 func (p *PluginServiceImpl) ReleaseResources() {
 	slog.Debug(error_util.GetMessage("PluginServiceImpl.releaseResources"))
-	if p.currentConnection != nil {
-		_ = (*p.currentConnection).Close() // Ignore any error.
-		p.currentConnection = nil
+	if connPtr := p.currentConnection.Load(); connPtr != nil {
+		_ = (*connPtr).Close() // Ignore any error.
+		p.currentConnection.Store(nil)
 	}
 
 	if p.hostListProvider != nil {

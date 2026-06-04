@@ -20,6 +20,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"sync/atomic"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
@@ -47,8 +48,8 @@ type AuroraConnectionTrackerPlugin struct {
 	servicesContainer       driver_infrastructure.ServicesContainer
 	tracker                 connection_tracker.ConnectionTracker
 	props                   *utils.RWMap[string, string]
-	currentWriter           *host_info_util.HostInfo
-	needUpdateCurrentWriter bool
+	currentWriter           atomic.Pointer[host_info_util.HostInfo]
+	needUpdateCurrentWriter atomic.Bool
 }
 
 func NewAuroraConnectionTrackerPlugin(
@@ -62,11 +63,11 @@ func NewAuroraConnectionTrackerPlugin(
 	}
 }
 
-func (a AuroraConnectionTrackerPlugin) GetPluginCode() string {
+func (a *AuroraConnectionTrackerPlugin) GetPluginCode() string {
 	return driver_infrastructure.AURORA_CONNECTION_TRACKER_PLUGIN_CODE
 }
 
-func (a AuroraConnectionTrackerPlugin) GetSubscribedMethods() []string {
+func (a *AuroraConnectionTrackerPlugin) GetSubscribedMethods() []string {
 	return append([]string{plugin_helpers.CONNECT_METHOD,
 		utils.CONN_CLOSE,
 		plugin_helpers.NOTIFY_HOST_LIST_CHANGED_METHOD,
@@ -125,13 +126,13 @@ func (a *AuroraConnectionTrackerPlugin) NotifyHostListChanged(changes map[string
 	}
 
 	a.tracker.LogOpenedConnections()
-	a.needUpdateCurrentWriter = true
+	a.needUpdateCurrentWriter.Store(true)
 }
 
 func (a *AuroraConnectionTrackerPlugin) rememberWriter() {
-	if a.currentWriter == nil || a.needUpdateCurrentWriter {
-		a.currentWriter = host_info_util.GetWriter(a.servicesContainer.GetPluginService().GetAllHosts())
-		a.needUpdateCurrentWriter = false
+	if a.currentWriter.Load() == nil || a.needUpdateCurrentWriter.Load() {
+		a.currentWriter.Store(host_info_util.GetWriter(a.servicesContainer.GetPluginService().GetAllHosts()))
+		a.needUpdateCurrentWriter.Store(false)
 	}
 }
 
@@ -142,15 +143,16 @@ func (a *AuroraConnectionTrackerPlugin) checkWriterChanged() {
 		return
 	}
 
-	if a.currentWriter == nil {
-		a.currentWriter = hostInfoAfterFailover
-		a.needUpdateCurrentWriter = false
-	} else if a.currentWriter.GetHostAndPort() != hostInfoAfterFailover.GetHostAndPort() {
+	currentWriter := a.currentWriter.Load()
+	if currentWriter == nil {
+		a.currentWriter.Store(hostInfoAfterFailover)
+		a.needUpdateCurrentWriter.Store(false)
+	} else if currentWriter.GetHostAndPort() != hostInfoAfterFailover.GetHostAndPort() {
 		// writer has changed
-		a.tracker.InvalidateAllConnections(a.currentWriter)
+		a.tracker.InvalidateAllConnections(currentWriter)
 		a.tracker.LogOpenedConnections()
-		a.currentWriter = hostInfoAfterFailover
-		a.needUpdateCurrentWriter = false
+		a.currentWriter.Store(hostInfoAfterFailover)
+		a.needUpdateCurrentWriter.Store(false)
 	}
 }
 
