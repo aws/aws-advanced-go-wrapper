@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.0.1
-	github.com/jackc/pgx/v5 v5.9.2
+	github.com/jackc/pgx/v5 v5.10.0
 )
 
 require (
