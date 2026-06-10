@@ -34,11 +34,10 @@ type SlidingExpirationCache[T any] struct {
 	cleanupTimeNanos     time.Time
 	lock                 sync.RWMutex
 	itemDisposalFunc     DisposalFunc[T]
-	shouldDisposeFunc    DisposalFunc[T]
 	cancelCleanup        context.CancelFunc
 }
 
-func NewSlidingExpirationCache[T any](id string, funcs ...DisposalFunc[T]) *SlidingExpirationCache[T] {
+func NewSlidingExpirationCache[T any](id string, disposalFunc ...DisposalFunc[T]) *SlidingExpirationCache[T] {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	cache := &SlidingExpirationCache[T]{
@@ -49,11 +48,8 @@ func NewSlidingExpirationCache[T any](id string, funcs ...DisposalFunc[T]) *Slid
 		cancelCleanup:        cancel,
 	}
 
-	if len(funcs) > 0 {
-		if len(funcs) > 1 {
-			cache.shouldDisposeFunc = funcs[1]
-		}
-		cache.itemDisposalFunc = funcs[0]
+	if len(disposalFunc) > 0 {
+		cache.itemDisposalFunc = disposalFunc[0]
 	}
 
 	// Start the cache cleanup goroutine.
@@ -86,7 +82,7 @@ func (c *SlidingExpirationCache[T]) Get(key string, itemExpiration time.Duration
 		return zeroValue, false
 	}
 
-	if item.shouldCleanup(c.shouldDisposeFunc) {
+	if item.isExpired() {
 		delete(c.cache, key)
 		c.lock.Unlock()
 		if c.itemDisposalFunc != nil {
@@ -105,7 +101,7 @@ func (c *SlidingExpirationCache[T]) ComputeIfAbsent(key string, computeFunc func
 	c.lock.Lock()
 
 	oldItem, ok := c.cache[key]
-	if ok && !oldItem.shouldCleanup(c.shouldDisposeFunc) {
+	if ok && !oldItem.isExpired() {
 		oldItem.withExtendExpiration(itemExpiration)
 		c.lock.Unlock()
 		return oldItem.item
@@ -128,7 +124,7 @@ func (c *SlidingExpirationCache[T]) ComputeIfAbsentWithError(key string, compute
 	c.lock.Lock()
 
 	oldItem, ok := c.cache[key]
-	if ok && !oldItem.shouldCleanup(c.shouldDisposeFunc) {
+	if ok && !oldItem.isExpired() {
 		oldItem.withExtendExpiration(itemExpiration)
 		c.lock.Unlock()
 		return oldItem.item, nil
@@ -155,7 +151,7 @@ func (c *SlidingExpirationCache[T]) ComputeIfAbsentWithError(key string, compute
 func (c *SlidingExpirationCache[T]) PutIfAbsent(key string, value T, expiration time.Duration) {
 	c.lock.Lock()
 	oldItem, ok := c.cache[key]
-	if ok && !oldItem.shouldCleanup(c.shouldDisposeFunc) {
+	if ok && !oldItem.isExpired() {
 		c.lock.Unlock()
 		return
 	}
@@ -240,7 +236,7 @@ func (c *SlidingExpirationCache[T]) cleanupExpiredItems(ctx context.Context) {
 			var itemList []T
 			c.lock.Lock()
 			for key, item := range c.cache {
-				if item.shouldCleanup(c.shouldDisposeFunc) {
+				if item.isExpired() {
 					itemList = append(itemList, item.item)
 					delete(c.cache, key)
 				}
@@ -265,9 +261,6 @@ func (c *cacheItem[T]) withExtendExpiration(itemExpirationNano time.Duration) {
 	c.expirationTime = time.Now().Add(itemExpirationNano)
 }
 
-func (c *cacheItem[T]) shouldCleanup(shouldDisposeFunc DisposalFunc[T]) bool {
-	if shouldDisposeFunc != nil {
-		return time.Now().After(c.expirationTime) && shouldDisposeFunc(c.item)
-	}
+func (c *cacheItem[T]) isExpired() bool {
 	return time.Now().After(c.expirationTime)
 }

@@ -19,6 +19,7 @@ package driver_infrastructure
 import "time"
 
 // ShouldDisposeFunc determines whether an expired item should be disposed.
+// Deprecated: This type is no longer used and will be removed in a future release.
 type ShouldDisposeFunc func(value any) bool
 
 // ItemDisposalFunc defines how to dispose of an item when removed.
@@ -27,7 +28,7 @@ type ItemDisposalFunc func(value any)
 // StorageService provides shared key-value storage for driver components.
 // Access to stored data should be done through StorageTypeDescriptor for type safety.
 type StorageService interface {
-	Register(typeKey string, ttl time.Duration, renewOnAccess bool, shouldDispose ShouldDisposeFunc, onDispose ItemDisposalFunc)
+	Register(typeKey string, ttl time.Duration, renewOnAccess bool, onDispose ItemDisposalFunc)
 	Exists(typeKey string, key any) bool
 	Remove(typeKey string, key any)
 	Clear(typeKey string)

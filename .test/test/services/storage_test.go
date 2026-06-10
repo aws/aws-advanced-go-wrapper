@@ -37,7 +37,7 @@ func newTestStorage(t *testing.T) *services.ExpiringStorage {
 
 func TestStorageRegisterAndSet(t *testing.T) {
 	storage := newTestStorage(t)
-	storage.Register(testTypeKey, 5*time.Minute, false, nil, nil)
+	storage.Register(testTypeKey, 5*time.Minute, false, nil)
 
 	storage.Set(testTypeKey, "key1", "value1")
 	val, ok := storage.Get(testTypeKey, "key1")
@@ -47,7 +47,7 @@ func TestStorageRegisterAndSet(t *testing.T) {
 
 func TestStorageGetNonExistentKey(t *testing.T) {
 	storage := newTestStorage(t)
-	storage.Register(testTypeKey, 5*time.Minute, false, nil, nil)
+	storage.Register(testTypeKey, 5*time.Minute, false, nil)
 
 	val, ok := storage.Get(testTypeKey, "nonexistent")
 	assert.False(t, ok)
@@ -74,7 +74,7 @@ func TestStorageSetUnregisteredType(t *testing.T) {
 
 func TestStorageExists(t *testing.T) {
 	storage := newTestStorage(t)
-	storage.Register(testTypeKey, 5*time.Minute, false, nil, nil)
+	storage.Register(testTypeKey, 5*time.Minute, false, nil)
 
 	assert.False(t, storage.Exists(testTypeKey, "key1"))
 
@@ -89,7 +89,7 @@ func TestStorageExistsUnregisteredType(t *testing.T) {
 
 func TestStorageRemove(t *testing.T) {
 	storage := newTestStorage(t)
-	storage.Register(testTypeKey, 5*time.Minute, false, nil, nil)
+	storage.Register(testTypeKey, 5*time.Minute, false, nil)
 
 	storage.Set(testTypeKey, "key1", "value1")
 	assert.True(t, storage.Exists(testTypeKey, "key1"))
@@ -106,7 +106,7 @@ func TestStorageRemoveUnregisteredType(t *testing.T) {
 
 func TestStorageClear(t *testing.T) {
 	storage := newTestStorage(t)
-	storage.Register(testTypeKey, 5*time.Minute, false, nil, nil)
+	storage.Register(testTypeKey, 5*time.Minute, false, nil)
 
 	storage.Set(testTypeKey, "key1", "value1")
 	storage.Set(testTypeKey, "key2", "value2")
@@ -124,8 +124,8 @@ func TestStorageClearUnregisteredType(t *testing.T) {
 
 func TestStorageClearAll(t *testing.T) {
 	storage := newTestStorage(t)
-	storage.Register("type1", 5*time.Minute, false, nil, nil)
-	storage.Register("type2", 5*time.Minute, false, nil, nil)
+	storage.Register("type1", 5*time.Minute, false, nil)
+	storage.Register("type2", 5*time.Minute, false, nil)
 
 	storage.Set("type1", "key1", "value1")
 	storage.Set("type2", "key2", "value2")
@@ -137,7 +137,7 @@ func TestStorageClearAll(t *testing.T) {
 
 func TestStorageSize(t *testing.T) {
 	storage := newTestStorage(t)
-	storage.Register(testTypeKey, 5*time.Minute, false, nil, nil)
+	storage.Register(testTypeKey, 5*time.Minute, false, nil)
 
 	assert.Equal(t, 0, storage.Size(testTypeKey))
 
@@ -155,7 +155,7 @@ func TestStorageSizeUnregisteredType(t *testing.T) {
 
 func TestStorageOverwriteValue(t *testing.T) {
 	storage := newTestStorage(t)
-	storage.Register(testTypeKey, 5*time.Minute, false, nil, nil)
+	storage.Register(testTypeKey, 5*time.Minute, false, nil)
 
 	storage.Set(testTypeKey, "key1", "value1")
 	storage.Set(testTypeKey, "key1", "value2")
@@ -173,7 +173,7 @@ func TestStorageWithDisposalFunc(t *testing.T) {
 	}
 
 	storage := newTestStorage(t)
-	storage.Register(testTypeKey, 5*time.Minute, false, nil, disposalFunc)
+	storage.Register(testTypeKey, 5*time.Minute, false, disposalFunc)
 
 	storage.Set(testTypeKey, "key1", "value1")
 	storage.Remove(testTypeKey, "key1")
@@ -196,7 +196,7 @@ func TestStoragePublishesDataAccessEvent(t *testing.T) {
 
 	storage := services.NewExpiringStorage(1*time.Hour, publisher)
 	defer storage.Stop()
-	storage.Register(testTypeKey, 5*time.Minute, false, nil, nil)
+	storage.Register(testTypeKey, 5*time.Minute, false, nil)
 
 	storage.Set(testTypeKey, "key1", "value1")
 	storage.Get(testTypeKey, "key1")
@@ -210,9 +210,9 @@ func TestStoragePublishesDataAccessEvent(t *testing.T) {
 
 func TestStorageDuplicateRegister(t *testing.T) {
 	storage := newTestStorage(t)
-	storage.Register(testTypeKey, 5*time.Minute, false, nil, nil)
+	storage.Register(testTypeKey, 5*time.Minute, false, nil)
 	// Registering again should not overwrite
-	storage.Register(testTypeKey, 10*time.Minute, true, nil, nil)
+	storage.Register(testTypeKey, 10*time.Minute, true, nil)
 
 	storage.Set(testTypeKey, "key1", "value1")
 	val, ok := storage.Get(testTypeKey, "key1")
@@ -223,7 +223,7 @@ func TestStorageDuplicateRegister(t *testing.T) {
 func TestStorageWithNilPublisher(t *testing.T) {
 	storage := services.NewExpiringStorage(1*time.Hour, nil)
 	defer storage.Stop()
-	storage.Register(testTypeKey, 5*time.Minute, false, nil, nil)
+	storage.Register(testTypeKey, 5*time.Minute, false, nil)
 
 	storage.Set(testTypeKey, "key1", "value1")
 	val, ok := storage.Get(testTypeKey, "key1")
@@ -240,7 +240,7 @@ func TestStorageRemoveExpiredItems(t *testing.T) {
 	defer storage.Stop()
 
 	// Register with a very short TTL
-	storage.Register("expiring-type", 1*time.Millisecond, false, nil, nil)
+	storage.Register("expiring-type", 1*time.Millisecond, false, nil)
 
 	storage.Set("expiring-type", "key1", "value1")
 	assert.Equal(t, 1, storage.Size("expiring-type"))
@@ -254,34 +254,6 @@ func TestStorageRemoveExpiredItems(t *testing.T) {
 	assert.Nil(t, val)
 }
 
-func TestStorageWithShouldDisposeFunc(t *testing.T) {
-	disposed := make([]any, 0)
-	disposalFunc := func(value any) {
-		disposed = append(disposed, value)
-	}
-	shouldDispose := func(value any) bool {
-		// Only dispose values that are "disposable"
-		return value == "disposable"
-	}
-
-	publisher := services.NewBatchingEventPublisher(1 * time.Hour)
-	defer publisher.Stop()
-	storage := services.NewExpiringStorage(50*time.Millisecond, publisher)
-	defer storage.Stop()
-
-	storage.Register("dispose-type", 1*time.Millisecond, false, shouldDispose, disposalFunc)
-
-	storage.Set("dispose-type", "key1", "disposable")
-	storage.Set("dispose-type", "key2", "not-disposable")
-
-	// Wait for cleanup
-	time.Sleep(200 * time.Millisecond)
-
-	// "disposable" should have been disposed, "not-disposable" should still be in cache (size-wise)
-	// but expired (not accessible via Get)
-	assert.Contains(t, disposed, "disposable")
-}
-
 func TestStorageRenewOnAccess(t *testing.T) {
 	publisher := services.NewBatchingEventPublisher(1 * time.Hour)
 	defer publisher.Stop()
@@ -289,7 +261,7 @@ func TestStorageRenewOnAccess(t *testing.T) {
 	defer storage.Stop()
 
 	// Register with renewOnAccess=true and short TTL
-	storage.Register("renew-type", 200*time.Millisecond, true, nil, nil)
+	storage.Register("renew-type", 200*time.Millisecond, true, nil)
 
 	storage.Set("renew-type", "key1", "value1")
 

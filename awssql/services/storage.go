@@ -67,15 +67,10 @@ func (s *ExpiringStorage) register(
 	typeKey string,
 	ttl time.Duration,
 	renewOnAccess bool,
-	shouldDispose driver_infrastructure.ShouldDisposeFunc,
 	onDispose driver_infrastructure.ItemDisposalFunc,
 ) {
-	var shouldDisposeFunc utils.ShouldDisposeFunc[any]
 	var itemDisposalFunc utils.ItemDisposalFunc[any]
 
-	if shouldDispose != nil {
-		shouldDisposeFunc = func(v any) bool { return shouldDispose(v) }
-	}
 	if onDispose != nil {
 		itemDisposalFunc = func(v any) { onDispose(v) }
 	}
@@ -83,7 +78,6 @@ func (s *ExpiringStorage) register(
 	cache := utils.NewExpirationCache[any, any](utils.ExpirationCacheConfig[any]{
 		TTL:              ttl,
 		RenewOnAccess:    renewOnAccess,
-		ShouldDispose:    shouldDisposeFunc,
 		ItemDisposalFunc: itemDisposalFunc,
 	})
 
@@ -100,10 +94,9 @@ func (s *ExpiringStorage) Register(
 	typeKey string,
 	ttl time.Duration,
 	renewOnAccess bool,
-	shouldDispose driver_infrastructure.ShouldDisposeFunc,
 	onDispose driver_infrastructure.ItemDisposalFunc,
 ) {
-	s.register(typeKey, ttl, renewOnAccess, shouldDispose, onDispose)
+	s.register(typeKey, ttl, renewOnAccess, onDispose)
 }
 
 // Set stores an item under the given type and key.
