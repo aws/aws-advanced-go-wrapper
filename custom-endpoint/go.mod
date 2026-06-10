@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.0.1
 	github.com/aws/aws-sdk-go-v2 v1.42.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.25
-	github.com/aws/aws-sdk-go-v2/service/rds v1.118.1
+	github.com/aws/aws-sdk-go-v2/service/rds v1.119.2
 )
 
 require (
