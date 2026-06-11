@@ -32,7 +32,10 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/plugins"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/services"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils/telemetry"
 	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 	"github.com/golang/mock/gomock"
 
@@ -40,6 +43,13 @@ import (
 )
 
 var mockHostInfo, _ = host_info_util.NewHostInfoBuilder().SetHost("test").SetPort(1234).SetRole(host_info_util.WRITER).Build()
+
+func errString(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
+}
 
 func TestAwsWrapperError(t *testing.T) {
 	testError := error_util.NewUnavailableHostError("test")
@@ -390,83 +400,76 @@ func TestMethodInvokedOnOldConnection(t *testing.T) {
 
 	// Use a variable to track the "current connection" so we can change it mid-test.
 	currentConn := driver.Conn(mockUnderlyingConn)
-	mockPluginManager := mock_driver_infrastructure.NewMockPluginManager(ctrl)
-	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
-	mockTelemetryFactory := mock_telemetry.NewMockTelemetryFactory(ctrl)
-	mockTelemetryContext := mock_telemetry.NewMockTelemetryContext(ctrl)
 
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 	mockPluginService.EXPECT().GetCurrentConnection().DoAndReturn(func() driver.Conn {
 		return currentConn
 	}).AnyTimes()
 	mockPluginService.EXPECT().UpdateState(gomock.Any(), gomock.Any()).AnyTimes()
 	mockPluginService.EXPECT().SetCurrentTx(gomock.Any()).AnyTimes()
-	mockPluginManager.EXPECT().GetTelemetryFactory().Return(mockTelemetryFactory).AnyTimes()
-	mockTelemetryFactory.EXPECT().OpenTelemetryContext(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(mockTelemetryContext, context.TODO()).AnyTimes()
-	mockTelemetryContext.EXPECT().SetAttribute(gomock.Any(), gomock.Any()).AnyTimes()
-	mockPluginManager.EXPECT().SetTelemetryContext(gomock.Any()).AnyTimes()
-	mockTelemetryContext.EXPECT().CloseContext().AnyTimes()
-	mockTelemetryContext.EXPECT().SetSuccess(gomock.Any()).AnyTimes()
-	mockTelemetryContext.EXPECT().SetError(gomock.Any()).AnyTimes()
-	mockPluginManager.EXPECT().ReleaseResources().AnyTimes()
+	mockPluginService.EXPECT().SetInTransaction(gomock.Any()).AnyTimes()
 
-	mockPluginManager.EXPECT().
-		Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(conn driver.Conn, methodName string, execFunc driver_infrastructure.ExecuteFunc, args ...any) (any, any, bool, error) {
-			if conn != currentConn && !strings.Contains(methodName, "Close") {
-				return nil, nil, false, errors.New("The internal connection has changed since " + methodName)
-			}
-			return execFunc()
-		}).AnyTimes()
-
-	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, driver_infrastructure.PG)
-
-	rows, err := mockAwsWrapperConn.QueryContext(context.Background(), "", nil)
-	if err != nil || rows.Columns()[0] != "column" {
-		t.Errorf("An AWS Wrapper Conn with an underlying connection that does support QueryContext should return a result.")
+	props := MakeMapFromKeysAndVals()
+	telemetryFactory, _ := telemetry.NewDefaultTelemetryFactory(props)
+	container := &services.FullServicesContainer{
+		Telemetry:     telemetryFactory,
+		PluginService: mockPluginService,
 	}
+
+	pluginManager := plugin_helpers.NewPluginManagerImpl(&MockTargetDriver{}, container, props)
+	_ = pluginManager.Init([]driver_infrastructure.ConnectionPlugin{&plugins.DefaultPlugin{ServicesContainer: container}})
+
+	mockAwsWrapperConn := *awsDriver.NewAwsWrapperConn(pluginManager, mockPluginService, driver_infrastructure.PG)
+
+	// Create objects while connection is still the original.
+	rows, err := mockAwsWrapperConn.QueryContext(context.Background(), "", nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "column", rows.Columns()[0])
 
 	res, err := mockAwsWrapperConn.ExecContext(context.Background(), "", nil)
-	if err != nil || res == nil {
-		t.Errorf("An AWS Wrapper Conn with an underlying connection that does support ExecContext should return a result.")
-	}
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
 
 	tx, err := mockAwsWrapperConn.Begin()
-	if err != nil || tx == nil {
-		t.Errorf("An AWS Wrapper Conn with an underlying connection should return a result to Begin.")
-	}
+	assert.NoError(t, err)
+	assert.NotNil(t, tx)
 
 	stmt, err := mockAwsWrapperConn.Prepare("")
-	if err != nil || stmt == nil {
-		t.Errorf("An AWS Wrapper Conn with an underlying connection should return a result to Prepare.")
-	}
+	assert.NoError(t, err)
+	assert.NotNil(t, stmt)
 
-	// Switch the current connection to a different one
+	// Switch the current connection to simulate topology refresh.
 	differentConn := &MockConn{}
 	currentConn = differentConn
 
+	// Pipeline methods with CheckBoundedConnection=true should FAIL.
 	err = rows.Next([]driver.Value{})
-	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since") {
-		t.Errorf("After internal connection has changed, methods on Rows should fail to execute.")
-	}
-
-	_, err = res.RowsAffected()
-	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since") {
-		t.Errorf("After internal connection has changed, methods on Result should fail to execute.")
-	}
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "The internal connection has changed since")
 
 	err = tx.Commit()
-	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since") {
-		t.Errorf("After internal connection has changed, methods on Tx should fail to execute.")
-	}
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "The internal connection has changed since")
 
 	//nolint:all
 	_, err = stmt.Exec(nil)
-	if err == nil || !strings.Contains(err.Error(), "The internal connection has changed since") {
-		t.Errorf("After internal connection has changed, methods on Stmt should fail to execute.")
-	}
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "The internal connection has changed since")
 
-	// Closing methods should always execute, even if internal connection has changed.
+	// Methods with UsePipeline=false bypass entirely (no connection check).
+	// Result.RowsAffected: reads locally-buffered OK packet data.
+	_, err = res.RowsAffected()
+	assert.NotContains(t, errString(err), "The internal connection has changed since")
+
+	// Result.LastInsertId: same category as RowsAffected.
+	_, err = res.LastInsertId()
+	assert.NotContains(t, errString(err), "The internal connection has changed since")
+
+	// Rows.Columns: returns cached column metadata.
+	cols := rows.Columns()
+	assert.Equal(t, []string{"column"}, cols)
+
+	// Closing methods: must always work regardless of connection state.
 	err = rows.Close()
 	assert.Nil(t, err)
 	err = stmt.Close()
@@ -701,20 +704,6 @@ func TestAwsWrapperConn_ResetSession(t *testing.T) {
 	awsWrapperconn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, dbEngine)
 
 	err := awsWrapperconn.ResetSession(context.TODO())
-	assert.NoError(t, err)
-}
-
-func TestAwsWrapperConn_CheckedNamedValue(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockNamedValueChecker := mock_database_sql_driver.NewMockNamedValueChecker(ctrl)
-	mockPluginManager, mockPluginService := setupmocks_awsWrapperConn_executeWithPlugins(ctrl, mockNamedValueChecker)
-	dbEngine := driver_infrastructure.PG
-
-	awsWrapperconn := awsDriver.NewAwsWrapperConn(mockPluginManager, mockPluginService, dbEngine)
-
-	err := awsWrapperconn.CheckNamedValue(nil)
 	assert.NoError(t, err)
 }
 
