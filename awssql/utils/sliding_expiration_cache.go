@@ -34,11 +34,10 @@ type SlidingExpirationCache[T any] struct {
 	cleanupTimeNanos     time.Time
 	lock                 sync.RWMutex
 	itemDisposalFunc     DisposalFunc[T]
-	shouldDisposeFunc    DisposalFunc[T]
 	cancelCleanup        context.CancelFunc
 }
 
-func NewSlidingExpirationCache[T any](id string, funcs ...DisposalFunc[T]) *SlidingExpirationCache[T] {
+func NewSlidingExpirationCache[T any](id string, disposalFunc ...DisposalFunc[T]) *SlidingExpirationCache[T] {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	cache := &SlidingExpirationCache[T]{
@@ -49,11 +48,8 @@ func NewSlidingExpirationCache[T any](id string, funcs ...DisposalFunc[T]) *Slid
 		cancelCleanup:        cancel,
 	}
 
-	if len(funcs) > 0 {
-		if len(funcs) > 1 {
-			cache.shouldDisposeFunc = funcs[1]
-		}
-		cache.itemDisposalFunc = funcs[0]
+	if len(disposalFunc) > 0 {
+		cache.itemDisposalFunc = disposalFunc[0]
 	}
 
 	// Start the cache cleanup goroutine.
@@ -63,117 +59,134 @@ func NewSlidingExpirationCache[T any](id string, funcs ...DisposalFunc[T]) *Slid
 }
 
 func (c *SlidingExpirationCache[T]) Put(key string, value T, itemExpiration time.Duration) {
-	c.Remove(key)
 	c.lock.Lock()
-	defer c.lock.Unlock()
-
+	old, hadOld := c.cache[key]
 	c.cache[key] = &cacheItem[T]{cacheValue[T]{
 		item:           value,
 		expirationTime: time.Now().Add(itemExpiration),
 	}}
+	c.lock.Unlock()
+
+	if hadOld && old != nil && c.itemDisposalFunc != nil {
+		c.itemDisposalFunc(old.item)
+	}
 }
 
 func (c *SlidingExpirationCache[T]) Get(key string, itemExpiration time.Duration) (T, bool) {
-	c.cleanupIfExpired(key)
-
-	c.lock.RLock()
-	defer c.lock.RUnlock()
+	c.lock.Lock()
 
 	item, ok := c.cache[key]
 	if !ok {
+		c.lock.Unlock()
+		var zeroValue T
+		return zeroValue, false
+	}
+
+	if item.isExpired() {
+		delete(c.cache, key)
+		c.lock.Unlock()
+		if c.itemDisposalFunc != nil {
+			c.itemDisposalFunc(item.item)
+		}
 		var zeroValue T
 		return zeroValue, false
 	}
 
 	item.withExtendExpiration(itemExpiration)
+	c.lock.Unlock()
 	return item.item, true
 }
 
 func (c *SlidingExpirationCache[T]) ComputeIfAbsent(key string, computeFunc func() T, itemExpiration time.Duration) T {
-	item, ok := c.Get(key, itemExpiration)
+	c.lock.Lock()
 
-	if ok {
-		return item
+	oldItem, ok := c.cache[key]
+	if ok && !oldItem.isExpired() {
+		oldItem.withExtendExpiration(itemExpiration)
+		c.lock.Unlock()
+		return oldItem.item
 	}
 
-	c.lock.Lock()
-	defer c.lock.Unlock()
+	newValue := computeFunc()
 	c.cache[key] = &cacheItem[T]{cacheValue[T]{
-		item:           computeFunc(),
+		item:           newValue,
 		expirationTime: time.Now().Add(itemExpiration),
 	}}
-	return c.cache[key].item
+	c.lock.Unlock()
+
+	if oldItem != nil && c.itemDisposalFunc != nil {
+		c.itemDisposalFunc(oldItem.item)
+	}
+	return newValue
 }
 
 func (c *SlidingExpirationCache[T]) ComputeIfAbsentWithError(key string, computeFunc func() (T, error), itemExpiration time.Duration) (T, error) {
-	item, ok := c.Get(key, itemExpiration)
+	c.lock.Lock()
 
-	if ok {
-		return item, nil
+	oldItem, ok := c.cache[key]
+	if ok && !oldItem.isExpired() {
+		oldItem.withExtendExpiration(itemExpiration)
+		c.lock.Unlock()
+		return oldItem.item, nil
 	}
 
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	item, err := computeFunc()
+	newValue, err := computeFunc()
 	if err != nil {
+		c.lock.Unlock()
 		var zeroValue T
 		return zeroValue, err
 	}
 	c.cache[key] = &cacheItem[T]{cacheValue[T]{
-		item:           item,
+		item:           newValue,
 		expirationTime: time.Now().Add(itemExpiration),
 	}}
-	return c.cache[key].item, nil
+	c.lock.Unlock()
+
+	if oldItem != nil && c.itemDisposalFunc != nil {
+		c.itemDisposalFunc(oldItem.item)
+	}
+	return newValue, nil
 }
 
 func (c *SlidingExpirationCache[T]) PutIfAbsent(key string, value T, expiration time.Duration) {
-	c.cleanupIfExpired(key)
 	c.lock.Lock()
-	_, ok := c.cache[key]
+	oldItem, ok := c.cache[key]
+	if ok && !oldItem.isExpired() {
+		c.lock.Unlock()
+		return
+	}
+	c.cache[key] = &cacheItem[T]{cacheValue[T]{
+		item:           value,
+		expirationTime: time.Now().Add(expiration),
+	}}
 	c.lock.Unlock()
 
-	if !ok {
-		c.Put(key, value, expiration)
+	if oldItem != nil && c.itemDisposalFunc != nil {
+		c.itemDisposalFunc(oldItem.item)
 	}
 }
 
 func (c *SlidingExpirationCache[T]) Remove(key string) {
 	c.lock.Lock()
-	cacheItem, ok := c.cache[key]
+	item, ok := c.cache[key]
 	delete(c.cache, key)
 	c.lock.Unlock()
 
-	if ok && cacheItem != nil && c.itemDisposalFunc != nil {
-		c.itemDisposalFunc(cacheItem.item)
-	}
-}
-
-func (c *SlidingExpirationCache[T]) cleanupIfExpired(key string) {
-	c.lock.Lock()
-
-	cacheItem, ok := c.cache[key]
-	if ok && cacheItem != nil && cacheItem.shouldCleanup(c.shouldDisposeFunc) {
-		delete(c.cache, key)
-		c.lock.Unlock()
-		if c.itemDisposalFunc != nil {
-			c.itemDisposalFunc(cacheItem.item)
-		}
-	} else {
-		c.lock.Unlock()
+	if ok && item != nil && c.itemDisposalFunc != nil {
+		c.itemDisposalFunc(item.item)
 	}
 }
 
 func (c *SlidingExpirationCache[T]) Clear() {
-	entries := c.GetAllEntries()
-
 	c.lock.Lock()
+	oldCache := c.cache
 	c.cache = make(map[string]*cacheItem[T])
 	c.cleanupTimeNanos = time.Now().Add(CleanupIntervalNanos)
 	c.lock.Unlock()
 
 	if c.itemDisposalFunc != nil {
-		for _, item := range entries {
-			c.itemDisposalFunc(item)
+		for _, item := range oldCache {
+			c.itemDisposalFunc(item.item)
 		}
 	}
 }
@@ -205,8 +218,8 @@ func (c *SlidingExpirationCache[T]) Size() int {
 }
 
 func (c *SlidingExpirationCache[T]) SetCleanupIntervalNanos(newIntervalNanos time.Duration) {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	c.cleanupIntervalNanos = newIntervalNanos
 	c.cleanupTimeNanos = time.Now().Add(newIntervalNanos)
 }
@@ -223,14 +236,14 @@ func (c *SlidingExpirationCache[T]) cleanupExpiredItems(ctx context.Context) {
 			var itemList []T
 			c.lock.Lock()
 			for key, item := range c.cache {
-				if item.shouldCleanup(c.shouldDisposeFunc) {
+				if item.isExpired() {
 					itemList = append(itemList, item.item)
 					delete(c.cache, key)
 				}
 			}
 			c.lock.Unlock()
 
-			// Dispose of the items after it has been removed and the cache is unlocked, as the disposal func may be long-running.
+			// Dispose after unlock since disposal may be long-running.
 			if c.itemDisposalFunc != nil {
 				for _, item := range itemList {
 					c.itemDisposalFunc(item)
@@ -248,9 +261,6 @@ func (c *cacheItem[T]) withExtendExpiration(itemExpirationNano time.Duration) {
 	c.expirationTime = time.Now().Add(itemExpirationNano)
 }
 
-func (c *cacheItem[T]) shouldCleanup(shouldDisposeFunc DisposalFunc[T]) bool {
-	if shouldDisposeFunc != nil {
-		return time.Now().After(c.expirationTime) && shouldDisposeFunc(c.item)
-	}
+func (c *cacheItem[T]) isExpired() bool {
 	return time.Now().After(c.expirationTime)
 }

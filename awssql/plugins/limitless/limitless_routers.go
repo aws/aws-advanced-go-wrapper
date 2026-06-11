@@ -44,6 +44,5 @@ var LimitlessRoutersStorageType = &driver_infrastructure.StorageTypeDescriptor[*
 	TypeKey:       "LimitlessRouters",
 	TTL:           10 * time.Minute, // Default, will be overridden by registration
 	RenewOnAccess: true,
-	ShouldDispose: nil,
 	OnDispose:     nil,
 }

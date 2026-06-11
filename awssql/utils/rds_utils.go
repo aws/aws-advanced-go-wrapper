@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
 
 var (
@@ -71,7 +72,7 @@ var (
 	cachedDnsRegexp   = sync.Map{}
 	cachedDnsPatterns = sync.Map{}
 
-	prepareHostFunc func(string) string
+	prepareHostFunc atomic.Value // stores func(string) string
 )
 
 const (
@@ -301,19 +302,20 @@ func findAndCacheRegexp(host string) (regexp.Regexp, bool) {
 }
 
 func SetPreparedHostFunc(newPrepareHostFunc func(string) string) {
-	prepareHostFunc = newPrepareHostFunc
+	prepareHostFunc.Store(newPrepareHostFunc)
 }
 
 func ResetPreparedHostFunc() {
-	prepareHostFunc = nil
+	prepareHostFunc.Store((func(string) string)(nil))
 }
 
 func GetPreparedHost(host string) string {
-	if prepareHostFunc == nil {
+	fn, _ := prepareHostFunc.Load().(func(string) string)
+	if fn == nil {
 		return host
 	}
 
-	preparedHost := prepareHostFunc(host)
+	preparedHost := fn(host)
 	if preparedHost == "" {
 		return host
 	} else {

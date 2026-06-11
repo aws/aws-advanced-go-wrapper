@@ -17,6 +17,7 @@
 package test
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -188,4 +189,69 @@ func TestSlidingExpirationComputeIfAbsentWithError_ExpiredValueWithError(t *test
 
 	assert.Error(t, err)
 	assert.Equal(t, 0, item)
+}
+
+func TestSlidingExpirationCache_ConcurrentAccess(t *testing.T) {
+	disposalFunc := func(item int) bool { return true }
+	cache := utils.NewSlidingExpirationCache("race-test", disposalFunc)
+	defer cache.CleanUp()
+
+	const goroutines = 20
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+
+	for i := 0; i < goroutines; i++ {
+		go func(id int) {
+			defer wg.Done()
+			key := "shared-key"
+			for j := 0; j < 100; j++ {
+				switch j % 4 {
+				case 0:
+					cache.Get(key, time.Minute)
+				case 1:
+					cache.Put(key, id*100+j, time.Minute)
+				case 2:
+					cache.ComputeIfAbsent(key, func() int { return id*100 + j }, time.Minute)
+				case 3:
+					cache.PutIfAbsent(key, id*100+j, time.Minute)
+				}
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	val, ok := cache.Get("shared-key", time.Minute)
+	assert.True(t, ok)
+	assert.NotZero(t, val)
+}
+
+func TestSlidingExpirationCache_ComputeIfAbsentSingleComputation(t *testing.T) {
+	cache := utils.NewSlidingExpirationCache[int]("compute-once-test")
+	defer cache.CleanUp()
+
+	var computeCount int
+	var countMu sync.Mutex
+
+	const goroutines = 10
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			cache.ComputeIfAbsent("key", func() int {
+				countMu.Lock()
+				computeCount++
+				countMu.Unlock()
+				time.Sleep(time.Millisecond)
+				return 42
+			}, time.Minute)
+		}()
+	}
+
+	wg.Wait()
+	val, ok := cache.Get("key", time.Minute)
+	assert.True(t, ok)
+	assert.Equal(t, 42, val)
+	assert.Equal(t, 1, computeCount, "computeFunc should only be called once")
 }

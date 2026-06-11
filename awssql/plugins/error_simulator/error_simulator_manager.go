@@ -26,14 +26,19 @@ var (
 )
 
 type ErrorSimulatorManager struct {
+	mu              sync.Mutex
 	NextError       error
 	ConnectCallback ErrorSimulatorConnectCallback
 }
 
 func (e *ErrorSimulatorManager) RaiseErrorOnNextConnect(err error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	e.NextError = err
 }
 func (e *ErrorSimulatorManager) SetCallback(errorSimulatorConnectCallback ErrorSimulatorConnectCallback) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	e.ConnectCallback = errorSimulatorConnectCallback
 }
 
@@ -45,6 +50,27 @@ func GetErrorSimulatorManager() *ErrorSimulatorManager {
 }
 
 func ResetErrorSimulatorManager() {
-	GetErrorSimulatorManager().NextError = nil
-	GetErrorSimulatorManager().ConnectCallback = nil
+	m := GetErrorSimulatorManager()
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.NextError = nil
+	m.ConnectCallback = nil
+}
+
+func (e *ErrorSimulatorManager) GetNextError() error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.NextError
+}
+
+func (e *ErrorSimulatorManager) ConsumeNextError() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.NextError = nil
+}
+
+func (e *ErrorSimulatorManager) GetConnectCallback() ErrorSimulatorConnectCallback {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.ConnectCallback
 }

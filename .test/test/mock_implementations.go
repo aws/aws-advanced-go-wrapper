@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"sync"
 
 	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
 	aws_secrets_manager "github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager"
@@ -54,6 +55,7 @@ var defaultPluginFactoryByCode = map[string]driver_infrastructure.ConnectionPlug
 var testPluginCode = "test"
 
 type TestPlugin struct {
+	mu         *sync.Mutex
 	calls      *[]string
 	id         int
 	connection driver.Conn
@@ -79,12 +81,16 @@ func (t TestPlugin) GetSubscribedMethods() []string {
 }
 
 func (t TestPlugin) Execute(_ driver.Conn, _ string, executeFunc driver_infrastructure.ExecuteFunc, _ ...any) (any, any, bool, error) {
+	t.mu.Lock()
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:before", reflect.TypeOf(t), t.id))
+	t.mu.Unlock()
 	if t.isBefore && t.error != nil {
 		return nil, nil, false, t.error
 	}
 	result, _, _, err := executeFunc()
+	t.mu.Lock()
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:after", reflect.TypeOf(t), t.id))
+	t.mu.Unlock()
 	if !t.isBefore && t.error != nil {
 		return nil, nil, false, t.error
 	}
@@ -96,19 +102,25 @@ func (t TestPlugin) Connect(
 	properties *utils.RWMap[string, string],
 	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
+	t.mu.Lock()
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:before connect", reflect.TypeOf(t), t.id))
+	t.mu.Unlock()
 	if t.isBefore && t.error != nil {
 		return nil, t.error
 	}
 	if t.connection != nil {
+		t.mu.Lock()
 		*t.calls = append(*t.calls, fmt.Sprintf("%s%v:connection", reflect.TypeOf(t), t.id))
+		t.mu.Unlock()
 		return t.connection, nil
 	}
 	conn, err := connectFunc(properties)
 	if !t.isBefore && t.error != nil {
 		return nil, t.error
 	}
+	t.mu.Lock()
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:after connect", reflect.TypeOf(t), t.id))
+	t.mu.Unlock()
 	return conn, err
 }
 
@@ -117,13 +129,19 @@ func (t TestPlugin) ForceConnect(
 	properties *utils.RWMap[string, string],
 	_ bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
+	t.mu.Lock()
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:before forceConnect", reflect.TypeOf(t), t.id))
+	t.mu.Unlock()
 	if t.connection != nil {
+		t.mu.Lock()
 		*t.calls = append(*t.calls, fmt.Sprintf("%s%v:forced connection", reflect.TypeOf(t), t.id))
+		t.mu.Unlock()
 		return t.connection, nil
 	}
 	conn, err := connectFunc(properties)
+	t.mu.Lock()
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:after forceConnect", reflect.TypeOf(t), t.id))
+	t.mu.Unlock()
 	return conn, err
 }
 
@@ -135,8 +153,10 @@ func (t TestPlugin) GetHostInfoByStrategy(
 	_ host_info_util.HostRole,
 	_ string,
 	_ []*host_info_util.HostInfo) (*host_info_util.HostInfo, error) {
+	t.mu.Lock()
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:before GetHostInfoByStrategy", reflect.TypeOf(t), t.id))
 	*t.calls = append(*t.calls, fmt.Sprintf("%s%v:after GetHostInfoByStrategy", reflect.TypeOf(t), t.id))
+	t.mu.Unlock()
 	return nil, nil
 }
 
@@ -188,10 +208,17 @@ func (m *MockDriverConnection) Begin() (driver.Tx, error) {
 }
 
 func CreateTestPlugin(calls *[]string, id int, connection driver.Conn, err error, isBefore bool) driver_infrastructure.ConnectionPlugin {
+	return CreateTestPluginWithMu(nil, calls, id, connection, err, isBefore)
+}
+
+func CreateTestPluginWithMu(mu *sync.Mutex, calls *[]string, id int, connection driver.Conn, err error, isBefore bool) driver_infrastructure.ConnectionPlugin {
 	if calls == nil {
 		calls = &[]string{}
 	}
-	testPlugin := &TestPlugin{calls: calls, id: id, connection: connection, error: err, isBefore: isBefore}
+	if mu == nil {
+		mu = &sync.Mutex{}
+	}
+	testPlugin := &TestPlugin{mu: mu, calls: calls, id: id, connection: connection, error: err, isBefore: isBefore}
 	return testPlugin
 }
 

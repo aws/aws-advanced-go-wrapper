@@ -18,6 +18,7 @@ package telemetry
 
 import (
 	"context"
+	"sync"
 
 	"strings"
 
@@ -26,9 +27,14 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils"
 )
 
-var availableTelemetryFactories = map[string]TelemetryFactory{}
+var (
+	availableTelemetryFactories   = map[string]TelemetryFactory{}
+	availableTelemetryFactoriesMu sync.RWMutex
+)
 
 func UseTelemetryFactory(name string, factory TelemetryFactory) {
+	availableTelemetryFactoriesMu.Lock()
+	defer availableTelemetryFactoriesMu.Unlock()
 	availableTelemetryFactories[name] = factory
 }
 
@@ -64,7 +70,9 @@ func getTelemetryFactory(enableTelemetry bool, backend string) (TelemetryFactory
 	if enableTelemetry {
 		switch backend {
 		case "otlp", "xray":
+			availableTelemetryFactoriesMu.RLock()
 			factory, ok := availableTelemetryFactories[backend]
+			availableTelemetryFactoriesMu.RUnlock()
 			if ok {
 				return factory, nil
 			}

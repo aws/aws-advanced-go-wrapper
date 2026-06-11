@@ -85,6 +85,7 @@ type HostMonitorImpl struct {
 	FailureCount                  atomic.Int32
 	failureDetectionCount         int
 	InvalidHostStartTime          time.Time
+	monitorMu                     sync.Mutex
 	ActiveStates                  *utils.RWQueue[weak.Pointer[MonitorConnectionState]]
 	NewStates                     *utils.RWMap[time.Time, []weak.Pointer[MonitorConnectionState]]
 	Stopped                       atomic.Bool
@@ -115,9 +116,11 @@ func (m *HostMonitorImpl) Stop() {
 }
 
 func (m *HostMonitorImpl) Close() {
+	m.monitorMu.Lock()
 	if m.MonitoringConn != nil {
 		_ = m.MonitoringConn.Close()
 	}
+	m.monitorMu.Unlock()
 	slog.Debug(error_util.GetMessage("HostMonitorImpl.stopped", m.hostInfo.Host))
 }
 
@@ -194,7 +197,7 @@ func (m *HostMonitorImpl) Monitor() {
 			m.servicesContainer.GetPluginService().SetAvailability(m.hostInfo.AllAliases, host_info_util.UNAVAILABLE)
 		}
 
-		tmpActiveStates := utils.NewRWQueue[weak.Pointer[MonitorConnectionState]]()
+		tmpActiveStates := make([]weak.Pointer[MonitorConnectionState], 0)
 		for {
 			monitorStateWeakRef, ok := m.ActiveStates.Dequeue()
 			if !ok {
@@ -219,16 +222,17 @@ func (m *HostMonitorImpl) Monitor() {
 					m.abortedConnectionsCounter.Inc(m.servicesContainer.GetPluginService().GetTelemetryContext())
 				}
 			} else if monitorState.IsActive() {
-				tmpActiveStates.Enqueue(monitorStateWeakRef)
+				tmpActiveStates = append(tmpActiveStates, monitorStateWeakRef)
 			}
 		}
-		// Update activeStates to those that are still active.
-		activeStatesSize := m.ActiveStates.Size()
-		tmpActiveStatesSize := tmpActiveStates.Size()
-		if activeStatesSize != 0 || tmpActiveStatesSize != 0 {
-			slog.Debug(error_util.GetMessage("HostMonitorImpl.updatingActiveStates", m.hostInfo.Host, activeStatesSize, tmpActiveStatesSize))
+		// Re-enqueue active states back into the same queue.
+		activeStatesSize := len(tmpActiveStates)
+		if activeStatesSize != 0 {
+			slog.Debug(error_util.GetMessage("HostMonitorImpl.updatingActiveStates", m.hostInfo.Host, 0, activeStatesSize))
 		}
-		m.ActiveStates = tmpActiveStates
+		for _, state := range tmpActiveStates {
+			m.ActiveStates.Enqueue(state)
+		}
 		delayDurationNanos := m.failureDetectionIntervalNanos - (statusCheckEndTime.Sub(statusCheckStartTime))
 		if delayDurationNanos < EFM_ROUTINE_SLEEP_DURATION {
 			delayDurationNanos = EFM_ROUTINE_SLEEP_DURATION
@@ -239,6 +243,9 @@ func (m *HostMonitorImpl) Monitor() {
 }
 
 func (m *HostMonitorImpl) UpdateHostHealthStatus(connIsValid bool, statusCheckStartTime time.Time, statusCheckEndTime time.Time) {
+	m.monitorMu.Lock()
+	defer m.monitorMu.Unlock()
+
 	if !connIsValid {
 		m.FailureCount.Add(1)
 
@@ -279,17 +286,23 @@ func (m *HostMonitorImpl) CheckConnectionStatus() bool {
 		m.servicesContainer.GetPluginService().SetTelemetryContext(parentCtx)
 	}()
 
+	m.monitorMu.Lock()
 	if m.MonitoringConn == nil || m.servicesContainer.GetPluginService().GetTargetDriverDialect().IsClosed(m.MonitoringConn) {
 		// Open a new connection.
 		slog.Debug(error_util.GetMessage("HostMonitorImpl.openingMonitoringConnection", m.hostInfo.Host))
+		m.monitorMu.Unlock()
 		newMonitoringConn, err := m.servicesContainer.GetPluginService().ForceConnect(m.hostInfo, m.monitoringProps)
 		if err != nil || newMonitoringConn == nil {
 			return false
 		}
+		m.monitorMu.Lock()
 		m.MonitoringConn = newMonitoringConn
+		m.monitorMu.Unlock()
 		slog.Debug(error_util.GetMessage("HostMonitorImpl.openedMonitoringConnection", m.hostInfo.Host))
 		return true
 	}
+	conn := m.MonitoringConn
+	m.monitorMu.Unlock()
 
 	timeout := m.failureDetectionIntervalNanos - EFM_ROUTINE_SLEEP_DURATION
 
@@ -300,7 +313,7 @@ func (m *HostMonitorImpl) CheckConnectionStatus() bool {
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	return utils.IsReachable(m.MonitoringConn, ctx)
+	return utils.IsReachable(conn, ctx)
 }
 
 func (m *HostMonitorImpl) isStopped() bool {
@@ -328,6 +341,7 @@ func (m *HostMonitorImpl) ProcessEvent(event driver_infrastructure.Event) {
 func (m *HostMonitorImpl) reset() {
 	slog.Debug(error_util.GetMessage("HostMonitorImpl.reset", m.hostInfo.Host))
 
+	m.monitorMu.Lock()
 	// Close and clear monitoring connection
 	if m.MonitoringConn != nil {
 		_ = m.MonitoringConn.Close()
@@ -336,6 +350,8 @@ func (m *HostMonitorImpl) reset() {
 
 	// Reset failure tracking
 	m.InvalidHostStartTime = time.Time{}
+	m.monitorMu.Unlock()
+
 	m.FailureCount.Store(0)
 	m.HostUnhealthy.Store(false)
 }

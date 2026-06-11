@@ -19,6 +19,7 @@ package driver_infrastructure
 import (
 	"errors"
 	"math/rand/v2"
+	"sync"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
@@ -27,18 +28,28 @@ import (
 )
 
 type WeightedRandomHostSelector struct {
+	mu               sync.RWMutex
 	hostWeightMap    map[string]int
 	randomNumberFunc func(int) int
 }
 
 func (r *WeightedRandomHostSelector) GetHost(hosts []*host_info_util.HostInfo, role host_info_util.HostRole, props map[string]string) (*host_info_util.HostInfo, error) {
+	r.mu.Lock()
 	if len(r.hostWeightMap) == 0 {
 		hostWeightMap, err := GetHostWeightMapFromString(property_util.GetVerifiedWrapperPropertyValueFromMap[string](props, property_util.WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS))
 		if err != nil {
+			r.mu.Unlock()
 			return nil, err
 		}
 		r.hostWeightMap = hostWeightMap
 	}
+	hostWeightMap := r.hostWeightMap
+	randomNumberFunc := r.randomNumberFunc
+	if randomNumberFunc == nil {
+		randomNumberFunc = rand.IntN
+		r.randomNumberFunc = randomNumberFunc
+	}
+	r.mu.Unlock()
 
 	eligibleHosts := utils.FilterSlice(hosts, func(hostInfo *host_info_util.HostInfo) bool {
 		return (role == "" || role == hostInfo.Role) && hostInfo.Availability == host_info_util.AVAILABLE
@@ -50,7 +61,7 @@ func (r *WeightedRandomHostSelector) GetHost(hosts []*host_info_util.HostInfo, r
 	hostWeightRangeMap := make(map[NumberRange]*host_info_util.HostInfo)
 	count := 1
 	for _, host := range eligibleHosts {
-		hostWeight, hostWeightFound := r.hostWeightMap[host.Host]
+		hostWeight, hostWeightFound := hostWeightMap[host.Host]
 		if hostWeightFound && hostWeight > 0 {
 			rangeStart := count
 			rangeEnd := count + hostWeight - 1
@@ -62,10 +73,7 @@ func (r *WeightedRandomHostSelector) GetHost(hosts []*host_info_util.HostInfo, r
 		}
 	}
 
-	if r.randomNumberFunc == nil {
-		r.randomNumberFunc = rand.IntN
-	}
-	randomNumber := r.randomNumberFunc(count-1) + 1
+	randomNumber := randomNumberFunc(count-1) + 1
 	for hostWeightRange, host := range hostWeightRangeMap {
 		if hostWeightRange.IsInNumberRange(randomNumber) {
 			return host, nil
@@ -77,14 +85,20 @@ func (r *WeightedRandomHostSelector) GetHost(hosts []*host_info_util.HostInfo, r
 }
 
 func (r *WeightedRandomHostSelector) SetHostWeights(hostWeightMap map[string]int) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.hostWeightMap = hostWeightMap
 }
 
 func (r *WeightedRandomHostSelector) ClearHostWeights() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.hostWeightMap = nil
 }
 
 func (r *WeightedRandomHostSelector) SetRandomNumberFunc(f func(int) int) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.randomNumberFunc = f
 }
 

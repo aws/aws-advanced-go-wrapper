@@ -90,15 +90,15 @@ func (mr *MockStorageServiceMockRecorder) Exists(arg0, arg1 interface{}) *gomock
 }
 
 // Register mocks base method.
-func (m *MockStorageService) Register(arg0 string, arg1 time.Duration, arg2 bool, arg3 driver_infrastructure.ShouldDisposeFunc, arg4 driver_infrastructure.ItemDisposalFunc) {
+func (m *MockStorageService) Register(arg0 string, arg1 time.Duration, arg2 bool, arg3 driver_infrastructure.ItemDisposalFunc) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Register", arg0, arg1, arg2, arg3, arg4)
+	m.ctrl.Call(m, "Register", arg0, arg1, arg2, arg3)
 }
 
 // Register indicates an expected call of Register.
-func (mr *MockStorageServiceMockRecorder) Register(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+func (mr *MockStorageServiceMockRecorder) Register(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockStorageService)(nil).Register), arg0, arg1, arg2, arg3, arg4)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockStorageService)(nil).Register), arg0, arg1, arg2, arg3)
 }
 
 // Remove mocks base method.

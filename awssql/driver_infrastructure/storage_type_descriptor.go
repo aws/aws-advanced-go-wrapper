@@ -27,8 +27,6 @@ type StorageTypeDescriptor[T any] struct {
 	TTL time.Duration
 	// RenewOnAccess controls whether accessing an item extends its expiration
 	RenewOnAccess bool
-	// ShouldDispose determines if an expired item should be disposed during cleanup
-	ShouldDispose func(value T) bool
 	// OnDispose is called when an item is removed from storage
 	OnDispose func(value T)
 }
@@ -36,21 +34,15 @@ type StorageTypeDescriptor[T any] struct {
 // Register registers this type with the storage service.
 // Must be called before using Get/Set if using custom configuration.
 func (d *StorageTypeDescriptor[T]) Register(s StorageService) {
-	var shouldDispose ShouldDisposeFunc
 	var onDispose ItemDisposalFunc
 
-	if d.ShouldDispose != nil {
-		shouldDispose = func(v any) bool {
-			return d.ShouldDispose(v.(T))
-		}
-	}
 	if d.OnDispose != nil {
 		onDispose = func(v any) {
 			d.OnDispose(v.(T))
 		}
 	}
 
-	s.Register(d.TypeKey, d.TTL, d.RenewOnAccess, shouldDispose, onDispose)
+	s.Register(d.TypeKey, d.TTL, d.RenewOnAccess, onDispose)
 }
 
 // Get retrieves a value from storage with full type safety.

@@ -28,6 +28,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils"
 )
 
+// KnownDialectsByCode is read-only after package initialization. Do not modify at runtime.
 var KnownDialectsByCode = map[string]DatabaseDialect{
 	MYSQL_DIALECT:                      &MySQLDatabaseDialect{},
 	PG_DIALECT:                         &PgDatabaseDialect{},

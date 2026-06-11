@@ -19,6 +19,7 @@ package test
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"testing"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
@@ -78,6 +79,7 @@ func TestValidateNumericalProps(t *testing.T) {
 }
 
 type TestHandler struct {
+	mu      sync.Mutex
 	records []slog.Record
 }
 
@@ -86,7 +88,9 @@ func (h *TestHandler) Enabled(context.Context, slog.Level) bool {
 }
 
 func (h *TestHandler) Handle(_ context.Context, r slog.Record) error {
+	h.mu.Lock()
 	h.records = append(h.records, r)
+	h.mu.Unlock()
 	return nil
 }
 

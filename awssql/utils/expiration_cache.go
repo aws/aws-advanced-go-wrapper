@@ -21,9 +21,6 @@ import (
 	"time"
 )
 
-// ShouldDisposeFunc determines whether an expired item should be disposed during cleanup.
-type ShouldDisposeFunc[T any] func(T) bool
-
 // ItemDisposalFunc defines how to dispose of an item when removed.
 type ItemDisposalFunc[T any] func(T)
 
@@ -31,21 +28,10 @@ type ItemDisposalFunc[T any] func(T)
 type expirationItem[T any] struct {
 	item           T
 	expirationTime time.Time
-	shouldDispose  ShouldDisposeFunc[T]
 }
 
 func (e *expirationItem[T]) isExpired() bool {
 	return time.Now().After(e.expirationTime)
-}
-
-func (e *expirationItem[T]) shouldCleanup() bool {
-	if !e.isExpired() {
-		return false
-	}
-	if e.shouldDispose != nil {
-		return e.shouldDispose(e.item)
-	}
-	return true
 }
 
 func (e *expirationItem[T]) extendExpiration(ttl time.Duration) {
@@ -60,7 +46,6 @@ type ExpirationCache[K comparable, V any] struct {
 	lock             sync.RWMutex
 	ttl              time.Duration
 	renewOnAccess    bool
-	shouldDispose    ShouldDisposeFunc[V]
 	itemDisposalFunc ItemDisposalFunc[V]
 }
 
@@ -68,7 +53,6 @@ type ExpirationCache[K comparable, V any] struct {
 type ExpirationCacheConfig[V any] struct {
 	TTL              time.Duration
 	RenewOnAccess    bool
-	ShouldDispose    ShouldDisposeFunc[V]
 	ItemDisposalFunc ItemDisposalFunc[V]
 }
 
@@ -82,7 +66,6 @@ func NewExpirationCache[K comparable, V any](config ExpirationCacheConfig[V]) *E
 		cache:            make(map[K]*expirationItem[V]),
 		ttl:              ttl,
 		renewOnAccess:    config.RenewOnAccess,
-		shouldDispose:    config.ShouldDispose,
 		itemDisposalFunc: config.ItemDisposalFunc,
 	}
 }
@@ -94,7 +77,6 @@ func (c *ExpirationCache[K, V]) Put(key K, value V) *V {
 	c.cache[key] = &expirationItem[V]{
 		item:           value,
 		expirationTime: time.Now().Add(c.ttl),
-		shouldDispose:  c.shouldDispose,
 	}
 	c.lock.Unlock()
 
@@ -171,7 +153,6 @@ func (c *ExpirationCache[K, V]) ComputeIfAbsent(key K, computeFunc func() V) V {
 	c.cache[key] = &expirationItem[V]{
 		item:           newValue,
 		expirationTime: time.Now().Add(c.ttl),
-		shouldDispose:  c.shouldDispose,
 	}
 	return newValue
 }
@@ -182,7 +163,7 @@ func (c *ExpirationCache[K, V]) Exists(key K) bool {
 	item := c.cache[key]
 	c.lock.RUnlock()
 
-	return item != nil && !item.shouldCleanup()
+	return item != nil && !item.isExpired()
 }
 
 // Remove removes and disposes of the value at the given key.
@@ -202,12 +183,12 @@ func (c *ExpirationCache[K, V]) Remove(key K) *V {
 	return &item.item
 }
 
-// RemoveExpiredEntries removes all expired entries that should be disposed.
+// RemoveExpiredEntries removes all expired entries.
 func (c *ExpirationCache[K, V]) RemoveExpiredEntries() {
 	c.lock.Lock()
 	var toDispose []V
 	for key, item := range c.cache {
-		if item.shouldCleanup() {
+		if item.isExpired() {
 			toDispose = append(toDispose, item.item)
 			delete(c.cache, key)
 		}
