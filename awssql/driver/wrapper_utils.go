@@ -24,6 +24,7 @@ import (
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils/telemetry"
 )
 
@@ -33,6 +34,10 @@ func ExecuteWithPlugins(
 	methodName string,
 	executeFunc driver_infrastructure.ExecuteFunc,
 	methodArgs ...any) (wrappedReturnValue any, wrappedReturnValue2 any, wrappedOk bool, wrappedErr error) {
+	if method, ok := utils.SqlMethods[methodName]; ok && !method.UsePipeline {
+		return executeFunc()
+	}
+
 	telemetryCtx, ctx := pluginManager.GetTelemetryFactory().OpenTelemetryContext(
 		fmt.Sprintf(telemetry.TELEMETRY_EXECUTE, methodName),
 		telemetry.TOP_LEVEL,

@@ -237,7 +237,7 @@ func (pluginManager *PluginManagerImpl) Execute(
 	pluginService := pluginManager.servicesContainer.GetPluginService()
 	if connInvokedOn != nil &&
 		connInvokedOn != pluginService.GetCurrentConnection() &&
-		!slices.Contains(utils.CLOSING_METHODS, methodName) {
+		utils.SqlMethods[methodName].CheckBoundedConnection {
 		return nil, nil, false, error_util.NewGenericAwsWrapperError(error_util.GetMessage(
 			"PluginManagerImpl.invokedAgainstOldConnection", strings.Split(methodName, ".")[0], methodName))
 	}
