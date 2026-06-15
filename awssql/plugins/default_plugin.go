@@ -18,7 +18,6 @@ package plugins
 
 import (
 	"database/sql/driver"
-	"fmt"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
@@ -103,7 +102,7 @@ func (d *DefaultPlugin) connectInternal(
 	pluginService := d.ServicesContainer.GetPluginService()
 	parentCtx := pluginService.GetTelemetryContext()
 	telemetryCtx, ctx := pluginService.GetTelemetryFactory().OpenTelemetryContext(
-		fmt.Sprintf(telemetry.TELEMETRY_CONNECT_INTERNAL, utils.GetStructName(connProvider)), telemetry.NESTED, parentCtx)
+		utils.GetStructName(connProvider)+telemetry.TELEMETRY_CONNECT_INTERNAL_SUFFIX, telemetry.NESTED, parentCtx)
 	pluginService.SetTelemetryContext(ctx)
 	defer func() {
 		telemetryCtx.CloseContext()
