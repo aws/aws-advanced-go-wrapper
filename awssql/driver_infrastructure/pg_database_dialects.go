@@ -85,9 +85,10 @@ func (p *PgDatabaseDialect) DoesStatementSetReadOnly(statement string) (bool, bo
 	return false, false
 }
 
+var pgSetSchemaRegexp = regexp.MustCompile(`(?i)set search_path( to |\s?=\s?)("?.+"?)`)
+
 func (p *PgDatabaseDialect) DoesStatementSetSchema(statement string) (string, bool) {
-	re := regexp.MustCompile(`(?i)set search_path( to |\s?=\s?)("?.+"?)`)
-	matches := re.FindStringSubmatch(statement)
+	matches := pgSetSchemaRegexp.FindStringSubmatch(statement)
 	if len(matches) < 3 {
 		return "", false
 	}

@@ -23,6 +23,11 @@ import (
 
 const SET_AUTOCOMMIT_0 = "set autocommit = 0"
 
+var (
+	sqlCommentRegexp = regexp.MustCompile(`\s*/\*(.*?)\*/\s*`)
+	whitespaceRegexp = regexp.MustCompile(`\s+`)
+)
+
 func DoesOpenTransaction(methodName string, methodArgs ...any) bool {
 	if methodName == CONN_BEGIN_TX ||
 		methodName == CONN_BEGIN {
@@ -64,8 +69,7 @@ func GetSeparateSqlStatements(query string) []string {
 
 	var statements []string
 	for _, statement := range statementList {
-		re := regexp.MustCompile(`\s*/\*(.*?)\*/\s*`)
-		stmt := strings.TrimSpace(re.ReplaceAllString(statement, " "))
+		stmt := strings.TrimSpace(sqlCommentRegexp.ReplaceAllString(statement, " "))
 		if stmt != "" {
 			statements = append(statements, stmt)
 		}
@@ -74,10 +78,9 @@ func GetSeparateSqlStatements(query string) []string {
 }
 
 func DoesSetReadOnly(query string, dialectFunc func(string) (bool, bool)) (bool, bool) {
-	re := regexp.MustCompile(`\s*/\*(.*?)\*/\s*`)
 	statements := parseMultiStatementQueries(query)
 	for _, statement := range statements {
-		cleanStmt := strings.TrimSpace(re.ReplaceAllString(statement, " "))
+		cleanStmt := strings.TrimSpace(sqlCommentRegexp.ReplaceAllString(statement, " "))
 		if cleanStmt == "" {
 			continue
 		}
@@ -94,8 +97,7 @@ func parseMultiStatementQueries(query string) []string {
 		return []string{}
 	}
 
-	re := regexp.MustCompile(`\s+`)
-	query = re.ReplaceAllString(query, " ")
+	query = whitespaceRegexp.ReplaceAllString(query, " ")
 
 	// Check to see if the string only has blank spaces.
 	query = strings.TrimSpace(query)

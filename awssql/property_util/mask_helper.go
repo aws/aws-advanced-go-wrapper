@@ -85,10 +85,10 @@ func maskSensitiveInfoFromPgxUrl(dsn string) string {
 	return strings.ReplaceAll(u.String(), "%2A%2A%2A", "***")
 }
 
+var mysqlDsnRegexp = regexp.MustCompile(`(?P<user>[^:]+):(?P<password>[^@]+)@`)
+
 func maskSensitiveInfoFromMySQL(dsn string) string {
-	// Masks user:password
-	re := regexp.MustCompile(`(?P<user>[^:]+):(?P<password>[^@]+)@`)
-	masked := re.ReplaceAllString(dsn, `${user}:***@`)
+	masked := mysqlDsnRegexp.ReplaceAllString(dsn, `${user}:***@`)
 
 	parts := strings.SplitN(masked, "?", 2)
 	if len(parts) == 2 {
@@ -113,12 +113,16 @@ func maskSensitiveInfoFromMySQL(dsn string) string {
 	return strings.ReplaceAll(masked, "%2A%2A%2A", "***")
 }
 
-func maskSensitiveInfoFromPgxKeywordValue(dsn string) string {
+var pgxKeywordValueRegexp *regexp.Regexp
+
+func init() {
 	var keys []string
 	for k := range SENSITIVE_PROPERTIES {
 		keys = append(keys, regexp.QuoteMeta(k))
 	}
-	// build regex from sensitive properties
-	kvRe := regexp.MustCompile(`\b(` + strings.Join(keys, "|") + `)=([^\s]+)`)
-	return kvRe.ReplaceAllString(dsn, `$1=***`)
+	pgxKeywordValueRegexp = regexp.MustCompile(`\b(` + strings.Join(keys, "|") + `)=([^\s]+)`)
+}
+
+func maskSensitiveInfoFromPgxKeywordValue(dsn string) string {
+	return pgxKeywordValueRegexp.ReplaceAllString(dsn, `$1=***`)
 }
