@@ -87,7 +87,7 @@ func GetRowsFromQuery(conn driver.Conn, query string, n int) [][]driver.Value {
 			// Gathering row failed.
 			break
 		}
-		res[i] = row
+		res[i] = append([]driver.Value(nil), row...)
 	}
 	return res
 }

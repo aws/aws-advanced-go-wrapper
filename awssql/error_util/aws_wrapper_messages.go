@@ -28,26 +28,24 @@ import (
 )
 
 var globalLocalizer *i18n.Localizer
-var LocalizerMutex = &sync.Mutex{}
+var localizerOnce sync.Once
+var localizerErr error
 
 func getLocalizer() (*i18n.Localizer, error) {
-	LocalizerMutex.Lock()
-	defer LocalizerMutex.Unlock()
+	localizerOnce.Do(func() {
+		bundle := i18n.NewBundle(language.English)
+		bundle.RegisterUnmarshalFunc("json", json.Unmarshal)
 
-	if globalLocalizer != nil {
-		return globalLocalizer, nil
-	}
+		err := resources.LoadMessages(bundle, "en.json")
+		if err != nil {
+			localizerErr = errors.New("could not load messages file")
+			return
+		}
 
-	bundle := i18n.NewBundle(language.English)
-	bundle.RegisterUnmarshalFunc("json", json.Unmarshal)
+		globalLocalizer = i18n.NewLocalizer(bundle, language.English.String())
+	})
 
-	err := resources.LoadMessages(bundle, "en.json")
-	if err != nil {
-		return nil, errors.New("could not load messages file")
-	}
-
-	globalLocalizer = i18n.NewLocalizer(bundle, language.English.String())
-	return globalLocalizer, nil
+	return globalLocalizer, localizerErr
 }
 
 func GetMessage(messageId string, messageArgs ...any) string {
