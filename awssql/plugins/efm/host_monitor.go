@@ -197,7 +197,7 @@ func (m *HostMonitorImpl) Monitor() {
 			m.servicesContainer.GetPluginService().SetAvailability(m.hostInfo.AllAliases, host_info_util.UNAVAILABLE)
 		}
 
-		tmpActiveStates := make([]weak.Pointer[MonitorConnectionState], 0)
+		tmpActiveStates := make([]weak.Pointer[MonitorConnectionState], 0, m.ActiveStates.Size())
 		for {
 			monitorStateWeakRef, ok := m.ActiveStates.Dequeue()
 			if !ok {
