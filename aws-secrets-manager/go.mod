@@ -26,7 +26,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.43.3 // indirect
 	github.com/aws/smithy-go v1.27.1 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.6.1 // indirect
-	golang.org/x/text v0.37.0 // indirect
+	golang.org/x/text v0.38.0 // indirect
 )
 
 replace github.com/aws/aws-advanced-go-wrapper/awssql/v2 => ../awssql
