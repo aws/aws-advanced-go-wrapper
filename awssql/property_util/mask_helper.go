@@ -29,6 +29,20 @@ var SENSITIVE_PROPERTIES = map[string]struct{}{
 	IDP_PASSWORD.Name: {},
 }
 
+var pgxKeywordValueRegexp *regexp.Regexp
+
+func init() {
+	var keys []string
+	for k := range SENSITIVE_PROPERTIES {
+		keys = append(keys, regexp.QuoteMeta(k))
+	}
+	pgxKeywordValueRegexp = regexp.MustCompile(`\b(` + strings.Join(keys, "|") + `)=([^\s]+)`)
+}
+
+func maskSensitiveInfoFromPgxKeywordValue(dsn string) string {
+	return pgxKeywordValueRegexp.ReplaceAllString(dsn, `$1=***`)
+}
+
 func MaskProperties(props *utils.RWMap[string, string]) map[string]string {
 	maskedProps := props.GetAllEntries()
 
@@ -111,18 +125,4 @@ func maskSensitiveInfoFromMySQL(dsn string) string {
 
 	// Url excapes '*' to '%2A'
 	return strings.ReplaceAll(masked, "%2A%2A%2A", "***")
-}
-
-var pgxKeywordValueRegexp *regexp.Regexp
-
-func init() {
-	var keys []string
-	for k := range SENSITIVE_PROPERTIES {
-		keys = append(keys, regexp.QuoteMeta(k))
-	}
-	pgxKeywordValueRegexp = regexp.MustCompile(`\b(` + strings.Join(keys, "|") + `)=([^\s]+)`)
-}
-
-func maskSensitiveInfoFromPgxKeywordValue(dsn string) string {
-	return pgxKeywordValueRegexp.ReplaceAllString(dsn, `$1=***`)
 }
