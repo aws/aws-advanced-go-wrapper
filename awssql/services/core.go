@@ -31,7 +31,7 @@ const (
 var (
 	coreServiceContainer     *CoreServiceContainer
 	coreServiceContainerOnce sync.Once
-	coreServiceMu            sync.Mutex
+	coreServiceMu            sync.RWMutex
 )
 
 // CoreServiceContainer holds the shared singleton services used across all connections.
@@ -43,6 +43,13 @@ type CoreServiceContainer struct {
 
 // GetCoreServiceContainer returns the shared singleton core services, initializing on first call.
 func GetCoreServiceContainer() *CoreServiceContainer {
+	coreServiceMu.RLock()
+	if coreServiceContainer != nil {
+		defer coreServiceMu.RUnlock()
+		return coreServiceContainer
+	}
+	coreServiceMu.RUnlock()
+
 	coreServiceMu.Lock()
 	defer coreServiceMu.Unlock()
 	coreServiceContainerOnce.Do(func() {

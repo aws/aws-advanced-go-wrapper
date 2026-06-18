@@ -60,10 +60,10 @@ func GetRegionFromHost(host string) Region {
 	return GetRegionFromRegionString(regionString)
 }
 
+var arnRegionRegexp = regexp.MustCompile(`^arn:[^:]*:[^:]*:([^:]*):`)
+
 func GetRegionFromArn(arn string) Region {
-	// This regex captures the region (4th field in ARN)
-	re := regexp.MustCompile(`^arn:[^:]*:[^:]*:([^:]*):`)
-	matches := re.FindStringSubmatch(arn)
+	matches := arnRegionRegexp.FindStringSubmatch(arn)
 
 	if len(matches) < 2 {
 		return ""

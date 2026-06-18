@@ -124,9 +124,10 @@ func (m *MySQLDatabaseDialect) DoesStatementSetAutoCommit(statement string) (boo
 	return false, false
 }
 
+var mysqlUseCatalogRegexp = regexp.MustCompile(`^(?i)use\s+(\w+)`)
+
 func (m *MySQLDatabaseDialect) DoesStatementSetCatalog(statement string) (string, bool) {
-	re := regexp.MustCompile(`^(?i)use\s+(\w+)`)
-	matches := re.FindStringSubmatch(statement)
+	matches := mysqlUseCatalogRegexp.FindStringSubmatch(statement)
 	if len(matches) < 2 {
 		return "", false
 	}

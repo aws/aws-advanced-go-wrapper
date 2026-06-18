@@ -20,7 +20,6 @@ import (
 	"context"
 	"database/sql/driver"
 	"errors"
-	"fmt"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
@@ -39,7 +38,7 @@ func ExecuteWithPlugins(
 	}
 
 	telemetryCtx, ctx := pluginManager.GetTelemetryFactory().OpenTelemetryContext(
-		fmt.Sprintf(telemetry.TELEMETRY_EXECUTE, methodName),
+		telemetry.TELEMETRY_EXECUTE_PREFIX+methodName,
 		telemetry.TOP_LEVEL,
 		nil)
 	telemetryCtx.SetAttribute(telemetry.TELEMETRY_ATTRIBUTE_SQL_CALL, methodName)

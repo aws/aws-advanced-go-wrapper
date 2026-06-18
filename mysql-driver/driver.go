@@ -19,7 +19,6 @@ package mysql_driver
 import (
 	"database/sql"
 	"database/sql/driver"
-	"sync"
 
 	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
@@ -27,16 +26,14 @@ import (
 )
 
 type MySQLDriver struct {
-	awsWrapperDriver awsDriver.AwsWrapperDriver
-	lock             sync.Mutex
 }
 
 func (d *MySQLDriver) Open(dsn string) (driver.Conn, error) {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-	d.awsWrapperDriver.DriverDialect = NewMySQLDriverDialect()
-	d.awsWrapperDriver.UnderlyingDriver = &mysql.MySQLDriver{}
-	return d.awsWrapperDriver.Open(dsn)
+	wd := awsDriver.AwsWrapperDriver{
+		DriverDialect:    NewMySQLDriverDialect(),
+		UnderlyingDriver: &mysql.MySQLDriver{},
+	}
+	return wd.Open(dsn)
 }
 
 func ClearCaches() {

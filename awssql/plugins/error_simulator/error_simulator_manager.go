@@ -26,7 +26,7 @@ var (
 )
 
 type ErrorSimulatorManager struct {
-	mu              sync.Mutex
+	mu              sync.RWMutex
 	NextError       error
 	ConnectCallback ErrorSimulatorConnectCallback
 }
@@ -58,8 +58,8 @@ func ResetErrorSimulatorManager() {
 }
 
 func (e *ErrorSimulatorManager) GetNextError() error {
-	e.mu.Lock()
-	defer e.mu.Unlock()
+	e.mu.RLock()
+	defer e.mu.RUnlock()
 	return e.NextError
 }
 
@@ -70,7 +70,7 @@ func (e *ErrorSimulatorManager) ConsumeNextError() {
 }
 
 func (e *ErrorSimulatorManager) GetConnectCallback() ErrorSimulatorConnectCallback {
-	e.mu.Lock()
-	defer e.mu.Unlock()
+	e.mu.RLock()
+	defer e.mu.RUnlock()
 	return e.ConnectCallback
 }

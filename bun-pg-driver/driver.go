@@ -19,7 +19,6 @@ package bun_pg_driver
 import (
 	"database/sql"
 	"database/sql/driver"
-	"sync"
 
 	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
@@ -27,16 +26,14 @@ import (
 )
 
 type BunPgDriver struct {
-	awsWrapperDriver awsDriver.AwsWrapperDriver
-	lock             sync.Mutex
 }
 
 func (d *BunPgDriver) Open(dsn string) (driver.Conn, error) {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-	d.awsWrapperDriver.DriverDialect = NewBunPgDriverDialect()
-	d.awsWrapperDriver.UnderlyingDriver = pgdriver.NewDriver()
-	return d.awsWrapperDriver.Open(dsn)
+	wd := awsDriver.AwsWrapperDriver{
+		DriverDialect:    NewBunPgDriverDialect(),
+		UnderlyingDriver: pgdriver.NewDriver(),
+	}
+	return wd.Open(dsn)
 }
 
 func ClearCaches() {

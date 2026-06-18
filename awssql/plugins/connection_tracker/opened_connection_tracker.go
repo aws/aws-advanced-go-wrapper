@@ -135,17 +135,18 @@ func (o *OpenedConnectionTracker) logConnectionQueue(host string, queue *utils.R
 		return
 	}
 
-	debugMsg := host
+	var sb strings.Builder
+	sb.WriteString(host)
 	queue.ForEach(func(wp weak.Pointer[driver.Conn]) {
-		debugMsg += "\n\t" + fmt.Sprintf("%v", wp)
+		sb.WriteString("\n\t")
+		fmt.Fprintf(&sb, "%v", wp)
 	})
 
-	slog.Debug(error_util.GetMessage("OpenedConnectionTracker.invalidatingConnections", debugMsg))
+	slog.Debug(error_util.GetMessage("OpenedConnectionTracker.invalidatingConnections", sb.String()))
 }
 
 func (o *OpenedConnectionTracker) LogOpenedConnections() {
-	str := ""
-	hostList := []string{}
+	var hostList []string
 
 	for host, queue := range openedConnections.GetAllEntries() {
 		if queue.IsEmpty() {
@@ -153,14 +154,12 @@ func (o *OpenedConnectionTracker) LogOpenedConnections() {
 		}
 		queue.ForEach(func(wp weak.Pointer[driver.Conn]) {
 			if wp.Value() != nil {
-				str += host + " "
 				hostList = append(hostList, host)
 			}
 		})
 	}
-	str = strings.Join(hostList, "\n\t")
 
-	slog.Debug(error_util.GetMessage("OpenedConnectionTracker.connectionsTracked", str))
+	slog.Debug(error_util.GetMessage("OpenedConnectionTracker.connectionsTracked", strings.Join(hostList, "\n\t")))
 }
 
 func (o *OpenedConnectionTracker) PruneNullConnections() {

@@ -19,7 +19,6 @@ package pgx_driver
 import (
 	"database/sql"
 	"database/sql/driver"
-	"sync"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -28,16 +27,14 @@ import (
 )
 
 type PgxDriver struct {
-	awsWrapperDriver awsDriver.AwsWrapperDriver
-	lock             sync.Mutex
 }
 
 func (d *PgxDriver) Open(dsn string) (driver.Conn, error) {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-	d.awsWrapperDriver.DriverDialect = NewPgxDriverDialect()
-	d.awsWrapperDriver.UnderlyingDriver = &stdlib.Driver{}
-	return d.awsWrapperDriver.Open(dsn)
+	wd := awsDriver.AwsWrapperDriver{
+		DriverDialect:    NewPgxDriverDialect(),
+		UnderlyingDriver: &stdlib.Driver{},
+	}
+	return wd.Open(dsn)
 }
 
 func ClearCaches() {

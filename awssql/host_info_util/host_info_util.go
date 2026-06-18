@@ -17,8 +17,8 @@
 package host_info_util
 
 import (
-	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -60,7 +60,7 @@ func GetReaders(hosts []*HostInfo) []*HostInfo {
 
 func GetHostAndPort(host string, port int) string {
 	if port > 0 && host != "" {
-		return fmt.Sprintf("%s:%d", host, port)
+		return host + ":" + strconv.Itoa(port)
 	}
 	return host
 }
