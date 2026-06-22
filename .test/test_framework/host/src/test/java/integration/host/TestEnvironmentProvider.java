@@ -51,6 +51,8 @@ public class TestEnvironmentProvider implements TestTemplateInvocationContextPro
     final boolean excludeLimitless = Boolean.parseBoolean(System.getProperty("exclude-limitless", "true"));
     final boolean excludePerformance =
         Boolean.parseBoolean(System.getProperty("exclude-performance", "false"));
+    final boolean excludeRace =
+        Boolean.parseBoolean(System.getProperty("exclude-race", "false"));
     final boolean excludeMysqlEngine =
         Boolean.parseBoolean(System.getProperty("exclude-mysql-engine", "false"));
     final boolean excludeMysqlDriver =
@@ -149,6 +151,7 @@ public class TestEnvironmentProvider implements TestTemplateInvocationContextPro
                           : TestEnvironmentFeatures.IAM,
                       excludeSecretsManager ? null : TestEnvironmentFeatures.SECRETS_MANAGER,
                       excludePerformance ? null : TestEnvironmentFeatures.PERFORMANCE,
+                      excludeRace ? null : TestEnvironmentFeatures.RACE,
                       excludeMysqlDriver ? TestEnvironmentFeatures.SKIP_MYSQL_DRIVER_TESTS : null,
                       excludePgDriver ? TestEnvironmentFeatures.SKIP_PG_DRIVER_TESTS : null,
                       testAutoscalingOnly ? TestEnvironmentFeatures.RUN_AUTOSCALING_TESTS_ONLY : null,
