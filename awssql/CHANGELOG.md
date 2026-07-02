@@ -114,6 +114,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### :bug: Fixed
 * Remove registered dialects check so that custom driver dialects will not be blocked ([PR #431](https://github.com/aws/aws-advanced-go-wrapper/pull/431)).
 
+## [2.0.2] - 2026-07-02
+### :bug: Fixed
+* Thread-safe plugin and driver registration ([PR #459](https://github.com/aws/aws-advanced-go-wrapper/pull/459)).
+* Proper mutex synchronization across various components and thread-safe map access ([PR #462](https://github.com/aws/aws-advanced-go-wrapper/pull/462)).
+
+### :crab: Changed
+* Driver method have descriptors/flags that help define execution behavior ([PR #463](https://github.com/aws/aws-advanced-go-wrapper/pull/463)).
+* Various performance optimizations. To learn more, see ([PR #471](https://github.com/aws/aws-advanced-go-wrapper/pull/471)).
+
 [1.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.0.0
 [1.1.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.1.0
 [1.1.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.1.1
@@ -122,3 +131,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [1.4.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.4.0
 [2.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv2.0.0
 [2.0.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv2.0.1
+[2.0.2]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv2.0.2

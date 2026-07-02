@@ -35,6 +35,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### :crab: Changed
 * Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.0.1
 
+## [1.0.8] - 2026-07-02
+### :crab: Changed
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.0.2
+
 [1.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/xray%2Fv1.0.0
 [1.0.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/xray%2Fv1.0.1
 [1.0.2]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/xray%2Fv1.0.2
@@ -43,3 +47,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [1.0.5]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/xray%2Fv1.0.5
 [1.0.6]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/xray%2Fv1.0.6
 [1.0.7]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/xray%2Fv1.0.7
+[1.0.8]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/xray%2Fv1.0.8

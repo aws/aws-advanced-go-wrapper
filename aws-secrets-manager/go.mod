@@ -3,8 +3,8 @@ module github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager
 go 1.25.0
 
 require (
-	github.com/aws/aws-advanced-go-wrapper/auth-helpers v1.1.1
-	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.0.1
+	github.com/aws/aws-advanced-go-wrapper/auth-helpers v1.1.2
+	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.0.2
 	github.com/aws/aws-sdk-go-v2/config v1.32.25
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.42.3
 )

@@ -200,3 +200,26 @@ The Amazon Web Services (AWS) Advanced Go Wrapper allows an application to take 
 * `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.7](otlp/CHANGELOG.md#107---2026-05-26)
 * `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.1.1](pgx-driver/CHANGELOG.md#111---2026-05-26)
 * `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.7](xray/CHANGELOG.md#107---2026-05-26)
+
+# Release (2026-07-02)
+## General Highlights
+### :bug: Fixed
+* Thread-safe plugin and driver registration ([PR #459](https://github.com/aws/aws-advanced-go-wrapper/pull/459)).
+* Proper mutex synchronization across various components and thread-safe map access ([PR #462](https://github.com/aws/aws-advanced-go-wrapper/pull/462)).
+
+### :crab: Changed
+* Driver method have descriptors/flags that help define execution behavior ([PR #463](https://github.com/aws/aws-advanced-go-wrapper/pull/463)).
+* Various performance optimizations. To learn more, see ([PR #471](https://github.com/aws/aws-advanced-go-wrapper/pull/471)).
+
+## Module Highlights
+* `https://github.com/aws/aws-advanced-go-wrapper/auth-helpers`: [v1.1.2](auth-helpers/CHANGELOG.md#112---2026-07-02)
+* `https://github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager`: [v1.1.3](aws-secrets-manager/CHANGELOG.md#113---2026-07-02)
+* `https://github.com/aws/aws-advanced-go-wrapper/awssql/v2`: [v2.0.2](awssql/CHANGELOG.md#202---2026-07-02)
+* `https://github.com/aws/aws-advanced-go-wrapper/custom-endpoint`: [v1.0.5](custom-endpoint/CHANGELOG.md#105---2026-07-02)
+* `https://github.com/aws/aws-advanced-go-wrapper/federated-auth`: [v1.1.2](federated-auth/CHANGELOG.md#112---2026-07-02)
+* `https://github.com/aws/aws-advanced-go-wrapper/iam`: [v1.1.2](iam/CHANGELOG.md#112---2026-07-02)
+* `https://github.com/aws/aws-advanced-go-wrapper/mysql-driver`: [v1.1.2](mysql-driver/CHANGELOG.md#112---2026-07-02)
+* `https://github.com/aws/aws-advanced-go-wrapper/okta`: [v1.1.2](okta/CHANGELOG.md#112---2026-07-02)
+* `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.8](otlp/CHANGELOG.md#108---2026-07-02)
+* `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.1.2](pgx-driver/CHANGELOG.md#112---2026-07-02)
+* `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.8](xray/CHANGELOG.md#108---2026-07-02)

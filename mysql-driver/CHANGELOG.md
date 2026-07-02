@@ -47,6 +47,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### :crab: Changed
 * Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.0.1
 
+## [1.1.2] - 2026-07-02
+### :crab: Changed
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.0.2
+* Various performance optimizations. To learn more, see ([PR #471](https://github.com/aws/aws-advanced-go-wrapper/pull/471)).
+
 [1.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/mysql-driver%2Fv1.0.0
 [1.0.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/mysql-driver%2Fv1.0.1
 [1.0.2]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/mysql-driver%2Fv1.0.2
@@ -55,3 +60,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [1.0.5]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/mysql-driver%2Fv1.0.5
 [1.1.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/mysql-driver%2Fv1.1.0
 [1.1.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/mysql-driver%2Fv1.1.1
+[1.1.2]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/mysql-driver%2Fv1.1.2

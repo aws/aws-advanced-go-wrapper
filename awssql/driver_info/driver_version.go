@@ -16,4 +16,4 @@
 
 package driver_info
 
-const AWS_ADVANCED_GO_WRAPPER_VERSION = "2.0.1"
+const AWS_ADVANCED_GO_WRAPPER_VERSION = "2.0.2"
