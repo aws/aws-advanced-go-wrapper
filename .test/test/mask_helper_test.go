@@ -107,3 +107,52 @@ func TestMaskSensitiveInfoFromDsn_PgxKeywordValue(t *testing.T) {
 	maskedDsn = property_util.MaskSensitiveInfoFromDsn(dsnWithNoSensitiveInfo)
 	assert.Equal(t, dsnWithNoSensitiveInfo, maskedDsn)
 }
+
+func TestMaskSensitiveInfoFromDsn_PgxKeywordValue_QuotedPasswordWithSpaces(t *testing.T) {
+	dsnWithQuotedPass := "host=myHost port=5432 user=user password='my secret password' dbname=db"
+	expectedMasked := "host=myHost port=5432 user=user password=*** dbname=db"
+	maskedDsn := property_util.MaskSensitiveInfoFromDsn(dsnWithQuotedPass)
+	assert.Equal(t, expectedMasked, maskedDsn)
+}
+
+func TestMaskSensitiveInfoFromDsn_PgxKeywordValue_QuotedPasswordWithSpecialChars(t *testing.T) {
+	dsnWithSpecialChars := "host=myHost port=5432 user=user password='p@ss=w0rd!#$' dbname=db"
+	expectedMasked := "host=myHost port=5432 user=user password=*** dbname=db"
+	maskedDsn := property_util.MaskSensitiveInfoFromDsn(dsnWithSpecialChars)
+	assert.Equal(t, expectedMasked, maskedDsn)
+}
+
+func TestMaskSensitiveInfoFromDsn_PgxKeywordValue_QuotedPasswordWithEscapedQuote(t *testing.T) {
+	dsnWithEscapedQuote := `host=myHost port=5432 user=user password='it\'s a secret' dbname=db`
+	expectedMasked := "host=myHost port=5432 user=user password=*** dbname=db"
+	maskedDsn := property_util.MaskSensitiveInfoFromDsn(dsnWithEscapedQuote)
+	assert.Equal(t, expectedMasked, maskedDsn)
+}
+
+func TestMaskSensitiveInfoFromDsn_PgxKeywordValue_QuotedIdpPassword(t *testing.T) {
+	dsn := "host=myHost port=5432 user=user password='secret pass' idpPassword='idp secret' dbname=db"
+	expectedMasked := "host=myHost port=5432 user=user password=*** idpPassword=*** dbname=db"
+	maskedDsn := property_util.MaskSensitiveInfoFromDsn(dsn)
+	assert.Equal(t, expectedMasked, maskedDsn)
+}
+
+func TestMaskSensitiveInfoFromDsn_MySQL_PasswordWithAtSign(t *testing.T) {
+	dsnWithAtInPass := "someUser:p@ssword@tcp(mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:3306)/myDatabase"
+	maskedDsn := property_util.MaskSensitiveInfoFromDsn(dsnWithAtInPass)
+	assert.True(t, strings.Contains(maskedDsn, "someUser:***@tcp("))
+	assert.False(t, strings.Contains(maskedDsn, "p@ssword"))
+}
+
+func TestMaskSensitiveInfoFromDsn_MySQL_PasswordWithMultipleAtSigns(t *testing.T) {
+	dsnWithMultiAt := "someUser:p@ss@word@tcp(mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:3306)/myDatabase"
+	maskedDsn := property_util.MaskSensitiveInfoFromDsn(dsnWithMultiAt)
+	assert.True(t, strings.Contains(maskedDsn, "someUser:***@tcp("))
+	assert.False(t, strings.Contains(maskedDsn, "p@ss@word"))
+}
+
+func TestMaskSensitiveInfoFromDsn_MySQL_PasswordWithSpecialChars(t *testing.T) {
+	dsnWithSpecial := "someUser:pass!#$%^&*()@tcp(mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:3306)/myDatabase?foo=bar"
+	maskedDsn := property_util.MaskSensitiveInfoFromDsn(dsnWithSpecial)
+	assert.True(t, strings.Contains(maskedDsn, "someUser:***@tcp("))
+	assert.False(t, strings.Contains(maskedDsn, "pass"))
+}
