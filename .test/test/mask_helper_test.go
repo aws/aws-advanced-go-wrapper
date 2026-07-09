@@ -109,7 +109,7 @@ func TestMaskSensitiveInfoFromDsn_PgxKeywordValue(t *testing.T) {
 }
 
 func TestMaskSensitiveInfoFromDsn_PgxKeywordValue_QuotedPasswordWithSpaces(t *testing.T) {
-	dsnWithQuotedPass := "host=myHost port=5432 user=user password='my secret password' dbname=db"
+	dsnWithQuotedPass := "host=myHost port=5432 user=user password='my secret  password' dbname=db"
 	expectedMasked := "host=myHost port=5432 user=user password=*** dbname=db"
 	maskedDsn := property_util.MaskSensitiveInfoFromDsn(dsnWithQuotedPass)
 	assert.Equal(t, expectedMasked, maskedDsn)
@@ -151,7 +151,7 @@ func TestMaskSensitiveInfoFromDsn_MySQL_PasswordWithMultipleAtSigns(t *testing.T
 }
 
 func TestMaskSensitiveInfoFromDsn_MySQL_PasswordWithSpecialChars(t *testing.T) {
-	dsnWithSpecial := "someUser:pass!#$%^&*()@tcp(mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:3306)/myDatabase?foo=bar"
+	dsnWithSpecial := "someUser:pass!#$%^&*()@tcp(mydatabase.cluster-xyz.us-east-2.rds.amazonaws.com:3306)/myDatabase?foo=bar&blim=blam"
 	maskedDsn := property_util.MaskSensitiveInfoFromDsn(dsnWithSpecial)
 	assert.True(t, strings.Contains(maskedDsn, "someUser:***@tcp("))
 	assert.False(t, strings.Contains(maskedDsn, "pass"))
