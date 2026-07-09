@@ -17,6 +17,8 @@
 package bun_pg_driver
 
 import (
+	"context"
+	"database/sql/driver"
 	"errors"
 	"slices"
 	"strings"
@@ -44,13 +46,22 @@ var PgNetworkErrorMessages = []string{
 	"unexpected EOF",
 	"use of closed network connection",
 	"broken pipe",
-	"bad connection",
-	"context deadline exceeded",
 }
 
 type BunPgErrorHandler struct{}
 
 func (h *BunPgErrorHandler) IsNetworkError(err error) bool {
+	// Caller-initiated cancellation / deadline is not a DB network failure.
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	// driver.ErrBadConn is database/sql's signal that a cached conn is stale;
+	// database/sql discards it and retries on a fresh connection. Genuine
+	// server/network faults surface as SQLSTATE 08xxx/57P01 or raw I/O errors.
+	if errors.Is(err, driver.ErrBadConn) {
+		return false
+	}
+
 	sqlState := h.getSQLStateFromError(err)
 	if sqlState != "" && slices.Contains(NetworkErrors, sqlState) {
 		return true

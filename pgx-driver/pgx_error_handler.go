@@ -17,6 +17,8 @@
 package pgx_driver
 
 import (
+	"context"
+	"database/sql/driver"
 	"errors"
 	"slices"
 	"strings"
@@ -44,14 +46,22 @@ var PgNetworkErrorMessages = []string{
 	"unexpected EOF",
 	"use of closed network connection",
 	"broken pipe",
-	"bad connection",
-	"context deadline exceeded",
 }
 
 type PgxErrorHandler struct {
 }
 
 func (p *PgxErrorHandler) IsNetworkError(err error) bool {
+	// Caller-initiated cancellation / deadline is not a DB network failure.
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	// driver.ErrBadConn is database/sql's stale-conn signal; it discards the
+	// cached conn and retries on a fresh one. Not a network fault.
+	if errors.Is(err, driver.ErrBadConn) {
+		return false
+	}
+
 	sqlState := p.getSQLStateFromError(err)
 
 	if sqlState != "" && slices.Contains(NetworkErrors, sqlState) {

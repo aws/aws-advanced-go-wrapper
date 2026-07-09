@@ -17,6 +17,8 @@
 package bun_pg_driver
 
 import (
+	"context"
+	"database/sql/driver"
 	"fmt"
 	"testing"
 
@@ -31,13 +33,23 @@ func TestBunPgErrorHandler_IsNetworkError(t *testing.T) {
 		assert.True(t, h.IsNetworkError(fmt.Errorf("unexpected EOF")))
 		assert.True(t, h.IsNetworkError(fmt.Errorf("read: use of closed network connection")))
 		assert.True(t, h.IsNetworkError(fmt.Errorf("write: broken pipe")))
-		assert.True(t, h.IsNetworkError(fmt.Errorf("bad connection")))
-		assert.True(t, h.IsNetworkError(fmt.Errorf("context deadline exceeded")))
 	})
 
 	t.Run("non-network errors", func(t *testing.T) {
 		assert.False(t, h.IsNetworkError(fmt.Errorf("unique constraint violation")))
 		assert.False(t, h.IsNetworkError(fmt.Errorf("serialization failure")))
+	})
+
+	t.Run("caller cancellation is not a network error", func(t *testing.T) {
+		assert.False(t, h.IsNetworkError(context.Canceled))
+		assert.False(t, h.IsNetworkError(fmt.Errorf("query aborted: %w", context.Canceled)))
+		assert.False(t, h.IsNetworkError(context.DeadlineExceeded))
+		assert.False(t, h.IsNetworkError(fmt.Errorf("read timed out: %w", context.DeadlineExceeded)))
+	})
+
+	t.Run("driver.ErrBadConn is not a network error", func(t *testing.T) {
+		assert.False(t, h.IsNetworkError(driver.ErrBadConn))
+		assert.False(t, h.IsNetworkError(fmt.Errorf("wrapped: %w", driver.ErrBadConn)))
 	})
 }
 

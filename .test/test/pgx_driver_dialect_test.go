@@ -17,6 +17,8 @@
 package test
 
 import (
+	"context"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"regexp"
@@ -71,4 +73,23 @@ func TestPgxErrorHandler(t *testing.T) {
 		assert.False(t, errorHandler.IsNetworkError(err))
 		assert.True(t, errorHandler.IsLoginError(err))
 	}
+}
+
+func TestPgxErrorHandler_CallerCancellationAndStaleConn(t *testing.T) {
+	errorHandler := &pgx_driver.PgxErrorHandler{}
+
+	t.Run("context.Canceled is not a network error", func(t *testing.T) {
+		assert.False(t, errorHandler.IsNetworkError(context.Canceled))
+		assert.False(t, errorHandler.IsNetworkError(fmt.Errorf("query aborted: %w", context.Canceled)))
+	})
+
+	t.Run("context.DeadlineExceeded is not a network error", func(t *testing.T) {
+		assert.False(t, errorHandler.IsNetworkError(context.DeadlineExceeded))
+		assert.False(t, errorHandler.IsNetworkError(fmt.Errorf("read timed out: %w", context.DeadlineExceeded)))
+	})
+
+	t.Run("driver.ErrBadConn is not a network error", func(t *testing.T) {
+		assert.False(t, errorHandler.IsNetworkError(driver.ErrBadConn))
+		assert.False(t, errorHandler.IsNetworkError(fmt.Errorf("wrapped: %w", driver.ErrBadConn)))
+	})
 }
