@@ -144,11 +144,11 @@ func TestInternalPooledConnectionProvider_Connect_NewConnectionsUseUpdatedPasswo
 	mockDriverDialect.EXPECT().GetDriverRegistrationName().Return(driverName)
 	mockDriver.EXPECT().Open("host=test user=testuser password=token1").Return(mockConn1, nil)
 
-	// Open initial connection with token1
+	// Open initial connection with token1. Keep it checked out to force future Connect calls to create new
+	// connections via newConnFunc rather than reusing the cached token1 connection.
 	conn1, err := provider.Connect(hostInfo, propsOldToken, mockPluginService)
 	assert.NoError(t, err)
 	assert.NotNil(t, conn1)
-	_ = conn1.Close()
 
 	// Rotate token
 	mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect)
