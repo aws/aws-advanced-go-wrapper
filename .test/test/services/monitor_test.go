@@ -18,6 +18,7 @@ package services
 
 import (
 	"errors"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -30,6 +31,7 @@ import (
 // mockMonitor is a simple mock for the Monitor interface used in monitor manager tests.
 type mockMonitor struct {
 	started       atomic.Bool
+	startCount    atomic.Int32
 	stopped       atomic.Bool
 	state         driver_infrastructure.MonitorState
 	lastActivity  int64
@@ -45,7 +47,10 @@ func newMockMonitor() *mockMonitor {
 	}
 }
 
-func (m *mockMonitor) Start()   { m.started.Store(true) }
+func (m *mockMonitor) Start() {
+	m.startCount.Add(1)
+	m.started.Store(true)
+}
 func (m *mockMonitor) Monitor() { m.monitorCalled.Store(true) }
 func (m *mockMonitor) Stop()    { m.stopped.Store(true) }
 func (m *mockMonitor) Close()   {}
@@ -99,6 +104,95 @@ func TestMonitorManagerRunIfAbsentReturnsExisting(t *testing.T) {
 
 	assert.Equal(t, monitor1, monitor2)
 	assert.Equal(t, 1, callCount) // initializer should only be called once
+}
+
+func TestMonitorManagerRunIfAbsentInitializesOnceConcurrently(t *testing.T) {
+	publisher := services.NewBatchingEventPublisher(1 * time.Hour)
+	defer publisher.Stop()
+	manager := services.NewMonitorManager(1*time.Hour, publisher)
+	defer manager.ReleaseResources()
+
+	const callerCount = 100
+	startCalls := make(chan struct{})
+	releaseInitializer := make(chan struct{})
+	allCallsStarted := make(chan struct{})
+	results := make([]driver_infrastructure.Monitor, callerCount)
+	errs := make([]error, callerCount)
+
+	mock := newMockMonitor()
+	var initializerCalls atomic.Int32
+	initializer := func(_ driver_infrastructure.ServicesContainer) (driver_infrastructure.Monitor, error) {
+		initializerCalls.Add(1)
+		<-releaseInitializer
+		return mock, nil
+	}
+
+	var callsStarted atomic.Int32
+	var wg sync.WaitGroup
+	wg.Add(callerCount)
+	for i := range callerCount {
+		go func() {
+			defer wg.Done()
+			<-startCalls
+			if callsStarted.Add(1) == callerCount {
+				close(allCallsStarted)
+			}
+			results[i], errs[i] = manager.RunIfAbsent(testMonitorType, "shared-key", nil, initializer)
+		}()
+	}
+
+	close(startCalls)
+	select {
+	case <-allCallsStarted:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for concurrent callers")
+	}
+	time.Sleep(50 * time.Millisecond)
+	close(releaseInitializer)
+	wg.Wait()
+
+	assert.Equal(t, int32(1), initializerCalls.Load())
+	assert.Equal(t, int32(1), mock.startCount.Load())
+	for i := range callerCount {
+		assert.NoError(t, errs[i])
+		assert.Same(t, mock, results[i])
+	}
+}
+
+func TestMonitorManagerRunIfAbsentInitializesDifferentKeysConcurrently(t *testing.T) {
+	publisher := services.NewBatchingEventPublisher(1 * time.Hour)
+	defer publisher.Stop()
+	manager := services.NewMonitorManager(1*time.Hour, publisher)
+	defer manager.ReleaseResources()
+
+	firstInitializerStarted := make(chan struct{})
+	releaseFirstInitializer := make(chan struct{})
+	firstCallDone := make(chan struct{})
+	go func() {
+		defer close(firstCallDone)
+		_, _ = manager.RunIfAbsent(testMonitorType, "key1", nil, func(_ driver_infrastructure.ServicesContainer) (driver_infrastructure.Monitor, error) {
+			close(firstInitializerStarted)
+			<-releaseFirstInitializer
+			return newMockMonitor(), nil
+		})
+	}()
+	<-firstInitializerStarted
+
+	secondCallDone := make(chan struct{})
+	go func() {
+		defer close(secondCallDone)
+		_, _ = manager.RunIfAbsent(testMonitorType, "key2", nil, func(_ driver_infrastructure.ServicesContainer) (driver_infrastructure.Monitor, error) {
+			return newMockMonitor(), nil
+		})
+	}()
+
+	select {
+	case <-secondCallDone:
+	case <-time.After(time.Second):
+		t.Fatal("initialization for a different key was blocked")
+	}
+	close(releaseFirstInitializer)
+	<-firstCallDone
 }
 
 func TestMonitorManagerGet(t *testing.T) {
@@ -544,6 +638,33 @@ func TestMonitorManagerRunIfAbsentError(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Equal(t, expectedErr, err)
 	assert.Nil(t, monitor)
+}
+
+func TestMonitorManagerRunIfAbsentRetriesAfterInitializationError(t *testing.T) {
+	publisher := services.NewBatchingEventPublisher(1 * time.Hour)
+	defer publisher.Stop()
+	manager := services.NewMonitorManager(1*time.Hour, publisher)
+	defer manager.ReleaseResources()
+
+	expectedErr := errors.New("initializer failed")
+	mock := newMockMonitor()
+	var initializerCalls atomic.Int32
+	initializer := func(_ driver_infrastructure.ServicesContainer) (driver_infrastructure.Monitor, error) {
+		if initializerCalls.Add(1) == 1 {
+			return nil, expectedErr
+		}
+		return mock, nil
+	}
+
+	monitor, err := manager.RunIfAbsent(testMonitorType, "retry-key", nil, initializer)
+	assert.ErrorIs(t, err, expectedErr)
+	assert.Nil(t, monitor)
+
+	monitor, err = manager.RunIfAbsent(testMonitorType, "retry-key", nil, initializer)
+	assert.NoError(t, err)
+	assert.Same(t, mock, monitor)
+	assert.Equal(t, int32(2), initializerCalls.Load())
+	assert.Equal(t, int32(1), mock.startCount.Load())
 }
 
 func TestMonitorManagerRemoveNonExistentType(t *testing.T) {

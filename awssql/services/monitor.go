@@ -17,6 +17,7 @@
 package services
 
 import (
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -46,11 +47,62 @@ type monitorItem struct {
 	expiresAt       atomic.Int64 // unix nano timestamp
 }
 
+type monitorInitialization struct {
+	done    chan struct{}
+	monitor driver_infrastructure.Monitor
+	err     error
+}
+
 // cacheContainer holds a cache of monitors with related settings.
 type cacheContainer struct {
-	settings         *driver_infrastructure.MonitorSettings
-	cache            *utils.RWMap[any, *monitorItem]
-	producedDataType string // The type key of data produced by this monitor type
+	settings               *driver_infrastructure.MonitorSettings
+	cache                  *utils.RWMap[any, *monitorItem]
+	producedDataType       string // The type key of data produced by this monitor type
+	initializationLock     sync.Mutex
+	monitorInitializations map[any]*monitorInitialization
+}
+
+func (c *cacheContainer) runIfAbsent(
+	key any,
+	monitorSupplier func() (driver_infrastructure.Monitor, error),
+) (driver_infrastructure.Monitor, error) {
+	c.initializationLock.Lock()
+	if existingItem, exists := c.cache.Get(key); exists && existingItem != nil {
+		existingItem.expiresAt.Store(time.Now().Add(c.settings.ExpirationTimeout).UnixNano())
+		c.initializationLock.Unlock()
+		return existingItem.monitor, nil
+	}
+
+	if initialization, exists := c.monitorInitializations[key]; exists {
+		c.initializationLock.Unlock()
+		<-initialization.done
+		return initialization.monitor, initialization.err
+	}
+
+	initialization := &monitorInitialization{done: make(chan struct{})}
+	c.monitorInitializations[key] = initialization
+	c.initializationLock.Unlock()
+
+	monitor, err := monitorSupplier()
+	if err == nil {
+		item := &monitorItem{
+			monitor:         monitor,
+			monitorSupplier: monitorSupplier,
+		}
+		item.expiresAt.Store(time.Now().Add(c.settings.ExpirationTimeout).UnixNano())
+
+		c.cache.Put(key, item)
+		monitor.Start()
+	}
+
+	c.initializationLock.Lock()
+	initialization.monitor = monitor
+	initialization.err = err
+	delete(c.monitorInitializations, key)
+	close(initialization.done)
+	c.initializationLock.Unlock()
+
+	return monitor, err
 }
 
 // MonitorManager manages background monitors with expiration and health checks.
@@ -118,9 +170,10 @@ func (m *MonitorManager) RegisterMonitorType(
 	producedDataType string,
 ) {
 	m.monitorCaches.PutIfAbsent(monitorType.Name, &cacheContainer{
-		settings:         settings,
-		cache:            utils.NewRWMap[any, *monitorItem](),
-		producedDataType: producedDataType,
+		settings:               settings,
+		cache:                  utils.NewRWMap[any, *monitorItem](),
+		producedDataType:       producedDataType,
+		monitorInitializations: make(map[any]*monitorInitialization),
 	})
 }
 
@@ -138,34 +191,10 @@ func (m *MonitorManager) RunIfAbsent(
 		cacheContainer, _ = m.monitorCaches.Get(monitorType.Name)
 	}
 
-	// Check if monitor already exists
-	existingItem, exists := cacheContainer.cache.Get(key)
-	if exists && existingItem != nil {
-		// Extend expiration
-		existingItem.expiresAt.Store(time.Now().Add(cacheContainer.settings.ExpirationTimeout).UnixNano())
-		return existingItem.monitor, nil
-	}
-
-	// Create new monitor
 	monitorSupplier := func() (driver_infrastructure.Monitor, error) {
 		return initializer(container)
 	}
-
-	monitor, err := monitorSupplier()
-	if err != nil {
-		return nil, err
-	}
-
-	item := &monitorItem{
-		monitor:         monitor,
-		monitorSupplier: monitorSupplier,
-	}
-	item.expiresAt.Store(time.Now().Add(cacheContainer.settings.ExpirationTimeout).UnixNano())
-
-	cacheContainer.cache.PutIfAbsent(key, item)
-	monitor.Start()
-
-	return monitor, nil
+	return cacheContainer.runIfAbsent(key, monitorSupplier)
 }
 
 // Get retrieves a monitor by type and key.
@@ -302,19 +331,6 @@ func (m *MonitorManager) handleMonitorError(container *cacheContainer, key any, 
 
 	// Check if we should recreate the monitor
 	if container.settings.ErrorResponses[driver_infrastructure.MonitorErrorRecreate] {
-		// Try to recreate the monitor
-		newMonitor, err := errorItem.monitorSupplier()
-		if err != nil {
-			return
-		}
-
-		newItem := &monitorItem{
-			monitor:         newMonitor,
-			monitorSupplier: errorItem.monitorSupplier,
-		}
-		newItem.expiresAt.Store(time.Now().Add(container.settings.ExpirationTimeout).UnixNano())
-
-		container.cache.PutIfAbsent(key, newItem)
-		newMonitor.Start()
+		_, _ = container.runIfAbsent(key, errorItem.monitorSupplier)
 	}
 }
