@@ -84,6 +84,7 @@ func (c *cacheContainer) runIfAbsent(
 	c.initializationLock.Unlock()
 
 	monitor, err := monitorSupplier()
+	c.initializationLock.Lock()
 	if err == nil {
 		item := &monitorItem{
 			monitor:         monitor,
@@ -95,7 +96,6 @@ func (c *cacheContainer) runIfAbsent(
 		monitor.Start()
 	}
 
-	c.initializationLock.Lock()
 	initialization.monitor = monitor
 	initialization.err = err
 	delete(c.monitorInitializations, key)
@@ -295,6 +295,8 @@ func (m *MonitorManager) checkMonitors() {
 	m.monitorCaches.ForEach(func(_ string, container *cacheContainer) {
 		settings := container.settings
 
+		container.initializationLock.Lock()
+
 		// Remove and stop monitors that are stopped or expired
 		stopped := container.cache.RemoveIf(func(_ any, item *monitorItem) bool {
 			if item == nil {
@@ -305,9 +307,6 @@ func (m *MonitorManager) checkMonitors() {
 			}
 			return now.After(time.Unix(0, item.expiresAt.Load())) && item.monitor.CanDispose()
 		})
-		for _, entry := range stopped {
-			entry.Value.monitor.Stop()
-		}
 
 		// Remove and handle monitors in error state or stuck
 		errored := container.cache.RemoveIf(func(_ any, item *monitorItem) bool {
@@ -320,6 +319,12 @@ func (m *MonitorManager) checkMonitors() {
 			lastActivity := time.Unix(0, item.monitor.GetLastActivityTimestampNanos())
 			return now.Sub(lastActivity) > settings.InactiveTimeout
 		})
+
+		container.initializationLock.Unlock()
+
+		for _, entry := range stopped {
+			entry.Value.monitor.Stop()
+		}
 		for _, entry := range errored {
 			m.handleMonitorError(container, entry.Key, entry.Value)
 		}

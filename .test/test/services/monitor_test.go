@@ -37,6 +37,9 @@ type mockMonitor struct {
 	lastActivity  int64
 	canDispose    bool
 	monitorCalled atomic.Bool
+	startEntered  chan struct{}
+	releaseStart  chan struct{}
+	stateChecked  chan struct{}
 }
 
 func newMockMonitor() *mockMonitor {
@@ -48,6 +51,13 @@ func newMockMonitor() *mockMonitor {
 }
 
 func (m *mockMonitor) Start() {
+	if m.startEntered != nil {
+		close(m.startEntered)
+	}
+	if m.releaseStart != nil {
+		<-m.releaseStart
+		m.state = driver_infrastructure.MonitorStateRunning
+	}
 	m.startCount.Add(1)
 	m.started.Store(true)
 }
@@ -58,6 +68,12 @@ func (m *mockMonitor) GetLastActivityTimestampNanos() int64 {
 	return m.lastActivity
 }
 func (m *mockMonitor) GetState() driver_infrastructure.MonitorState {
+	if m.stateChecked != nil {
+		select {
+		case m.stateChecked <- struct{}{}:
+		default:
+		}
+	}
 	return m.state
 }
 func (m *mockMonitor) CanDispose() bool {
@@ -193,6 +209,51 @@ func TestMonitorManagerRunIfAbsentInitializesDifferentKeysConcurrently(t *testin
 	}
 	close(releaseFirstInitializer)
 	<-firstCallDone
+}
+
+func TestMonitorManagerCleanupWaitsForInitialization(t *testing.T) {
+	publisher := services.NewBatchingEventPublisher(1 * time.Hour)
+	defer publisher.Stop()
+	manager := services.NewMonitorManager(time.Millisecond, publisher)
+	defer manager.ReleaseResources()
+
+	mock := newMockMonitor()
+	mock.state = driver_infrastructure.MonitorStateStopped
+	mock.startEntered = make(chan struct{})
+	mock.releaseStart = make(chan struct{})
+	mock.stateChecked = make(chan struct{}, 1)
+
+	var initializerCalls atomic.Int32
+	initializer := func(_ driver_infrastructure.ServicesContainer) (driver_infrastructure.Monitor, error) {
+		initializerCalls.Add(1)
+		return mock, nil
+	}
+
+	firstCallDone := make(chan struct{})
+	var firstMonitor driver_infrastructure.Monitor
+	var firstErr error
+	go func() {
+		defer close(firstCallDone)
+		firstMonitor, firstErr = manager.RunIfAbsent(testMonitorType, "shared-key", nil, initializer)
+	}()
+
+	<-mock.startEntered
+	cleanupRanDuringStart := false
+	select {
+	case <-mock.stateChecked:
+		cleanupRanDuringStart = true
+	case <-time.After(50 * time.Millisecond):
+	}
+	close(mock.releaseStart)
+	<-firstCallDone
+
+	assert.False(t, cleanupRanDuringStart)
+	assert.NoError(t, firstErr)
+
+	secondMonitor, secondErr := manager.RunIfAbsent(testMonitorType, "shared-key", nil, initializer)
+	assert.NoError(t, secondErr)
+	assert.Same(t, firstMonitor, secondMonitor)
+	assert.Equal(t, int32(1), initializerCalls.Load())
 }
 
 func TestMonitorManagerGet(t *testing.T) {
