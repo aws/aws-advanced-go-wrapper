@@ -62,15 +62,37 @@ type cacheContainer struct {
 	monitorInitializations map[any]*monitorInitialization
 }
 
+// getAndExtendExpiration returns the cached monitor for key, extending its
+// expiration, or false if no monitor is cached.
+func (c *cacheContainer) getAndExtendExpiration(key any) (driver_infrastructure.Monitor, bool) {
+	item, exists := c.cache.Get(key)
+	if !exists || item == nil {
+		return nil, false
+	}
+	item.expiresAt.Store(time.Now().Add(c.settings.ExpirationTimeout).UnixNano())
+	return item.monitor, true
+}
+
+// runIfAbsent returns the cached monitor for key, coalescing concurrent
+// initialization so that exactly one caller invokes monitorSupplier while
+// concurrent same-key callers wait for and share its result. A failed
+// initialization is not cached, so a later call can retry.
 func (c *cacheContainer) runIfAbsent(
 	key any,
 	monitorSupplier func() (driver_infrastructure.Monitor, error),
 ) (driver_infrastructure.Monitor, error) {
+	// Cache hits stay off initializationLock so they don't serialize; some
+	// callers look up their monitor on every network-bound method call.
+	if monitor, exists := c.getAndExtendExpiration(key); exists {
+		return monitor, nil
+	}
+
 	c.initializationLock.Lock()
-	if existingItem, exists := c.cache.Get(key); exists && existingItem != nil {
-		existingItem.expiresAt.Store(time.Now().Add(c.settings.ExpirationTimeout).UnixNano())
+	// Re-check under the lock: an initialization that completed after the
+	// lock-free read would otherwise be duplicated.
+	if monitor, exists := c.getAndExtendExpiration(key); exists {
 		c.initializationLock.Unlock()
-		return existingItem.monitor, nil
+		return monitor, nil
 	}
 
 	if initialization, exists := c.monitorInitializations[key]; exists {
