@@ -242,6 +242,7 @@
   "HostMonitorImpl.updatingActiveStates": "Updating active states for %v. Going from %v state(s) to %v.",
   "HostMonitoringServiceImpl.errorAbortingConn": "An error was thrown when aborting monitoring Conn: %v.",
   "HostMonitoringServiceImpl.illegalArgumentError": "Illegal argument for '%v' was given to HostMonitoringServiceImpl.",
+  "MonitorManager.initializationPanicked": "Monitor initialization panicked.",
   "OktaAuthPlugin.failedSamlAssertion": "Could not get SAML response from the following endpoint: '%v'.",
   "OktaAuthPlugin.httpNon200StatusCode": "Did not get a 200 response from http request to '%v'. Received the following status code: '%v'.",
   "OktaAuthPlugin.unableToDetermineRegion": "Unable to determine the region. Please set the '%v' parameter.",

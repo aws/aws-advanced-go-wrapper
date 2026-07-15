@@ -728,6 +728,63 @@ func TestMonitorManagerRunIfAbsentRetriesAfterInitializationError(t *testing.T) 
 	assert.Equal(t, int32(1), mock.startCount.Load())
 }
 
+func TestMonitorManagerRunIfAbsentInitializerPanicUnblocksWaiters(t *testing.T) {
+	publisher := services.NewBatchingEventPublisher(1 * time.Hour)
+	defer publisher.Stop()
+	manager := services.NewMonitorManager(1*time.Hour, publisher)
+	defer manager.ReleaseResources()
+
+	initializerEntered := make(chan struct{})
+	releaseInitializer := make(chan struct{})
+
+	leaderPanic := make(chan any, 1)
+	go func() {
+		defer func() { leaderPanic <- recover() }()
+		_, _ = manager.RunIfAbsent(testMonitorType, "panic-key", nil, func(_ driver_infrastructure.ServicesContainer) (driver_infrastructure.Monitor, error) {
+			close(initializerEntered)
+			<-releaseInitializer
+			panic("initializer panicked")
+		})
+	}()
+	<-initializerEntered
+
+	var waiterInitializerCalls atomic.Int32
+	waiterDone := make(chan struct{})
+	var waiterMonitor driver_infrastructure.Monitor
+	var waiterErr error
+	go func() {
+		defer close(waiterDone)
+		waiterMonitor, waiterErr = manager.RunIfAbsent(testMonitorType, "panic-key", nil, func(_ driver_infrastructure.ServicesContainer) (driver_infrastructure.Monitor, error) {
+			waiterInitializerCalls.Add(1)
+			return newMockMonitor(), nil
+		})
+	}()
+	time.Sleep(50 * time.Millisecond)
+	close(releaseInitializer)
+
+	select {
+	case recovered := <-leaderPanic:
+		assert.Equal(t, "initializer panicked", recovered)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for the panicking caller")
+	}
+	select {
+	case <-waiterDone:
+	case <-time.After(time.Second):
+		t.Fatal("waiter was not unblocked after the initializer panicked")
+	}
+	assert.Error(t, waiterErr)
+	assert.Nil(t, waiterMonitor)
+	assert.Equal(t, int32(0), waiterInitializerCalls.Load())
+
+	mock := newMockMonitor()
+	monitor, err := manager.RunIfAbsent(testMonitorType, "panic-key", nil, func(_ driver_infrastructure.ServicesContainer) (driver_infrastructure.Monitor, error) {
+		return mock, nil
+	})
+	assert.NoError(t, err)
+	assert.Same(t, mock, monitor)
+}
+
 func TestMonitorManagerRemoveNonExistentType(t *testing.T) {
 	publisher := services.NewBatchingEventPublisher(1 * time.Hour)
 	defer publisher.Stop()

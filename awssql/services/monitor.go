@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils"
 )
 
@@ -105,25 +106,51 @@ func (c *cacheContainer) runIfAbsent(
 	c.monitorInitializations[key] = initialization
 	c.initializationLock.Unlock()
 
-	monitor, err := monitorSupplier()
-	c.initializationLock.Lock()
-	if err == nil {
-		item := &monitorItem{
-			monitor:         monitor,
-			monitorSupplier: monitorSupplier,
+	return c.initializeMonitor(key, initialization, monitorSupplier)
+}
+
+// initializeMonitor invokes monitorSupplier and publishes the result to
+// same-key callers waiting on initialization. Publication runs in a defer so
+// that a panicking supplier still unblocks waiters with an error and clears
+// the in-flight entry; otherwise every later same-key call would block
+// forever. The panic itself continues to propagate to this caller.
+func (c *cacheContainer) initializeMonitor(
+	key any,
+	initialization *monitorInitialization,
+	monitorSupplier func() (driver_infrastructure.Monitor, error),
+) (monitor driver_infrastructure.Monitor, err error) {
+	completed := false
+	defer func() {
+		if !completed {
+			monitor = nil
+			err = error_util.NewGenericAwsWrapperError(error_util.GetMessage("MonitorManager.initializationPanicked"))
 		}
-		item.expiresAt.Store(time.Now().Add(c.settings.ExpirationTimeout).UnixNano())
 
-		c.cache.Put(key, item)
-		monitor.Start()
-	}
+		c.initializationLock.Lock()
+		defer c.initializationLock.Unlock()
 
-	initialization.monitor = monitor
-	initialization.err = err
-	delete(c.monitorInitializations, key)
-	close(initialization.done)
-	c.initializationLock.Unlock()
+		initialization.monitor = monitor
+		initialization.err = err
+		delete(c.monitorInitializations, key)
+		// done is closed via defer so waiters are unblocked even if Start panics.
+		defer close(initialization.done)
 
+		if err == nil {
+			item := &monitorItem{
+				monitor:         monitor,
+				monitorSupplier: monitorSupplier,
+			}
+			item.expiresAt.Store(time.Now().Add(c.settings.ExpirationTimeout).UnixNano())
+
+			// Cache insertion and Start stay under initializationLock so the
+			// cleanup loop cannot dispose a monitor that has not started yet.
+			c.cache.Put(key, item)
+			monitor.Start()
+		}
+	}()
+
+	monitor, err = monitorSupplier()
+	completed = true
 	return monitor, err
 }
 
