@@ -56,10 +56,6 @@ Support for Blue/Green deployments using the AWS Advanced Go Wrapper requires sp
 
 Please note that Aurora Global Database and RDS Multi-AZ clusters with Blue/Green deployments are not currently supported. For detailed information on using Blue/Green and supported database versions, refer to the [Blue/Green Deployment Plugin Documentation](./docs/user-guide/using-plugins/UsingTheBlueGreenPlugin.md).
 
-#### Amazon Aurora Global Databases
-
-This wrapper currently does not support failover with Amazon Aurora Global Databases. While it is possible to connect to global databases, failing over to a secondary cluster will result in errors and there may be additional unforeseen errors when working with global databases. Support for Amazon Aurora Global Databases is in the backlog, but we cannot comment on a timeline right now.
-
 ## Getting Help and Opening Issues
 
 If you encounter a bug with the AWS Advanced Go Wrapper, we would like to hear about it.
