@@ -20,7 +20,9 @@ import (
 	"context"
 	"database/sql/driver"
 	"fmt"
+	"io"
 	"net"
+	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -56,6 +58,13 @@ func TestBunPgErrorHandler_IsNetworkError(t *testing.T) {
 		assert.False(t, h.IsNetworkError(driver.ErrBadConn))
 		assert.False(t, h.IsNetworkError(fmt.Errorf("wrapped: %w", driver.ErrBadConn)))
 	})
+}
+
+func TestBunPgErrorHandler_TypedTransportSentinels(t *testing.T) {
+	h := &BunPgErrorHandler{}
+	assert.True(t, h.IsNetworkError(fmt.Errorf("read tcp: %w", syscall.ECONNRESET)))
+	assert.True(t, h.IsNetworkError(fmt.Errorf("write tcp: %w", syscall.EPIPE)))
+	assert.True(t, h.IsNetworkError(fmt.Errorf("reading: %w", io.ErrUnexpectedEOF)))
 }
 
 func TestBunPgErrorHandler_IsLoginError(t *testing.T) {

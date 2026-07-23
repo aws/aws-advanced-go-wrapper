@@ -21,6 +21,8 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"io"
+	"syscall"
 	"testing"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
@@ -136,6 +138,12 @@ func TestMySQLErrorHandler_IsNetworkError(t *testing.T) {
 		// on non-cancellation I/O failures — a genuine network failure signal.
 		assert.True(t, handler.IsNetworkError(mysql.ErrInvalidConn))
 		assert.True(t, handler.IsNetworkError(fmt.Errorf("wrapped: %w", mysql.ErrInvalidConn)))
+	})
+
+	t.Run("typed transport sentinels are network errors", func(t *testing.T) {
+		assert.True(t, handler.IsNetworkError(fmt.Errorf("read tcp: %w", syscall.ECONNRESET)))
+		assert.True(t, handler.IsNetworkError(fmt.Errorf("write tcp: %w", syscall.EPIPE)))
+		assert.True(t, handler.IsNetworkError(fmt.Errorf("reading: %w", io.ErrUnexpectedEOF)))
 	})
 
 	t.Run("non-network errors", func(t *testing.T) {
