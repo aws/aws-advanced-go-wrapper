@@ -100,3 +100,7 @@ func TestBunPgErrorHandler_NetworkErrorsList(t *testing.T) {
 	assert.Contains(t, NetworkErrors, "08")
 	assert.NotContains(t, AccessErrors, "08004")
 }
+
+func TestBunPgErrorHandler_ReadOnlyConst(t *testing.T) {
+	assert.Equal(t, "25006", PgReadOnlyErrorState)
+}

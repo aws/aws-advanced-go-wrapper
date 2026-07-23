@@ -165,3 +165,11 @@ func TestPrepareDsnWithoutHost(t *testing.T) {
 	dsn := driverDialect.PrepareDsn(properties, nil)
 	assert.Equal(t, "user:password@tcp/dbName", dsn)
 }
+
+func TestMySQLErrorHandler_IsReadOnlyError(t *testing.T) {
+	handler := mysql_driver.MySQLErrorHandler{}
+	assert.True(t, handler.IsReadOnlyError(&mysql.MySQLError{Number: 1290, Message: "read-only"}))
+	assert.True(t, handler.IsReadOnlyError(&mysql.MySQLError{Number: 1836, Message: "read-only mode"}))
+	assert.False(t, handler.IsReadOnlyError(&mysql.MySQLError{Number: 1146, Message: "table missing"}))
+	assert.False(t, handler.IsNetworkError(&mysql.MySQLError{Number: 1290, Message: "read-only"}))
+}
