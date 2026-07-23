@@ -597,7 +597,11 @@ func (p *FailoverPlugin) shouldErrorTriggerConnectionSwitch(err error) bool {
 		return false
 	}
 
-	return p.servicesContainer.GetPluginService().IsNetworkError(err)
+	pluginService := p.servicesContainer.GetPluginService()
+	if pluginService.IsNetworkError(err) {
+		return true
+	}
+	return p.FailoverMode == MODE_STRICT_WRITER && pluginService.IsReadOnlyError(err)
 }
 
 func (p *FailoverPlugin) createConnectionForHost(hostInfo *host_info_util.HostInfo) (driver.Conn, error) {

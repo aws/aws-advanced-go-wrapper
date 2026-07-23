@@ -587,6 +587,10 @@ func (p *PluginServiceImpl) IsLoginError(err error) bool {
 	return p.driverDialect.IsLoginError(err)
 }
 
+func (p *PluginServiceImpl) IsReadOnlyError(err error) bool {
+	return p.driverDialect.IsReadOnlyError(err)
+}
+
 func (p *PluginServiceImpl) UpdateState(sql string, methodArgs ...any) {
 	query := utils.GetQueryFromSqlOrMethodArgs(sql, methodArgs...)
 

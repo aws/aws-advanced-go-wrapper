@@ -63,6 +63,10 @@ func (m MySQLDriverDialect) IsLoginError(err error) bool {
 	return m.errorHandler.IsLoginError(err)
 }
 
+func (m MySQLDriverDialect) IsReadOnlyError(err error) bool {
+	return m.errorHandler.IsReadOnlyError(err)
+}
+
 func (m MySQLDriverDialect) IsClosed(conn driver.Conn) bool {
 	validator, ok := conn.(driver.Validator)
 	if ok {

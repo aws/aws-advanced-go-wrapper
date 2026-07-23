@@ -127,3 +127,10 @@ func TestPgxErrorHandler_IsReadOnlyError(t *testing.T) {
 	assert.False(t, h.IsReadOnlyError(fmt.Errorf("some error")))
 	assert.False(t, h.IsNetworkError(&pgconn.PgError{Code: "25006"}))
 }
+
+func TestPgxDriverDialect_IsReadOnlyError(t *testing.T) {
+	d := pgx_driver.NewPgxDriverDialect()
+	assert.True(t, d.IsReadOnlyError(&pgconn.PgError{Code: "25006"}))
+	assert.False(t, d.IsReadOnlyError(&pgconn.PgError{Code: "08006"}))
+	assert.False(t, d.IsNetworkError(&pgconn.PgError{Code: "25006"}))
+}

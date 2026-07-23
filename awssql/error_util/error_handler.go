@@ -19,4 +19,5 @@ package error_util
 type ErrorHandler interface {
 	IsNetworkError(err error) bool
 	IsLoginError(err error) bool
+	IsReadOnlyError(err error) bool
 }

@@ -537,6 +537,10 @@ func (p *MockPluginService) IsLoginError(_ error) bool {
 	return false
 }
 
+func (p *MockPluginService) IsReadOnlyError(_ error) bool {
+	return false
+}
+
 func (p *MockPluginService) GetTelemetryContext() context.Context {
 	return p.PluginManager.GetTelemetryContext()
 }

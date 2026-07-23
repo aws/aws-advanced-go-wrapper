@@ -82,6 +82,7 @@ type PluginService interface {
 	GetProperties() *utils.RWMap[string, string]
 	IsNetworkError(err error) bool
 	IsLoginError(err error) bool
+	IsReadOnlyError(err error) bool
 	GetTelemetryContext() context.Context
 	GetTelemetryFactory() telemetry.TelemetryFactory
 	SetTelemetryContext(ctx context.Context)

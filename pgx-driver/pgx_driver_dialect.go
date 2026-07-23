@@ -72,6 +72,10 @@ func (p PgxDriverDialect) IsLoginError(err error) bool {
 	return p.errorHandler.IsLoginError(err)
 }
 
+func (p PgxDriverDialect) IsReadOnlyError(err error) bool {
+	return p.errorHandler.IsReadOnlyError(err)
+}
+
 func (p PgxDriverDialect) IsClosed(conn driver.Conn) bool {
 	// If pgx implements driver.Validator, use this
 	validator, ok := conn.(driver.Validator)

@@ -173,3 +173,10 @@ func TestMySQLErrorHandler_IsReadOnlyError(t *testing.T) {
 	assert.False(t, handler.IsReadOnlyError(&mysql.MySQLError{Number: 1146, Message: "table missing"}))
 	assert.False(t, handler.IsNetworkError(&mysql.MySQLError{Number: 1290, Message: "read-only"}))
 }
+
+func TestMySQLDriverDialect_IsReadOnlyError(t *testing.T) {
+	d := mysql_driver.NewMySQLDriverDialect()
+	assert.True(t, d.IsReadOnlyError(&mysql.MySQLError{Number: 1290}))
+	assert.False(t, d.IsReadOnlyError(&mysql.MySQLError{Number: 1146}))
+	assert.False(t, d.IsNetworkError(&mysql.MySQLError{Number: 1290}))
+}

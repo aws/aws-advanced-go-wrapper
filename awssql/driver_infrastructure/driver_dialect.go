@@ -29,6 +29,7 @@ type DriverDialect interface {
 	PrepareDsn(properties map[string]string, info *host_info_util.HostInfo) string
 	IsNetworkError(err error) bool
 	IsLoginError(err error) bool
+	IsReadOnlyError(err error) bool
 	IsClosed(conn driver.Conn) bool
 	IsDriverRegistered(drivers map[string]driver.Driver) bool
 	RegisterDriver()
