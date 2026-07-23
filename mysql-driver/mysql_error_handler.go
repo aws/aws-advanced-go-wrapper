@@ -52,7 +52,8 @@ func (m MySQLErrorHandler) IsNetworkError(err error) bool {
 	}
 
 	sqlState := m.getSQLStateFromError(err)
-	if sqlState != "" && string(sqlState[0:2]) == "08" {
+	// 08004 (server rejected) is not a network fault.
+	if sqlState != "" && sqlState[0:2] == "08" && sqlState != "08004" {
 		return true
 	}
 
