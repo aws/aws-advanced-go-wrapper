@@ -69,7 +69,9 @@ func (h *BunPgErrorHandler) IsNetworkError(err error) bool {
 	}
 
 	sqlState := h.getSQLStateFromError(err)
-	if sqlState != "" && slices.Contains(NetworkErrors, sqlState) {
+	if sqlState != "" && slices.ContainsFunc(NetworkErrors, func(prefix string) bool {
+		return strings.HasPrefix(sqlState, prefix)
+	}) {
 		return true
 	}
 

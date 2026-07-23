@@ -109,3 +109,13 @@ func TestPgxErrorHandler_TypedTransportSentinels(t *testing.T) {
 	assert.True(t, h.IsNetworkError(fmt.Errorf("write tcp: %w", syscall.EPIPE)))
 	assert.True(t, h.IsNetworkError(fmt.Errorf("reading message: %w", io.ErrUnexpectedEOF)))
 }
+
+func TestPgxErrorHandler_SqlStatePrefixMatching(t *testing.T) {
+	h := &pgx_driver.PgxErrorHandler{}
+	for _, code := range []string{"08006", "08003", "08000", "08001", "08004", "58030", "53300", "53000", "F0000", "57P01", "57P03"} {
+		assert.True(t, h.IsNetworkError(&pgconn.PgError{Code: code}), "expected network error for %s", code)
+	}
+	for _, code := range []string{"57014", "40001", "40P01", "XX000", "25006"} {
+		assert.False(t, h.IsNetworkError(&pgconn.PgError{Code: code}), "expected NOT network error for %s", code)
+	}
+}

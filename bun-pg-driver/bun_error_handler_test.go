@@ -94,3 +94,9 @@ func TestGetSQLState(t *testing.T) {
 		var _ pgdriver.Error
 	})
 }
+
+func TestBunPgErrorHandler_NetworkErrorsList(t *testing.T) {
+	assert.Contains(t, NetworkErrors, "53")
+	assert.Contains(t, NetworkErrors, "08")
+	assert.NotContains(t, AccessErrors, "08004")
+}

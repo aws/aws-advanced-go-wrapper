@@ -69,8 +69,9 @@ func (p *PgxErrorHandler) IsNetworkError(err error) bool {
 	}
 
 	sqlState := p.getSQLStateFromError(err)
-
-	if sqlState != "" && slices.Contains(NetworkErrors, sqlState) {
+	if sqlState != "" && slices.ContainsFunc(NetworkErrors, func(prefix string) bool {
+		return strings.HasPrefix(sqlState, prefix)
+	}) {
 		return true
 	}
 
