@@ -20,6 +20,7 @@ import (
 	"context"
 	"database/sql/driver"
 	"fmt"
+	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -31,8 +32,12 @@ func TestBunPgErrorHandler_IsNetworkError(t *testing.T) {
 
 	t.Run("network error message patterns", func(t *testing.T) {
 		assert.True(t, h.IsNetworkError(fmt.Errorf("unexpected EOF")))
-		assert.True(t, h.IsNetworkError(fmt.Errorf("read: use of closed network connection")))
 		assert.True(t, h.IsNetworkError(fmt.Errorf("write: broken pipe")))
+	})
+
+	t.Run("net.ErrClosed (local close) is not a network error", func(t *testing.T) {
+		assert.False(t, h.IsNetworkError(net.ErrClosed))
+		assert.False(t, h.IsNetworkError(fmt.Errorf("read: use of closed network connection")))
 	})
 
 	t.Run("non-network errors", func(t *testing.T) {
