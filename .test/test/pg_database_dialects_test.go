@@ -151,7 +151,7 @@ func TestRdsPgDatabaseDialect_IsDialect(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 	expectedPgIsDialectQuery := "SELECT 1 FROM pg_catalog.pg_proc LIMIT 1"
-	expectedRdsPgIsDialectQuery := "SELECT (setting LIKE '%rds_tools%') AS rds_tools, (setting LIKE '%aurora_stat_utils%') " +
+	expectedRdsPgIsDialectQuery := "SELECT (setting OPERATOR(pg_catalog.~~) '%rds_tools%') AS rds_tools, (setting OPERATOR(pg_catalog.~~) '%aurora_stat_utils%') " +
 		"AS aurora_stat_utils FROM pg_catalog.pg_settings WHERE name OPERATOR(pg_catalog.=) 'rds.extensions'"
 
 	// IsDialect - true
@@ -261,7 +261,7 @@ func TestAuroraRdsPgDatabaseDialect_IsDialect(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 	expectedPgIsDialectQuery := "SELECT 1 FROM pg_catalog.pg_proc LIMIT 1"
-	expectedRdsPgIsDialectQuery := "SELECT (setting LIKE '%aurora_stat_utils%') " +
+	expectedRdsPgIsDialectQuery := "SELECT (setting OPERATOR(pg_catalog.~~) '%aurora_stat_utils%') " +
 		"AS aurora_stat_utils FROM pg_catalog.pg_settings WHERE name OPERATOR(pg_catalog.=) 'rds.extensions'"
 	expectedTopologyQuery := "SELECT 1 FROM pg_catalog.aurora_replica_status() LIMIT 1"
 
@@ -765,7 +765,7 @@ func TestAuroraPgDatabaseDialect_IsBlueGreenStatusAvailable(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT 'pg_catalog.get_blue_green_fast_switchover_metadata'::regproc"
+	expectedQuery := "SELECT 'pg_catalog.get_blue_green_fast_switchover_metadata'::pg_catalog.regproc"
 
 	// Available
 	mockQueryer.EXPECT().
@@ -818,7 +818,7 @@ func TestRdsPgDatabaseDialect_IsBlueGreenStatusAvailable(t *testing.T) {
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT 'rds_tools.show_topology'::regproc"
+	expectedQuery := "SELECT 'rds_tools.show_topology'::pg_catalog.regproc"
 
 	mockQueryer.EXPECT().
 		QueryContext(gomock.Any(), expectedQuery, gomock.Nil()).
@@ -849,7 +849,7 @@ func TestRdsPgDatabaseDialect_IsBlueGreenStatusAvailable_QueryError(t *testing.T
 		QueryerContext: mockQueryer,
 	}
 
-	expectedQuery := "SELECT 'rds_tools.show_topology'::regproc"
+	expectedQuery := "SELECT 'rds_tools.show_topology'::pg_catalog.regproc"
 
 	// Test query error - should return false
 	mockQueryer.EXPECT().

@@ -171,7 +171,8 @@ func (m *RdsPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	}
 	hasExtensions := utils.GetFirstRowFromQuery(
 		conn,
-		"SELECT (setting LIKE '%rds_tools%') AS rds_tools, (setting LIKE '%aurora_stat_utils%') AS aurora_stat_utils FROM pg_catalog.pg_settings "+
+		"SELECT (setting OPERATOR(pg_catalog.~~) '%rds_tools%') AS rds_tools, (setting OPERATOR(pg_catalog.~~) '%aurora_stat_utils%') AS aurora_stat_utils " +
+			"FROM pg_catalog.pg_settings " +
 			"WHERE name OPERATOR(pg_catalog.=) 'rds.extensions'")
 	return hasExtensions != nil && hasExtensions[0] == true && // If a variables with such name is present then it is an RDS cluster.
 		hasExtensions[1] == false // If aurora_stat_utils is present then it should be treated as an Aurora cluster, not an RDS cluster.
@@ -182,7 +183,7 @@ func (m *RdsPgDatabaseDialect) GetBlueGreenStatusQuery() string {
 }
 
 func (m *RdsPgDatabaseDialect) IsBlueGreenStatusAvailable(conn driver.Conn) bool {
-	topologyTableExistQuery := "SELECT 'rds_tools.show_topology'::regproc"
+	topologyTableExistQuery := "SELECT 'rds_tools.show_topology'::pg_catalog.regproc"
 	return utils.CheckExistenceQueries(conn, topologyTableExistQuery)
 }
 
@@ -218,7 +219,7 @@ func (m *AuroraPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	}
 	hasExtensions := utils.GetFirstRowFromQuery(
 		conn,
-		"SELECT (setting LIKE '%aurora_stat_utils%') AS aurora_stat_utils FROM pg_catalog.pg_settings WHERE name OPERATOR(pg_catalog.=) 'rds.extensions'")
+		"SELECT (setting OPERATOR(pg_catalog.~~) '%aurora_stat_utils%') AS aurora_stat_utils FROM pg_catalog.pg_settings WHERE name OPERATOR(pg_catalog.=) 'rds.extensions'")
 	hasTopology := utils.GetFirstRowFromQuery(conn, "SELECT 1 FROM pg_catalog.aurora_replica_status() LIMIT 1")
 	// If both variables with such name are presented then it means it's an Aurora cluster.
 	return hasExtensions != nil && hasExtensions[0] == true && hasTopology != nil
@@ -245,7 +246,7 @@ func (m *AuroraPgDatabaseDialect) GetBlueGreenStatusQuery() string {
 }
 
 func (m *AuroraPgDatabaseDialect) IsBlueGreenStatusAvailable(conn driver.Conn) bool {
-	topologyTableExistQuery := "SELECT 'pg_catalog.get_blue_green_fast_switchover_metadata'::regproc"
+	topologyTableExistQuery := "SELECT 'pg_catalog.get_blue_green_fast_switchover_metadata'::pg_catalog.regproc"
 	return utils.CheckExistenceQueries(conn, topologyTableExistQuery)
 }
 
@@ -259,18 +260,18 @@ func (g *GlobalAuroraPgDatabaseDialect) IsDialect(conn driver.Conn) bool {
 	}
 	hasExtensions := utils.GetFirstRowFromQuery(
 		conn,
-		"SELECT (setting LIKE '%aurora_stat_utils%') AS aurora_stat_utils FROM pg_catalog.pg_settings WHERE name OPERATOR(pg_catalog.=) 'rds.extensions'")
+		"SELECT (setting OPERATOR(pg_catalog.~~) '%aurora_stat_utils%') AS aurora_stat_utils FROM pg_catalog.pg_settings WHERE name OPERATOR(pg_catalog.=) 'rds.extensions'")
 	if hasExtensions == nil || hasExtensions[0] != true {
 		return false
 	}
 
 	if !utils.CheckExistenceQueries(conn,
-		"SELECT 'pg_catalog.aurora_global_db_status'::regproc",
-		"SELECT 'pg_catalog.aurora_global_db_instance_status'::regproc") {
+		"SELECT 'pg_catalog.aurora_global_db_status'::pg_catalog.regproc",
+		"SELECT 'pg_catalog.aurora_global_db_instance_status'::pg_catalog.regproc") {
 		return false
 	}
 
-	regionCount := utils.GetFirstRowFromQuery(conn, "SELECT count(1) FROM pg_catalog.aurora_global_db_status()")
+	regionCount := utils.GetFirstRowFromQuery(conn, "SELECT pg_catalog.count(1) FROM pg_catalog.aurora_global_db_status()")
 	if regionCount == nil {
 		return false
 	}
@@ -292,7 +293,7 @@ func (g *GlobalAuroraPgDatabaseDialect) GetTopologyQuery() string {
 }
 
 func (g *GlobalAuroraPgDatabaseDialect) GetRegionByInstanceIdQuery() string {
-	return "SELECT AWS_REGION FROM pg_catalog.aurora_global_db_instance_status() WHERE SERVER_ID = $1"
+	return "SELECT AWS_REGION FROM pg_catalog.aurora_global_db_instance_status() WHERE SERVER_ID OPERATOR(pg_catalog.=) $1"
 }
 
 func (g *GlobalAuroraPgDatabaseDialect) GetHostListProviderSupplier() HostListProviderSupplier {
