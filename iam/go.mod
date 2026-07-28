@@ -9,7 +9,7 @@ require (
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.43.1 // indirect
-	github.com/aws/aws-sdk-go-v2/config v1.32.28 // indirect
+	github.com/aws/aws-sdk-go-v2/config v1.32.32 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.31 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.32 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/rds/auth v1.6.30 // indirect
