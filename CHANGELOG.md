@@ -223,3 +223,29 @@ The Amazon Web Services (AWS) Advanced Go Wrapper allows an application to take 
 * `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.8](otlp/CHANGELOG.md#108---2026-07-02)
 * `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.1.2](pgx-driver/CHANGELOG.md#112---2026-07-02)
 * `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.8](xray/CHANGELOG.md#108---2026-07-02)
+
+
+# Release (2026-07-29)
+## General Highlights
+### :bug: Fixed
+* Coalesce concurrent MonitorManager initialization to prevent untracked duplicates monitors ([Issue #502](https://github.com/aws/aws-advanced-go-wrapper/issues/502)).
+* Exclude caller cancellation and stale connection from IsNetworkError ([Issue #492](https://github.com/aws/aws-advanced-go-wrapper/issues/492)).
+* Minor regex fixes for mask-helper ([PR #494](https://github.com/aws/aws-advanced-go-wrapper/pull/494)).
+* Pooled connections created with stale credentials ([PR #452](https://github.com/aws/aws-advanced-go-wrapper/pull/452)).
+
+### :crab: Changed
+* Refactor PG SQL queries to be fully qualified ([PR #523](https://github.com/aws/aws-advanced-go-wrapper/pull/523)).
+* Update known limitations documentation - GDB failover is supported ([PR #505](https://github.com/aws/aws-advanced-go-wrapper/pull/505)).
+
+## Module Highlights
+* `https://github.com/aws/aws-advanced-go-wrapper/auth-helpers`: [v1.1.3](auth-helpers/CHANGELOG.md#113---2026-07-29)
+* `https://github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager`: [v1.1.4](aws-secrets-manager/CHANGELOG.md#114---2026-07-29)
+* `https://github.com/aws/aws-advanced-go-wrapper/awssql/v2`: [v2.0.3](awssql/CHANGELOG.md#203---2026-07-29)
+* `https://github.com/aws/aws-advanced-go-wrapper/custom-endpoint`: [v1.0.6](custom-endpoint/CHANGELOG.md#106---2026-07-29)
+* `https://github.com/aws/aws-advanced-go-wrapper/federated-auth`: [v1.1.3](federated-auth/CHANGELOG.md#113---2026-07-29)
+* `https://github.com/aws/aws-advanced-go-wrapper/iam`: [v1.1.3](iam/CHANGELOG.md#113---2026-07-29)
+* `https://github.com/aws/aws-advanced-go-wrapper/mysql-driver`: [v1.1.3](mysql-driver/CHANGELOG.md#113---2026-07-29)
+* `https://github.com/aws/aws-advanced-go-wrapper/okta`: [v1.1.3](okta/CHANGELOG.md#113---2026-07-29)
+* `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.9](otlp/CHANGELOG.md#109---2026-07-29)
+* `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.1.3](pgx-driver/CHANGELOG.md#113---2026-07-29)
+* `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.9](xray/CHANGELOG.md#109---2026-07-29)

@@ -9,6 +9,9 @@
 | December 16 2025   | [Release 2025-12-16](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2025-12-16) |
 | February 3 2026    | [Release 2026-02-03](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2026-02-03) |
 | April 6 2026       | [Release 2026-04-06](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2026-04-06) |
+| May 26 2026        | [Release 2026-05-26](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2026-05-26) |
+| July 2 2026        | [Release 2026-07-02](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2026-07-02) |
+| July 29 2026       | [Release 2026-07-29](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2026-07-29) |
 
 `aws-advanced-go-wrapper` and its modules follows [semver](https://semver.org/#semantic-versioning-200) which means we will only
 release breaking changes in major versions. Generally speaking, patches will be released to fix existing problems without
@@ -61,4 +64,4 @@ from the updated source after the PRs are merged.
 | Major Version (`awssql`) | Latest Minor Version | Status      | Initial Release | Maintenance Window Start | Maintenance Window End |
 |--------------------------|----------------------|-------------|-----------------|--------------------------|------------------------|
 | 1                        | 1.4.0                | Maintenance | Jul 31, 2025    | Apr 6, 2026              | Apr 6, 2027            |
-| 2                        | 2.0.2                | Current     | Apr 6, 2026     | N/A                      | N/A                    |
+| 2                        | 2.0.3                | Current     | Apr 6, 2026     | N/A                      | N/A                    |

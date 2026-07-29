@@ -123,6 +123,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 * Driver method have descriptors/flags that help define execution behavior ([PR #463](https://github.com/aws/aws-advanced-go-wrapper/pull/463)).
 * Various performance optimizations. To learn more, see ([PR #471](https://github.com/aws/aws-advanced-go-wrapper/pull/471)).
 
+## [2.0.3] - 2026-07-29
+### :bug: Fixed
+* Coalesce concurrent MonitorManager initialization to prevent untracked duplicates monitors ([Issue #502](https://github.com/aws/aws-advanced-go-wrapper/issues/502)).
+* Minor regex fixes for mask-helper ([PR #494](https://github.com/aws/aws-advanced-go-wrapper/pull/494)).
+* Pooled connections created with stale credentials ([PR #452](https://github.com/aws/aws-advanced-go-wrapper/pull/452)).
+
+### :crab: Changed
+* Refactor PG SQL queries for Global Databases to be fully qualified ([PR #523](https://github.com/aws/aws-advanced-go-wrapper/pull/523)).
+
 [1.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.0.0
 [1.1.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.1.0
 [1.1.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.1.1
@@ -132,3 +141,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [2.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv2.0.0
 [2.0.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv2.0.1
 [2.0.2]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv2.0.2
+[2.0.3]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv2.0.3
