@@ -51,6 +51,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### :crab: Changed
 * Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.0.2
 
+## [1.1.3] - 2026-07-29
+### :bug: Fixed
+* Exclude caller cancellation and stale connection from IsNetworkError ([Issue #492](https://github.com/aws/aws-advanced-go-wrapper/issues/492)).
+
+### :crab: Changed
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.0.3
+
 [1.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver%2Fv1.0.0
 [1.0.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver%2Fv1.0.1
 [1.0.2]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver%2Fv1.0.2
@@ -60,4 +67,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [1.1.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver%2Fv1.1.0
 [1.1.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver%2Fv1.1.1
 [1.1.2]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver%2Fv1.1.2
+[1.1.3]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver%2Fv1.1.3
 
