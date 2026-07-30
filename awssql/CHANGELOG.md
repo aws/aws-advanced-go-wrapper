@@ -4,54 +4,30 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
-## [1.0.0] - 2025-07-31
-* The Amazon Web Services (AWS) Advanced Go Wrapper allows an application to take advantage of the features of clustered Aurora databases.
-
-## [1.1.0] - 2025-10-08
-### :magic_wand: Added
-* Read Write Splitting Plugin ([PR #198](https://github.com/aws/aws-advanced-go-wrapper/pull/198)). For more information, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheReadWriteSplittingPlugin.md).
-* Blue/Green Deployment Plugin ([PR #211](https://github.com/aws/aws-advanced-go-wrapper/pull/211)). For more information, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheBlueGreenPlugin.md).
-* Connect Time Plugin ([PR #241](https://github.com/aws/aws-advanced-go-wrapper/pull/241)).
-
+## [2.0.3] - 2026-07-29
 ### :bug: Fixed
-* Sliding Expiration Cache to properly dispose of expired or overwritten values ([PR #220](https://github.com/aws/aws-advanced-go-wrapper/pull/220)).
-* Limitless Connection Plugin to properly round the load metric values for Limitless transaction routers ([PR #250](https://github.com/aws/aws-advanced-go-wrapper/pull/250)).
-* Safe concurrent access to properties across different go-routines and monitors ([Issue #242](https://github.com/aws/aws-advanced-go-wrapper/issues/242)).
-* If failover is unsuccessful, the underlying error is returned ([PR #252](https://github.com/aws/aws-advanced-go-wrapper/pull/252)).
-
-## [1.1.1] - 2025-10-17
-### :crab: Changed
-* Refactored PostgresQL statements used by the driver to be fully qualified ([PR #270](https://github.com/aws/aws-advanced-go-wrapper/pull/270)).
-
-## [1.2.0] - 2025-12-04
-### :magic_wand: Added
-* Aurora Connection Tracker Plugin ([PR #272](https://github.com/aws/aws-advanced-go-wrapper/pull/272)). For more information, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/UsingTheAuroraConnectionTrackerPlugin.md).
-* Developer Plugin ([PR #274](https://github.com/aws/aws-advanced-go-wrapper/pull/274)). For more information, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheDeveloperPlugin.md).
-
-### :bug: Fixed
-* Blue Green Plugin Status Monitor to poll with the correct rate ([PR #279](https://github.com/aws/aws-advanced-go-wrapper/pull/279)).
-
-## [1.3.0] - 2025-12-16
-### :magic_wand: Added
-* Aurora Initial Connection Strategy Plugin ([PR #282](https://github.com/aws/aws-advanced-go-wrapper/pull/282)). For more information, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheAuroraInitialConnectionStrategyPlugin.md).
+* Coalesce concurrent MonitorManager initialization to prevent untracked duplicates monitors ([Issue #502](https://github.com/aws/aws-advanced-go-wrapper/issues/502)).
+* Minor regex fixes for mask-helper ([PR #494](https://github.com/aws/aws-advanced-go-wrapper/pull/494)).
+* Pooled connections created with stale credentials ([PR #452](https://github.com/aws/aws-advanced-go-wrapper/pull/452)).
 
 ### :crab: Changed
-* Update various dependencies
+* Refactor PG SQL queries for Global Databases to be fully qualified ([PR #523](https://github.com/aws/aws-advanced-go-wrapper/pull/523)).
 
-## [1.4.0] - 2026-02-03
-### :magic_wand: Added
-* Support for EU, AU, and UK domains ([PR #325](https://github.com/aws/aws-advanced-go-wrapper/pull/325)).
-
+## [2.0.2] - 2026-07-02
 ### :bug: Fixed
-* Embed messages file to allow it to be bundled in with binary ([Issue #301](https://github.com/aws/aws-advanced-go-wrapper/issues/301)).
-* During B/G switchover, ensure IAM host name should be based on green host ([PR #321](https://github.com/aws/aws-advanced-go-wrapper/pull/321)).
-* Address race conditions associated with PluginServiceImpl by implementing a separate PartialPluginService to be used by monitoring structs for plugins such as BlueGreen, CustomEndpoint, and Limitless ([Issue #318](https://github.com/aws/aws-advanced-go-wrapper/issues/318)).
-* Stop B/G monitors after switchover completes ([PR #323](https://github.com/aws/aws-advanced-go-wrapper/pull/323)).
-* Goroutine to clean up open connections when failover never happens ([PR #327](https://github.com/aws/aws-advanced-go-wrapper/pull/327)).
-* Ensure B/G monitors are set up ([PR #330](https://github.com/aws/aws-advanced-go-wrapper/pull/330)).
+* Thread-safe plugin and driver registration ([PR #459](https://github.com/aws/aws-advanced-go-wrapper/pull/459)).
+* Proper mutex synchronization across various components and thread-safe map access ([PR #462](https://github.com/aws/aws-advanced-go-wrapper/pull/462)).
 
 ### :crab: Changed
-* Cache efm2 monitor key for better performance ([PR #328](https://github.com/aws/aws-advanced-go-wrapper/pull/328)).
+* Driver method have descriptors/flags that help define execution behavior ([PR #463](https://github.com/aws/aws-advanced-go-wrapper/pull/463)).
+* Various performance optimizations. To learn more, see ([PR #471](https://github.com/aws/aws-advanced-go-wrapper/pull/471)).
+
+## [2.0.1] - 2026-05-26
+### :crab: Changed
+* Refactor PG SQL queries to be fully qualified ([Commit #a07683f](https://github.com/aws/aws-advanced-go-wrapper/commit/a07683f09f69e972a460640e5cc3845de7a97489)). 
+
+### :bug: Fixed
+* Remove registered dialects check so that custom driver dialects will not be blocked ([PR #431](https://github.com/aws/aws-advanced-go-wrapper/pull/431)).
 
 ## [2.0.0] - 2026-04-06
 ### :boom: Breaking Changes
@@ -107,38 +83,62 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 * Remove IP Address checking in staleDnsHelper ([PR #363](https://github.com/aws/aws-advanced-go-wrapper/pull/363)).
 * Read/Write Splitting no longer uses a query to toggle between read and read/write mode ([PR #407](https://github.com/aws/aws-advanced-go-wrapper/pull/407)).
 
-## [2.0.1] - 2026-05-26
-### :crab: Changed
-* Refactor PG SQL queries to be fully qualified ([Commit #a07683f](https://github.com/aws/aws-advanced-go-wrapper/commit/a07683f09f69e972a460640e5cc3845de7a97489)). 
+## [1.4.0] - 2026-02-03
+### :magic_wand: Added
+* Support for EU, AU, and UK domains ([PR #325](https://github.com/aws/aws-advanced-go-wrapper/pull/325)).
 
 ### :bug: Fixed
-* Remove registered dialects check so that custom driver dialects will not be blocked ([PR #431](https://github.com/aws/aws-advanced-go-wrapper/pull/431)).
-
-## [2.0.2] - 2026-07-02
-### :bug: Fixed
-* Thread-safe plugin and driver registration ([PR #459](https://github.com/aws/aws-advanced-go-wrapper/pull/459)).
-* Proper mutex synchronization across various components and thread-safe map access ([PR #462](https://github.com/aws/aws-advanced-go-wrapper/pull/462)).
-
-### :crab: Changed
-* Driver method have descriptors/flags that help define execution behavior ([PR #463](https://github.com/aws/aws-advanced-go-wrapper/pull/463)).
-* Various performance optimizations. To learn more, see ([PR #471](https://github.com/aws/aws-advanced-go-wrapper/pull/471)).
-
-## [2.0.3] - 2026-07-29
-### :bug: Fixed
-* Coalesce concurrent MonitorManager initialization to prevent untracked duplicates monitors ([Issue #502](https://github.com/aws/aws-advanced-go-wrapper/issues/502)).
-* Minor regex fixes for mask-helper ([PR #494](https://github.com/aws/aws-advanced-go-wrapper/pull/494)).
-* Pooled connections created with stale credentials ([PR #452](https://github.com/aws/aws-advanced-go-wrapper/pull/452)).
+* Embed messages file to allow it to be bundled in with binary ([Issue #301](https://github.com/aws/aws-advanced-go-wrapper/issues/301)).
+* During B/G switchover, ensure IAM host name should be based on green host ([PR #321](https://github.com/aws/aws-advanced-go-wrapper/pull/321)).
+* Address race conditions associated with PluginServiceImpl by implementing a separate PartialPluginService to be used by monitoring structs for plugins such as BlueGreen, CustomEndpoint, and Limitless ([Issue #318](https://github.com/aws/aws-advanced-go-wrapper/issues/318)).
+* Stop B/G monitors after switchover completes ([PR #323](https://github.com/aws/aws-advanced-go-wrapper/pull/323)).
+* Goroutine to clean up open connections when failover never happens ([PR #327](https://github.com/aws/aws-advanced-go-wrapper/pull/327)).
+* Ensure B/G monitors are set up ([PR #330](https://github.com/aws/aws-advanced-go-wrapper/pull/330)).
 
 ### :crab: Changed
-* Refactor PG SQL queries for Global Databases to be fully qualified ([PR #523](https://github.com/aws/aws-advanced-go-wrapper/pull/523)).
+* Cache efm2 monitor key for better performance ([PR #328](https://github.com/aws/aws-advanced-go-wrapper/pull/328)).
 
-[1.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.0.0
-[1.1.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.1.0
-[1.1.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.1.1
-[1.2.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.2.0
-[1.3.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.3.0
-[1.4.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.4.0
-[2.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv2.0.0
-[2.0.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv2.0.1
-[2.0.2]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv2.0.2
+## [1.3.0] - 2025-12-16
+### :magic_wand: Added
+* Aurora Initial Connection Strategy Plugin ([PR #282](https://github.com/aws/aws-advanced-go-wrapper/pull/282)). For more information, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheAuroraInitialConnectionStrategyPlugin.md).
+
+### :crab: Changed
+* Update various dependencies
+
+## [1.2.0] - 2025-12-04
+### :magic_wand: Added
+* Aurora Connection Tracker Plugin ([PR #272](https://github.com/aws/aws-advanced-go-wrapper/pull/272)). For more information, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/UsingTheAuroraConnectionTrackerPlugin.md).
+* Developer Plugin ([PR #274](https://github.com/aws/aws-advanced-go-wrapper/pull/274)). For more information, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheDeveloperPlugin.md).
+
+### :bug: Fixed
+* Blue Green Plugin Status Monitor to poll with the correct rate ([PR #279](https://github.com/aws/aws-advanced-go-wrapper/pull/279)).
+
+## [1.1.1] - 2025-10-17
+### :crab: Changed
+* Refactored PostgresQL statements used by the driver to be fully qualified ([PR #270](https://github.com/aws/aws-advanced-go-wrapper/pull/270)).
+
+## [1.1.0] - 2025-10-08
+### :magic_wand: Added
+* Read Write Splitting Plugin ([PR #198](https://github.com/aws/aws-advanced-go-wrapper/pull/198)). For more information, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheReadWriteSplittingPlugin.md).
+* Blue/Green Deployment Plugin ([PR #211](https://github.com/aws/aws-advanced-go-wrapper/pull/211)). For more information, see the [documentation](https://github.com/aws/aws-advanced-go-wrapper/blob/main/docs/user-guide/using-plugins/UsingTheBlueGreenPlugin.md).
+* Connect Time Plugin ([PR #241](https://github.com/aws/aws-advanced-go-wrapper/pull/241)).
+
+### :bug: Fixed
+* Sliding Expiration Cache to properly dispose of expired or overwritten values ([PR #220](https://github.com/aws/aws-advanced-go-wrapper/pull/220)).
+* Limitless Connection Plugin to properly round the load metric values for Limitless transaction routers ([PR #250](https://github.com/aws/aws-advanced-go-wrapper/pull/250)).
+* Safe concurrent access to properties across different go-routines and monitors ([Issue #242](https://github.com/aws/aws-advanced-go-wrapper/issues/242)).
+* If failover is unsuccessful, the underlying error is returned ([PR #252](https://github.com/aws/aws-advanced-go-wrapper/pull/252)).
+
+## [1.0.0] - 2025-07-31
+* The Amazon Web Services (AWS) Advanced Go Wrapper allows an application to take advantage of the features of clustered Aurora databases.
+
 [2.0.3]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv2.0.3
+[2.0.2]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv2.0.2
+[2.0.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv2.0.1
+[2.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv2.0.0
+[1.4.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.4.0
+[1.3.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.3.0
+[1.2.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.2.0
+[1.1.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.1.1
+[1.1.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.1.0
+[1.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv1.0.0
