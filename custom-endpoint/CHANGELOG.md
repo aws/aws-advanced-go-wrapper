@@ -4,13 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
-## [1.0.0] - 2025-12-04
-* The Custom Endpoint Plugin adds support for RDS custom endpoints. To see information on how to configure and use the Custom Endpoint Plugin, see [Using the Custom Endpoint Plugin](../docs/user-guide/using-plugins/UsingTheCustomEndpointPlugin.md).
-
-## [1.0.1] - 2025-12-16
+## [1.0.6] - 2026-07-29
 ### :crab: Changed
-* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v1.3.0
-* Update dependency `github.com/aws/aws-advanced-go-wrapper/auth-helpers` to v1.0.4
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.0.3
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/auth-helpers` to v1.1.3
+
+## [1.0.5] - 2026-07-02
+### :crab: Changed
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.0.2
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/auth-helpers` to v1.1.2
+
+## [1.0.4] - 2026-05-26
+### :crab: Changed
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.0.1
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/auth-helpers` to v1.1.1
+
+## [1.0.3] - 2026-04-06
+### :crab: Changed
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.0.0
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/auth-helpers` to v1.1.0
 
 ## [1.0.2] - 2026-02-03
 ### :bug: Fixed
@@ -20,30 +32,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 * Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v1.5.0
 * Update dependency `github.com/aws/aws-advanced-go-wrapper/auth-helpers` to v1.0.5
 
-## [1.0.3] - 2026-04-06
+## [1.0.1] - 2025-12-16
 ### :crab: Changed
-* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.0.0
-* Update dependency `github.com/aws/aws-advanced-go-wrapper/auth-helpers` to v1.1.0
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v1.3.0
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/auth-helpers` to v1.0.4
 
-## [1.0.4] - 2026-05-26
-### :crab: Changed
-* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.0.1
-* Update dependency `github.com/aws/aws-advanced-go-wrapper/auth-helpers` to v1.1.1
+## [1.0.0] - 2025-12-04
+* The Custom Endpoint Plugin adds support for RDS custom endpoints. To see information on how to configure and use the Custom Endpoint Plugin, see [Using the Custom Endpoint Plugin](../docs/user-guide/using-plugins/UsingTheCustomEndpointPlugin.md).
 
-## [1.0.5] - 2026-07-02
-### :crab: Changed
-* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.0.2
-* Update dependency `github.com/aws/aws-advanced-go-wrapper/auth-helpers` to v1.1.2
-
-## [1.0.6] - 2026-07-29
-### :crab: Changed
-* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.0.3
-* Update dependency `github.com/aws/aws-advanced-go-wrapper/auth-helpers` to v1.1.3
-
-[1.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/custom-endpoint%2Fv1.0.0
-[1.0.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/custom-endpoint%2Fv1.0.1
-[1.0.2]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/custom-endpoint%2Fv1.0.2
-[1.0.3]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/custom-endpoint%2Fv1.0.3
-[1.0.4]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/custom-endpoint%2Fv1.0.4
-[1.0.5]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/custom-endpoint%2Fv1.0.5
 [1.0.6]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/custom-endpoint%2Fv1.0.6
+[1.0.5]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/custom-endpoint%2Fv1.0.5
+[1.0.4]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/custom-endpoint%2Fv1.0.4
+[1.0.3]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/custom-endpoint%2Fv1.0.3
+[1.0.2]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/custom-endpoint%2Fv1.0.2
+[1.0.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/custom-endpoint%2Fv1.0.1
+[1.0.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/custom-endpoint%2Fv1.0.0
