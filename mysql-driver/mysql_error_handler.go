@@ -20,7 +20,9 @@ import (
 	"context"
 	"database/sql/driver"
 	"errors"
+	"io"
 	"strings"
+	"syscall"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -48,6 +50,11 @@ func (m MySQLErrorHandler) IsNetworkError(err error) bool {
 	// readPacket/writePacket when the underlying net.Conn fails mid-query
 	// (after a non-cancellation I/O error); it IS a genuine network failure.
 	if errors.Is(err, mysql.ErrInvalidConn) {
+		return true
+	}
+
+	// Typed transport faults; substrings below are a fallback.
+	if errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE) || errors.Is(err, io.ErrUnexpectedEOF) {
 		return true
 	}
 

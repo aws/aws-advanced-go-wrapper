@@ -20,8 +20,10 @@ import (
 	"context"
 	"database/sql/driver"
 	"errors"
+	"io"
 	"slices"
 	"strings"
+	"syscall"
 
 	"github.com/uptrace/bun/driver/pgdriver"
 )
@@ -59,6 +61,11 @@ func (h *BunPgErrorHandler) IsNetworkError(err error) bool {
 	// server/network faults surface as SQLSTATE 08xxx/57P01 or raw I/O errors.
 	if errors.Is(err, driver.ErrBadConn) {
 		return false
+	}
+
+	// Typed transport faults; substrings below are a fallback.
+	if errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE) || errors.Is(err, io.ErrUnexpectedEOF) {
+		return true
 	}
 
 	sqlState := h.getSQLStateFromError(err)

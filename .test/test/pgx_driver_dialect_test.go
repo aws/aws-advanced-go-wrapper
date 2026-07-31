@@ -21,9 +21,11 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"regexp"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
@@ -99,4 +101,11 @@ func TestPgxErrorHandler_LocalCloseNotNetwork(t *testing.T) {
 	h := &pgx_driver.PgxErrorHandler{}
 	assert.False(t, h.IsNetworkError(net.ErrClosed))
 	assert.False(t, h.IsNetworkError(fmt.Errorf("read tcp: %w", net.ErrClosed)))
+}
+
+func TestPgxErrorHandler_TypedTransportSentinels(t *testing.T) {
+	h := &pgx_driver.PgxErrorHandler{}
+	assert.True(t, h.IsNetworkError(fmt.Errorf("read tcp 10.0.0.1:5432->10.0.0.2:5432: %w", syscall.ECONNRESET)))
+	assert.True(t, h.IsNetworkError(fmt.Errorf("write tcp: %w", syscall.EPIPE)))
+	assert.True(t, h.IsNetworkError(fmt.Errorf("reading message: %w", io.ErrUnexpectedEOF)))
 }
