@@ -21,6 +21,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"net"
 	"regexp"
 	"strings"
 	"testing"
@@ -92,4 +93,10 @@ func TestPgxErrorHandler_CallerCancellationAndStaleConn(t *testing.T) {
 		assert.False(t, errorHandler.IsNetworkError(driver.ErrBadConn))
 		assert.False(t, errorHandler.IsNetworkError(fmt.Errorf("wrapped: %w", driver.ErrBadConn)))
 	})
+}
+
+func TestPgxErrorHandler_LocalCloseNotNetwork(t *testing.T) {
+	h := &pgx_driver.PgxErrorHandler{}
+	assert.False(t, h.IsNetworkError(net.ErrClosed))
+	assert.False(t, h.IsNetworkError(fmt.Errorf("read tcp: %w", net.ErrClosed)))
 }

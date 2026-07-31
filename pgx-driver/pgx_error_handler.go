@@ -44,7 +44,6 @@ var NetworkErrors = []string{
 
 var PgNetworkErrorMessages = []string{
 	"unexpected EOF",
-	"use of closed network connection",
 	"broken pipe",
 }
 
