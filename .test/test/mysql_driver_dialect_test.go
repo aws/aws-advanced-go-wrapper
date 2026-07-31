@@ -109,6 +109,16 @@ func TestMySQLErrorHandler_IsNetworkError(t *testing.T) {
 		assert.True(t, handler.IsNetworkError(err))
 	})
 
+	t.Run("SQLSTATE 08004 (server rejected) is NOT a network error", func(t *testing.T) {
+		err := &mysql.MySQLError{SQLState: [5]byte{'0', '8', '0', '0', '4'}, Message: "rejected"}
+		assert.False(t, handler.IsNetworkError(err))
+	})
+
+	t.Run("other 08 class codes remain network errors", func(t *testing.T) {
+		err := &mysql.MySQLError{SQLState: [5]byte{'0', '8', 'S', '0', '1'}, Message: "link failure"}
+		assert.True(t, handler.IsNetworkError(err))
+	})
+
 	t.Run("caller cancellation is not a network error", func(t *testing.T) {
 		assert.False(t, handler.IsNetworkError(context.Canceled))
 		assert.False(t, handler.IsNetworkError(fmt.Errorf("query aborted: %w", context.Canceled)))
