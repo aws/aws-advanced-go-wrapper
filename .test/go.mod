@@ -16,10 +16,10 @@ require (
 	github.com/aws/aws-advanced-go-wrapper/otlp v1.0.9
 	github.com/aws/aws-advanced-go-wrapper/pgx-driver v1.1.3
 	github.com/aws/aws-advanced-go-wrapper/xray v1.0.9
-	github.com/aws/aws-sdk-go-v2 v1.43.1
+	github.com/aws/aws-sdk-go-v2 v1.43.2
 	github.com/aws/aws-sdk-go-v2/config v1.32.32
 	github.com/aws/aws-sdk-go-v2/service/rds v1.123.1
-	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.44.1
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.44.2
 	github.com/aws/aws-sdk-go-v2/service/sts v1.45.1
 	github.com/aws/aws-xray-sdk-go v1.8.5
 	github.com/go-sql-driver/mysql v1.10.0
@@ -46,8 +46,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.31 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.32 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/rds/auth v1.6.32
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.32 // indirect; indirectg
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.32 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.33 // indirect; indirectg
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.33 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.14 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.32 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.33.1 // indirect
