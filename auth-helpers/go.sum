@@ -1,7 +1,7 @@
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
-github.com/aws/aws-sdk-go-v2 v1.43.1 h1:t6AQIB1uQ7HJA+0CDRWjOYG5MfwnOyyDsN4vRDHcwIY=
-github.com/aws/aws-sdk-go-v2 v1.43.1/go.mod h1:WEzLKBh/mEjXvx1FtQMWgSxMSTVqxQzjkRtk5fa3wkg=
+github.com/aws/aws-sdk-go-v2 v1.43.2 h1:cl+IXwWb3qazClUcm08tGSsB6OiuV83JVJO9B0jQcPc=
+github.com/aws/aws-sdk-go-v2 v1.43.2/go.mod h1:WEzLKBh/mEjXvx1FtQMWgSxMSTVqxQzjkRtk5fa3wkg=
 github.com/aws/aws-sdk-go-v2/config v1.32.32 h1:CcYdrcIjulT7xbTSqeEInh/PqUWv10LMznfdbNRwHBM=
 github.com/aws/aws-sdk-go-v2/config v1.32.32/go.mod h1:Rk+LRPrR2oLWLOqUbhNOKYOJ8chU2aZ/R+Sdi/Bc/+4=
 github.com/aws/aws-sdk-go-v2/credentials v1.19.31 h1:olhkNt+ZMx+X40XxeyrflmdBx145TP+3DqaS4s8GsbI=
