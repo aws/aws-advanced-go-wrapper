@@ -21,6 +21,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"io"
+	"slices"
 	"strings"
 	"syscall"
 
@@ -33,7 +34,23 @@ var MySqlNetworkErrorMessages = []string{
 	"broken pipe",
 }
 
+// MySqlReadOnlyErrorCodes are error numbers for a write to a read-only connection.
+var MySqlReadOnlyErrorCodes = []uint16{
+	1290, // running with --read-only
+	1836, // read-only mode
+	1792, // read-only transaction
+}
+
 type MySQLErrorHandler struct {
+}
+
+// IsReadOnlyError reports whether err is a write to a read-only connection.
+func (m MySQLErrorHandler) IsReadOnlyError(err error) bool {
+	var mysqlErr *mysql.MySQLError
+	if errors.As(err, &mysqlErr) {
+		return slices.Contains(MySqlReadOnlyErrorCodes, mysqlErr.Number)
+	}
+	return false
 }
 
 func (m MySQLErrorHandler) IsNetworkError(err error) bool {

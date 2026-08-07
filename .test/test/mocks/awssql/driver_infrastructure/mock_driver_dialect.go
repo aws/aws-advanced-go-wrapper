@@ -178,6 +178,20 @@ func (mr *MockDriverDialectMockRecorder) IsNetworkError(arg0 interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsNetworkError", reflect.TypeOf((*MockDriverDialect)(nil).IsNetworkError), arg0)
 }
 
+// IsReadOnlyError mocks base method.
+func (m *MockDriverDialect) IsReadOnlyError(arg0 error) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsReadOnlyError", arg0)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsReadOnlyError indicates an expected call of IsReadOnlyError.
+func (mr *MockDriverDialectMockRecorder) IsReadOnlyError(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsReadOnlyError", reflect.TypeOf((*MockDriverDialect)(nil).IsReadOnlyError), arg0)
+}
+
 // PrepareDsn mocks base method.
 func (m *MockDriverDialect) PrepareDsn(arg0 map[string]string, arg1 *host_info_util.HostInfo) string {
 	m.ctrl.T.Helper()

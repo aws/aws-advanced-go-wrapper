@@ -71,6 +71,10 @@ func (d BunPgDriverDialect) IsLoginError(err error) bool {
 	return d.errorHandler.IsLoginError(err)
 }
 
+func (d BunPgDriverDialect) IsReadOnlyError(err error) bool {
+	return d.errorHandler.IsReadOnlyError(err)
+}
+
 func (d BunPgDriverDialect) IsClosed(conn driver.Conn) bool {
 	if validator, ok := conn.(driver.Validator); ok {
 		return !validator.IsValid()

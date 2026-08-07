@@ -49,7 +49,15 @@ var PgNetworkErrorMessages = []string{
 	"broken pipe",
 }
 
+// PgReadOnlyErrorState is the SQLSTATE for a write to a read-only connection.
+const PgReadOnlyErrorState = "25006"
+
 type PgxErrorHandler struct {
+}
+
+// IsReadOnlyError reports whether err is a write to a read-only connection.
+func (p *PgxErrorHandler) IsReadOnlyError(err error) bool {
+	return p.getSQLStateFromError(err) == PgReadOnlyErrorState
 }
 
 func (p *PgxErrorHandler) IsNetworkError(err error) bool {

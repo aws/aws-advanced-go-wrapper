@@ -252,8 +252,9 @@ func (p *PartialPluginService) GetConnectionProvider() driver_infrastructure.Con
 func (p *PartialPluginService) GetProperties() *utils.RWMap[string, string] {
 	panic("Method not implemented.")
 }
-func (p *PartialPluginService) IsNetworkError(err error) bool { panic("Method not implemented.") }
-func (p *PartialPluginService) IsLoginError(err error) bool   { panic("Method not implemented.") }
+func (p *PartialPluginService) IsNetworkError(err error) bool  { panic("Method not implemented.") }
+func (p *PartialPluginService) IsLoginError(err error) bool    { panic("Method not implemented.") }
+func (p *PartialPluginService) IsReadOnlyError(err error) bool { panic("Method not implemented.") }
 func (p *PartialPluginService) GetTelemetryFactory() telemetry.TelemetryFactory {
 	panic("Method not implemented.")
 }

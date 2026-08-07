@@ -49,7 +49,15 @@ var PgNetworkErrorMessages = []string{
 	"broken pipe",
 }
 
+// PgReadOnlyErrorState is the SQLSTATE for a write to a read-only connection.
+const PgReadOnlyErrorState = "25006"
+
 type BunPgErrorHandler struct{}
+
+// IsReadOnlyError reports whether err is a write to a read-only connection.
+func (h *BunPgErrorHandler) IsReadOnlyError(err error) bool {
+	return h.getSQLStateFromError(err) == PgReadOnlyErrorState
+}
 
 func (h *BunPgErrorHandler) IsNetworkError(err error) bool {
 	// Caller-initiated cancellation / deadline is not a DB network failure.

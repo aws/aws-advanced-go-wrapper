@@ -614,6 +614,20 @@ func (mr *MockPluginServiceMockRecorder) IsNetworkError(arg0 interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsNetworkError", reflect.TypeOf((*MockPluginService)(nil).IsNetworkError), arg0)
 }
 
+// IsReadOnlyError mocks base method.
+func (m *MockPluginService) IsReadOnlyError(arg0 error) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsReadOnlyError", arg0)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsReadOnlyError indicates an expected call of IsReadOnlyError.
+func (mr *MockPluginServiceMockRecorder) IsReadOnlyError(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsReadOnlyError", reflect.TypeOf((*MockPluginService)(nil).IsReadOnlyError), arg0)
+}
+
 // IsPluginInUse mocks base method.
 func (m *MockPluginService) IsPluginInUse(arg0 string) bool {
 	m.ctrl.T.Helper()

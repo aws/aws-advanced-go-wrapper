@@ -119,3 +119,18 @@ func TestPgxErrorHandler_SqlStatePrefixMatching(t *testing.T) {
 		assert.False(t, h.IsNetworkError(&pgconn.PgError{Code: code}), "expected NOT network error for %s", code)
 	}
 }
+
+func TestPgxErrorHandler_IsReadOnlyError(t *testing.T) {
+	h := &pgx_driver.PgxErrorHandler{}
+	assert.True(t, h.IsReadOnlyError(&pgconn.PgError{Code: "25006"}))
+	assert.False(t, h.IsReadOnlyError(&pgconn.PgError{Code: "08006"}))
+	assert.False(t, h.IsReadOnlyError(fmt.Errorf("some error")))
+	assert.False(t, h.IsNetworkError(&pgconn.PgError{Code: "25006"}))
+}
+
+func TestPgxDriverDialect_IsReadOnlyError(t *testing.T) {
+	d := pgx_driver.NewPgxDriverDialect()
+	assert.True(t, d.IsReadOnlyError(&pgconn.PgError{Code: "25006"}))
+	assert.False(t, d.IsReadOnlyError(&pgconn.PgError{Code: "08006"}))
+	assert.False(t, d.IsNetworkError(&pgconn.PgError{Code: "25006"}))
+}
