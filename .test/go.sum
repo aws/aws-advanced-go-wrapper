@@ -22,8 +22,8 @@ github.com/aws/aws-sdk-go-v2/credentials v1.19.31 h1:olhkNt+ZMx+X40XxeyrflmdBx14
 github.com/aws/aws-sdk-go-v2/credentials v1.19.31/go.mod h1:twHrsQY+gUmkTOsDqYwBBrdP41FvzO86qjiRbj7GXcw=
 github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.32 h1:zheY8iDNNzOHGS2aBJ5GWjeRbhsGuSg4+s20NZ0AywQ=
 github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.32/go.mod h1:bkw+ZoqafHSo/3lQBm+xzWf4kh79hqP9M2kPtmOFZIY=
-github.com/aws/aws-sdk-go-v2/feature/rds/auth v1.6.32 h1:fgIXVAjMiiLDnzAA0lzkXIwedITGD1/AWwcQ52lYLcA=
-github.com/aws/aws-sdk-go-v2/feature/rds/auth v1.6.32/go.mod h1:6d0tuG4Dvu51pToD+8oDrWqve0n+AM5EnFqxEzAPGHg=
+github.com/aws/aws-sdk-go-v2/feature/rds/auth v1.6.34 h1:pjwlPBr+vMOM62LPgTu9iLRTAUdKkz/hO/VbtGfHcac=
+github.com/aws/aws-sdk-go-v2/feature/rds/auth v1.6.34/go.mod h1:rjMbjYOeWyey/eDhNlPUt+h+2XGWrMuRJq11Vl+dkU0=
 github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.34 h1:vuIfjzoeqhQMGJyOBU3t0ZEjn2jrN8Bbg1N4CgjzM5Q=
 github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.34/go.mod h1:hP28cN4CPJLZHirdQPrZR50JcLN4ApRJP2tzG8cRlhY=
 github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.34 h1:9faHsnqxJ1vDvB4wMZy/ajIDyz5QhllQjjc72RJpXAw=
