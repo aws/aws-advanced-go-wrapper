@@ -21,6 +21,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"io"
+	"net"
 	"slices"
 	"strings"
 	"syscall"
@@ -69,6 +70,17 @@ func (h *BunPgErrorHandler) IsNetworkError(err error) bool {
 	// server/network faults surface as SQLSTATE 08xxx/57P01 or raw I/O errors.
 	if errors.Is(err, driver.ErrBadConn) {
 		return false
+	}
+
+	// net.ErrClosed means a read that was ALREADY IN FLIGHT had its socket
+	// closed out from under it by another goroutine. In this wrapper that only
+	// happens when we deliberately abort a connection whose host we just judged
+	// unhealthy: EFM's monitor (plugins/efm/host_monitor.go) or the connection
+	// tracker (plugins/connection_tracker/opened_connection_tracker.go). A
+	// blackholed network path (hung instance, partition, security-group change)
+	// yields no RST/FIN/EOF, so this is the only failover signal available.
+	if errors.Is(err, net.ErrClosed) {
+		return true
 	}
 
 	// Typed transport faults; substrings below are a fallback.

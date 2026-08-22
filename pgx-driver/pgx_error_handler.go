@@ -21,6 +21,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"io"
+	"net"
 	"slices"
 	"strings"
 	"syscall"
@@ -69,6 +70,24 @@ func (p *PgxErrorHandler) IsNetworkError(err error) bool {
 	// cached conn and retries on a fresh one. Not a network fault.
 	if errors.Is(err, driver.ErrBadConn) {
 		return false
+	}
+	// pgconn.ErrConnClosed means the operation never reached the wire: the conn
+	// was already closed (by the caller, the pool, or a prior teardown). pgx
+	// surfaces it wrapped in connLockError{"conn closed"}. Not a fault.
+	if errors.Is(err, pgconn.ErrConnClosed) {
+		return false
+	}
+
+	// net.ErrClosed means a read that was ALREADY IN FLIGHT had its socket
+	// closed out from under it by another goroutine. In this wrapper that only
+	// happens when we deliberately abort a connection whose host we just judged
+	// unhealthy: EFM's monitor (plugins/efm/host_monitor.go) or the connection
+	// tracker (plugins/connection_tracker/opened_connection_tracker.go). A
+	// blackholed network path (hung instance, partition, security-group change)
+	// yields no RST/FIN/EOF, so this is the only failover signal available.
+	// Contrast pgconn.ErrConnClosed above, which is the use-after-close case.
+	if errors.Is(err, net.ErrClosed) {
+		return true
 	}
 
 	// Typed transport faults; substrings below are a fallback.

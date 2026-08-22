@@ -37,8 +37,15 @@ func TestBunPgErrorHandler_IsNetworkError(t *testing.T) {
 		assert.True(t, h.IsNetworkError(fmt.Errorf("write: broken pipe")))
 	})
 
-	t.Run("net.ErrClosed (local close) is not a network error", func(t *testing.T) {
-		assert.False(t, h.IsNetworkError(net.ErrClosed))
+	// An in-flight read whose socket was aborted by EFM or the connection
+	// tracker surfaces as net.ErrClosed, and is the only failover signal
+	// available when the network path is blackholed. Matched by sentinel, not
+	// by message text - an unwrapped string that merely reads the same is not
+	// the sentinel and stays unclassified.
+	t.Run("net.ErrClosed (in-flight abort) IS a network error", func(t *testing.T) {
+		assert.True(t, h.IsNetworkError(net.ErrClosed))
+		assert.True(t, h.IsNetworkError(fmt.Errorf("read tcp: %w", net.ErrClosed)))
+		assert.True(t, h.IsNetworkError(&net.OpError{Op: "read", Net: "tcp", Err: net.ErrClosed}))
 		assert.False(t, h.IsNetworkError(fmt.Errorf("read: use of closed network connection")))
 	})
 
