@@ -97,10 +97,43 @@ func TestPgxErrorHandler_CallerCancellationAndStaleConn(t *testing.T) {
 	})
 }
 
-func TestPgxErrorHandler_LocalCloseNotNetwork(t *testing.T) {
+// net.ErrClosed and pgconn.ErrConnClosed both describe a closed connection but
+// mean opposite things. ErrConnClosed is a use-after-close: the operation never
+// reached the wire. net.ErrClosed is an abort of a read already in flight, which
+// in this wrapper only happens when EFM or the connection tracker deliberately
+// kills a connection to a host it judged unhealthy - the only failover signal
+// available when the network path is blackholed and no RST/FIN/EOF ever arrives.
+func TestPgxErrorHandler_ClosedConnectionDistinction(t *testing.T) {
 	h := &pgx_driver.PgxErrorHandler{}
-	assert.False(t, h.IsNetworkError(net.ErrClosed))
-	assert.False(t, h.IsNetworkError(fmt.Errorf("read tcp: %w", net.ErrClosed)))
+
+	t.Run("net.ErrClosed (in-flight abort) IS a network error", func(t *testing.T) {
+		assert.True(t, h.IsNetworkError(net.ErrClosed))
+		assert.True(t, h.IsNetworkError(fmt.Errorf("read tcp: %w", net.ErrClosed)))
+		// The shape pgx actually produces when the socket is closed mid-read.
+		assert.True(t, h.IsNetworkError(&net.OpError{
+			Op: "read", Net: "tcp", Err: net.ErrClosed,
+		}))
+	})
+
+	t.Run("pgconn.ErrConnClosed (use-after-close) is NOT a network error", func(t *testing.T) {
+		assert.True(t, errors.Is(pgconn.ErrConnClosed, pgconn.ErrConnClosed))
+		assert.False(t, h.IsNetworkError(pgconn.ErrConnClosed))
+		assert.False(t, h.IsNetworkError(fmt.Errorf("query failed: %w", pgconn.ErrConnClosed)))
+	})
+}
+
+// Pins the invariant that dealWithError's !errors.Is(err, lastErrorDealtWith)
+// guard (failover_plugin.go) does not swallow consecutive EFM aborts. Each abort
+// produces a distinct *net.OpError, so errors.Is between two of them must be
+// false - unlike a bare sentinel, which compares equal to itself and would make
+// the second and every later occurrence be silently skipped.
+func TestPgxErrorHandler_DistinctOpErrorsAreNotEqual(t *testing.T) {
+	first := &net.OpError{Op: "read", Net: "tcp", Err: net.ErrClosed}
+	second := &net.OpError{Op: "read", Net: "tcp", Err: net.ErrClosed}
+
+	assert.False(t, errors.Is(second, first))
+	assert.True(t, errors.Is(first, net.ErrClosed))
+	assert.True(t, errors.Is(second, net.ErrClosed))
 }
 
 func TestPgxErrorHandler_TypedTransportSentinels(t *testing.T) {
