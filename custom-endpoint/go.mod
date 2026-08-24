@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/aws/aws-advanced-go-wrapper/auth-helpers v1.1.3
 	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.0.3
-	github.com/aws/aws-sdk-go-v2 v1.43.6
+	github.com/aws/aws-sdk-go-v2 v1.43.7
 	github.com/aws/aws-sdk-go-v2/config v1.32.37
 	github.com/aws/aws-sdk-go-v2/service/rds v1.124.0
 )
@@ -13,7 +13,7 @@ require (
 require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.36 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.37 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/rds/auth v1.6.37 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/rds/auth v1.6.38 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.37 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.37 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.38 // indirect
