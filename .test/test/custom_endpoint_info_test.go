@@ -22,6 +22,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	custom_endpoint "github.com/aws/aws-advanced-go-wrapper/custom-endpoint"
 )
@@ -300,4 +301,19 @@ func TestCustomEndpointInfo_RoleTypeCaseInsensitive(t *testing.T) {
 	info2, _ := custom_endpoint.NewCustomEndpointInfo(endpoint2)
 
 	assert.True(t, info1.Equals(info2))
+}
+
+// TestCustomEndpointInfo_GetRequiredRole covers the one rule that constrains host roles: only an
+// exclusion-list endpoint of type READER carries a requirement. A static member list always routes
+// to all of its listed members, including a writer in a READER-type endpoint, so it never does.
+// TestCustomEndpointInfo_NilCustomEndpointTypeRejected pairs with the three sibling nil checks.
+func TestCustomEndpointInfo_NilCustomEndpointTypeRejected(t *testing.T) {
+	_, err := custom_endpoint.NewCustomEndpointInfo(types.DBClusterEndpoint{
+		DBClusterEndpointIdentifier: aws.String("endpoint-1"),
+		DBClusterIdentifier:         aws.String("cluster-1"),
+		Endpoint:                    aws.String("endpoint-1.cluster-custom-xyz.us-east-2.rds.amazonaws.com"),
+		CustomEndpointType:          nil,
+		StaticMembers:               []string{"instance-1"},
+	})
+	require.Error(t, err, "a nil CustomEndpointType was dereferenced instead of rejected")
 }

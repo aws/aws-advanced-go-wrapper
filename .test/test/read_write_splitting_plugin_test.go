@@ -772,3 +772,54 @@ func TestReadWriteSplittingPlugin_FailoverError(t *testing.T) {
 	assert.Nil(t, val2)
 	assert.Equal(t, failoverError, err)
 }
+
+// TestReadWriteSplittingPlugin_Execute_ReadOnlySingleReader is the regression guard for a silent
+// failure introduced when GetHosts gained the power to exclude the writer.
+//
+// initializeReaderConnection treated ANY one-host list as "single-instance cluster, the host is the
+// writer, there is nothing to switch to". A custom endpoint carrying a role requirement filters the
+// writer out, so on an ordinary two-instance cluster GetHosts returns exactly one host — a READER.
+// The old code called GetWriter on that list, got nil, and returned noWriterFound; the read-only
+// path then logged fallbackToWriter at Info and returned nil, so SetReadOnly(true) reported success
+// while every read kept going to the writer. Splitting silently did nothing.
+func TestReadWriteSplittingPlugin_Execute_ReadOnlySingleReader(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	hostWriter1 := &host_info_util.HostInfo{Role: host_info_util.WRITER, Host: "writer1"}
+	hostReader1 := &host_info_util.HostInfo{Role: host_info_util.READER, Host: "reader1"}
+	// What GetHosts returns for a READER-type custom endpoint on a 1-writer + 1-reader cluster.
+	hosts := []*host_info_util.HostInfo{hostReader1}
+
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	plugin := read_write_splitting.NewReadWriteSplittingPlugin(
+		mockContainer, nil,
+		driver_infrastructure.READ_WRITE_SPLITTING_PLUGIN_CODE,
+		&read_write_splitting.RdsReadWriteSplittingStrategy{})
+	mockWriterConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockReaderConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
+
+	mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect).AnyTimes()
+	mockDriverDialect.EXPECT().IsClosed(gomock.Any()).Return(false).AnyTimes()
+	mockPluginService.EXPECT().RefreshHostList(gomock.Any()).Return(nil).AnyTimes()
+	mockPluginService.EXPECT().IsInTransaction().Return(false).AnyTimes()
+	mockPluginService.EXPECT().GetHosts().Return(hosts).AnyTimes()
+	mockPluginService.EXPECT().GetCurrentConnection().Return(mockWriterConn).AnyTimes()
+	mockPluginService.EXPECT().GetCurrentHostInfo().Return(hostWriter1, nil).AnyTimes()
+
+	// The load-bearing expectations: the plugin must actually select and connect to the reader.
+	// Before the fix none of these were reached and the test would fail on unmet calls.
+	mockPluginService.EXPECT().GetHostInfoByStrategy(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(hostReader1, nil).Times(1)
+	mockPluginService.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(mockReaderConn, nil).Times(1)
+	mockPluginService.EXPECT().SetCurrentConnection(mockReaderConn, hostReader1, nil).Return(nil).Times(1)
+
+	executeFunc := func() (any, any, bool, error) { return nil, nil, false, nil }
+	_, _, _, err := plugin.Execute(nil, plugin_helpers.SET_READ_ONLY_METHOD, executeFunc, true)
+
+	assert.NoError(t, err)
+}

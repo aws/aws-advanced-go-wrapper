@@ -461,6 +461,12 @@ func (p *FailoverPlugin) returnReaderFailoverErr(err error) error {
 	return error_util.NewFailoverFailedError(error_util.GetMessage("Failover.unableToConnectToReader"))
 }
 
+// shortDelay paces a retry round that performed no I/O, so the caller cannot spin. Matches
+// globalDbFailoverHandler.shortDelay.
+func (p *FailoverPlugin) shortDelay() {
+	time.Sleep(100 * time.Millisecond)
+}
+
 func (p *FailoverPlugin) getReaderFailoverCandidates(hosts []*host_info_util.HostInfo) ([]*host_info_util.HostInfo, *host_info_util.HostInfo) {
 	readerCandidates := utils.FilterSlice(hosts, func(hostInfo *host_info_util.HostInfo) bool {
 		return hostInfo.Role == host_info_util.READER
@@ -473,8 +479,29 @@ func (p *FailoverPlugin) getReaderFailoverConnection(endTime time.Time) (ReaderF
 	// The roles in this list might not be accurate, depending on whether the new topology has become available yet.
 	readerCandidates, originalWriter := p.getReaderFailoverCandidates(p.servicesContainer.GetPluginService().GetHosts())
 	isOriginalWriterStillWriter := false
+	firstRound := true
 
 	for ok := true; ok; ok = time.Now().Before(endTime) {
+		// Paced, and re-derives its candidates, because a round can reach here having performed no I/O: an
+		// empty candidate list skips the inner loop, and the writer fallback is skipped when no writer is
+		// known or, in STRICT_READER mode, once it has been verified as still the writer. Without the
+		// delay that spins for the whole failover timeout; without re-deriving, a reader appearing
+		// mid-failover is never picked up.
+		if !firstRound {
+			p.shortDelay()
+			readerCandidates, originalWriter = p.getReaderFailoverCandidates(
+				p.servicesContainer.GetPluginService().GetHosts())
+			// GetHosts serves the cached topology. When it yields nothing to try, force a refresh as
+			// well, so recovery does not depend on the background topology monitor having already run.
+			if len(readerCandidates) == 0 && originalWriter.IsNil() {
+				if hosts, err := p.servicesContainer.GetPluginService().GetUpdatedHostListWithTimeout(
+					false, driver_infrastructure.FallbackTopologyRefreshTimeoutMs); err == nil {
+					readerCandidates, originalWriter = p.getReaderFailoverCandidates(hosts)
+				}
+			}
+		}
+		firstRound = false
+
 		remainingReaders := readerCandidates
 
 		// First, try all original readers

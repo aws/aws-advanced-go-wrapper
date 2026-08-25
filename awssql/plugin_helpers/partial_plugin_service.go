@@ -61,6 +61,9 @@ func NewPartialPluginService(
 		driverDialect:     driverDialect,
 		AllHosts:          AllHosts,
 		allHostsLock:      allHostsLock,
+		// Previously accepted and then dropped, leaving the field nil. Unused parameters are legal
+		// Go, so nothing warned, and GetHosts below depends on it.
+		initialHostInfo: initialHostInfo,
 	}
 }
 
@@ -152,30 +155,15 @@ func (p *PartialPluginService) GetHosts() []*host_info_util.HostInfo {
 	p.allHostsLock.RLock()
 	defer p.allHostsLock.RUnlock()
 
-	hostPermissions, found := driver_infrastructure.AllowedAndBlockedHostsStorageType.Get(p.servicesContainer.GetStorageService(), p.initialHostInfo)
+	// Keyed on GetUrl(), matching every writer. This passed the *HostInfo itself, and because the storage
+	// key is typed `any` the lookup could never hit. Nothing calls this method yet, so the bug was latent.
+	hostPermissions, found := driver_infrastructure.AllowedAndBlockedHostsStorageType.Get(
+		p.servicesContainer.GetStorageService(), p.initialHostInfo.GetUrl())
 	if !found {
 		return p.AllHosts
 	}
 
-	hosts := p.AllHosts
-	allowedHosts := hostPermissions.GetAllowedHostIds()
-	blockedHosts := hostPermissions.GetBlockedHostIds()
-
-	if len(allowedHosts) > 0 {
-		hosts = utils.FilterSlice(hosts, func(item *host_info_util.HostInfo) bool {
-			value, ok := allowedHosts[item.HostId]
-			return ok && value
-		})
-	}
-
-	if len(blockedHosts) > 0 {
-		hosts = utils.FilterSlice(hosts, func(item *host_info_util.HostInfo) bool {
-			value, ok := blockedHosts[item.HostId]
-			return !ok || !value
-		})
-	}
-
-	return hosts
+	return hostPermissions.FilterHosts(p.AllHosts)
 }
 
 func (p *PartialPluginService) CreatePartialPluginService() driver_infrastructure.PluginService {

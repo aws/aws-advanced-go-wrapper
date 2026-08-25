@@ -133,7 +133,7 @@ func TestCustomEndpointPluginConnect_DontWaitForCustomEndpointInfo(t *testing.T)
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-custom-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
 
-	mockMonitorService.EXPECT().RunIfAbsent(gomock.Any(), gomock.Eq(hostInfo.Host), gomock.Any(), gomock.Any()).Return(mockMonitor, nil)
+	mockMonitorService.EXPECT().RunIfAbsent(gomock.Any(), gomock.Eq(hostInfo.GetUrl()), gomock.Any(), gomock.Any()).Return(mockMonitor, nil)
 
 	expectedConn := &MockConn{}
 	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
@@ -173,7 +173,7 @@ func TestCustomEndpointPluginConnect_WaitForCustomEndpointInfo(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-custom-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
 
-	mockMonitorService.EXPECT().RunIfAbsent(gomock.Any(), gomock.Eq(hostInfo.Host), gomock.Any(), gomock.Any()).Return(mockMonitor, nil)
+	mockMonitorService.EXPECT().RunIfAbsent(gomock.Any(), gomock.Eq(hostInfo.GetUrl()), gomock.Any(), gomock.Any()).Return(mockMonitor, nil)
 
 	expectedConn := &MockConn{}
 	mockConnFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
@@ -235,7 +235,7 @@ func TestCustomEndpointPluginExecute_DontWaitForCustomEndpointInfo(t *testing.T)
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-custom-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
 
-	mockMonitorService.EXPECT().RunIfAbsent(gomock.Any(), gomock.Eq(hostInfo.Host), gomock.Any(), gomock.Any()).Return(mockMonitor, nil)
+	mockMonitorService.EXPECT().RunIfAbsent(gomock.Any(), gomock.Eq(hostInfo.GetUrl()), gomock.Any(), gomock.Any()).Return(mockMonitor, nil)
 
 	plugin, err := custom_endpoint.NewCustomEndpointPluginWithHostInfo(mockContainer, rdsClientFunc, props, hostInfo)
 	assert.NoError(t, err)
@@ -279,7 +279,7 @@ func TestCustomEndpointPluginExecute_WaitForCustomEndpointInfo(t *testing.T) {
 	hostInfo, err := host_info_util.NewHostInfoBuilder().SetHost("database-test-name.cluster-custom-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
 	assert.NoError(t, err)
 
-	mockMonitorService.EXPECT().RunIfAbsent(gomock.Any(), gomock.Eq(hostInfo.Host), gomock.Any(), gomock.Any()).Return(mockMonitor, nil)
+	mockMonitorService.EXPECT().RunIfAbsent(gomock.Any(), gomock.Eq(hostInfo.GetUrl()), gomock.Any(), gomock.Any()).Return(mockMonitor, nil)
 
 	plugin, err := custom_endpoint.NewCustomEndpointPluginWithHostInfo(mockContainer, rdsClientFunc, props, hostInfo)
 	assert.NoError(t, err)

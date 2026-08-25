@@ -20,6 +20,7 @@ import (
 	"context"
 	"database/sql/driver"
 	"errors"
+	"log/slog"
 	"time"
 
 	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
@@ -27,6 +28,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/plugins"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/region_util"
@@ -55,15 +57,23 @@ func (factory CustomEndpointPluginFactory) GetInstance(
 }
 
 func getRdsClientFuncImpl(hostInfo *host_info_util.HostInfo, props *utils.RWMap[string, string]) (*rds.Client, error) {
-	region := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.CUSTOM_ENDPOINT_REGION_PROPERTY)
+	// GetRegion, not the property alone: the property is "" when unset, config.WithRegion("") is ignored by
+	// the AWS SDK, and the region then falls back to AWS_REGION rather than to the endpoint's own hostname.
+	region := string(region_util.GetRegion(hostInfo.GetHost(), props, property_util.CUSTOM_ENDPOINT_REGION_PROPERTY))
 
 	awsCredentialsProvider, err := auth_helpers.GetAwsCredentialsProvider(*hostInfo, props.GetAllEntries())
 	if err != nil {
 		return nil, err
 	}
 
+	// The deadline bounds credential resolution as well as the config load: a wedged SSO or STS chain
+	// would otherwise block the connect path indefinitely, which is the one thing RDS_FETCH_TIMEOUT
+	// cannot protect against because it only covers calls made after the client exists.
+	ctx, cancel := context.WithTimeout(context.Background(), RDS_FETCH_TIMEOUT)
+	defer cancel()
+
 	cfg, err := config.LoadDefaultConfig(
-		context.TODO(),
+		ctx,
 		config.WithRegion(region),
 		config.WithCredentialsProvider(awsCredentialsProvider))
 	if err != nil {
@@ -91,6 +101,7 @@ type CustomEndpointPlugin struct {
 	shouldWaitForInfo          bool
 	waitOnCachedInfoDurationMs int
 	idleMonitorExpirationMs    int
+	refreshRate                time.Duration
 	waitForInfoCounter         telemetry.TelemetryCounter
 	customEndpointHostInfo     *host_info_util.HostInfo
 	customEndpointId           string
@@ -112,12 +123,25 @@ func NewCustomEndpointPlugin(
 
 	idleMonitorExpirationMs := property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.CUSTOM_ENDPOINT_MONITOR_IDLE_EXPIRATION_MS)
 
+	// Parsed once, not per call: Execute runs on every network-bound method including Rows.Next, so props
+	// reads inside it are paid per row. Not via GetRefreshRateValue, whose error message does not apply to
+	// this plugin.
+	refreshRate := time.Millisecond * time.Duration(
+		property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.CUSTOM_ENDPOINT_INFO_REFRESH_RATE_MS))
+
+	// The monitor service treats silence longer than InactiveTimeout as a fault and recreates the
+	// monitor. The monitor now stamps liveness from inside its sleeps, so the five-minute pause it
+	// takes after an authorization failure no longer reads as a wedged monitor, and this timeout no
+	// longer has to track it. It only has to exceed the longest the monitor can genuinely be
+	// unresponsive, which is one bounded RDS call.
+	inactiveTimeout := max(1*time.Minute, RDS_FETCH_TIMEOUT+30*time.Second)
+
 	// Register the monitor type with the monitor service
 	monitorService.RegisterMonitorType(
 		CustomEndpointMonitorType,
 		&driver_infrastructure.MonitorSettings{
 			ExpirationTimeout: time.Millisecond * time.Duration(idleMonitorExpirationMs),
-			InactiveTimeout:   1 * time.Minute,
+			InactiveTimeout:   inactiveTimeout,
 			ErrorResponses:    map[driver_infrastructure.MonitorErrorResponse]bool{driver_infrastructure.MonitorErrorRecreate: true},
 		},
 		"", // No produced data type
@@ -129,6 +153,7 @@ func NewCustomEndpointPlugin(
 		shouldWaitForInfo:          property_util.GetVerifiedWrapperPropertyValue[bool](props, property_util.WAIT_FOR_CUSTOM_ENDPOINT_INFO),
 		waitOnCachedInfoDurationMs: property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.WAIT_FOR_CUSTOM_ENDPOINT_INFO_TIMEOUT_MS),
 		idleMonitorExpirationMs:    idleMonitorExpirationMs,
+		refreshRate:                refreshRate,
 		waitForInfoCounter:         waitForInfoCounter,
 		rdsClientFunc:              rdsClientFunc,
 	}, nil
@@ -152,10 +177,25 @@ func (plugin *CustomEndpointPlugin) GetPluginCode() string {
 	return driver_infrastructure.CUSTOM_ENDPOINT_PLUGIN_CODE
 }
 
+// `Tx.Rollback`, `Conn.IsValid` and `Conn.ResetSession` are intentionally left unsubscribed
+// since they require no custom endpoint information.
+var subscribedMethods = func() []string {
+	ungated := map[string]bool{
+		utils.TX_ROLLBACK:        true,
+		utils.CONN_IS_VALID:      true,
+		utils.CONN_RESET_SESSION: true,
+	}
+	methods := []string{plugin_helpers.CONNECT_METHOD}
+	for _, method := range utils.NETWORK_BOUND_METHODS {
+		if !ungated[method] {
+			methods = append(methods, method)
+		}
+	}
+	return methods
+}()
+
 func (plugin *CustomEndpointPlugin) GetSubscribedMethods() []string {
-	return append([]string{
-		"Connect",
-	}, utils.NETWORK_BOUND_METHODS...)
+	return subscribedMethods
 }
 
 func (plugin *CustomEndpointPlugin) Connect(
@@ -166,6 +206,9 @@ func (plugin *CustomEndpointPlugin) Connect(
 	if !utils.IsRdsCustomClusterDns(hostInfo.GetHost()) {
 		return connectFunc(props)
 	}
+
+	slog.Debug(error_util.GetMessage("CustomEndpointPlugin.connectionRequestToCustomEndpoint",
+		hostInfo.GetUrl()))
 
 	plugin.customEndpointHostInfo = hostInfo
 	plugin.customEndpointId = utils.GetRdsClusterId(hostInfo.GetHost())
@@ -217,19 +260,18 @@ func (plugin *CustomEndpointPlugin) Execute(
 }
 
 func (plugin *CustomEndpointPlugin) createMonitorIfAbsent(
-	props *utils.RWMap[string, string]) (CustomEndpointMonitor, error) {
-	refreshRate := time.Millisecond * time.Duration(property_util.GetRefreshRateValue(props, property_util.CUSTOM_ENDPOINT_INFO_REFRESH_RATE_MS))
-
+	_ *utils.RWMap[string, string]) (CustomEndpointMonitor, error) {
 	// Capture values for the initializer closure
 	customEndpointHostInfo := plugin.customEndpointHostInfo
 	endpointIdentifier := plugin.customEndpointId
 	region := plugin.region
 	rdsClientFunc := plugin.rdsClientFunc
 	propsCopy := plugin.props
+	refreshRate := plugin.refreshRate
 
 	monitor, err := plugin.servicesContainer.GetMonitorService().RunIfAbsent(
 		CustomEndpointMonitorType,
-		customEndpointHostInfo.Host,
+		customEndpointHostInfo.GetUrl(),
 		plugin.servicesContainer,
 		func(container driver_infrastructure.ServicesContainer) (driver_infrastructure.Monitor, error) {
 			rdsClient, err := rdsClientFunc(customEndpointHostInfo, propsCopy)
@@ -269,6 +311,8 @@ func (plugin *CustomEndpointPlugin) waitForCustomEndpointInfo(monitor CustomEndp
 
 	if !hasCustomEndpointInfo {
 		monitor.RequestCustomEndpointInfoUpdate()
+		slog.Debug(error_util.GetMessage("CustomEndpointPlugin.waitingForCustomEndpointInfo",
+			plugin.waitOnCachedInfoDurationMs, plugin.customEndpointHostInfo.GetUrl()))
 
 		if plugin.waitForInfoCounter != nil {
 			plugin.waitForInfoCounter.Inc(plugin.servicesContainer.GetPluginService().GetTelemetryContext())
@@ -281,7 +325,14 @@ func (plugin *CustomEndpointPlugin) waitForCustomEndpointInfo(monitor CustomEndp
 		}
 
 		if !hasCustomEndpointInfo {
-			return errors.New(error_util.GetMessage("CustomEndpointPlugin.timedOutWaitingForCustomEndpointInfo"))
+			// The message takes the timeout and the host; both were missing, so the error the
+			// application saw read "...after %!v(MISSING) ms ... for host %!s(MISSING)".
+			message := error_util.GetMessage("CustomEndpointPlugin.timedOutWaitingForCustomEndpointInfo",
+				plugin.waitOnCachedInfoDurationMs, plugin.customEndpointHostInfo.GetUrl())
+			// Logged as well as returned: this fires on connect and on every statement, and an application
+			// that retries on error would otherwise show an operator nothing.
+			slog.Warn(message)
+			return errors.New(message)
 		}
 	}
 	return nil

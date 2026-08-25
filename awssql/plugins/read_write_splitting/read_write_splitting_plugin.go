@@ -376,11 +376,11 @@ func (r *ReadWriteSplittingPlugin) switchCurrentConnectionTo(newConn driver.Conn
 }
 
 func (r *ReadWriteSplittingPlugin) initializeReaderConnection(hosts []*host_info_util.HostInfo) error {
-	if len(hosts) == 1 {
-		writerHost := host_info_util.GetWriter(hosts)
-		if writerHost == nil {
-			return error_util.NewGenericAwsWrapperError(error_util.GetMessage("ReadWriteSplittingPlugin.noWriterFound"))
-		}
+	// A one-host list only means "no reader to switch to" when that host is the writer. It can equally be
+	// a single reader, which is what a custom endpoint with one member produces, and then the reader path
+	// below is what is wanted. Treating any one-host list as the writer reported success while continuing
+	// to serve reads from the writer.
+	if len(hosts) == 1 && !host_info_util.GetWriter(hosts).IsNil() {
 		if !r.isConnectionUsable(r.writerConnection) {
 			return r.getNewWriterConnection(hosts)
 		}

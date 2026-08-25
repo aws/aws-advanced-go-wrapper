@@ -282,30 +282,19 @@ func (p *PluginServiceImpl) GetHosts() []*host_info_util.HostInfo {
 	p.allHostsLock.RLock()
 	defer p.allHostsLock.RUnlock()
 
-	hostPermissions, found := driver_infrastructure.AllowedAndBlockedHostsStorageType.Get(p.servicesContainer.GetStorageService(), p.initialHostInfo.GetUrl())
+	return p.filterByHostPermissions(p.AllHosts)
+}
+
+// filterByHostPermissions applies the custom endpoint's host permissions, if any have been published, to
+// an arbitrary host list. Not always p.AllHosts: a freshly refreshed topology passes through here too.
+func (p *PluginServiceImpl) filterByHostPermissions(hosts []*host_info_util.HostInfo) []*host_info_util.HostInfo {
+	hostPermissions, found := driver_infrastructure.AllowedAndBlockedHostsStorageType.Get(
+		p.servicesContainer.GetStorageService(), p.initialHostInfo.GetUrl())
 	if !found {
-		return p.AllHosts
+		return hosts
 	}
 
-	hosts := p.AllHosts
-	allowedHosts := hostPermissions.GetAllowedHostIds()
-	blockedHosts := hostPermissions.GetBlockedHostIds()
-
-	if len(allowedHosts) > 0 {
-		hosts = utils.FilterSlice(hosts, func(item *host_info_util.HostInfo) bool {
-			value, ok := allowedHosts[item.HostId]
-			return ok && value
-		})
-	}
-
-	if len(blockedHosts) > 0 {
-		hosts = utils.FilterSlice(hosts, func(item *host_info_util.HostInfo) bool {
-			value, ok := blockedHosts[item.HostId]
-			return !ok || !value
-		})
-	}
-
-	return hosts
+	return hostPermissions.FilterHosts(hosts)
 }
 
 func (p *PluginServiceImpl) GetInitialConnectionHostInfo() *host_info_util.HostInfo {
@@ -487,8 +476,12 @@ func (p *PluginServiceImpl) ForceConnect(hostInfo *host_info_util.HostInfo, prop
 	return p.servicesContainer.GetPluginManager().ForceConnect(hostInfo, props, p.currentConnection.Load() == nil)
 }
 
+// ForceRefreshHostListWithTimeout refreshes the cached topology. It stores the list unfiltered:
+// AllHosts is the cluster topology, and the host permissions are applied on read by GetHosts, so
+// filtering here would make excluded instances invisible to topology tracking as well as to host
+// selection.
 func (p *PluginServiceImpl) ForceRefreshHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) (bool, error) {
-	updatedHostList, err := p.GetUpdatedHostListWithTimeout(shouldVerifyWriter, timeoutMs)
+	updatedHostList, err := p.refreshHostListWithTimeout(shouldVerifyWriter, timeoutMs)
 	if err != nil {
 		slog.Warn(err.Error())
 		return false, err
@@ -502,7 +495,19 @@ func (p *PluginServiceImpl) ForceRefreshHostListWithTimeout(shouldVerifyWriter b
 	return false, nil
 }
 
+// GetUpdatedHostListWithTimeout returns a freshly fetched topology with host permissions applied, so it is
+// safe to hand straight to host selection. Callers re-seed failover candidates from it, and an unfiltered
+// list reintroduces excluded instances. Use refreshHostListWithTimeout for the raw topology.
 func (p *PluginServiceImpl) GetUpdatedHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) ([]*host_info_util.HostInfo, error) {
+	updatedHostList, err := p.refreshHostListWithTimeout(shouldVerifyWriter, timeoutMs)
+	if err != nil {
+		return nil, err
+	}
+	return p.filterByHostPermissions(updatedHostList), nil
+}
+
+// refreshHostListWithTimeout fetches the topology from the host list provider, unfiltered.
+func (p *PluginServiceImpl) refreshHostListWithTimeout(shouldVerifyWriter bool, timeoutMs int) ([]*host_info_util.HostInfo, error) {
 	hostListProvider := p.GetHostListProvider()
 	return hostListProvider.ForceRefreshHostListWithTimeout(shouldVerifyWriter, timeoutMs)
 }
