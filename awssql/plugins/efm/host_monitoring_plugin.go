@@ -18,6 +18,7 @@ package efm
 
 import (
 	"database/sql/driver"
+	"fmt"
 	"log/slog"
 	"slices"
 
@@ -122,6 +123,13 @@ func (b *HostMonitorConnectionPlugin) Execute(
 			return
 		}
 		wrappedReturnValue, wrappedReturnValue2, wrappedOk, wrappedErr = executeFunc()
+
+		// If the monitor declared this host unhealthy and aborted the connection.
+		// Wrap the original connection error in an NewUnavailableHostError so failover plugin could better handle it.
+		if wrappedErr != nil && monitorState != nil && monitorState.IsHostUnhealthy() {
+			wrappedErr = fmt.Errorf("%w: %w",
+				error_util.NewUnavailableHostError(monitoringHostInfo.Host), wrappedErr)
+		}
 
 		if monitorState != nil {
 			b.monitorService.StopMonitoring(monitorState, b.servicesContainer.GetPluginService().GetCurrentConnection())

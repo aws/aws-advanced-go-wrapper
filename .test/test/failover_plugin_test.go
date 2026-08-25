@@ -19,7 +19,9 @@ package test
 import (
 	"database/sql/driver"
 	"errors"
+	"fmt"
 	"slices"
+	"syscall"
 	"testing"
 	"time"
 
@@ -100,7 +102,15 @@ type FailoverMockPluginServiceImpl struct {
 	forceRefreshFails      bool
 	isCurrentConnNil       bool
 	isRoleWriter           bool
+	setUnavailableCalls    int
 	*plugin_helpers.PluginServiceImpl
+}
+
+func (t *FailoverMockPluginServiceImpl) SetAvailability(hostAliases map[string]bool, availability host_info_util.HostAvailability) {
+	if availability == host_info_util.UNAVAILABLE {
+		t.setUnavailableCalls++
+	}
+	t.PluginServiceImpl.SetAvailability(hostAliases, availability)
 }
 
 func newFailoverMockPluginServiceImpl(
@@ -249,7 +259,9 @@ func initializeFailoverTest(
 
 	pluginServiceImpl := newFailoverMockPluginServiceImpl(
 		container,
-		mysql_driver.MySQLDriverDialect{},
+		// Must be the constructor: the zero value has a nil errorHandler, so any
+		// IsNetworkError/IsLoginError call through this dialect panics.
+		mysql_driver.NewMySQLDriverDialect(),
 		props,
 		mysqlTestDsn,
 		isInTransaction,
@@ -602,7 +614,9 @@ func TestInvalidateCurrentConnectionInTransaction(t *testing.T) {
 	assert.NoError(t, plugin.InitFailoverMode())
 
 	plugin.InvalidateCurrentConnection()
-	assert.Equal(t, 2, pluginService.isInTransactionCounter)
+	// One call: the state is read once into p.isInTransaction and branched on. It
+	// used to be read twice (once for the branch, once for the assignment).
+	assert.Equal(t, 1, pluginService.isInTransactionCounter)
 	assert.Equal(t, 1, failoverMockConn.closeCounter)
 
 	cleanupFailoverTest()
@@ -640,6 +654,210 @@ func TestExecuteWithFailoverDisabled(t *testing.T) {
 	assert.Equal(t, 1, failoverExecFuncCalls)
 	assert.Equal(t, 0, plugin.calledFailoverCount)
 	assert.Equal(t, 0, failoverMockConn.closeCounter)
+
+	cleanupFailoverTest()
+}
+
+// failoverBadConnExecFunc reproduces what pgx hands the wrapper when it finds the
+// socket already dead: a bare driver.ErrBadConn with the cause discarded.
+func failoverBadConnExecFunc() (any, any, bool, error) {
+	failoverExecFuncCalls++
+	return nil, nil, false, driver.ErrBadConn
+}
+
+// driver.ErrBadConn is database/sql's stale-pooled-conn signal, so on its own it
+// must not fail over. But a connection bound to an open transaction is actively in
+// use and never reaped for pool hygiene, so ErrBadConn on a CLOSED connection
+// inside a transaction can only be the server or network killing a live
+// connection. Only that combination should fail over.
+func TestExecuteBadConnFailsOverOnlyWhenConnDeadInTransaction(t *testing.T) {
+	props := map[string]string{
+		property_util.ENABLE_CONNECT_FAILOVER.Name: "false",
+		property_util.DRIVER_PROTOCOL.Name:         "mysql",
+	}
+
+	testCases := []struct {
+		name           string
+		inTransaction  bool
+		connClosed     bool
+		expectFailover bool
+	}{
+		{"dead conn in transaction fails over", true, true, true},
+		{"live conn in transaction does not", true, false, false},
+		{"dead conn outside a transaction does not", false, true, false},
+		{"live conn outside a transaction does not", false, false, false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			setupFailoverTest()
+			failoverMockConn.isInvalid = tc.connClosed
+			defer func() { failoverMockConn.isInvalid = false }()
+
+			plugin, pluginService := initializeFailoverTest(t, props, tc.inTransaction, true, false, false, false, false)
+			assert.NoError(t, plugin.InitFailoverMode())
+			// isFailoverEnabled requires a non-empty host list; without this the gate
+			// short-circuits before ever looking at the error.
+			pluginService.AllHosts = []*host_info_util.HostInfo{failoverHost1, failoverHost2}
+
+			_, _, _, err := plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, failoverBadConnExecFunc)
+
+			if tc.expectFailover {
+				// In a transaction the wrapper cannot know whether the transaction
+				// committed, so it reports resolution-unknown rather than success.
+				assert.True(t, error_util.IsType(err, error_util.TransactionResolutionUnknownErrorType),
+					"expected a failover error, got %v", err)
+			} else {
+				assert.True(t, errors.Is(err, driver.ErrBadConn),
+					"expected the raw ErrBadConn to pass through, got %v", err)
+			}
+
+			cleanupFailoverTest()
+		})
+	}
+}
+
+// lastErrorDealtWith must not latch. It guards against failing over twice on one
+// error as it unwinds, but two independent driver.ErrBadConn occurrences are the
+// same value, so errors.Is cannot tell them apart. Clearing it on a successful
+// call keeps a later genuine failure from being silently swallowed.
+func TestExecuteRepeatBadConnFailoverIsNotSwallowed(t *testing.T) {
+	setupFailoverTest()
+	failoverMockConn.isInvalid = true
+	defer func() { failoverMockConn.isInvalid = false }()
+
+	props := map[string]string{
+		property_util.ENABLE_CONNECT_FAILOVER.Name: "false",
+		property_util.DRIVER_PROTOCOL.Name:         "mysql",
+	}
+	plugin, pluginService := initializeFailoverTest(t, props, true, true, false, false, false, false)
+	assert.NoError(t, plugin.InitFailoverMode())
+	pluginService.AllHosts = []*host_info_util.HostInfo{failoverHost1, failoverHost2}
+
+	_, _, _, first := plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, failoverBadConnExecFunc)
+	assert.True(t, error_util.IsType(first, error_util.TransactionResolutionUnknownErrorType),
+		"first failure should fail over, got %v", first)
+
+	// A successful call closes the propagating-error window.
+	_, _, _, ok := plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, failoverExecFunc)
+	assert.NoError(t, ok)
+
+	_, _, _, second := plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, failoverBadConnExecFunc)
+	assert.True(t, error_util.IsType(second, error_util.TransactionResolutionUnknownErrorType),
+		"second failure must also fail over, not be swallowed by lastErrorDealtWith, got %v", second)
+
+	cleanupFailoverTest()
+}
+
+// The ErrBadConn gate must read the LIVE transaction state only. p.isInTransaction
+// is only ever assigned true, so if the gate consulted it a single transactional
+// failover would make every later ErrBadConn look transactional and fail over
+// outside a transaction.
+func TestExecuteBadConnGateDoesNotLatchTransactionState(t *testing.T) {
+	setupFailoverTest()
+	failoverMockConn.isInvalid = true
+	defer func() { failoverMockConn.isInvalid = false }()
+
+	props := map[string]string{
+		property_util.ENABLE_CONNECT_FAILOVER.Name: "false",
+		property_util.DRIVER_PROTOCOL.Name:         "mysql",
+	}
+	// Start in a transaction so the first failure latches p.isInTransaction.
+	plugin, pluginService := initializeFailoverTest(t, props, true, true, false, false, false, false)
+	assert.NoError(t, plugin.InitFailoverMode())
+	pluginService.AllHosts = []*host_info_util.HostInfo{failoverHost1, failoverHost2}
+
+	_, _, _, first := plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, failoverBadConnExecFunc)
+	assert.True(t, error_util.IsType(first, error_util.TransactionResolutionUnknownErrorType),
+		"in-transaction failure should fail over, got %v", first)
+
+	// The transaction is over. A dead connection outside a transaction is
+	// indistinguishable from ordinary pool staleness, so it must NOT fail over.
+	pluginService.inTransactionResult = false
+	_, _, _, ok := plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, failoverExecFunc)
+	assert.NoError(t, ok)
+
+	_, _, _, after := plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, failoverBadConnExecFunc)
+	assert.True(t, errors.Is(after, driver.ErrBadConn),
+		"outside a transaction ErrBadConn must pass through untouched, got %v", after)
+
+	cleanupFailoverTest()
+}
+
+// p.isInTransaction snapshots the pre-failover transaction state because the
+// connection switch clears the live flag. It must be re-snapshotted and consumed
+// each time, or a transactional failover would latch it on and every later
+// non-transactional failover would be misreported as resolution-unknown.
+func TestFailoverInTransactionThenNotDoesNotMisreport(t *testing.T) {
+	setupFailoverTest()
+
+	props := map[string]string{
+		property_util.ENABLE_CONNECT_FAILOVER.Name: "false",
+		property_util.DRIVER_PROTOCOL.Name:         "mysql",
+	}
+	plugin, pluginService := initializeFailoverTest(t, props, true, true, false, false, false, false)
+	assert.NoError(t, plugin.InitFailoverMode())
+
+	// A transactional failover: the caller cannot know whether the transaction
+	// committed, so resolution-unknown is correct.
+	first := plugin.Failover()
+	assert.Equal(t, error_util.TransactionResolutionUnknownError, first)
+
+	// A later failover with no transaction open must report plain success.
+	pluginService.inTransactionResult = false
+	second := plugin.Failover()
+	assert.Equal(t, error_util.FailoverSuccessError, second,
+		"a non-transactional failover must not inherit the previous transaction state")
+
+	cleanupFailoverTest()
+}
+
+// A bare ErrBadConn does not say why the connection died, so the host must not be
+// durably penalised on that guess - unlike an error that positively identifies a
+// transport or host fault.
+func TestBadConnFailoverDoesNotMarkHostUnavailable(t *testing.T) {
+	setupFailoverTest()
+	failoverMockConn.isInvalid = true
+	defer func() { failoverMockConn.isInvalid = false }()
+
+	props := map[string]string{
+		property_util.ENABLE_CONNECT_FAILOVER.Name: "false",
+		property_util.DRIVER_PROTOCOL.Name:         "mysql",
+	}
+	plugin, pluginService := initializeFailoverTest(t, props, true, true, false, false, false, false)
+	assert.NoError(t, plugin.InitFailoverMode())
+	pluginService.AllHosts = []*host_info_util.HostInfo{failoverHost1, failoverHost2}
+
+	_, _, _, err := plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, failoverBadConnExecFunc)
+	assert.True(t, error_util.IsType(err, error_util.TransactionResolutionUnknownErrorType),
+		"expected failover, got %v", err)
+	assert.Equal(t, 0, pluginService.setUnavailableCalls,
+		"ErrBadConn does not identify a host fault, so the host must not be marked UNAVAILABLE")
+
+	cleanupFailoverTest()
+}
+
+// Contrast with TestBadConnFailoverDoesNotMarkHostUnavailable: an error that
+// positively identifies a transport fault still marks the host unavailable.
+func TestNetworkErrorFailoverMarksHostUnavailable(t *testing.T) {
+	setupFailoverTest()
+
+	props := map[string]string{
+		property_util.ENABLE_CONNECT_FAILOVER.Name: "false",
+		property_util.DRIVER_PROTOCOL.Name:         "mysql",
+	}
+	plugin, pluginService := initializeFailoverTest(t, props, true, true, false, false, false, false)
+	assert.NoError(t, plugin.InitFailoverMode())
+	pluginService.AllHosts = []*host_info_util.HostInfo{failoverHost1, failoverHost2}
+
+	_, _, _, err := plugin.Execute(nil, utils.CONN_QUERY_CONTEXT, func() (any, any, bool, error) {
+		failoverExecFuncCalls++
+		return nil, nil, false, fmt.Errorf("write tcp: %w", syscall.EPIPE)
+	})
+	assert.True(t, error_util.IsType(err, error_util.TransactionResolutionUnknownErrorType),
+		"expected failover, got %v", err)
+	assert.Positive(t, pluginService.setUnavailableCalls,
+		"a positively identified transport fault should mark the host UNAVAILABLE")
 
 	cleanupFailoverTest()
 }

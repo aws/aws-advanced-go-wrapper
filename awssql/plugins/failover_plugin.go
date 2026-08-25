@@ -275,6 +275,12 @@ func (p *FailoverPlugin) Execute(
 	var err error
 	if wrappedErr != nil {
 		err = p.handler.dealWithError(wrappedErr)
+	} else {
+		// lastErrorDealtWith exists to stop one error being failed over twice as it
+		// unwinds through nested calls. Clear it once a call succeeds.
+		// Two independent driver.ErrBadConn occurrences are the same value,
+		// so errors.Is cannot tell a repeat failure from a re-delivery of the one already handled.
+		p.lastErrorDealtWith = nil
 	}
 
 	if err != nil {
@@ -293,18 +299,21 @@ func (p *FailoverPlugin) canDirectExecute(methodName string) bool {
 }
 
 func (p *FailoverPlugin) returnFailoverSuccessError() error {
-	if p.isInTransaction || p.servicesContainer.GetPluginService().IsInTransaction() {
+	inTransaction := p.isInTransaction || p.servicesContainer.GetPluginService().IsInTransaction()
+
+	if inTransaction {
 		p.servicesContainer.GetPluginService().SetInTransaction(false)
+		p.isInTransaction = false
 
 		// "Transaction resolution unknown. Please re-configure session state if required and try restarting transaction."
 		message := error_util.GetMessage("Failover.transactionResolutionUnknownError")
 		slog.Info(message)
 		return error_util.TransactionResolutionUnknownError
-	} else {
-		// "The active SQL connection has changed due to a connection failure. Please re-configure session state if required."
-		slog.Warn(error_util.GetMessage("Failover.connectionChangedError"))
-		return error_util.FailoverSuccessError
 	}
+
+	// "The active SQL connection has changed due to a connection failure. Please re-configure session state if required."
+	slog.Warn(error_util.GetMessage("Failover.connectionChangedError"))
+	return error_util.FailoverSuccessError
 }
 
 func (p *FailoverPlugin) FailoverWriter() error {
@@ -581,8 +590,9 @@ func (p *FailoverPlugin) InvalidateCurrentConnection() {
 		return
 	}
 
-	if p.servicesContainer.GetPluginService().IsInTransaction() {
-		p.isInTransaction = p.servicesContainer.GetPluginService().IsInTransaction()
+	// Snapshot the live transaction state before the connection switch clears it.
+	p.isInTransaction = p.servicesContainer.GetPluginService().IsInTransaction()
+	if p.isInTransaction {
 		utils.Rollback(conn, p.servicesContainer.GetPluginService().GetCurrentTx())
 	}
 
@@ -597,11 +607,48 @@ func (p *FailoverPlugin) shouldErrorTriggerConnectionSwitch(err error) bool {
 		return false
 	}
 
+	// UnavailableHostErrorType is thrown when the host monitoring plugin deliberately marked a host as unhealthy and
+	// has aborted this connection to it. Trigger failover directly.
+	if error_util.IsType(err, error_util.UnavailableHostErrorType) {
+		return true
+	}
+
+	// database/sql uses driver.ErrBadConn as its stale-pooled-connection signal, so
+	// it must never trigger failover on its own. But pgx also returns a *bare*
+	// ErrBadConn - with the underlying cause discarded - when it finds the socket
+	// already dead at its IsClosed guard or via pgconn.SafeToRetry, so a genuine
+	// transport failure is indistinguishable from pool hygiene by error value
+	// alone. Connection state disambiguates it: a connection bound to an open
+	// transaction is actively in use and is never reaped for pool hygiene, and
+	// database/sql does not retry ErrBadConn inside a transaction, so it reaches
+	// the caller verbatim. ErrBadConn + closed connection + open transaction can
+	// therefore only mean the server or network killed a live connection.
+	if errors.Is(err, driver.ErrBadConn) {
+		return p.isCurrentConnectionDeadInTransaction()
+	}
+
 	pluginService := p.servicesContainer.GetPluginService()
 	if pluginService.IsNetworkError(err) {
 		return true
 	}
 	return p.FailoverMode == MODE_STRICT_WRITER && pluginService.IsReadOnlyError(err)
+}
+
+func (p *FailoverPlugin) isCurrentConnectionDeadInTransaction() bool {
+	pluginService := p.servicesContainer.GetPluginService()
+	// Consults the live transaction state, not p.isInTransaction: this gate runs
+	// before InvalidateCurrentConnection takes that snapshot, so at this point the
+	// field describes a previous failover, not the current one.
+	if !pluginService.IsInTransaction() {
+		return false
+	}
+
+	conn := pluginService.GetCurrentConnection()
+	return conn != nil && pluginService.GetTargetDriverDialect().IsClosed(conn)
+}
+
+func (p *FailoverPlugin) shouldMarkCurrentHostUnavailable(err error) bool {
+	return !errors.Is(err, driver.ErrBadConn)
 }
 
 func (p *FailoverPlugin) createConnectionForHost(hostInfo *host_info_util.HostInfo) (driver.Conn, error) {
@@ -659,7 +706,10 @@ func (h *rdsFailoverHandler) dealWithError(err error) error {
 			if e != nil {
 				return e
 			}
-			p.servicesContainer.GetPluginService().SetAvailability(currentHost.Aliases, host_info_util.UNAVAILABLE)
+			// GetCurrentHostInfo can return a nil host with a nil error.
+			if currentHost != nil && p.shouldMarkCurrentHostUnavailable(err) {
+				p.servicesContainer.GetPluginService().SetAvailability(currentHost.Aliases, host_info_util.UNAVAILABLE)
+			}
 			e = h.failover()
 			if e != nil {
 				return e
