@@ -27,6 +27,14 @@ This plugin requires:
 2. [github.com/aws/aws-advanced-go-wrapper/iam](../../../iam) to be a dependency in the project
     - This can be accomplished by running `go get github.com/aws/aws-advanced-go-wrapper/iam` in the same directory as
        the intended `go.mod` file.
+    - The module registers the plugin when it is imported, so the application must import it for its
+      side effects. Without the import, `iam` is an unknown plugin code.
+
+      ```go
+      import (
+          _ "github.com/aws/aws-advanced-go-wrapper/iam"
+      )
+      ```
 
 When the `iam` module is added as a dependency, the required AWS modules will also be added as indirect dependencies.
 
@@ -54,12 +62,12 @@ The following additional permissions are required when connecting to a Multi-AZ 
 
 ## IAM Authentication Plugin Parameters
 
-| Parameter          |  Value  | Required | Description                                                                                                                                                                                                                                              | Example Value                                       |
-|--------------------|:-------:|:--------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------|
-| `iamDefaultPort`   | String  |    No    | This property will override the default port that is used to generate the IAM token. The default port is determined based on the underlying driver protocol.                                                                                             | `1234`                                              |
-| `iamHost`          | String  |    No    | This property will override the default hostname that is used to generate the IAM token. The default hostname is derived from the connection string.                                                                                                     | `database.cluster-hash.us-east-1.rds.amazonaws.com` |
-| `iamRegion`        | String  |    No    | This property will override the default region that is used to generate the IAM token. The default region is parsed from the connection string.                                                                                                          | `us-east-2`                                         |
-| `iamExpirationSec` | Integer |    No    | This property determines how long an IAM token is kept in the cache before a new one is generated. The default expiration time is set to be 14 minutes and 30 seconds. Note that IAM database authentication tokens have a lifetime of 15 minutes.       | `600`                                               |
+| Parameter          |  Value  | Required | Description                                                                                                                                                                                                                                              | Default Value                     | Example Value                                       |
+|--------------------|:-------:|:--------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------|-----------------------------------------------------|
+| `iamDefaultPort`   | Integer |    No    | This property will override the default port that is used to generate the IAM token. The default port is determined based on the underlying driver protocol.                                                                                             | `-1` (use the connection's port)  | `1234`                                              |
+| `iamHost`          | String  |    No    | This property will override the default hostname that is used to generate the IAM token. The default hostname is derived from the connection string.                                                                                                     | `nil`                             | `database.cluster-hash.us-east-1.rds.amazonaws.com` |
+| `iamRegion`        | String  |    No    | This property will override the default region that is used to generate the IAM token. The default region is parsed from the connection string.                                                                                                          | `nil`                             | `us-east-2`                                         |
+| `iamExpirationSec` | Integer |    No    | This property determines how long an IAM token is kept in the cache before a new one is generated. Note that IAM database authentication tokens have a lifetime of 15 minutes.                                                                            | `870` (14 minutes and 30 seconds) | `600`                                               |
 
 ## Sample code
 

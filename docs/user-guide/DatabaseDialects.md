@@ -16,10 +16,12 @@ Dialect codes specify what kind of database any connections will be made to.
 
 | Dialect Code                 | Database                                                                                                                                           |
 |------------------------------| -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `global-aurora-mysql`        | [Aurora MySQL Global Database](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html)                            |
 | `aurora-mysql`               | Aurora MySQL                                                                                                                                       |
 | `rds-multi-az-mysql-cluster` | [Amazon RDS MySQL Multi-AZ DB Cluster Deployments](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html)      |
 | `rds-mysql`                  | Amazon RDS MySQL                                                                                                                                   |
 | `mysql`                      | MySQL                                                                                                                                              |
+| `global-aurora-pg`           | [Aurora PostgreSQL Global Database](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html)                       |
 | `aurora-pg`                  | Aurora PostgreSQL                                                                                                                                  |
 | `rds-multi-az-pg-cluster`    | [Amazon RDS PostgreSQL Multi-AZ DB Cluster Deployments](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html) |
 | `rds-pg`                     | Amazon RDS PostgreSQL                                                                                                                              |

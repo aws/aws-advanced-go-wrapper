@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-The wrapper is complementary to existing Go drivers and aims to extend the functionality of those drivers to enable applications to take full advantage of the features of clustered databases such as Amazon Aurora. In other words, the AWS Advanced Go Wrapper does not connect directly to any database, but enables support of AWS and Aurora functionalities on top of an underlying Go driver of the user's choice. The AWS Advanced Go Wrapper has been validated to support the [pgx - PostgreSQL Driver and Toolkit](https://github.com/jackc/pgx) and the [Go-MySQL-Driver](https://github.com/go-sql-driver/mysql).
+The wrapper is complementary to existing Go drivers and aims to extend the functionality of those drivers to enable applications to take full advantage of the features of clustered databases such as Amazon Aurora. In other words, the AWS Advanced Go Wrapper does not connect directly to any database, but enables support of AWS and Aurora functionalities on top of an underlying Go driver of the user's choice. The AWS Advanced Go Wrapper has been validated to support the [pgx - PostgreSQL Driver and Toolkit](https://github.com/jackc/pgx), the [Go-MySQL-Driver](https://github.com/go-sql-driver/mysql) and the [Bun pgdriver](https://bun.uptrace.dev/postgres/).
 
 ## About the Wrapper
 

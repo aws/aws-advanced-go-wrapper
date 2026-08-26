@@ -4,7 +4,7 @@
 
 Before using the AWS Advanced Go Wrapper, you must install:
 
-- GoLang 1.24.0
+- GoLang 1.25.0
 
 If you are using the AWS Advanced Go Wrapper as part of a Go project, include one of the wrapper's available drivers as a dependency.
 
@@ -23,6 +23,19 @@ go get github.com/aws/aws-advanced-go-wrapper/pgx-driver@latest
 To obtain the Aws Advanced Go Wrapper Go-MySQL-Driver driver:
 ```
 go get github.com/aws/aws-advanced-go-wrapper/mysql-driver@latest
+```
+
+To obtain the Aws Advanced Go Wrapper Bun pgdriver driver:
+```
+go get github.com/aws/aws-advanced-go-wrapper/bun-pg-driver@latest
+```
+
+Each driver module registers itself when it is imported, so import it for its side effects:
+
+```go
+import (
+    _ "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
+)
 ```
 
 ## Using the AWS Advanced Go Wrapper

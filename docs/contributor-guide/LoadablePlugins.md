@@ -32,22 +32,22 @@ To use a custom plugin, you must:
 There are two ways to create a custom plugin:
 
 - implement the [ConnectionPlugin](../../awssql/driver_infrastructure/connection_plugin.go) interface directly, or
-- extend the [BaseConnectionPlugin](../../awssql/plugins/base_connection_plugin.go) class.
+- embed [BaseConnectionPlugin](../../awssql/plugins/base_connection_plugin.go).
 
 The `BaseConnectionPlugin` struct provides a simple implementation for all the methods in `ConnectionPlugin`,
 as it calls the provided Go sql method without additional operations. This is helpful when the custom plugin only needs
 to override one (or a few) methods from the `ConnectionPlugin` interface.
-See the following classes for examples:
+See the following for examples:
 
 - [IamAuthPlugin](../../iam/iam_auth_plugin.go)
-    - The `IamAuthPlugin` class only overrides the `connect` method because the plugin is only concerned with creating
+    - `IamAuthPlugin` only overrides the `connect` method because the plugin is only concerned with creating
       database connections with IAM database credentials.
 
 - [ExecutionTimePlugin](../../awssql/plugins/execution_time_plugin.go)
     - The `ExecutionTimePlugin` only overrides the `execute` method because it is only concerned with elapsed time
       during execution, it does not establish new connections or set up any host list provider.
 
-A `ConnectionPluginFactory` implementation is also required for the new custom plugin. This factory class is used to
+A `ConnectionPluginFactory` implementation is also required for the new custom plugin. The factory is used to
 register and initialize custom plugins. See [ExecutionTimePluginFactory](../../awssql/plugins/execution_time_plugin.go)
 for a simple implementation example.
 
@@ -72,8 +72,21 @@ Plugins can also subscribe to the following pipelines:
 |---------------------------------------------------------------------------------------------|:------------------------------:|
 | [Host list provider pipeline](./Pipelines.md#hostlistprovider-pipeline)                     |        initHostProvider        |
 | [Connect pipeline](./Pipelines.md#connect-pipeline)                                         |          Conn.Connect          |
+| [Force connect pipeline](./Pipelines.md#force-connect-pipeline)                             |       Conn.ForceConnect        |
 | [Connection changed notification pipeline](./Pipelines.md#notifyconnectionchanged-pipeline) |    notifyConnectionChanged     |
-| [Host list changed notification pipeline](./Pipelines.md#notifyhostlistchanged-pipeline)    |     notifyHostListChanged      |                                                                      
+| [Host list changed notification pipeline](./Pipelines.md#notifyhostlistchanged-pipeline)    |     notifyHostListChanged      |
+| [GetHostInfoByStrategy pipeline](./Pipelines.md#gethostinfobystrategy-pipeline)              |     getHostInfoByStrategy      |
+| [GetHostSelectorStrategy pipeline](./Pipelines.md#gethostselectorstrategy-pipeline)          |    getHostSelectorStrategy     |
+| [SetReadOnly pipeline](./Pipelines.md#setreadonly-pipeline)                                 |          setReadOnly           |
+
+Subscribing to `*` subscribes to every method and every pipeline above.
+
+> [!IMPORTANT]
+> Plugins are selected for a pipeline by exact string match on the subscribed name. A plugin that
+> subscribes to a name the wrapper does not dispatch is dropped from that pipeline with no error and
+> no log line. Two names are not subscription keys: `acceptsStrategy`, which matches on the strategy
+> name instead (see the [AcceptsStrategy pipeline](./Pipelines.md#acceptsstrategy-pipeline)), and
+> `releaseResources`, which is driven by implementing `CanReleaseResources`.
 
 ### Tips on Creating a Custom Plugin
 
@@ -88,7 +101,7 @@ factory in the map of available factories.
 
 ```go
 import (
-    awssql "github.com/aws/aws-advanced-go-wrapper/awssql/driver"
+    awssql "github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver"
 )
 
 func main() {
@@ -109,7 +122,7 @@ When creating custom plugins, it is important to **avoid** the following bad pra
     - the AWS Advanced Go Wrapper may be used with multiple drivers, therefore plugins must ensure implementation is not
       restricted to a specific driver
 3. Making direct connections:
-    - the plugin should always call the pipeline lambdas (i.e. `ConnectFunc func() (driver.Conn, error)`)
+    - the plugin should always call the pipeline funcs (i.e. `ConnectFunc func(props *utils.RWMap[string, string]) (driver.Conn, error)`)
 
 See the following examples for more details:
 
@@ -121,9 +134,9 @@ type BadExample struct {
     // Bad Practice #1: keeping local copies of items
     // Plugins should not keep local copies of the host list provider, the topology or the connection.
     // Host list provider is kept in the Plugin Service and can be modified by other plugins,
-    // therefore it should be retrieved by calling pluginService.getHostListProvider() when it is needed.
+    // therefore it should be retrieved by calling pluginService.GetHostListProvider() when it is needed.
     hostListProvider    driver_infrastructure.HostListProvider
-    props               map[string]string
+    props               *utils.RWMap[string, string]
 }
 
 func (b *BadExample) GetSubscribedMethods() []string {
@@ -133,16 +146,16 @@ func (b *BadExample) GetSubscribedMethods() []string {
 
 func (b *BadExample) Connect(
     hostInfo *host_info_util.HostInfo,
-    props map[string]string,
+    props *utils.RWMap[string, string],
     isInitialConnection bool,
     connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
         // Bad Practice #2: using driver-specific objects.
         // Not all drivers support the same configuration parameters. For instance, while go-sql supports "readTimeout",
         // pgx does not.
-        props["readTimeout"] = "30s"
+        props.Put("readTimeout", "30s")
         // Bad Practice #3: Making direct connections, should use connectFunc().
         dsn := constructDsnFromProps(props)
-        return &mysql.MySQLDriver{}.Open(dsn)
+        return (&mysql.MySQLDriver{}).Open(dsn)
 }
 ```
 
@@ -150,10 +163,10 @@ func (b *BadExample) Connect(
 
 <details><summary>✅ <strong>Good Example</strong></summary>
 
-```jgo
+```go
 type GoodExample struct {
     pluginService       driver_infrastructure.PluginService
-    props               map[string]string
+    props               *utils.RWMap[string, string]
 }
 
 func (g *GoodExample) GetSubscribedMethods() []string {
@@ -162,13 +175,13 @@ func (g *GoodExample) GetSubscribedMethods() []string {
 
 func (g *GoodExample) Connect(
     hostInfo *host_info_util.HostInfo,
-    props map[string]string,
+    props *utils.RWMap[string, string],
     isInitialConnection bool,
     connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
         if property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.USER) == "replace" {
-            props[property_util.USER.Name] = "new value"
+            props.Put(property_util.USER.Name, "new value")
         }
-        return connectFunc()
+        return connectFunc(props)
 }
 
 func (g *GoodExample) Execute(

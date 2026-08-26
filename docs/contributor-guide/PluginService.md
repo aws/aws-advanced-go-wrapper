@@ -28,4 +28,4 @@ It uses the current connection to track the available hosts and their roles in t
 The `DsnHostListProvider` is a static host list provider, whereas the `RdsHostListProvider` is a dynamic host list provider.
 A static host list provider will fetch the host list during initialization and does not update the host list afterwards,
 whereas a dynamic host list provider will update the host list information based on database status.
-When implementing a custom host list provider, implement either the `StaticHostListProvider` or the `DynamicHostListProvider` marker interfaces to specify its provider type.
+When implementing a custom host list provider, return `true` from `IsStaticHostListProvider()` if the host list is fixed for the life of the connection, and `false` if the provider refreshes it.

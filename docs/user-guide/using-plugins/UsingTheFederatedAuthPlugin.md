@@ -36,6 +36,14 @@ This plugin requires:
 2. [github.com/aws/aws-advanced-go-wrapper/federated-auth](../../../federated-auth) to be a dependency in the project
    - This can be accomplished by running `go get github.com/aws/aws-advanced-go-wrapper/federated-auth` in the same
         directory as the intended `go.mod` file.
+   - The module registers the plugin when it is imported, so the application must import it for its
+     side effects. Without the import, `federatedAuth` is an unknown plugin code.
+
+     ```go
+     import (
+         _ "github.com/aws/aws-advanced-go-wrapper/federated-auth"
+     )
+     ```
 
 When the `federated-auth` module is added as a dependency, the required AWS modules will also be added as indirect
 dependencies.
@@ -73,7 +81,7 @@ Additional case-specific configuration can be handled by registering a tls.Confi
 | `idpPort`               | String  |    No    | The port that the host for the authentication service listens at.                                                                                                                                                                                                                                                                                                  | `443`                    | `1234`                                                 |
 | `rpIdentifier`          | String  |    No    | The relaying party identifier.                                                                                                                                                                                                                                                                                                                                     | `urn:amazon:webservices` | `urn:amazon:webservices`                               |
 | `iamHost`               | String  |    No    | Overrides the host that is used to generate the IAM token.                                                                                                                                                                                                                                                                                                         | `nil`                    | `database.cluster-hash.us-east-1.rds.amazonaws.com`    |
-| `iamDefaultPort`        | Integer |    No    | This property overrides the default port that is used to generate the IAM token. The default port is determined based on the underlying driver protocol.                                                                                                                                                                                                           | `nil`                    | `1234`                                                 |
+| `iamDefaultPort`        | Integer |    No    | This property overrides the default port that is used to generate the IAM token. The default port is determined based on the underlying driver protocol.                                                                                                                                                                                                           | `-1` (use the connection's port) | `1234`                                        |
 | `iamTokenExpirationSec` | Integer |    No    | Overrides the default IAM token cache expiration. Value is in seconds.                                                                                                                                                                                                                                                                                             | `870`                    | `123`                                                  |
 | `httpTimeoutMs`         | Integer |    No    | The timeout value in milliseconds provided to http clients used by the Federated Authentication Plugin. The default expiration time is set to be 14 minutes and 30 seconds. Note that IAM database authentication tokens have a lifetime of 15 minutes.                                                                                                            | `60000`                  | `60000`                                                |
 | `sslInsecure`           | Boolean |    No    | Indicates whether or not the SSL connection is secure or not. If not, it will allow SSL connections to be made without validating the server's certificates. **Note**: This is useful for local testing, but setting this to true is not recommended for production environments.                                                                                  | `false`                  | `true`                                                 |

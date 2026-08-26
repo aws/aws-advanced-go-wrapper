@@ -42,7 +42,7 @@ It's possible to extend or replace existing logic of resetting session state and
 - `ClearTransferSessionStateOnCloseFunc`
 
 ```go
-import "github.com/aws/aws-advanced-go-wrapper/awssql/driver_infrastructure"
+import "github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
 
 func main() {
     // To set a custom transfer session state on close function:
