@@ -23,21 +23,21 @@ jobs:
         dbEngine: ["aurora-mysql", "aurora-postgres", "aurora-limitless-postgres", "multi-az-mysql", "multi-az-postgres"]
     steps:
       - name: 'Clone repository'
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 50
       - name: "Set up JDK 8"
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with:
           distribution: "corretto"
           java-version: 8
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: '1.25'
           cache-dependency-path: .test/go.sum
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
         with:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_DEPLOY_ROLE }}
           role-session-name: go_int_test_latest
@@ -54,7 +54,7 @@ jobs:
       - name: "Get Github Action IP"
         if: always()
         id: ip
-        uses: haythem/public-ip@v1.3
+        run: echo "ipv4=$(curl -s --retry 3 https://checkip.amazonaws.com)" >> "$GITHUB_OUTPUT"
 
       - name: "Remove Github Action IP"
         if: always()
@@ -67,8 +67,10 @@ jobs:
           2>&1 > /dev/null;
       - name: Archive results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: integration-report-latest-${{ matrix.dbEngine }}
-          path: ./.test/test_framework/container/reports
+          path: |
+            ./.test/test_framework/host/build/test-results/
+            ./.test/test_framework/container/reports/
           retention-days: 5

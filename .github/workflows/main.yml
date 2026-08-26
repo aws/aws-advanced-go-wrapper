@@ -16,8 +16,8 @@ jobs:
   markdown-link-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
-      - uses: gaurav-nelson/github-action-markdown-link-check@v1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: gaurav-nelson/github-action-markdown-link-check@3c3b66f1f7d0900e37b71eca45b63ea9eedfce31 # 1.0.17
         with:
           use-quiet-mode: 'yes'
           folder-path: 'docs'
@@ -27,7 +27,7 @@ jobs:
       matrix: ${{ steps.find-go-modules.outputs.matrix }}
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Find Go modules
         id: find-go-modules
         run: |
@@ -46,9 +46,9 @@ jobs:
       fail-fast: false
     steps:
       - name: 'Clone repository'
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: 'Run golangci-lint - linting'
-        uses: golangci/golangci-lint-action@v9
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           working-directory: ${{ matrix.modules }}
           version: v2.11.3
@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Clone repository'
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Generate coverpkg list
         id: coverpkg
         run: |
@@ -89,7 +89,7 @@ jobs:
 
       - name: 'Upload Go test results'
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: Go-Test-Results
           path: ${{ github.workspace }}/.test/TestResults.json
@@ -97,7 +97,7 @@ jobs:
 
       - name: 'Upload Go coverage results'
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: Go-Coverage-Results
           path: |
