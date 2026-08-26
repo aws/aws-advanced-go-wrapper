@@ -25,6 +25,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
@@ -97,9 +98,16 @@ type CustomEndpointMonitorImpl struct {
 	refreshMu          sync.Mutex
 	refreshCond        *sync.Cond
 
-	// refreshRate is how long the loop waits between fetches. Owned by the monitor goroutine, so it
-	// needs no synchronisation.
-	refreshRate time.Duration
+	// Refresh pacing, owned by the monitor goroutine, so it needs no synchronisation. currentRefreshRate
+	// moves between minRefreshRate and maxRefreshRate as the RDS API throttles and recovers.
+	currentRefreshRate time.Duration
+	minRefreshRate     time.Duration
+	maxRefreshRate     time.Duration
+	backoffFactor      int
+
+	// enforceRoleFiltering carries customEndpointEnforceRoleFiltering. While false, a READER-type
+	// exclusion-list endpoint publishes no role requirement, which is the pre-1.1.0 behaviour.
+	enforceRoleFiltering bool
 
 	// Log-transition tracking, monitor-goroutine owned, so a persistent failure is reported once rather
 	// than every refresh interval.
@@ -113,6 +121,9 @@ func NewCustomEndpointMonitorImpl(
 	endpointIdentifier string,
 	region region_util.Region,
 	refreshRate time.Duration,
+	maxRefreshRate time.Duration,
+	backoffFactor int,
+	enforceRoleFiltering bool,
 	infoChangedCounter telemetry.TelemetryCounter,
 	rdsClient rds.DescribeDBClusterEndpointsAPIClient,
 ) *CustomEndpointMonitorImpl {
@@ -123,6 +134,17 @@ func NewCustomEndpointMonitorImpl(
 			refreshRate, FALLBACK_REFRESH_RATE))
 		refreshRate = FALLBACK_REFRESH_RATE
 	}
+	// A factor below 1 would zero or invert the interval, so the loop would call hardest while being
+	// throttled. 1 disables backoff safely.
+	if backoffFactor < 1 {
+		slog.Warn(error_util.GetMessage("CustomEndpointMonitorImpl.invalidBackoffFactor", backoffFactor))
+		backoffFactor = 1
+	}
+	if maxRefreshRate < refreshRate {
+		slog.Warn(error_util.GetMessage("CustomEndpointMonitorImpl.maxRefreshRateBelowRefreshRate",
+			maxRefreshRate, refreshRate))
+		maxRefreshRate = refreshRate
+	}
 
 	monitor := &CustomEndpointMonitorImpl{
 		// -1 so the first unexpected count always logs; a real count is never negative.
@@ -131,7 +153,11 @@ func NewCustomEndpointMonitorImpl(
 		customEndpointHostInfo: customEndpointHostInfo,
 		endpointIdentifier:     endpointIdentifier,
 		region:                 region,
-		refreshRate:            refreshRate,
+		currentRefreshRate:     refreshRate,
+		minRefreshRate:         refreshRate,
+		maxRefreshRate:         maxRefreshRate,
+		backoffFactor:          backoffFactor,
+		enforceRoleFiltering:   enforceRoleFiltering,
 		infoChangedCounter:     infoChangedCounter,
 		rdsClient:              rdsClient,
 	}
@@ -141,12 +167,55 @@ func NewCustomEndpointMonitorImpl(
 	return monitor
 }
 
+// speedUpRefreshRate moves the interval back towards the configured rate after a good call.
+func (monitor *CustomEndpointMonitorImpl) speedUpRefreshRate() {
+	if monitor.currentRefreshRate <= monitor.minRefreshRate {
+		return
+	}
+	previous := monitor.currentRefreshRate
+	monitor.currentRefreshRate /= time.Duration(monitor.backoffFactor)
+	if monitor.currentRefreshRate < monitor.minRefreshRate {
+		monitor.currentRefreshRate = monitor.minRefreshRate
+	}
+	if monitor.currentRefreshRate != previous {
+		slog.Debug(error_util.GetMessage("CustomEndpointMonitorImpl.refreshRateChanged",
+			monitor.customEndpointHostInfo.GetUrl(), previous, monitor.currentRefreshRate))
+	}
+}
+
+// slowDownRefreshRate widens the interval after the RDS API throttles us.
+//
+// The clamp is applied before multiplying, not after. Multiplying first can overflow time.Duration
+// negative, which a post-clamp would not catch and speedUpRefreshRate could never recover from,
+// leaving a non-positive interval that both sleep helpers return from immediately.
+func (monitor *CustomEndpointMonitorImpl) slowDownRefreshRate() {
+	if monitor.currentRefreshRate >= monitor.maxRefreshRate {
+		return
+	}
+	previous := monitor.currentRefreshRate
+	if monitor.currentRefreshRate >= monitor.maxRefreshRate/time.Duration(monitor.backoffFactor) {
+		monitor.currentRefreshRate = monitor.maxRefreshRate
+	} else {
+		monitor.currentRefreshRate *= time.Duration(monitor.backoffFactor)
+	}
+	// A factor of 1 leaves the interval unchanged, so there is nothing to report.
+	if monitor.currentRefreshRate == previous {
+		return
+	}
+	// Info, not Debug: a widened interval is why endpoint information goes stale, and the number of
+	// steps to the ceiling is small enough that this cannot become noisy.
+	slog.Info(error_util.GetMessage("CustomEndpointMonitorImpl.throttledBackingOff",
+		monitor.customEndpointHostInfo.GetUrl(), previous, monitor.currentRefreshRate))
+}
+
 // fetchFailure is how a failed DescribeDBClusterEndpoints call is treated.
 type fetchFailure int
 
 const (
+	// fetchThrottled - the RDS API asked us to slow down.
+	fetchThrottled fetchFailure = iota
 	// fetchUnauthorized - the credentials cannot describe this endpoint.
-	fetchUnauthorized fetchFailure = iota
+	fetchUnauthorized
 	// fetchHTTPError - the service answered with some other error status.
 	fetchHTTPError
 	// fetchTimedOut - our own deadline expired. Distinct from fetchNoResponse: treating it as a
@@ -156,7 +225,13 @@ const (
 	fetchNoResponse
 )
 
+// throttleCheck is stateless; build it once rather than per failed call.
+var throttleCheck = retry.IsErrorThrottles(retry.DefaultThrottles)
+
 func classifyFetchError(err error) fetchFailure {
+	if throttleCheck.IsErrorThrottle(err) == aws.TrueTernary {
+		return fetchThrottled
+	}
 	var responseError *awshttp.ResponseError
 	if errors.As(err, &responseError) {
 		switch responseError.HTTPStatusCode() {
@@ -215,7 +290,13 @@ func (monitor *CustomEndpointMonitorImpl) handleFetchError(err error) {
 		monitor.hasConnectionIssue.Store(true)
 	}
 
-	monitor.sleepIgnoringRefreshRequests(monitor.refreshRate)
+	// A deadline expiring mid-retry is most often the SDK absorbing throttling on our behalf, so it
+	// widens the interval too.
+	if failure == fetchThrottled || failure == fetchTimedOut {
+		monitor.slowDownRefreshRate()
+	}
+
+	monitor.sleepIgnoringRefreshRequests(monitor.currentRefreshRate)
 }
 
 // markAlive records that the monitor is still running. Called from the sleep helpers, not only per
@@ -301,7 +382,7 @@ func (monitor *CustomEndpointMonitorImpl) Monitor() {
 			slog.Error(error_util.GetMessage("CustomEndpointMonitorImpl.nilResponse",
 				monitor.customEndpointHostInfo.GetUrl()))
 			monitor.refreshRequired.Store(false)
-			monitor.sleepIgnoringRefreshRequests(monitor.refreshRate)
+			monitor.sleepIgnoringRefreshRequests(monitor.currentRefreshRate)
 			continue
 		} else if len(resp.DBClusterEndpoints) != 1 {
 			var endpointsString string
@@ -327,17 +408,18 @@ func (monitor *CustomEndpointMonitorImpl) Monitor() {
 			}
 			monitor.fetchFailing = true
 			monitor.refreshRequired.Store(false)
-			monitor.sleepIgnoringRefreshRequests(monitor.refreshRate)
+			monitor.sleepIgnoringRefreshRequests(monitor.currentRefreshRate)
 			continue
 		}
 
+		monitor.speedUpRefreshRate()
 		monitor.noteFetchSucceeded()
 
 		endpointInfo, err := NewCustomEndpointInfo(resp.DBClusterEndpoints[0])
 		if err != nil {
 			slog.Error(error_util.GetMessage("CustomEndpointMonitorImpl.unusableEndpointInfo",
 				monitor.customEndpointHostInfo.GetUrl(), err))
-			monitor.sleepIgnoringRefreshRequests(monitor.refreshRate)
+			monitor.sleepIgnoringRefreshRequests(monitor.currentRefreshRate)
 			continue
 		}
 
@@ -349,12 +431,16 @@ func (monitor *CustomEndpointMonitorImpl) Monitor() {
 		}
 
 		var allowedAndBlockedHosts *driver_infrastructure.AllowedAndBlockedHosts
+		requiredRole := host_info_util.UNKNOWN
+		if monitor.enforceRoleFiltering {
+			requiredRole = endpointInfo.GetRequiredRole()
+		}
 		if STATIC_LIST == endpointInfo.memberListType {
-			allowedAndBlockedHosts = driver_infrastructure.NewAllowedAndBlockedHosts(
-				endpointInfo.GetStaticMembers(), nil)
+			allowedAndBlockedHosts = driver_infrastructure.NewAllowedAndBlockedHostsWithRole(
+				endpointInfo.GetStaticMembers(), nil, requiredRole)
 		} else {
-			allowedAndBlockedHosts = driver_infrastructure.NewAllowedAndBlockedHosts(
-				nil, endpointInfo.GetExcludedMembers())
+			allowedAndBlockedHosts = driver_infrastructure.NewAllowedAndBlockedHostsWithRole(
+				nil, endpointInfo.GetExcludedMembers(), requiredRole)
 		}
 
 		// Gated on still owning the key, inseparably from the writes, so a response that started before
@@ -383,7 +469,7 @@ func (monitor *CustomEndpointMonitorImpl) Monitor() {
 		}
 
 		elapsedTime := time.Since(start)
-		sleepDuration := monitor.refreshRate - elapsedTime
+		sleepDuration := monitor.currentRefreshRate - elapsedTime
 		if sleepDuration < 0 {
 			sleepDuration = 0
 		}

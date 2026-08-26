@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### :magic_wand: Added
+* The monitor backs off when the RDS API throttles it, and a `READER`-type endpoint can restrict host selection to readers ([PR #584](https://github.com/aws/aws-advanced-go-wrapper/pull/584)).
+  * `customEndpointInfoRefreshRateBackoffFactor` (default `2`) widens the polling interval on a throttle and narrows it after a successful call, up to `customEndpointInfoMaxRefreshRateMs` (default `300000`).
+  * `customEndpointEnforceRoleFiltering` (default `false`) makes a `READER`-type endpoint with an exclusion member list route to readers only, dropping the writer from failover and read/write splitting. The default becomes `true` in the next major version - see [UsingTheCustomEndpointPlugin.md](../docs/user-guide/using-plugins/UsingTheCustomEndpointPlugin.md).
+
 ### :bug: Fixed
 * [Custom Endpoint plugin](../docs/user-guide/using-plugins/UsingTheCustomEndpointPlugin.md) not filtering hosts during connect. The plugin now requires `rds:DescribeDBClusterEndpoints` ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
 

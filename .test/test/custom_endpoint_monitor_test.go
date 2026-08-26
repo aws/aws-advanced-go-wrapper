@@ -19,6 +19,7 @@ package test
 import (
 	"context"
 	"errors"
+	"strconv"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -33,6 +34,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/rds/types"
+	"github.com/aws/smithy-go"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -67,6 +69,26 @@ func newTestMonitor(
 	container driver_infrastructure.ServicesContainer,
 	host string,
 	refreshRate time.Duration,
+	maxRefreshRate time.Duration,
+	backoffFactor int,
+	counter *mock_telemetry.MockTelemetryCounter,
+	api rds.DescribeDBClusterEndpointsAPIClient,
+) *custom_endpoint.CustomEndpointMonitorImpl {
+	t.Helper()
+	// Role filtering on by default here, so the tests exercise the path a consumer opts into. It is inert
+	// for a static member list, which is what most of these fixtures publish.
+	return newTestMonitorWithRoleFiltering(
+		t, container, host, refreshRate, maxRefreshRate, backoffFactor, true, counter, api)
+}
+
+func newTestMonitorWithRoleFiltering(
+	t *testing.T,
+	container driver_infrastructure.ServicesContainer,
+	host string,
+	refreshRate time.Duration,
+	maxRefreshRate time.Duration,
+	backoffFactor int,
+	enforceRoleFiltering bool,
 	counter *mock_telemetry.MockTelemetryCounter,
 	api rds.DescribeDBClusterEndpointsAPIClient,
 ) *custom_endpoint.CustomEndpointMonitorImpl {
@@ -76,7 +98,7 @@ func newTestMonitor(
 	require.NoError(t, err)
 	return custom_endpoint.NewCustomEndpointMonitorImpl(
 		container, hostInfo, host, region_util.Region("us-east-2"),
-		refreshRate, counter, api)
+		refreshRate, maxRefreshRate, backoffFactor, enforceRoleFiltering, counter, api)
 }
 
 // stubRdsApi counts calls and returns a fixed error, so a test can measure how hard the monitor
@@ -101,7 +123,7 @@ func TestCustomEndpointMonitorImpl_NewMonitor(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockContainer, _, mockCounter, _ := createCustomEndpointMonitorMocks(t, ctrl)
-	monitor := newTestMonitor(t, mockContainer, "my-endpoint", 5*time.Second, mockCounter, nil)
+	monitor := newTestMonitor(t, mockContainer, "my-endpoint", 5*time.Second, time.Minute, 2, mockCounter, nil)
 
 	assert.NotNil(t, monitor)
 	assert.True(t, monitor.CanDispose())
@@ -112,7 +134,7 @@ func TestCustomEndpointMonitorImpl_GetState_BeforeStart(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockContainer, _, mockCounter, _ := createCustomEndpointMonitorMocks(t, ctrl)
-	monitor := newTestMonitor(t, mockContainer, "my-endpoint", 5*time.Second, mockCounter, nil)
+	monitor := newTestMonitor(t, mockContainer, "my-endpoint", 5*time.Second, time.Minute, 2, mockCounter, nil)
 
 	// Before Start(), state should be Stopped (default)
 	assert.Equal(t, driver_infrastructure.MonitorStateStopped, monitor.GetState())
@@ -123,7 +145,7 @@ func TestCustomEndpointMonitorImpl_HasCustomEndpointInfo_NoCache(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockContainer, _, mockCounter, _ := createCustomEndpointMonitorMocks(t, ctrl)
-	monitor := newTestMonitor(t, mockContainer, "test-no-cache", 5*time.Second, mockCounter, nil)
+	monitor := newTestMonitor(t, mockContainer, "test-no-cache", 5*time.Second, time.Minute, 2, mockCounter, nil)
 
 	// No cache entry exists, should return false
 	assert.False(t, monitor.HasCustomEndpointInfo())
@@ -134,7 +156,7 @@ func TestCustomEndpointMonitorImpl_RequestCustomEndpointInfoUpdate(t *testing.T)
 	defer ctrl.Finish()
 
 	mockContainer, _, mockCounter, _ := createCustomEndpointMonitorMocks(t, ctrl)
-	monitor := newTestMonitor(t, mockContainer, "test-update", 5*time.Second, mockCounter, nil)
+	monitor := newTestMonitor(t, mockContainer, "test-update", 5*time.Second, time.Minute, 2, mockCounter, nil)
 
 	// Should not panic when called
 	monitor.RequestCustomEndpointInfoUpdate()
@@ -145,7 +167,7 @@ func TestCustomEndpointMonitorImpl_Close(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockContainer, _, mockCounter, _ := createCustomEndpointMonitorMocks(t, ctrl)
-	monitor := newTestMonitor(t, mockContainer, "test-close", 5*time.Second, mockCounter, nil)
+	monitor := newTestMonitor(t, mockContainer, "test-close", 5*time.Second, time.Minute, 2, mockCounter, nil)
 
 	// Close should not panic
 	monitor.Close()
@@ -156,7 +178,7 @@ func TestCustomEndpointMonitorImpl_GetLastActivityTimestampNanos(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockContainer, _, mockCounter, _ := createCustomEndpointMonitorMocks(t, ctrl)
-	monitor := newTestMonitor(t, mockContainer, "test-timestamp", 5*time.Second, mockCounter, nil)
+	monitor := newTestMonitor(t, mockContainer, "test-timestamp", 5*time.Second, time.Minute, 2, mockCounter, nil)
 
 	// Before Start(), timestamp should be 0
 	assert.Equal(t, int64(0), monitor.GetLastActivityTimestampNanos())
@@ -185,7 +207,7 @@ func TestCustomEndpointMonitor_DoesNotSpinOnError(t *testing.T) {
 
 	// 50ms refresh rate keeps the test quick while still being long enough that a correct
 	// implementation cannot make many calls in the window.
-	monitor := newTestMonitor(t, mockContainer, "spin-guard", 50*time.Millisecond, mockCounter, api)
+	monitor := newTestMonitor(t, mockContainer, "spin-guard", 50*time.Millisecond, time.Minute, 2, mockCounter, api)
 
 	monitor.RequestCustomEndpointInfoUpdate()
 	monitor.Start()
@@ -198,6 +220,83 @@ func TestCustomEndpointMonitor_DoesNotSpinOnError(t *testing.T) {
 	// fix this loop was bounded only by stub latency and reached thousands.
 	assert.LessOrEqual(t, calls, int32(12),
 		"the monitor is spinning on the RDS API: %d calls in 400ms", calls)
+}
+
+// throttlingError builds the shape the SDK's throttle detection actually looks for: a smithy.APIError
+// whose code is in retry.DefaultThrottleErrorCodes. An HTTP 429 alone is not enough, and neither is an
+// error whose text merely mentions throttling.
+func throttlingError() error {
+	return &smithy.GenericAPIError{Code: "ThrottlingException", Message: "Rate exceeded"}
+}
+
+// TestCustomEndpointMonitor_BacksOffWhenThrottled asserts the interval widens under throttling. A
+// throttled monitor that keeps its normal cadence is what exhausts the RDS API quota for everything else
+// in the account.
+func TestCustomEndpointMonitor_BacksOffWhenThrottled(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockContainer, _, mockCounter, _ := createCustomEndpointMonitorMocks(t, ctrl)
+	api := &stubRdsApi{err: throttlingError()}
+
+	// 20ms floor with a 400ms ceiling and a factor of 4, so the interval reaches the ceiling within the
+	// window. Without backoff, 400ms at a 20ms cadence is ~20 calls.
+	monitor := newTestMonitor(t, mockContainer, "throttle-guard", 20*time.Millisecond, 400*time.Millisecond, 4, mockCounter, api)
+
+	monitor.Start()
+	time.Sleep(500 * time.Millisecond)
+	monitor.Stop()
+
+	calls := api.calls.Load()
+	assert.Greater(t, calls, int32(0), "the monitor should have attempted at least one fetch")
+	assert.LessOrEqual(t, calls, int32(8),
+		"the monitor did not back off while being throttled: %d calls in 500ms", calls)
+}
+
+// TestCustomEndpointMonitor_SubOneBackoffFactorIsFloored covers the factors that would break the pacing
+// arithmetic. A factor of 0 or below would zero or invert the interval, making the monitor call hardest
+// exactly while it is being throttled.
+func TestCustomEndpointMonitor_SubOneBackoffFactorIsFloored(t *testing.T) {
+	for _, factor := range []int{-1, 0, 1} {
+		t.Run(strconv.Itoa(factor), func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockContainer, _, mockCounter, _ := createCustomEndpointMonitorMocks(t, ctrl)
+			api := &stubRdsApi{err: throttlingError()}
+			monitor := newTestMonitor(t, mockContainer, "floor-factor"+strconv.Itoa(factor),
+				30*time.Millisecond, time.Second, factor, mockCounter, api)
+
+			monitor.Start()
+			time.Sleep(300 * time.Millisecond)
+			monitor.Stop()
+
+			calls := api.calls.Load()
+			assert.LessOrEqual(t, calls, int32(15),
+				"backoff factor %d produced a non-positive interval: %d calls in 300ms", factor, calls)
+		})
+	}
+}
+
+// TestCustomEndpointMonitor_MaxBelowRefreshRateIsClamped guards the other invalid pairing: a ceiling
+// below the floor. Left alone it makes slowDownRefreshRate a no-op in one direction and speedUp in the
+// other, so the interval could settle below the configured rate.
+func TestCustomEndpointMonitor_MaxBelowRefreshRateIsClamped(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockContainer, _, mockCounter, _ := createCustomEndpointMonitorMocks(t, ctrl)
+	api := &stubRdsApi{err: throttlingError()}
+	monitor := newTestMonitor(t, mockContainer, "max-below-min", 60*time.Millisecond,
+		10*time.Millisecond, 2, mockCounter, api)
+
+	monitor.Start()
+	time.Sleep(300 * time.Millisecond)
+	monitor.Stop()
+
+	calls := api.calls.Load()
+	assert.LessOrEqual(t, calls, int32(8),
+		"a max refresh rate below the refresh rate shortened the interval: %d calls in 300ms", calls)
 }
 
 func TestCustomEndpointMonitor_PublishesHostPermissions(t *testing.T) {
@@ -217,7 +316,7 @@ func TestCustomEndpointMonitor_PublishesHostPermissions(t *testing.T) {
 		}},
 	}}
 
-	monitor := newTestMonitor(t, mockContainer, endpointId, 20*time.Millisecond, mockCounter, api)
+	monitor := newTestMonitor(t, mockContainer, endpointId, 20*time.Millisecond, time.Minute, 2, mockCounter, api)
 
 	hostInfo, err := host_info_util.NewHostInfoBuilder().
 		SetHost(endpointId + ".cluster-custom-xyz.us-east-2.rds.amazonaws.com").SetPort(5432).Build()
@@ -253,6 +352,58 @@ func TestCustomEndpointMonitor_PublishesHostPermissions(t *testing.T) {
 // TestCustomEndpointMonitor_NonPositiveRefreshRateIsFloored covers the second, independent spin
 // trigger: GetRefreshRateValue logs a non-positive value but still returns it, and sleep(0) returns
 // immediately, so customEndpointInfoRefreshRateMs=0 span the loop with no error required.
+// TestCustomEndpointMonitor_RoleFilteringIsOptIn is the compatibility guarantee for the role
+// requirement. A READER-type endpoint with an exclusion member list is the one shape that carries one,
+// and publishing it changes routing, so it stays behind customEndpointEnforceRoleFiltering until the next
+// major version. With the flag off, the published permissions must carry no role.
+func TestCustomEndpointMonitor_RoleFilteringIsOptIn(t *testing.T) {
+	for _, enforce := range []bool{false, true} {
+		name := "disabled"
+		wanted := host_info_util.UNKNOWN
+		if enforce {
+			name = "enabled"
+			wanted = host_info_util.READER
+		}
+		t.Run(name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockContainer, _, mockCounter, storage := createCustomEndpointMonitorMocks(t, ctrl)
+			mockCounter.EXPECT().Inc(gomock.Any()).AnyTimes()
+			endpointId := "role-optin-" + name
+			// READER type with an exclusion list: the only combination that carries a role requirement.
+			api := &stubRdsApi{out: &rds.DescribeDBClusterEndpointsOutput{
+				DBClusterEndpoints: []types.DBClusterEndpoint{{
+					DBClusterEndpointIdentifier: &endpointId,
+					DBClusterIdentifier:         &endpointId,
+					Endpoint:                    &endpointId,
+					CustomEndpointType:          aws.String("READER"),
+					ExcludedMembers:             []string{"instance-9"},
+				}},
+			}}
+
+			monitor := newTestMonitorWithRoleFiltering(t, mockContainer, endpointId,
+				20*time.Millisecond, time.Minute, 2, enforce, mockCounter, api)
+
+			hostInfo, err := host_info_util.NewHostInfoBuilder().
+				SetHost(endpointId + ".cluster-custom-xyz.us-east-2.rds.amazonaws.com").SetPort(5432).Build()
+			require.NoError(t, err)
+
+			monitor.Start()
+			defer monitor.Stop()
+			require.Eventually(t, func() bool {
+				_, found := driver_infrastructure.AllowedAndBlockedHostsStorageType.Get(storage, hostInfo.GetUrl())
+				return found
+			}, 3*time.Second, 10*time.Millisecond, "the monitor never published host permissions")
+
+			permissions, _ := driver_infrastructure.AllowedAndBlockedHostsStorageType.Get(storage, hostInfo.GetUrl())
+			assert.Equal(t, wanted, permissions.GetRequiredRole())
+			// The exclusion list is published either way; only the role requirement is gated.
+			assert.Equal(t, map[string]bool{"instance-9": true}, permissions.GetBlockedHostIds())
+		})
+	}
+}
+
 func TestCustomEndpointMonitor_NonPositiveRefreshRateIsFloored(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -260,7 +411,7 @@ func TestCustomEndpointMonitor_NonPositiveRefreshRateIsFloored(t *testing.T) {
 	mockContainer, _, mockCounter, _ := createCustomEndpointMonitorMocks(t, ctrl)
 	api := &stubRdsApi{err: errors.New("boom")}
 
-	monitor := newTestMonitor(t, mockContainer, "zero-rate", 0, mockCounter, api)
+	monitor := newTestMonitor(t, mockContainer, "zero-rate", 0, time.Minute, 2, mockCounter, api)
 
 	monitor.RequestCustomEndpointInfoUpdate()
 	monitor.Start()
@@ -292,7 +443,7 @@ func TestCustomEndpointMonitor_NilCustomEndpointTypeDoesNotPanic(t *testing.T) {
 		}},
 	}}
 
-	monitor := newTestMonitor(t, mockContainer, endpointId, 20*time.Millisecond, mockCounter, api)
+	monitor := newTestMonitor(t, mockContainer, endpointId, 20*time.Millisecond, time.Minute, 2, mockCounter, api)
 
 	assert.NotPanics(t, func() {
 		monitor.Start()
@@ -312,7 +463,7 @@ func TestCustomEndpointMonitor_StopIsPromptAndIdempotent(t *testing.T) {
 	api := &stubRdsApi{err: errors.New("boom")}
 
 	// A 10s interval means the monitor is deep inside a sleep when Stop lands.
-	monitor := newTestMonitor(t, mockContainer, "stop-guard", 10*time.Second, mockCounter, api)
+	monitor := newTestMonitor(t, mockContainer, "stop-guard", 10*time.Second, time.Minute, 2, mockCounter, api)
 
 	monitor.Start()
 	time.Sleep(50 * time.Millisecond)
@@ -378,7 +529,7 @@ func TestCustomEndpointMonitor_RepublishesUnchangedPermissions(t *testing.T) {
 	}}
 
 	// The stub always returns identical info, so every poll after the first is "unchanged".
-	monitor := newTestMonitor(t, mockContainer, endpointId, 20*time.Millisecond, mockCounter, api)
+	monitor := newTestMonitor(t, mockContainer, endpointId, 20*time.Millisecond, time.Minute, 2, mockCounter, api)
 	monitor.Start()
 	time.Sleep(200 * time.Millisecond)
 	monitor.Stop()

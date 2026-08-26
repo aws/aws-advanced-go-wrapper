@@ -38,6 +38,9 @@ func customEndpointProperties() []property_util.AwsWrapperProperty {
 	return []property_util.AwsWrapperProperty{
 		property_util.CUSTOM_ENDPOINT_REGION_PROPERTY,
 		property_util.CUSTOM_ENDPOINT_INFO_REFRESH_RATE_MS,
+		property_util.CUSTOM_ENDPOINT_INFO_REFRESH_RATE_BACKOFF_FACTOR,
+		property_util.CUSTOM_ENDPOINT_INFO_MAX_REFRESH_RATE_MS,
+		property_util.CUSTOM_ENDPOINT_ENFORCE_ROLE_FILTERING,
 		property_util.CUSTOM_ENDPOINT_MONITOR_IDLE_EXPIRATION_MS,
 		property_util.WAIT_FOR_CUSTOM_ENDPOINT_INFO,
 		property_util.WAIT_FOR_CUSTOM_ENDPOINT_INFO_TIMEOUT_MS,

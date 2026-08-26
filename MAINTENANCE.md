@@ -64,4 +64,4 @@ from the updated source after the PRs are merged.
 | Major Version (`awssql`) | Latest Minor Version | Status      | Initial Release | Maintenance Window Start | Maintenance Window End |
 |--------------------------|----------------------|-------------|-----------------|--------------------------|------------------------|
 | 1                        | 1.4.0                | Maintenance | Jul 31, 2025    | Apr 6, 2026              | Apr 6, 2027            |
-| 2                        | 2.0.3                | Current     | Apr 6, 2026     | N/A                      | N/A                    |
+| 2                        | 2.1.0                | Current     | Apr 6, 2026     | N/A                      | N/A                    |

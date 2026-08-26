@@ -70,6 +70,9 @@ aws rds describe-db-cluster-endpoints --db-cluster-endpoint-identifier <your-cus
 |----------------------------------------------|:-------:|:--------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------|---------------|
 | `customEndpointRegion`                       | String  |    No    | The region of the cluster's custom endpoints. If not specified, the region will be parsed from the URL.                                                                                                                                                                                                                               | `""`                  | `us-west-1`   |
 | `customEndpointInfoRefreshRateMs`            | Integer |    No    | Controls how frequently custom endpoint monitors fetch custom endpoint info, in milliseconds. A non-positive value is replaced by the default.                                                                                                                                                                                        | `30000`               | `20000`       |
+| `customEndpointInfoRefreshRateBackoffFactor` | Integer |    No    | Exponential backoff factor for the custom endpoint monitor. When the RDS API throttles the monitor, the interval between fetches is multiplied by this factor, and divided by it again after a successful call. A value below 1 is replaced by 1, which disables backoff.                                                                | `2`                   | `3`           |
+| `customEndpointInfoMaxRefreshRateMs`         | Integer |    No    | Ceiling for the backed-off refresh interval, in milliseconds. A value below `customEndpointInfoRefreshRateMs` is raised to it, which disables backoff.                                                                                                                                                                                 | `300000`              | `120000`      |
+| `customEndpointEnforceRoleFiltering`         | Boolean |    No    | Controls whether a `READER`-type endpoint with an exclusion member list restricts host selection to readers. Defaults to `false` so upgrading does not change routing. This default is deprecated and becomes `true` in the next major version.                                                                             | `false`               | `true`        |
 | `customEndpointMonitorExpirationMs`          | Integer |    No    | Controls how long a monitor should run without use before expiring and being removed, in milliseconds.                                                                                                                                                                                                                                | `900000` (15 minutes) | `600000`      |
 | `waitForCustomEndpointInfo`                  | Boolean |    No    | Controls whether to wait for custom endpoint info to become available before connecting or executing a method. Waiting is only necessary if a connection to a given custom endpoint has not been opened or used recently. Note that disabling this may result in occasional connections to instances outside of the custom endpoint. | `true`                | `true`        |
 | `waitForCustomEndpointInfoTimeoutMs`         | Integer |    No    | Controls the maximum amount of time that the plugin will wait for custom endpoint info to be made available by the custom endpoint monitor, in milliseconds.                                                                                                                                                                          | `5000`                | `7000`        |
@@ -101,9 +104,27 @@ Two consequences:
   and switching out of read-only mode with `awsctx.SetReadOnly`, then have no valid target and return an
   error. If that is not what you want, do not exclude the writer.
 
-> [!NOTE]
-> The endpoint's *type* (`READER`, `WRITER`, `ANY`) is not currently enforced - only its member list is.
-> A writer that is a member of a `READER`-type endpoint remains eligible.
+## Role filtering
+
+A `READER`-type endpoint that uses an **exclusion** member list also implies a role: only readers should
+serve it. Set `customEndpointEnforceRoleFiltering=true` to have the driver enforce that, which removes the
+writer from failover and read/write splitting for that endpoint.
+
+| Endpoint type | Member list   | With enforcement on                                       |
+|---------------|---------------|-----------------------------------------------------------|
+| `READER`      | **exclusion** | Readers only. The writer is excluded from host selection.  |
+| `READER`      | **static**    | No role requirement; a listed writer stays eligible.      |
+| `WRITER`      | either        | No role requirement.                                       |
+| `ANY`         | either        | No role requirement.                                       |
+
+A static member list routes to all of its listed members, a writer included, which is why it carries no
+role requirement even when the endpoint's type is `READER`. The requirement holds even when the exclusion
+list is empty.
+
+> [!IMPORTANT]
+> The default is `false`, so nothing changes when you upgrade. That default is deprecated and becomes
+> `true` in the next major version. Enable it now if you want reader-only routing, and be aware that
+> excluding the writer leaves reader failover and switching out of read-only mode with no valid target.
 
 ## Use IAM authentication with the Custom Endpoint Plugin
 

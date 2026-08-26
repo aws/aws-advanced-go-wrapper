@@ -99,6 +99,54 @@ func TestAllowedAndBlockedHosts_FilterHosts(t *testing.T) {
 	}
 }
 
+// TestAllowedAndBlockedHosts_RoleRequirement covers the role filter. The requirement has to hold even
+// when neither id list restricts anything, which is what a READER endpoint excluding nothing produces.
+func TestAllowedAndBlockedHosts_RoleRequirement(t *testing.T) {
+	writer := hostWithRole(t, "writer-1", host_info_util.WRITER)
+	reader1 := hostWithRole(t, "reader-1", host_info_util.READER)
+	reader2 := hostWithRole(t, "reader-2", host_info_util.READER)
+	unknown := hostWithRole(t, "unknown-1", host_info_util.UNKNOWN)
+	all := []*host_info_util.HostInfo{writer, reader1, reader2, unknown}
+
+	tests := []struct {
+		name     string
+		blocked  map[string]bool
+		role     host_info_util.HostRole
+		expected []string
+	}{
+		{"no requirement keeps every host", nil, host_info_util.UNKNOWN,
+			[]string{"writer-1", "reader-1", "reader-2", "unknown-1"}},
+		{"reader requirement drops the writer", nil, host_info_util.READER,
+			[]string{"reader-1", "reader-2"}},
+		{"reader requirement applies with an empty exclusion list", nil, host_info_util.READER,
+			[]string{"reader-1", "reader-2"}},
+		{"an unknown role does not satisfy a reader requirement",
+			map[string]bool{"reader-1": true, "reader-2": true}, host_info_util.READER, []string{}},
+		{"writer requirement keeps only the writer", nil, host_info_util.WRITER, []string{"writer-1"}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			permissions := driver_infrastructure.NewAllowedAndBlockedHostsWithRole(nil, test.blocked, test.role)
+			assert.Equal(t, test.expected, hostIds(permissions.FilterHosts(all)))
+			assert.Equal(t, test.role, permissions.GetRequiredRole())
+		})
+	}
+}
+
+// TestAllowedAndBlockedHosts_DeprecatedConstructorHasNoRole pins the compatibility guarantee: the
+// two-argument form still compiles and must mean "no role requirement", not the zero value of HostRole,
+// which is "" and would filter every host away.
+func TestAllowedAndBlockedHosts_DeprecatedConstructorHasNoRole(t *testing.T) {
+	permissions := driver_infrastructure.NewAllowedAndBlockedHosts(nil, nil)
+	all := []*host_info_util.HostInfo{
+		hostWithRole(t, "writer-1", host_info_util.WRITER),
+		hostWithRole(t, "reader-1", host_info_util.READER),
+	}
+	assert.Equal(t, host_info_util.UNKNOWN, permissions.GetRequiredRole())
+	assert.Equal(t, []string{"writer-1", "reader-1"}, hostIds(permissions.FilterHosts(all)))
+}
+
 // TestAllowedAndBlockedHosts_FilterHostsNilReceiver covers the absent-permissions path: GetHosts
 // calls this before any monitor has published, and it must fail open rather than panic.
 func TestAllowedAndBlockedHosts_FilterHostsNilReceiver(t *testing.T) {

@@ -21,6 +21,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"log/slog"
+	"sync"
 	"time"
 
 	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
@@ -42,6 +43,9 @@ func init() {
 	awssql.UsePluginFactory(driver_infrastructure.CUSTOM_ENDPOINT_PLUGIN_CODE,
 		NewCustomEndpointPluginFactory())
 }
+
+// roleFilteringNotice keeps the deprecated-default warning to one line per process.
+var roleFilteringNotice sync.Once
 
 const TELEMETRY_WAIT_FOR_INFO_COUNTER = "customEndpoint.waitForInfo.counter"
 const TELEMETRY_ENDPOINT_INFO_CHANGED = "customEndpoint.infoChanged.counter"
@@ -102,6 +106,9 @@ type CustomEndpointPlugin struct {
 	waitOnCachedInfoDurationMs int
 	idleMonitorExpirationMs    int
 	refreshRate                time.Duration
+	maxRefreshRate             time.Duration
+	backoffFactor              int
+	enforceRoleFiltering       bool
 	waitForInfoCounter         telemetry.TelemetryCounter
 	customEndpointHostInfo     *host_info_util.HostInfo
 	customEndpointId           string
@@ -128,6 +135,12 @@ func NewCustomEndpointPlugin(
 	// this plugin.
 	refreshRate := time.Millisecond * time.Duration(
 		property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.CUSTOM_ENDPOINT_INFO_REFRESH_RATE_MS))
+	maxRefreshRate := time.Millisecond * time.Duration(
+		property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.CUSTOM_ENDPOINT_INFO_MAX_REFRESH_RATE_MS))
+	backoffFactor := property_util.GetVerifiedWrapperPropertyValue[int](
+		props, property_util.CUSTOM_ENDPOINT_INFO_REFRESH_RATE_BACKOFF_FACTOR)
+	enforceRoleFiltering := property_util.GetVerifiedWrapperPropertyValue[bool](
+		props, property_util.CUSTOM_ENDPOINT_ENFORCE_ROLE_FILTERING)
 
 	// The monitor service treats silence longer than InactiveTimeout as a fault and recreates the
 	// monitor. The monitor now stamps liveness from inside its sleeps, so the five-minute pause it
@@ -154,6 +167,9 @@ func NewCustomEndpointPlugin(
 		waitOnCachedInfoDurationMs: property_util.GetVerifiedWrapperPropertyValue[int](props, property_util.WAIT_FOR_CUSTOM_ENDPOINT_INFO_TIMEOUT_MS),
 		idleMonitorExpirationMs:    idleMonitorExpirationMs,
 		refreshRate:                refreshRate,
+		maxRefreshRate:             maxRefreshRate,
+		backoffFactor:              backoffFactor,
+		enforceRoleFiltering:       enforceRoleFiltering,
 		waitForInfoCounter:         waitForInfoCounter,
 		rdsClientFunc:              rdsClientFunc,
 	}, nil
@@ -209,6 +225,14 @@ func (plugin *CustomEndpointPlugin) Connect(
 
 	slog.Debug(error_util.GetMessage("CustomEndpointPlugin.connectionRequestToCustomEndpoint",
 		hostInfo.GetUrl()))
+
+	// Once per process, not per connection: a plugin instance is created per connection, so warning from
+	// the instance would repeat for every one of them.
+	if !plugin.enforceRoleFiltering {
+		roleFilteringNotice.Do(func() {
+			slog.Warn(error_util.GetMessage("CustomEndpointPlugin.roleFilteringDisabled"))
+		})
+	}
 
 	plugin.customEndpointHostInfo = hostInfo
 	plugin.customEndpointId = utils.GetRdsClusterId(hostInfo.GetHost())
@@ -268,6 +292,9 @@ func (plugin *CustomEndpointPlugin) createMonitorIfAbsent(
 	rdsClientFunc := plugin.rdsClientFunc
 	propsCopy := plugin.props
 	refreshRate := plugin.refreshRate
+	maxRefreshRate := plugin.maxRefreshRate
+	backoffFactor := plugin.backoffFactor
+	enforceRoleFiltering := plugin.enforceRoleFiltering
 
 	monitor, err := plugin.servicesContainer.GetMonitorService().RunIfAbsent(
 		CustomEndpointMonitorType,
@@ -289,6 +316,9 @@ func (plugin *CustomEndpointPlugin) createMonitorIfAbsent(
 				endpointIdentifier,
 				region,
 				refreshRate,
+				maxRefreshRate,
+				backoffFactor,
+				enforceRoleFiltering,
 				infoChangedCounter,
 				rdsClient,
 			), nil

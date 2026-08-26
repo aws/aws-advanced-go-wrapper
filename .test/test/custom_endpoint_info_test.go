@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
 	custom_endpoint "github.com/aws/aws-advanced-go-wrapper/custom-endpoint"
 )
 
@@ -306,6 +307,38 @@ func TestCustomEndpointInfo_RoleTypeCaseInsensitive(t *testing.T) {
 // TestCustomEndpointInfo_GetRequiredRole covers the one rule that constrains host roles: only an
 // exclusion-list endpoint of type READER carries a requirement. A static member list always routes
 // to all of its listed members, including a writer in a READER-type endpoint, so it never does.
+func TestCustomEndpointInfo_GetRequiredRole(t *testing.T) {
+	tests := []struct {
+		name     string
+		roleType string
+		static   []string
+		excluded []string
+		wanted   host_info_util.HostRole
+	}{
+		{"exclusion list + READER requires reader", "READER", nil, []string{"instance-1"}, host_info_util.READER},
+		{"empty exclusion list + READER still requires reader", "READER", nil, nil, host_info_util.READER},
+		{"exclusion list + WRITER has no requirement", "WRITER", nil, []string{"instance-1"}, host_info_util.UNKNOWN},
+		{"exclusion list + ANY has no requirement", "ANY", nil, []string{"instance-1"}, host_info_util.UNKNOWN},
+		{"static list + READER has no requirement", "READER", []string{"instance-1"}, nil, host_info_util.UNKNOWN},
+		{"static list + ANY has no requirement", "ANY", []string{"instance-1"}, nil, host_info_util.UNKNOWN},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			info, err := custom_endpoint.NewCustomEndpointInfo(types.DBClusterEndpoint{
+				DBClusterEndpointIdentifier: aws.String("endpoint-1"),
+				DBClusterIdentifier:         aws.String("cluster-1"),
+				Endpoint:                    aws.String("endpoint-1.cluster-custom-xyz.us-east-2.rds.amazonaws.com"),
+				CustomEndpointType:          aws.String(test.roleType),
+				StaticMembers:               test.static,
+				ExcludedMembers:             test.excluded,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, test.wanted, info.GetRequiredRole())
+		})
+	}
+}
+
 // TestCustomEndpointInfo_NilCustomEndpointTypeRejected pairs with the three sibling nil checks.
 func TestCustomEndpointInfo_NilCustomEndpointTypeRejected(t *testing.T) {
 	_, err := custom_endpoint.NewCustomEndpointInfo(types.DBClusterEndpoint{
