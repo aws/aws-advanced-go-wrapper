@@ -19,9 +19,9 @@ package bun_pg_driver
 import (
 	"database/sql"
 	"database/sql/driver"
+	"log/slog"
 	"net/url"
 	"reflect"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -30,16 +30,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils"
-	"github.com/uptrace/bun/driver/pgdriver"
 )
-
-var bunPgPersistingProperties = []string{
-	property_util.USER.Name,
-	property_util.PASSWORD.Name,
-	property_util.HOST.Name,
-	property_util.DATABASE.Name,
-	property_util.PORT.Name,
-}
 
 type BunPgDriverDialect struct {
 	errorHandler error_util.ErrorHandler
@@ -55,12 +46,16 @@ func NewBunPgDriverDialect() *BunPgDriverDialect {
 }
 
 func (d BunPgDriverDialect) IsDialect(drv driver.Driver) bool {
+	switch drv.(type) {
+	case BunPgUnderlyingDriver, *BunPgUnderlyingDriver:
+		return true
+	}
 	typeName := reflect.TypeOf(drv).String()
 	return typeName == BUN_PG_DRIVER_CLASS_NAME || typeName == "*"+BUN_PG_DRIVER_CLASS_NAME
 }
 
 func (d BunPgDriverDialect) GetAllowedOnConnectionMethodNames() []string {
-	return append(utils.REQUIRED_METHODS, utils.ROWS_COLUMN_TYPE_LENGTH)
+	return utils.REQUIRED_METHODS
 }
 
 func (d BunPgDriverDialect) IsNetworkError(err error) bool {
@@ -93,7 +88,7 @@ func (d BunPgDriverDialect) RegisterDriver() {
 			return
 		}
 	}
-	sql.Register(BUN_PG_DRIVER_REGISTRATION_NAME, pgdriver.NewDriver())
+	sql.Register(BUN_PG_DRIVER_REGISTRATION_NAME, NewUnderlyingDriver())
 }
 
 func (d BunPgDriverDialect) GetDriverRegistrationName() string {
@@ -128,12 +123,26 @@ func (d BunPgDriverDialect) PrepareDsn(properties map[string]string, hostInfo *h
 
 	var dsn strings.Builder
 	dsn.WriteString("postgres://")
-	if password != "" {
-		dsn.WriteString(url.UserPassword(user, password).String())
+	if user == "" {
+		// Emit no userinfo at all rather than an empty user. pgdriver's WithUser panics
+		// on an empty string, and every form that carries userinfo reaches it: even
+		// "postgres://@host" parses to a non-nil, empty url.Userinfo. Omitting the
+		// section leaves u.User nil, so pgdriver falls back to its own default user and
+		// the connection fails authentication - an error the caller can handle, rather
+		// than a panic that takes the process down. Any password is dropped with it,
+		// which costs nothing: a connection with no user cannot authenticate anyway.
+		//
+		// host and database need no such guard; pgdriver only applies those when the
+		// parsed URL actually carries them.
+		slog.Warn(error_util.GetMessage("BunPgDriverDialect.noUserInProperties"))
 	} else {
-		dsn.WriteString(url.User(user).String())
+		if password != "" {
+			dsn.WriteString(url.UserPassword(user, password).String())
+		} else {
+			dsn.WriteString(url.User(user).String())
+		}
+		dsn.WriteString("@")
 	}
-	dsn.WriteString("@")
 	dsn.WriteString(host)
 	dsn.WriteString(":")
 	dsn.WriteString(port)
@@ -152,7 +161,9 @@ func (d BunPgDriverDialect) PrepareDsn(properties map[string]string, hostInfo *h
 		if coreProps[k] {
 			continue
 		}
-		if slices.Contains(bunPgPersistingProperties, k) || !property_util.ALL_WRAPPER_PROPERTIES[k] {
+		// Only forward properties the wrapper does not own. The five connection-identity keys
+		// are already in the URL itself and are skipped by coreProps above.
+		if !property_util.ALL_WRAPPER_PROPERTIES[k] {
 			query.Set(k, v)
 		}
 	}

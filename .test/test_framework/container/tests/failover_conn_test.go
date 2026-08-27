@@ -19,7 +19,6 @@ package test
 import (
 	"context"
 	"database/sql/driver"
-	"log"
 	"strings"
 	"time"
 
@@ -98,9 +97,7 @@ func writerConnTest(t *testing.T, cfg failoverTestConfig) {
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
 	// Check that we are connected to the writer.
@@ -149,9 +146,7 @@ func writerWithTelemetryOtelConnTest(t *testing.T, cfg failoverTestConfig) {
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
 	// Check that we are connected to the writer.
@@ -191,9 +186,7 @@ func writerWithTelemetryXrayConnTest(t *testing.T, cfg failoverTestConfig) {
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
 	// Check that we are connected to the writer.
@@ -234,9 +227,7 @@ func writerEndpointConnTest(t *testing.T, cfg failoverTestConfig) {
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
 	// Check that we are connected to the writer.
@@ -283,9 +274,7 @@ func readerOrWriterConnTest(t *testing.T, cfg failoverTestConfig) {
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
 	// Check that we are connected.
@@ -325,9 +314,7 @@ func strictReaderConnTest(t *testing.T, cfg failoverTestConfig) {
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
 	// Check that we are connected to the writer.
@@ -360,9 +347,7 @@ func writerInTransactionWithSQLConnTest(t *testing.T, cfg failoverTestConfig) {
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
 	// Check that we are connected to the writer.
@@ -419,9 +404,7 @@ func efmDisableInstanceConnTest(t *testing.T, cfg failoverTestConfig) {
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
 	// Get initial instance ID
@@ -466,9 +449,7 @@ func writerMaintainSessionStateConnTest(t *testing.T, cfg failoverTestConfig) {
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
 	// Check that we are connected to the writer.

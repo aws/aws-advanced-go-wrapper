@@ -82,7 +82,7 @@ func writerDBTest(t *testing.T, cfg failoverTestConfig) {
 		triggerFailoverError = auroraTestUtility.TriggerFailover("", "", "")
 		close(failoverComplete)
 	}()
-	_, queryError := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, test_utils.GetSleepSql(environment.Info().Request.Engine, 60), 61)
+	queryError := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, test_utils.GetSleepSql(environment.Info().Request.Engine, 60), 61)
 	<-failoverComplete
 	require.NoError(t, triggerFailoverError, "Request to DB to failover did not succeed.")
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -129,7 +129,7 @@ func writerWithTelemetryOtelDBTest(t *testing.T, cfg failoverTestConfig) {
 		triggerFailoverError = auroraTestUtility.TriggerFailover("", "", "")
 		close(failoverComplete)
 	}()
-	_, queryError := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, test_utils.GetSleepSql(environment.Info().Request.Engine, 60), 61)
+	queryError := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, test_utils.GetSleepSql(environment.Info().Request.Engine, 60), 61)
 	<-failoverComplete
 	require.NoError(t, triggerFailoverError, "Request to DB to failover did not succeed.")
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -176,7 +176,7 @@ func writerWithTelemetryXrayDBTest(t *testing.T, cfg failoverTestConfig) {
 		triggerFailoverError = auroraTestUtility.TriggerFailover("", "", "")
 		close(failoverComplete)
 	}()
-	_, queryError := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, test_utils.GetSleepSql(environment.Info().Request.Engine, 60), 61)
+	queryError := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, test_utils.GetSleepSql(environment.Info().Request.Engine, 60), 61)
 	<-failoverComplete
 	require.NoError(t, triggerFailoverError, "Request to DB to failover did not succeed.")
 	require.Error(t, queryError, "Failover plugin did not complete failover successfully.")
@@ -283,7 +283,7 @@ func disableProxiesDBTest(t *testing.T, cfg failoverTestConfig) {
 		// Execute a sleep query that will run for 10 seconds
 		sleepQuery := test_utils.GetSleepSql(environment.Info().Request.Engine, TEST_SLEEP_QUERY_SECONDS)
 
-		_, err := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, sleepQuery, TEST_SLEEP_QUERY_TIMEOUT_SECONDS)
+		err := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, sleepQuery, TEST_SLEEP_QUERY_TIMEOUT_SECONDS)
 		queryChan <- err
 	}()
 
@@ -330,7 +330,7 @@ func efmDisableAllInstancesDBTest(t *testing.T, cfg failoverTestConfig) {
 		// Execute a sleep query that will run for 10 seconds
 		sleepQuery := test_utils.GetSleepSql(environment.Info().Request.Engine, TEST_SLEEP_QUERY_SECONDS)
 
-		_, err := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, sleepQuery, TEST_SLEEP_QUERY_TIMEOUT_SECONDS)
+		err := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, sleepQuery, TEST_SLEEP_QUERY_TIMEOUT_SECONDS)
 		queryChan <- err
 	}()
 

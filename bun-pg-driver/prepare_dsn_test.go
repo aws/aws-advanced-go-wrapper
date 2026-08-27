@@ -191,3 +191,34 @@ func TestPrepareDsn_DefaultPort(t *testing.T) {
 
 	assert.Contains(t, dsn, ":5432/")
 }
+
+func TestPrepareDsn_EmptyUserDoesNotPanicPgdriver(t *testing.T) {
+	dialect := NewBunPgDriverDialect()
+
+	for _, test := range []struct {
+		name     string
+		password string
+	}{
+		{"no user and no password", ""},
+		{"no user but a password", "some-password"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			dsn := dialect.PrepareDsn(map[string]string{
+				"user":     "",
+				"password": test.password,
+				"host":     "host.example.com",
+				"port":     "5432",
+				"database": "db",
+			}, nilHostInfo)
+
+			// No userinfo section at all, so pgdriver leaves u.User nil.
+			assert.Equal(t, "postgres://host.example.com:5432/db", dsn)
+			assert.NotContains(t, dsn, "@")
+
+			// The real assertion: pgdriver must parse this without panicking.
+			assert.NotPanics(t, func() {
+				_, _ = pgdriver.NewDriver().OpenConnector(dsn)
+			})
+		})
+	}
+}

@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"log/slog"
 	"strconv"
 	"testing"
@@ -362,9 +361,7 @@ func failoverTest(t *testing.T, env *test_utils.TestEnvironment, secretName stri
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
 	// Check that we are connected to the writer.
@@ -420,7 +417,7 @@ func efmTest(t *testing.T, env *test_utils.TestEnvironment, secretName string) {
 		// Execute a sleep query that will run for 10 seconds
 		sleepQuery := test_utils.GetSleepSql(environment.Info().Request.Engine, TEST_SLEEP_QUERY_SECONDS)
 
-		_, err := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, sleepQuery, TEST_SLEEP_QUERY_TIMEOUT_SECONDS)
+		err := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, sleepQuery, TEST_SLEEP_QUERY_TIMEOUT_SECONDS)
 		queryChan <- err
 	}()
 
@@ -479,7 +476,7 @@ func failoverEfmTest(t *testing.T, env *test_utils.TestEnvironment, secretName s
 		// Execute a sleep query that will run for 10 seconds
 		sleepQuery := test_utils.GetSleepSql(environment.Info().Request.Engine, TEST_SLEEP_QUERY_SECONDS)
 
-		_, err := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, sleepQuery, TEST_SLEEP_QUERY_TIMEOUT_SECONDS)
+		err := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, sleepQuery, TEST_SLEEP_QUERY_TIMEOUT_SECONDS)
 		queryChan <- err
 	}()
 

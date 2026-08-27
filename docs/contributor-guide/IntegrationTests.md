@@ -143,6 +143,50 @@ The following are the currently available integration test tasks. Each task may 
 
 `debug-all-environments` and `debug-docker` mirror `test-all-environments` and `test-docker` under a Delve headless server.
 
+### Target Drivers
+
+The wrapper supports more than one target driver per database engine, so a run has both an engine and
+a **target driver**. PostgreSQL has two: `pgx-driver` and `bun-pg-driver`. MySQL has one.
+
+There is no separate task or suite per driver. Every PostgreSQL task runs the same test cases once per
+target driver against the **same provisioned cluster** — the host framework runs `go test` once per
+driver, each in its own process, because the wrapper's caches and the toxiproxy state are
+process-global and would leak between drivers otherwise. So a second driver costs container time and
+no extra database.
+
+To run just one driver, exclude the others. This is the same mechanism the JDBC wrapper uses to pick
+between its MySQL and MariaDB drivers for the MySQL engine: the switch becomes a
+`SKIP_..._DRIVER_TESTS` feature on the test environment, which the host framework reads when deciding
+which drivers to run.
+
+```bash
+# bun-pg only
+./gradlew --no-parallel --no-daemon test-aurora-postgres -Dexclude-pg-driver=true
+
+# pgx only
+./gradlew --no-parallel --no-daemon test-aurora-postgres -Dexclude-bunpg-driver=true
+```
+
+Excluding every driver for an engine fails the run rather than passing with nothing executed.
+Combine with `FILTER` for a fast signal on a single driver. `debug-aurora-postgres` takes the same
+switches to choose which driver the debugger attaches to. Performance tasks stay on the engine's
+default driver, so their numbers remain comparable over time.
+
+Any `exclude-*` switch can be given on the command line like this. Gradle passes `-D` to the build
+JVM only, so `build.gradle.kts` forwards these into the forked test JVM; a switch that is not
+forwarded is silently ignored rather than reported.
+
+Each pass prints the driver it resolved, and the host framework fails the run if that does not match
+the driver it injected for that pass — so a run cannot silently fall back to `pgx-driver` while
+reporting itself as something else.
+
+**Expect the `bun-pg-driver` pass to fail for now.** A wrapper defect fails every parameterized query
+when the target driver does not implement `driver.NamedValueChecker`, so the
+`parameterized_query_test.go` cases skip themselves for `bun-pg-driver` and say why; and bun's error
+handler does not classify `pgdriver`'s socket timeouts as network errors, so failover and host
+monitoring do not trigger and the assertions on the resulting error fail. Both drivers always run, and
+the failing ones are named together at the end, so one driver's failure never hides another's.
+
 ### Running the Integration Tests
 
 1. Ensure all [prerequisites](#prerequisites) have been installed. Docker Desktop must be running.

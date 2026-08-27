@@ -72,10 +72,16 @@ func getPreparedStatement(env *test_utils.TestEnvironment) string {
 
 func runPositionalArgsQuery(env *test_utils.TestEnvironment, db *sql.DB) (*sql.Row, error) {
 	if env.Info().Request.Engine == test_utils.PG {
-		row := db.QueryRow("select @val as value, @status as status", pgx.NamedArgs{
-			"val":    queryValue,
-			"status": queryStatus,
-		})
+		// Named arguments are a pgx feature. bun's pgdriver understands only ordinal
+		// $N placeholders, so the same case runs positionally there.
+		if test_utils.MustTargetDriverForEngine(test_utils.PG).SupportsNamedArgs() {
+			row := db.QueryRow("select @val as value, @status as status", pgx.NamedArgs{
+				"val":    queryValue,
+				"status": queryStatus,
+			})
+			return row, nil
+		}
+		row := db.QueryRow("select $1 as value, $2 as status", queryValue, queryStatus)
 		return row, nil
 	} else if env.Info().Request.Engine == test_utils.MYSQL {
 		row := db.QueryRow("select ? as value, ? as status", queryValue, queryStatus)
@@ -110,10 +116,13 @@ func getInsertStatement(env *test_utils.TestEnvironment) string {
 
 func runPositionalArgsExec(env *test_utils.TestEnvironment, db *sql.DB) (sql.Result, error) {
 	if env.Info().Request.Engine == test_utils.PG {
-		return db.Exec("INSERT INTO "+tableName+"(val, status) VALUES (@val, @status)", pgx.NamedArgs{
-			"val":    queryValue,
-			"status": queryStatus,
-		})
+		if test_utils.MustTargetDriverForEngine(test_utils.PG).SupportsNamedArgs() {
+			return db.Exec("INSERT INTO "+tableName+"(val, status) VALUES (@val, @status)", pgx.NamedArgs{
+				"val":    queryValue,
+				"status": queryStatus,
+			})
+		}
+		return db.Exec("INSERT INTO "+tableName+"(val, status) VALUES ($1, $2)", queryValue, queryStatus)
 	} else if env.Info().Request.Engine == test_utils.MYSQL {
 		return db.Exec("INSERT INTO "+tableName+"(val, status) VALUES (?, ?)", queryValue, queryStatus)
 	}

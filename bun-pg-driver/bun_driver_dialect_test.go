@@ -96,8 +96,24 @@ func TestRowParser(t *testing.T) {
 func TestPropertyResolver(t *testing.T) {
 	pr := BunPgDriverDialect{}.GetPropertyResolver()
 
-	assert.Equal(t, "", pr.GetPropertyName(driver_infrastructure.ConnectTimeout))
-	assert.Equal(t, "", pr.GetPropertyName(driver_infrastructure.SocketTimeout))
-	assert.Equal(t, "5", pr.FormatValue(driver_infrastructure.ConnectTimeout, 5))
+	// pgdriver does accept these in the DSN, so the wrapper can bound its own connections.
+	assert.Equal(t, "connect_timeout", pr.GetPropertyName(driver_infrastructure.ConnectTimeout))
+	assert.Equal(t, "read_timeout", pr.GetPropertyName(driver_infrastructure.SocketTimeout))
+
+	// pgdriver parses a bare integer as seconds, matching pgx's connect_timeout handling.
+	assert.Equal(t, "5", pr.FormatValue(driver_infrastructure.ConnectTimeout, 5000))
+	// Must never round down to zero: pgdriver maps a value of zero or less to an
+	// already-expired deadline rather than to "no timeout".
+	assert.Equal(t, "1", pr.FormatValue(driver_infrastructure.SocketTimeout, 5))
+
 	assert.Empty(t, pr.CreateProps())
+	assert.Equal(t,
+		map[string]string{"connect_timeout": "3", "read_timeout": "30"},
+		pr.CreateProps(
+			driver_infrastructure.WithProperty(driver_infrastructure.ConnectTimeout, 3000),
+			driver_infrastructure.WithProperty(driver_infrastructure.SocketTimeout, 30000)))
+
+	// A non-positive request is omitted rather than emitted as 0, which pgdriver would read as an
+	// already-expired deadline.
+	assert.Empty(t, pr.CreateProps(driver_infrastructure.WithProperty(driver_infrastructure.SocketTimeout, 0)))
 }

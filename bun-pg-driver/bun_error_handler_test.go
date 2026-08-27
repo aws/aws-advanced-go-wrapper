@@ -49,6 +49,16 @@ func TestBunPgErrorHandler_IsNetworkError(t *testing.T) {
 		assert.False(t, h.IsNetworkError(fmt.Errorf("read: use of closed network connection")))
 	})
 
+	t.Run("bare io.EOF is a network error", func(t *testing.T) {
+		// This is the error an Aurora failover actually produces under pgdriver: the server closes
+		// the connection between messages and pgdriver reports io.EOF bare, not wrapped as
+		// io.ErrUnexpectedEOF. Confirmed against a live cluster - before this was classified,
+		// failover never triggered and callers saw a raw "EOF" instead of
+		// Failover.connectionChangedError.
+		assert.True(t, h.IsNetworkError(io.EOF))
+		assert.True(t, h.IsNetworkError(fmt.Errorf("reading from server: %w", io.EOF)))
+	})
+
 	t.Run("non-network errors", func(t *testing.T) {
 		assert.False(t, h.IsNetworkError(fmt.Errorf("unique constraint violation")))
 		assert.False(t, h.IsNetworkError(fmt.Errorf("serialization failure")))

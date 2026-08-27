@@ -22,7 +22,6 @@ import (
 
 	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
-	"github.com/uptrace/bun/driver/pgdriver"
 )
 
 type BunPgDriver struct {
@@ -31,7 +30,7 @@ type BunPgDriver struct {
 func (d *BunPgDriver) Open(dsn string) (driver.Conn, error) {
 	wd := awsDriver.AwsWrapperDriver{
 		DriverDialect:    NewBunPgDriverDialect(),
-		UnderlyingDriver: pgdriver.NewDriver(),
+		UnderlyingDriver: NewUnderlyingDriver(),
 	}
 	return wd.Open(dsn)
 }
@@ -47,5 +46,5 @@ func init() {
 
 	awsDriver.RegisterUnderlyingDriver(
 		BUN_PG_DRIVER_REGISTRATION_NAME,
-		pgdriver.NewDriver())
+		NewUnderlyingDriver())
 }

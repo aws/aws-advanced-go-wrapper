@@ -44,7 +44,7 @@ func GetPropsForProxy(env *TestEnvironment, host, plugins string, timeout int) m
 		driverProtocol = property_util.MYSQL_DRIVER_PROTOCOL
 	}
 
-	return map[string]string{
+	props := map[string]string{
 		"host":                             hostValue,
 		"port":                             strconv.Itoa(env.Info().ProxyDatabaseInfo.InstanceEndpointPort),
 		"clusterInstanceHostPattern":       "?." + env.Info().ProxyDatabaseInfo.InstanceEndpointSuffix,
@@ -58,6 +58,15 @@ func GetPropsForProxy(env *TestEnvironment, host, plugins string, timeout int) m
 		monitoringParam + timeoutParam:     timeoutStr,
 		property_util.DRIVER_PROTOCOL.Name: driverProtocol,
 	}
+
+	// Some target drivers need more than a connect timeout to make a monitoring probe fail fast.
+	if targetDriver, err := TargetDriverForEngine(env.Info().Request.Engine); err == nil {
+		for key, value := range targetDriver.MonitoringDsnProps(timeout - 1) {
+			props[monitoringParam+key] = value
+		}
+	}
+
+	return props
 }
 
 func GetPropsForProxyWithConnectTimeout(env *TestEnvironment, host, plugins string, timeout int) map[string]string {

@@ -329,7 +329,7 @@ func testFailureDetectionDb(
 		disableConnectivityFunc(sleepDelayMs, instanceId, downTimeStartCh)
 	}()
 
-	_, err = test_utils.ExecuteQueryDB(engine, conn, test_utils.GetSleepSql(engine, 70), 1200)
+	err = test_utils.ExecuteQueryDB(engine, conn, test_utils.GetSleepSql(engine, 70), 1200)
 	if err == nil {
 		return 0, error_util.NewGenericAwsWrapperError("Did not receive error while executing query.")
 	}

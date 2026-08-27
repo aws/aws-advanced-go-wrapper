@@ -184,7 +184,7 @@ func TestEfmDisableAllInstancesDB(t *testing.T) {
 		// Execute a sleep query that will run for 10 seconds
 		sleepQuery := test_utils.GetSleepSql(environment.Info().Request.Engine, TEST_SLEEP_QUERY_SECONDS)
 
-		_, err := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, sleepQuery, TEST_SLEEP_QUERY_TIMEOUT_SECONDS)
+		err := test_utils.ExecuteQueryDB(environment.Info().Request.Engine, db, sleepQuery, TEST_SLEEP_QUERY_TIMEOUT_SECONDS)
 		queryChan <- err
 	}()
 

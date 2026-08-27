@@ -194,7 +194,8 @@ func TestFederatedAuthExpiredCachedToken(t *testing.T) {
 
 	plugin := setup(props)
 	key := "us-east-2:pg.testdb.us-east-2.rds.amazonaws.com:1234:iamUser"
-	federated_auth.TokenCache.Put(key, federatedAuthTestToken, time.Nanosecond)
+	// Set a negative expiration time to expire the token instantly.
+	federated_auth.TokenCache.Put(key, federatedAuthTestToken, -time.Second)
 	_, _ = plugin.Connect(federatedAuthHostInfo1, props, true, connectFunc)
 
 	assert.Equal(t, federatedAuthDbUser, property_util.USER.Get(resultProps))
