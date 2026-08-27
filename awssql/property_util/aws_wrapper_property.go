@@ -177,6 +177,8 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	SECRETS_MANAGER_EXPIRATION_SEC.Name:                   true,
 	SECRETS_MANAGER_SECRET_USERNAME_PROPERTY.Name:         true,
 	SECRETS_MANAGER_SECRET_PASSWORD_PROPERTY.Name:         true,
+	SECRETS_MANAGER_CONNECT_RETRY_TIMEOUT_MS.Name:         true,
+	SECRETS_MANAGER_CONNECT_RETRY_INTERVAL_MS.Name:        true,
 	FAILURE_DETECTION_TIME_MS.Name:                        true,
 	FAILURE_DETECTION_INTERVAL_MS.Name:                    true,
 	FAILURE_DETECTION_COUNT.Name:                          true,
@@ -537,6 +539,22 @@ var SECRETS_MANAGER_SECRET_PASSWORD_PROPERTY = AwsWrapperProperty{
 	description:         "Set this value to be the key in the JSON secret that contains the password for database connection.",
 	defaultValue:        "password",
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var SECRETS_MANAGER_CONNECT_RETRY_TIMEOUT_MS = AwsWrapperProperty{
+	Name: "secretsManagerConnectRetryTimeoutMs",
+	description: "The time in milliseconds to keep retrying a connection that failed to log in, re-fetching the credentials before each retry. " +
+		"0 disables retrying.",
+	defaultValue:        "0",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var SECRETS_MANAGER_CONNECT_RETRY_INTERVAL_MS = AwsWrapperProperty{
+	Name: "secretsManagerConnectRetryIntervalMs",
+	description: "The initial delay in milliseconds before retrying a connection that failed to log in. " +
+		"Only used when secretsManagerConnectRetryTimeoutMs is greater than 0.",
+	defaultValue:        "1000",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
 }
 
 var WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS = AwsWrapperProperty{

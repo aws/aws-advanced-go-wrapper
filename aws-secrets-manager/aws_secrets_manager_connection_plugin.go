@@ -41,6 +41,9 @@ func init() {
 
 var fetchCredentialsCounterName = "secretsManager.fetchCredentials.count"
 
+// A configured connect retry interval above this raises the cap rather than being clamped by it.
+const maxConnectRetryInterval = 30 * time.Second
+
 type AwsSecretsManagerPluginFactory struct{}
 
 func (factory AwsSecretsManagerPluginFactory) GetInstance(servicesContainer driver_infrastructure.ServicesContainer,
@@ -68,6 +71,8 @@ type AwsSecretsManagerPlugin struct {
 	endpoint                        string
 	awsSecretsManagerClientProvider NewAwsSecretsManagerClientProvider
 	secretExpirationTime            time.Duration
+	connectRetryTimeout             time.Duration
+	connectRetryInterval            time.Duration
 	fetchCredentialsCounter         telemetry.TelemetryCounter
 	secretUsernameKey               string
 	secretPasswordKey               string
@@ -122,6 +127,14 @@ func NewAwsSecretsManagerPlugin(servicesContainer driver_infrastructure.Services
 	}
 	secretExpirationTime := property_util.GetExpirationValue(props, property_util.SECRETS_MANAGER_EXPIRATION_SEC)
 
+	connectRetryTimeoutMs, timeoutErr := property_util.GetPositiveIntProperty(props, property_util.SECRETS_MANAGER_CONNECT_RETRY_TIMEOUT_MS)
+	if timeoutErr != nil {
+		return nil, timeoutErr
+	}
+	connectRetryIntervalMs, intervalErr := property_util.GetPositiveIntProperty(props, property_util.SECRETS_MANAGER_CONNECT_RETRY_INTERVAL_MS)
+	if intervalErr != nil {
+		return nil, intervalErr
+	}
 	return &AwsSecretsManagerPlugin{
 		servicesContainer: servicesContainer,
 		props:             props,
@@ -132,10 +145,12 @@ func NewAwsSecretsManagerPlugin(servicesContainer driver_infrastructure.Services
 		endpoint:                        secretsEndpoint,
 		awsSecretsManagerClientProvider: awsSecretsManagerClientProvider,
 		secretExpirationTime:            time.Second * time.Duration(secretExpirationTime),
+		connectRetryTimeout:             time.Duration(connectRetryTimeoutMs) * time.Millisecond,
+		connectRetryInterval:            time.Duration(connectRetryIntervalMs) * time.Millisecond,
 		fetchCredentialsCounter:         fetchCredentialsCounter,
 		secretUsernameKey:               secretUsernameKey,
 		secretPasswordKey:               secretPasswordKey,
-	}, err
+	}, nil
 }
 
 func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) GetPluginCode() string {
@@ -163,6 +178,18 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) ForceConnect(
 }
 
 func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectInternal(
+	hostInfo *host_info_util.HostInfo,
+	props *utils.RWMap[string, string],
+	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
+	if awsSecretsManagerPlugin.connectRetryTimeout > 0 {
+		return awsSecretsManagerPlugin.connectWithRetryBudget(hostInfo, props, connectFunc)
+	}
+	return awsSecretsManagerPlugin.connectWithSingleRetry(hostInfo, props, connectFunc)
+}
+
+// connectWithSingleRetry re-fetches the credentials at most once, and only if the attempt with the cached
+// secret failed to log in. Used when secretsManagerConnectRetryTimeoutMs is 0, the default.
+func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectWithSingleRetry(
 	hostInfo *host_info_util.HostInfo,
 	props *utils.RWMap[string, string],
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
@@ -198,6 +225,65 @@ func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectInternal(
 	}
 
 	return nil, err
+}
+
+// connectWithRetryBudget re-fetches the credentials and reconnects with a capped exponential backoff until
+// secretsManagerConnectRetryTimeoutMs runs out, to get past a rotation window in which neither the cached
+// nor a freshly fetched secret can log in. Blocks the calling goroutine and issues one GetSecretValue per
+// retry. See docs/user-guide/using-plugins/UsingTheAwsSecretsManagerPlugin.md.
+func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) connectWithRetryBudget(
+	hostInfo *host_info_util.HostInfo,
+	props *utils.RWMap[string, string],
+	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
+	pluginService := awsSecretsManagerPlugin.servicesContainer.GetPluginService()
+	deadline := time.Now().Add(awsSecretsManagerPlugin.connectRetryTimeout)
+	// Never sleep longer than the whole budget, and never for a non-positive duration.
+	delay := max(time.Millisecond, min(awsSecretsManagerPlugin.connectRetryInterval, awsSecretsManagerPlugin.connectRetryTimeout))
+	maxDelay := max(delay, maxConnectRetryInterval)
+
+	// Set once a login failure is seen, and reported if the budget runs out.
+	var lastLoginErr error
+
+	for attempt := 1; ; attempt++ {
+		// The first attempt may use the cached secret; later attempts force a re-fetch to pick up a
+		// version promoted in the meantime.
+		secret, _, fetchErr := awsSecretsManagerPlugin.updateSecrets(hostInfo, props, attempt > 1)
+		if fetchErr != nil {
+			if lastLoginErr == nil {
+				slog.Debug(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.failedToFetchCredentials"))
+				return nil, fetchErr
+			}
+			// A transient fetch failure must neither end the loop nor replace the login failure as the
+			// reported cause.
+			slog.Debug(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.connectRetryFetchFailed", fetchErr))
+		} else {
+			conn, connErr := connectFunc(awsSecretsManagerPlugin.applySecretToProperties(props, secret))
+			if connErr == nil {
+				if attempt > 1 {
+					slog.Debug(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.connectRetrySucceeded", attempt))
+				}
+				return conn, nil
+			}
+			// A driver may hand back a connection alongside an error. Do not leak one per attempt.
+			if conn != nil {
+				_ = conn.Close()
+			}
+			if !pluginService.IsLoginError(connErr) {
+				// Not a credentials problem, so re-fetching and retrying would not help.
+				return nil, connErr
+			}
+			lastLoginErr = connErr
+		}
+
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			slog.Warn(error_util.GetMessage("AwsSecretsManagerConnectionPlugin.connectRetryBudgetExhausted",
+				attempt, awsSecretsManagerPlugin.connectRetryTimeout))
+			return nil, lastLoginErr
+		}
+		time.Sleep(min(delay, remaining))
+		delay = min(delay*2, maxDelay)
+	}
 }
 
 func (awsSecretsManagerPlugin *AwsSecretsManagerPlugin) applySecretToProperties(props *utils.RWMap[string, string], secret AwsRdsSecrets) *utils.RWMap[string, string] {

@@ -47,6 +47,8 @@ Secrets Manager.
 | `secretsManagerExpirationSec`          | Integer |                            No                            | This property sets the time in seconds that secrets are cached before it is re-fetched.                                                                                                                                          | `600`                   | `870`         |
 | `secretsManagerSecretUsernameProperty` | String  |                            No                            | Set this value to be the key in the JSON secret that contains the username for database connection.                                                                                                                              | `db_user`               | `username`    |
 | `secretsManagerSecretPasswordProperty` | String  |                            No                            | Set this value to be the key in the JSON secret that contains the password for database connection.                                                                                                                              | `db_pass`               | `password`    |
+| `secretsManagerConnectRetryTimeoutMs`  | Integer |                            No                            | How long to keep retrying a connection that failed to log in, re-fetching the credentials before each retry. Set this to get past a [secret rotation window](#secret-rotation). `0` disables retrying.                            | `90000`                 | `0`           |
+| `secretsManagerConnectRetryIntervalMs` | Integer |                            No                            | Initial delay before a failed connection is retried. The delay doubles after each failed attempt, capped at 30000ms and at the remaining budget. Only used when `secretsManagerConnectRetryTimeoutMs` is greater than `0`.          | `2000`                  | `1000`        |
 
 > [!NOTE]
 > A Secret ARN has the following format: `arn:aws:secretsmanager:<Region>:<AccountId>:secret:SecretName-6RandomCharacters`.
@@ -54,6 +56,34 @@ Secrets Manager.
 ## Secret Data
 
 The secret stored in the AWS Secrets Manager should be a JSON object containing the properties `username` and `password`. If the secret contains different key names, you can specify them with the `secretsManagerSecretUsernameProperty` and `secretsManagerSecretPasswordProperty` parameters.
+
+## Secret Rotation
+
+A Secrets Manager rotation runs as `createSecret` → `setSecret` → `testSecret` → `finishSecret`. Between `setSecret`, which changes the database password, and `finishSecret`, which promotes `AWSCURRENT` to the new version, the database expects the new password while `GetSecretValue` still returns the old one. With RDS managed rotation this window has been reported at roughly a minute.
+
+By default the plugin re-fetches the secret at most once when a connection fails to log in, so it cannot get through that window: the re-fetch resolves `AWSCURRENT` to the same old secret. Existing connections keep working, but every new physical connection fails for the duration, at startup, as the pool grows, and when `SetConnMaxLifetime` recycles a connection. The failure surfaces as a login error, `28P01` on PostgreSQL and `28000` on MySQL.
+
+Setting `secretsManagerConnectRetryTimeoutMs` to a value longer than the window makes the plugin re-fetch the credentials and reconnect until it succeeds or the budget runs out:
+
+```go
+plugins := "awsSecretsManager"
+connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s plugins=%s"+
+	" secretsManagerSecretId=%s secretsManagerRegion=%s"+
+	" secretsManagerConnectRetryTimeoutMs=90000 secretsManagerConnectRetryIntervalMs=2000",
+	host, port, user, password, dbName, plugins, secretsManagerSecretId, secretsManagerRegion)
+
+db, err := sql.Open("awssql-pgx", connStr)
+```
+
+Only login failures are retried. Any other error is reported immediately, since re-fetching the secret would not help.
+
+Things to weigh before enabling it:
+
+- Each retry issues one `GetSecretValue` call and re-resolves the AWS credential chain, so pick an interval with the Secrets Manager request quota in mind.
+- The calling goroutine blocks while it waits, and a `context.Context` deadline cannot interrupt it. Keep the budget below whatever connect delay your application or connection pool tolerates.
+- The budget bounds when the next attempt starts, not the total time spent, so the last attempt can finish after the budget has elapsed.
+
+This is a client-side mitigation. [RDS Proxy](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/rds-proxy.html) or a [multi-user rotation strategy](https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotating-secrets_strategies.html) avoids the window instead of waiting it out.
 
 ### Sample code
 

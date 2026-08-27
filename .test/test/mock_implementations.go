@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"reflect"
 	"sync"
+	"sync/atomic"
 
 	auth_helpers "github.com/aws/aws-advanced-go-wrapper/auth-helpers"
 	aws_secrets_manager "github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager"
@@ -778,6 +779,52 @@ func NewMockAwsSecretsManagerClient(_ *host_info_util.HostInfo,
 func NewMockAwsSecretsManagerClientWithCustomSecret(secretString string) aws_secrets_manager.NewAwsSecretsManagerClientProvider {
 	return func(_ *host_info_util.HostInfo, _ *utils.RWMap[string, string], _ string, _ string) (aws_secrets_manager.AwsSecretsManagerClient, error) {
 		return &MockAwsSecretsManagerClient{SecretString: secretString}, nil
+	}
+}
+
+// MockRotatingSecretsManagerClient simulates a secret rotation: it serves PreRotationSecret for the first
+// PromoteAfterFetches calls and PostRotationSecret after that. A call whose 1-based index is in
+// FailFetchesAt returns an error instead. Safe for concurrent use.
+type MockRotatingSecretsManagerClient struct {
+	PreRotationSecret   string
+	PostRotationSecret  string
+	PromoteAfterFetches int64
+	FailFetchesAt       map[int64]bool
+	fetches             atomic.Int64
+}
+
+// Fetches reports how many times GetSecretValue has been called.
+func (m *MockRotatingSecretsManagerClient) Fetches() int64 {
+	return m.fetches.Load()
+}
+
+func (m *MockRotatingSecretsManagerClient) GetSecretValue(_ context.Context,
+	_ *secretsmanager.GetSecretValueInput,
+	_ ...func(*secretsmanager.Options),
+) (*secretsmanager.GetSecretValueOutput, error) {
+	fetch := m.fetches.Add(1)
+	if m.FailFetchesAt[fetch] {
+		return nil, errors.New("simulated Secrets Manager failure")
+	}
+
+	secretString := m.PreRotationSecret
+	if fetch > m.PromoteAfterFetches {
+		secretString = m.PostRotationSecret
+	}
+	return &secretsmanager.GetSecretValueOutput{
+		ARN:          aws.String("arn:aws:secretsmanager:us-west-2:account-id:secret:default"),
+		Name:         aws.String("default-secret-name"),
+		SecretString: aws.String(secretString),
+		VersionId:    aws.String("default-version-id"),
+	}, nil
+}
+
+// NewMockRotatingAwsSecretsManagerClient returns a provider that hands out the one shared client, so the
+// fetch count does not depend on how often the provider is invoked.
+func NewMockRotatingAwsSecretsManagerClient(
+	client *MockRotatingSecretsManagerClient) aws_secrets_manager.NewAwsSecretsManagerClientProvider {
+	return func(_ *host_info_util.HostInfo, _ *utils.RWMap[string, string], _ string, _ string) (aws_secrets_manager.AwsSecretsManagerClient, error) {
+		return client, nil
 	}
 }
 
