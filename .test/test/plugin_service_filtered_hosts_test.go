@@ -78,8 +78,8 @@ func TestPluginService_GetUpdatedHostListWithTimeoutAppliesPermissions(t *testin
 	// Published exactly as the custom endpoint monitor does for an exclusion-list endpoint: keyed on
 	// the endpoint URL, and excluding the writer as well as one reader.
 	driver_infrastructure.AllowedAndBlockedHostsStorageType.Set(storage, initialHost.GetUrl(),
-		driver_infrastructure.NewAllowedAndBlockedHosts(
-			nil, map[string]bool{"writer-1": true, "reader-2": true}))
+		driver_infrastructure.NewAllowedAndBlockedHostsWithRole(
+			nil, map[string]bool{"writer-1": true, "reader-2": true}, host_info_util.UNKNOWN))
 
 	refreshed, err = target.GetUpdatedHostListWithTimeout(false, 1000)
 	require.NoError(t, err)

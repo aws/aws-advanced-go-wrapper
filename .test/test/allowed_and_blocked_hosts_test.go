@@ -93,7 +93,8 @@ func TestAllowedAndBlockedHosts_FilterHosts(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			permissions := driver_infrastructure.NewAllowedAndBlockedHosts(test.allowed, test.blocked)
+			permissions := driver_infrastructure.NewAllowedAndBlockedHostsWithRole(
+				test.allowed, test.blocked, host_info_util.UNKNOWN)
 			assert.Equal(t, test.expected, hostIds(permissions.FilterHosts(all)))
 		})
 	}
@@ -138,7 +139,7 @@ func TestAllowedAndBlockedHosts_RoleRequirement(t *testing.T) {
 // two-argument form still compiles and must mean "no role requirement", not the zero value of HostRole,
 // which is "" and would filter every host away.
 func TestAllowedAndBlockedHosts_DeprecatedConstructorHasNoRole(t *testing.T) {
-	permissions := driver_infrastructure.NewAllowedAndBlockedHosts(nil, nil)
+	permissions := driver_infrastructure.NewAllowedAndBlockedHosts(nil, nil) //nolint:staticcheck
 	all := []*host_info_util.HostInfo{
 		hostWithRole(t, "writer-1", host_info_util.WRITER),
 		hostWithRole(t, "reader-1", host_info_util.READER),
@@ -162,7 +163,8 @@ func TestAllowedAndBlockedHosts_FilterHostsDoesNotMutateInput(t *testing.T) {
 	reader := hostWithRole(t, "reader-1", host_info_util.READER)
 	all := []*host_info_util.HostInfo{writer, reader}
 
-	permissions := driver_infrastructure.NewAllowedAndBlockedHosts(nil, map[string]bool{"writer-1": true})
+	permissions := driver_infrastructure.NewAllowedAndBlockedHostsWithRole(
+		nil, map[string]bool{"writer-1": true}, host_info_util.UNKNOWN)
 	filtered := permissions.FilterHosts(all)
 
 	assert.Equal(t, []string{"reader-1"}, hostIds(filtered))
