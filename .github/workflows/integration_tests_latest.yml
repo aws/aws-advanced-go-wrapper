@@ -48,8 +48,8 @@ jobs:
           cd .test/test_framework/host && ./gradlew --no-parallel --no-daemon test-${{ matrix.dbEngine }} --info
         env:
           RDS_DB_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-          AURORA_MYSQL_DB_ENGINE_VERSION: "latest"
-          AURORA_PG_DB_ENGINE_VERSION: "latest"
+          MYSQL_VERSION: "latest"
+          PG_VERSION: "latest"
           AWS_RDS_MONITORING_ROLE_ARN: ${{ secrets.AWS_RDS_MONITORING_ROLE_ARN }}
       - name: "Get Github Action IP"
         if: always()

@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"log/slog"
 	"strconv"
 	"testing"
@@ -362,9 +361,7 @@ func failoverTest(t *testing.T, env *test_utils.TestEnvironment, secretName stri
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
 	// Check that we are connected to the writer.

@@ -294,7 +294,8 @@ func TestAwsSecretsManagerConnectionPluginUsingExpiredSecret(t *testing.T) {
 		Username: cachedUsername,
 		Password: cachedPassword,
 	}
-	aws_secrets_manager.SecretsCache.Put(cacheKey, awsRdsSecrets, time.Nanosecond)
+	// Set a negative expiration time to expire the token instantly.
+	aws_secrets_manager.SecretsCache.Put(cacheKey, awsRdsSecrets, -time.Second)
 	assert.Equal(t, 1, aws_secrets_manager.SecretsCache.Size())
 
 	awsSecretsManagerConnectionPlugin, _ := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)

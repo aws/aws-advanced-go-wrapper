@@ -17,6 +17,7 @@
 package internal_pool
 
 import (
+	"context"
 	"database/sql/driver"
 	"time"
 
@@ -116,7 +117,7 @@ func (p *InternalPooledConnectionProvider) Connect(hostInfo *host_info_util.Host
 
 	computeFunc := func() *poolEntry {
 		connFunc := func() (driver.Conn, error) {
-			return underlyingDriver.Open(dsn)
+			return driver_infrastructure.OpenTargetConnection(context.Background(), underlyingDriver, dsn)
 		}
 		pool := NewConnPool(connFunc, p.internalPoolOptions)
 		return &poolEntry{pool: pool, dsn: dsn}
@@ -132,7 +133,7 @@ func (p *InternalPooledConnectionProvider) Connect(hostInfo *host_info_util.Host
 		// If DSN differs from the one used to initialize the cached pool entry, update the new connect func.
 		// This ensures new connections are created with the latest credentials.
 		entry.pool.SetNewConnFunc(func() (driver.Conn, error) {
-			return underlyingDriver.Open(dsn)
+			return driver_infrastructure.OpenTargetConnection(context.Background(), underlyingDriver, dsn)
 		})
 	}
 

@@ -21,6 +21,9 @@ import com.github.dockerjava.api.command.ExecCreateCmd;
 import com.github.dockerjava.api.command.ExecCreateCmdResponse;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.exception.DockerException;
+import integration.host.DatabaseEngine;
+import integration.host.TargetDriver;
+import integration.host.TestEnvironmentFeatures;
 import integration.host.TestInstanceInfo;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.BindMode;
@@ -40,11 +43,15 @@ import org.testcontainers.utility.MountableFile;
 import org.testcontainers.utility.TestEnvironment;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ContainerHelper {
 
@@ -79,11 +86,9 @@ public class ContainerHelper {
     return exitCode;
   }
 
-  public void runTest(GenericContainer<?> container, boolean isPerformanceTest)
+  public void runTest(GenericContainer<?> container, boolean isPerformanceTest, DatabaseEngine engine,
+      Set<TestEnvironmentFeatures> features)
       throws IOException, InterruptedException {
-    System.out.println("==== Container console feed ==== >>>>");
-    Consumer<OutputFrame> consumer = new ConsoleConsumer(true);
-
     final String filter = System.getenv("FILTER");
     String timeout = System.getenv("TIMEOUT");
     if (timeout == null ) {
@@ -94,26 +99,75 @@ public class ContainerHelper {
         }
     }
 
+    System.out.println("==== Container console feed ==== >>>>");
+    Consumer<OutputFrame> setupConsumer = new ConsoleConsumer(true);
+    Long exitCode = execInContainer(container, "/app/.test/", setupConsumer, "go", "env", "-w", "GOPROXY=direct");
 
-    Long exitCode;
-    exitCode = execInContainer(container, "/app/.test/", consumer, "go", "env", "-w", "GOPROXY=direct");
-    if (isPerformanceTest) {
-      exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-timeout", timeout, PERFORMANCE_TEST_TAG, "-run", PERFORMANCE_TEST_FILTER,  "-v", "./test_framework/container/tests...");
-    } else if (filter != null) {
-      exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-timeout", timeout, "-v", "./test_framework/container/tests...", "-run", filter);
-    } else {
-      // Run all tests located in aws-advanced-go-wrapper/.test/test_framework/container.
-      exitCode = execInContainer(container, "/app/.test/", consumer, "go", "test", "-timeout", timeout, "-v", "./test_framework/container/tests...");
+    exitCode = execInContainer(container, "/app/.test/", setupConsumer, "go", "mod", "download");
+    assertEquals(0, exitCode, "Unable to download Go module dependencies.");
+
+    final List<String> failed = new ArrayList<>();
+    for (TargetDriver targetDriver : targetDriversToRun(engine, isPerformanceTest, features)) {
+      System.out.println("==== Target driver: " + targetDriver + " ==== >>>>");
+      Consumer<OutputFrame> consumer = new ConsoleConsumer(true);
+      final List<String> env = Collections.singletonList("TARGET_DRIVER=" + targetDriver);
+
+      if (isPerformanceTest) {
+        exitCode = execInContainer(container, "/app/.test/", consumer, env, "go", "test", "-timeout", timeout, PERFORMANCE_TEST_TAG, "-run", PERFORMANCE_TEST_FILTER,  "-v", "./test_framework/container/tests...");
+      } else if (filter != null) {
+        exitCode = execInContainer(container, "/app/.test/", consumer, env, "go", "test", "-timeout", timeout, "-v", "./test_framework/container/tests...", "-run", filter);
+      } else {
+        // Run all tests located in aws-advanced-go-wrapper/.test/test_framework/container.
+        exitCode = execInContainer(container, "/app/.test/", consumer, env, "go", "test", "-timeout", timeout, "-v", "./test_framework/container/tests...");
+      }
+      System.out.println("==== Target driver: " + targetDriver + " ==== <<<<");
+
+      if (exitCode == null || exitCode != 0) {
+        failed.add(targetDriver.toString());
+      }
     }
 
     System.out.println("==== Container console feed ==== <<<<");
-    assertEquals(0, exitCode, "Some tests failed.");
+    assertTrue(failed.isEmpty(), "Some tests failed. Failing target drivers: " + failed + ".");
   }
 
-  public void debugTest(GenericContainer<?> container)
+  /**
+   * Returns the drivers to run for an engine, honouring the environment's driver exclusions.
+   *
+   * <p>Narrow a run with {@code -Dexclude-pg-driver=true} or {@code -Dexclude-bunpg-driver=true},
+   * which reach the framework as {@code SKIP_..._DRIVER_TESTS} features. This mirrors how the JDBC
+   * wrapper selects between its MySQL and MariaDB drivers for one engine.
+   *
+   * <p>Performance runs stay on the engine's default driver: they exist to be compared against each
+   * other over time, and running them per driver would double an already long job while changing
+   * what the numbers mean.
+   */
+  private static List<TargetDriver> targetDriversToRun(
+      DatabaseEngine engine, boolean isPerformanceTest, Set<TestEnvironmentFeatures> features) {
+    if (isPerformanceTest) {
+      return Collections.singletonList(TargetDriver.getDefault(engine));
+    }
+
+    final List<TargetDriver> allowed = TargetDriver.allowedForEngine(engine, features);
+    assertTrue(!allowed.isEmpty(),
+        "Every target driver for engine " + engine + " was excluded, so this run would test nothing.");
+    return allowed;
+  }
+
+  /**
+   * Debugs the container test suite against one target driver.
+   *
+   * <p>Unlike {@link #runTest}, this does not loop: a debugger attaches to one process. It uses the
+   * first driver left after the exclusions, so narrow with {@code -Dexclude-pg-driver=true} to debug
+   * bun-pg.
+   */
+  public void debugTest(GenericContainer<?> container, DatabaseEngine engine,
+      Set<TestEnvironmentFeatures> features)
       throws IOException, InterruptedException {
     System.out.println("==== Container console feed ==== >>>>");
+    final TargetDriver targetDriver = targetDriversToRun(engine, false, features).get(0);
     Consumer<OutputFrame> consumer = new ConsoleConsumer(true);
+    final List<String> env = Collections.singletonList("TARGET_DRIVER=" + targetDriver);
 
     // Install Delve debugger.
     execInContainer(container, consumer, "go", "install", "github.com/go-delve/delve/cmd/dlv@latest");
@@ -122,12 +176,12 @@ public class ContainerHelper {
 
     Long exitCode;
     if (filter != null) {
-      exitCode = execInContainer(container, "/app/.test/", consumer, "dlv", "test", "--headless", "--listen=:5005", "--api-version=2",
+      exitCode = execInContainer(container, "/app/.test/", consumer, env, "dlv", "test", "--headless", "--listen=:5005", "--api-version=2",
               "./test_framework/container/tests...",  "--", "-test.run", filter);
 
     } else {
       // Debug all tests located in aws-advanced-go-wrapper/.test/test_framework/container.
-      exitCode = exitCode = execInContainer(container, "/app/.test/", consumer, "dlv", "test", "--headless", "--listen=:5005",
+      exitCode = execInContainer(container, "/app/.test/", consumer, env, "dlv", "test", "--headless", "--listen=:5005",
               "--api-version=2", "./test_framework/container/tests...");
     }
 
@@ -182,6 +236,7 @@ public class ContainerHelper {
         .withFileSystemBind("../../../okta", "/app/okta", BindMode.READ_ONLY)
         .withFileSystemBind("../../../custom-endpoint", "/app/custom-endpoint", BindMode.READ_ONLY)
         .withFileSystemBind("../../../pgx-driver", "/app/pgx-driver", BindMode.READ_ONLY)
+        .withFileSystemBind("../../../bun-pg-driver", "/app/bun-pg-driver", BindMode.READ_ONLY)
         .withFileSystemBind("../../../mysql-driver", "/app/mysql-driver", BindMode.READ_ONLY)
         .withFileSystemBind("../../../iam", "/app/iam", BindMode.READ_ONLY)
         .withFileSystemBind("../../../federated-auth", "/app/federated-auth", BindMode.READ_ONLY)
@@ -198,7 +253,17 @@ public class ContainerHelper {
   protected Long execInContainer(
       GenericContainer<?> container, String workingDirectory, Consumer<OutputFrame> consumer, String... command)
       throws UnsupportedOperationException, IOException, InterruptedException {
-    return execInContainer(container.getContainerInfo(), consumer, workingDirectory, command);
+    return execInContainer(container.getContainerInfo(), consumer, workingDirectory, Collections.emptyList(), command);
+  }
+
+  protected Long execInContainer(
+      GenericContainer<?> container,
+      String workingDirectory,
+      Consumer<OutputFrame> consumer,
+      List<String> env,
+      String... command)
+      throws UnsupportedOperationException, IOException, InterruptedException {
+    return execInContainer(container.getContainerInfo(), consumer, workingDirectory, env, command);
   }
 
   protected Long execInContainer(
@@ -206,13 +271,14 @@ public class ContainerHelper {
       Consumer<OutputFrame> consumer,
       String... command)
       throws UnsupportedOperationException, IOException, InterruptedException {
-    return execInContainer(container.getContainerInfo(), consumer, null, command);
+    return execInContainer(container.getContainerInfo(), consumer, null, Collections.emptyList(), command);
   }
 
   protected Long execInContainer(
       InspectContainerResponse containerInfo,
       Consumer<OutputFrame> consumer,
       String workingDir,
+      List<String> env,
       String... command)
       throws UnsupportedOperationException, IOException, InterruptedException {
     if (!TestEnvironment.dockerExecutionDriverSupportsExec()) {
@@ -229,11 +295,13 @@ public class ContainerHelper {
     final String containerId = containerInfo.getId();
     final DockerClient dockerClient = DockerClientFactory.instance().client();
 
+    final List<String> execEnv = new ArrayList<>(env);
+
     final ExecCreateCmd cmd = dockerClient
         .execCreateCmd(containerId)
         .withAttachStdout(true)
         .withAttachStderr(true)
-        .withEnv(Arrays.asList("JEST_HTML_REPORTER_OUTPUT_PATH", "./.test/tests/integration/container/reports/hello.html"))
+        .withEnv(execEnv)
         .withCmd(command);
 
     if (!StringUtils.isNullOrEmpty(workingDir)) {

@@ -21,7 +21,6 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	"log"
 	"log/slog"
 	"net"
 	"strconv"
@@ -174,7 +173,7 @@ func TestIamValidConnectionConnObject(t *testing.T) {
 	wrapperDriver := test_utils.NewWrapperDriver(testEnvironment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
 	queryer, ok := conn.(driver.QueryerContext)
@@ -182,7 +181,7 @@ func TestIamValidConnectionConnObject(t *testing.T) {
 
 	// Execute the query
 	rows, err := queryer.QueryContext(context.Background(), "SELECT 1", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer func() { _ = rows.Close() }()
 }
 
@@ -208,7 +207,7 @@ func TestIamValidConnectionConnObjectWithTelemetryOtel(t *testing.T) {
 	wrapperDriver := test_utils.NewWrapperDriver(testEnvironment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
 	queryer, ok := conn.(driver.QueryerContext)
@@ -216,7 +215,7 @@ func TestIamValidConnectionConnObjectWithTelemetryOtel(t *testing.T) {
 
 	// Execute the query
 	rows, err := queryer.QueryContext(context.Background(), "SELECT 1", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer func() { _ = rows.Close() }()
 }
 
@@ -241,7 +240,7 @@ func TestIamValidConnectionConnObjectWithTelemetryXray(t *testing.T) {
 	wrapperDriver := test_utils.NewWrapperDriver(testEnvironment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
 	queryer, ok := conn.(driver.QueryerContext)
@@ -249,7 +248,7 @@ func TestIamValidConnectionConnObjectWithTelemetryXray(t *testing.T) {
 
 	// Execute the query
 	rows, err := queryer.QueryContext(context.Background(), "SELECT 1", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer func() { _ = rows.Close() }()
 }
 
@@ -274,9 +273,7 @@ func TestIamWithFailover(t *testing.T) {
 	wrapperDriver := test_utils.NewWrapperDriver(environment.Info().Request.Engine)
 
 	conn, err := wrapperDriver.Open(dsn)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
 	// Check that we are connected to the writer.

@@ -90,8 +90,9 @@ func TestSlidingExpirationGetExpiredItem(t *testing.T) {
 		return true
 	}
 	slidingExpirationCache := utils.NewSlidingExpirationCache[int]("test", disposalFunc)
-	slidingExpirationCache.Put("a", 1, time.Nanosecond)
-	slidingExpirationCache.Put("b", 2, time.Nanosecond)
+	// Set a negative expiration time to expire the token instantly.
+	slidingExpirationCache.Put("a", 1, -time.Second)
+	slidingExpirationCache.Put("b", 2, -time.Second)
 
 	item, ok := slidingExpirationCache.Get("a", time.Minute)
 	assert.Equal(t, 0, item)
@@ -106,8 +107,8 @@ func TestSlidingExpirationComputeIfAbsentExpiredItem(t *testing.T) {
 		return true
 	}
 	slidingExpirationCache := utils.NewSlidingExpirationCache("test", disposalFunc)
-	slidingExpirationCache.Put("a", 1, time.Nanosecond)
-	slidingExpirationCache.Put("b", 2, time.Nanosecond)
+	slidingExpirationCache.Put("a", 1, -time.Second)
+	slidingExpirationCache.Put("b", 2, -time.Second)
 
 	item := slidingExpirationCache.ComputeIfAbsent("a", func() int { return 3 }, time.Minute)
 	assert.Equal(t, 3, item)

@@ -560,7 +560,11 @@ func (a AuroraTestUtility) GetRdsInstanceIds(engine DatabaseEngine, deployment D
 		dsn = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", username, password, clusterEndpoint, port, dbName)
 	}
 
-	db, err := OpenDb(engine, dsn)
+	targetDriver, err := defaultTargetDriverForEngine(engine)
+	if err != nil {
+		return nil, err
+	}
+	db, err := OpenDbWithDriver(targetDriver, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}

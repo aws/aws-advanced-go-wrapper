@@ -77,6 +77,21 @@ tasks.withType<Test> {
         showStackTraces = true
     }
 
+    // Forward the test-selection switches from the command line into the forked test JVM. Gradle
+    // passes -D to the build JVM only, so without this the only properties the framework ever sees
+    // are the ones a task hardcodes in doFirst below, and every -Dexclude-... typed on the command
+    // line is silently ignored. Task values still win, since doFirst runs after this.
+    System.getProperties().forEach {
+        val key = it.key.toString()
+        if (key.startsWith("exclude-")
+            || key.startsWith("test-no-")
+            || key == "limitless-only"
+            || key == "test-autoscaling"
+        ) {
+            systemProperty(key, it.value.toString())
+        }
+    }
+
     reports.junitXml.required.set(true)
     reports.html.required.set(false)
 }
@@ -126,9 +141,49 @@ tasks.register<Test>("test-aurora-postgres") {
         systemProperty("exclude-multi-az-instance", "true")
         systemProperty("exclude-limitless", "true")
         systemProperty("exclude-bg", "true")
+        systemProperty("exclude-iam", "true")
+        systemProperty("exclude-secrets-manager", "true")
     }
 }
 
+// One target driver per task, so the two PostgreSQL drivers can run as separate CI jobs instead of
+// two sequential passes in one. Each job provisions its own cluster, which is what buys the
+// parallelism; the trade is one extra cluster per run.
+tasks.register<Test>("test-aurora-postgres-pgx") {
+    group = "verification"
+    filter.includeTestsMatching("integration.host.TestRunner.runTests")
+    doFirst {
+        systemProperty("exclude-docker", "true")
+        systemProperty("exclude-performance", "true")
+        systemProperty("exclude-mysql-driver", "true")
+        systemProperty("exclude-mysql-engine", "true")
+        systemProperty("exclude-multi-az-cluster", "true")
+        systemProperty("exclude-multi-az-instance", "true")
+        systemProperty("exclude-limitless", "true")
+        systemProperty("exclude-bg", "true")
+        systemProperty("exclude-bunpg-driver", "true")
+    }
+}
+
+tasks.register<Test>("test-aurora-postgres-bunpg") {
+    group = "verification"
+    filter.includeTestsMatching("integration.host.TestRunner.runTests")
+    doFirst {
+        systemProperty("exclude-docker", "true")
+        systemProperty("exclude-performance", "true")
+        systemProperty("exclude-mysql-driver", "true")
+        systemProperty("exclude-mysql-engine", "true")
+        systemProperty("exclude-multi-az-cluster", "true")
+        systemProperty("exclude-multi-az-instance", "true")
+        systemProperty("exclude-limitless", "true")
+        systemProperty("exclude-bg", "true")
+        systemProperty("exclude-pg-driver", "true")
+        // IAM and Secrets Manager stay off here while bun-pg is still being brought up, to keep the
+        // turnaround short. The pgx task above covers them.
+        systemProperty("exclude-iam", "true")
+        systemProperty("exclude-secrets-manager", "true")
+    }
+}
 
 tasks.register<Test>("test-aurora-mysql") {
     group = "verification"
@@ -137,6 +192,7 @@ tasks.register<Test>("test-aurora-mysql") {
         systemProperty("exclude-docker", "true")
         systemProperty("exclude-performance", "true")
         systemProperty("exclude-pg-driver", "true")
+        systemProperty("exclude-bunpg-driver", "true")
         systemProperty("exclude-pg-engine", "true")
         systemProperty("exclude-multi-az-cluster", "true")
         systemProperty("exclude-multi-az-instance", "true")
@@ -173,6 +229,7 @@ tasks.register<Test>("test-aurora-mysql-performance") {
     doFirst {
         systemProperty("exclude-docker", "true")
         systemProperty("exclude-pg-driver", "true")
+        systemProperty("exclude-bunpg-driver", "true")
         systemProperty("exclude-pg-engine", "true")
         systemProperty("exclude-multi-az-cluster", "true")
         systemProperty("exclude-multi-az-instance", "true")
@@ -204,6 +261,7 @@ tasks.register<Test>("test-multi-az-mysql") {
         systemProperty("exclude-docker", "true")
         systemProperty("exclude-performance", "true")
         systemProperty("exclude-pg-driver", "true")
+        systemProperty("exclude-bunpg-driver", "true")
         systemProperty("exclude-pg-engine", "true")
         systemProperty("exclude-aurora", "true")
         systemProperty("exclude-multi-az-instance", "true")
@@ -235,6 +293,7 @@ tasks.register<Test>("test-autoscaling-mysql") {
         systemProperty("exclude-multi-az-cluster", "true")
         systemProperty("exclude-multi-az-instance", "true")
         systemProperty("exclude-pg-driver", "true")
+        systemProperty("exclude-bunpg-driver", "true")
         systemProperty("exclude-pg-engine", "true")
         systemProperty("test-autoscaling", "true")
         systemProperty("exclude-limitless", "true")
@@ -264,6 +323,7 @@ tasks.register<Test>("test-bgd-mysql-aurora") {
     doFirst {
         systemProperty("exclude-docker", "true")
         systemProperty("exclude-pg-driver", "true")
+        systemProperty("exclude-bunpg-driver", "true")
         systemProperty("exclude-pg-engine", "true")
         systemProperty("exclude-performance", "true")
         systemProperty("exclude-multi-az-cluster", "true")
@@ -278,6 +338,7 @@ tasks.register<Test>("test-bgd-mysql-multiaz") {
     doFirst {
         systemProperty("exclude-docker", "true")
         systemProperty("exclude-pg-driver", "true")
+        systemProperty("exclude-bunpg-driver", "true")
         systemProperty("exclude-pg-engine", "true")
         systemProperty("exclude-performance", "true")
         systemProperty("exclude-aurora", "true")
@@ -390,6 +451,7 @@ tasks.register<Test>("debug-aurora-mysql") {
         systemProperty("exclude-docker", "true")
         systemProperty("exclude-performance", "true")
         systemProperty("exclude-pg-driver", "true")
+        systemProperty("exclude-bunpg-driver", "true")
         systemProperty("exclude-pg-engine", "true")
         systemProperty("exclude-multi-az-cluster", "true")
         systemProperty("exclude-multi-az-instance", "true")
@@ -418,6 +480,7 @@ tasks.register<Test>("debug-aurora-mysql-performance") {
     doFirst {
         systemProperty("exclude-docker", "true")
         systemProperty("exclude-pg-driver", "true")
+        systemProperty("exclude-bunpg-driver", "true")
         systemProperty("exclude-pg-engine", "true")
         systemProperty("exclude-multi-az-cluster", "true")
         systemProperty("exclude-multi-az-instance", "true")
@@ -433,6 +496,7 @@ tasks.register<Test>("debug-multi-az-mysql") {
         systemProperty("exclude-docker", "true")
         systemProperty("exclude-performance", "true")
         systemProperty("exclude-pg-driver", "true")
+        systemProperty("exclude-bunpg-driver", "true")
         systemProperty("exclude-pg-engine", "true")
         systemProperty("exclude-aurora", "true")
         systemProperty("exclude-bg", "true")
@@ -490,6 +554,7 @@ tasks.register<Test>("debug-bgd-mysql-aurora") {
     doFirst {
         systemProperty("exclude-docker", "true")
         systemProperty("exclude-pg-driver", "true")
+        systemProperty("exclude-bunpg-driver", "true")
         systemProperty("exclude-pg-engine", "true")
         systemProperty("exclude-performance", "true")
         systemProperty("exclude-multi-az-cluster", "true")

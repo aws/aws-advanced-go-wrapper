@@ -88,6 +88,19 @@ func (h *BunPgErrorHandler) IsNetworkError(err error) bool {
 		return true
 	}
 
+	// io.EOF means the server closed the connection between messages. pgdriver reports it bare,
+	// not wrapped as io.ErrUnexpectedEOF, so the check above does not catch it. This is the error
+	// an Aurora failover actually produces: without this, failover never triggers under bun-pg and
+	// the raw "EOF" reaches the caller instead of Failover.connectionChangedError.
+	if errors.Is(err, io.EOF) {
+		return true
+	}
+
+	// os.ErrDeadlineExceeded is deliberately NOT treated as a network error. pgdriver sets the
+	// socket deadline to min(its own timeout, the context's), so an expired caller context and an
+	// unresponsive host produce the same value, and classifying it would fail over on ordinary
+	// query timeouts. Revisit only with a way to tell the two apart.
+
 	sqlState := h.getSQLStateFromError(err)
 	if sqlState != "" && slices.ContainsFunc(NetworkErrors, func(prefix string) bool {
 		return strings.HasPrefix(sqlState, prefix)

@@ -25,31 +25,42 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
+	bun_pg_driver "github.com/aws/aws-advanced-go-wrapper/bun-pg-driver"
 	mysql_driver "github.com/aws/aws-advanced-go-wrapper/mysql-driver"
 	pgx_driver "github.com/aws/aws-advanced-go-wrapper/pgx-driver"
 )
 
 func OpenDb(engine DatabaseEngine, dsn string) (*sql.DB, error) {
-	switch engine {
-	case PG:
-		return sql.Open("awssql-pgx", dsn)
-	case MYSQL:
-		return sql.Open("awssql-mysql", dsn)
+	targetDriver, err := TargetDriverForEngine(engine)
+	if err != nil {
+		return nil, err
 	}
-	return nil, fmt.Errorf("unknown engine %s", engine)
+	return OpenDbWithDriver(targetDriver, dsn)
+}
+
+func OpenDbWithDriver(targetDriver TargetDriver, dsn string) (*sql.DB, error) {
+	driverCode := targetDriver.WrapperDriverCode()
+	if driverCode == "" {
+		return nil, fmt.Errorf("unknown target driver %q", targetDriver)
+	}
+	return sql.Open(driverCode, dsn)
 }
 
 func NewWrapperDriver(engine DatabaseEngine) driver.Driver {
-	switch engine {
-	case PG:
+	targetDriver := MustTargetDriverForEngine(engine)
+	switch targetDriver {
+	case PGX_DRIVER:
 		return &pgx_driver.PgxDriver{}
-	case MYSQL:
+	case BUN_PG:
+		return &bun_pg_driver.BunPgDriver{}
+	case MYSQL_DRIVER:
 		return &mysql_driver.MySQLDriver{}
 	}
-	return nil
+	panic(fmt.Sprintf("no wrapper driver for target driver %q on engine %q", targetDriver, engine))
 }
 
 func GetSleepSql(engine DatabaseEngine, seconds int) string {
@@ -62,8 +73,19 @@ func GetSleepSql(engine DatabaseEngine, seconds int) string {
 	return ""
 }
 
+var ErrInstanceIdentityUnsupported = errors.New("deployment has no cluster instance identity")
+
+func SkipIfNoInstanceIdentity(t *testing.T, env *TestEnvironment) {
+	deployment := env.Info().Request.Deployment
+	if _, err := GetInstanceIdSql(env.Info().Request.Engine, deployment); errors.Is(err, ErrInstanceIdentityUnsupported) {
+		t.Skipf("Skipping test %s: deployment %s cannot report a cluster instance identity.", t.Name(), deployment)
+	}
+}
+
 func GetInstanceIdSql(engine DatabaseEngine, deployment DatabaseEngineDeployment) (string, error) {
 	switch deployment {
+	case DOCKER:
+		return "", ErrInstanceIdentityUnsupported
 	case AURORA, AURORA_LIMITLESS:
 		switch engine {
 		case PG:
@@ -127,16 +149,11 @@ func GetFirstItemFromQueryAsString(engine DatabaseEngine, conn driver.Conn, quer
 	if err != nil {
 		return "", err
 	}
-	if engine == MYSQL {
-		stringAsInt, ok := firstRow[0].([]uint8)
-		if ok {
-			return string(stringAsInt), nil
-		}
-	} else {
-		firstItem, ok := firstRow[0].(string)
-		if ok {
-			return firstItem, nil
-		}
+	switch firstItem := firstRow[0].(type) {
+	case string:
+		return firstItem, nil
+	case []byte:
+		return string(firstItem), nil
 	}
 	return "", errors.New("unable to cast result")
 }
@@ -272,6 +289,13 @@ func ConfigureProps(environment *TestEnvironment, props map[string]string) map[s
 	if _, ok := props[property_util.PORT.Name]; !ok {
 		props[property_util.PORT.Name] = strconv.Itoa(environment.Info().DatabaseInfo.InstanceEndpointPort)
 	}
+	if targetDriver, err := TargetDriverForEngine(environment.Info().Request.Engine); err == nil {
+		for key, value := range targetDriver.DefaultDsnProps() {
+			if _, ok := props[key]; !ok {
+				props[key] = value
+			}
+		}
+	}
 	return props
 }
 
@@ -283,11 +307,18 @@ var requiredProps = []string{
 	property_util.DATABASE.Name,
 }
 
+// quotePgDsnValue quotes a value for a PostgreSQL keyword/value DSN.
+func quotePgDsnValue(value string) string {
+	escaped := strings.ReplaceAll(value, "\\", "\\\\")
+	escaped = strings.ReplaceAll(escaped, "'", "\\'")
+	return "'" + escaped + "'"
+}
+
 func ConstructDsn(engine DatabaseEngine, props map[string]string) (dsn string) {
 	switch engine {
 	case PG:
 		for propKey, propValue := range props {
-			dsn = dsn + fmt.Sprintf("%s=%s ", propKey, propValue)
+			dsn = dsn + fmt.Sprintf("%s=%s ", propKey, quotePgDsnValue(propValue))
 		}
 	case MYSQL:
 		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?",

@@ -17,6 +17,7 @@
 package driver_infrastructure
 
 import (
+	"context"
 	"database/sql/driver"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
@@ -72,6 +73,20 @@ func (d DriverConnectionProvider) GetHostSelectorStrategy(strategy string) (Host
 func (d DriverConnectionProvider) Connect(hostInfo *host_info_util.HostInfo, props map[string]string, pluginService PluginService) (driver.Conn, error) {
 	targetDriverDialect := pluginService.GetTargetDriverDialect()
 	dsn := targetDriverDialect.PrepareDsn(props, hostInfo)
-	conn, err := d.targetDriver.Open(dsn)
-	return conn, err
+	return OpenTargetConnection(context.Background(), d.targetDriver, dsn)
+}
+
+func OpenTargetConnection(ctx context.Context, targetDriver driver.Driver, dsn string) (driver.Conn, error) {
+	driverCtx, ok := targetDriver.(driver.DriverContext)
+	if !ok {
+		return targetDriver.Open(dsn)
+	}
+
+	connector, err := driverCtx.OpenConnector(dsn)
+	if err != nil {
+		// Fall back rather than fail: Open may accept a DSN the connector path
+		// rejects, and refusing to connect is worse than losing the context.
+		return targetDriver.Open(dsn)
+	}
+	return connector.Connect(ctx)
 }

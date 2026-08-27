@@ -67,6 +67,7 @@ public class TestEnvironmentProvider implements TestTemplateInvocationContextPro
     final boolean testAutoscalingOnly = Boolean.parseBoolean(System.getProperty("test-autoscaling", "false"));
     final boolean excludeTracesTelemetry = Boolean.parseBoolean(System.getProperty("test-no-traces-telemetry", "false"));
     final boolean excludeMetricsTelemetry = Boolean.parseBoolean(System.getProperty("test-no-metrics-telemetry", "false"));
+    final boolean excludeBunpgDriver = Boolean.parseBoolean(System.getProperty("exclude-bunpg-driver", "false"));
 
     for (DatabaseEngineDeployment deployment : DatabaseEngineDeployment.values()) {
       if (deployment == DatabaseEngineDeployment.DOCKER && excludeDocker) {
@@ -96,6 +97,14 @@ public class TestEnvironmentProvider implements TestTemplateInvocationContextPro
           continue;
         }
         if (engine == DatabaseEngine.MYSQL && excludeMysqlEngine) {
+          continue;
+        }
+        // Skip engines with no target driver left to run, so no cluster is provisioned for a run
+        // that would exercise nothing.
+        if (engine == DatabaseEngine.PG && excludePgDriver && excludeBunpgDriver) {
+          continue;
+        }
+        if (engine == DatabaseEngine.MYSQL && excludeMysqlDriver) {
           continue;
         }
 
@@ -151,6 +160,7 @@ public class TestEnvironmentProvider implements TestTemplateInvocationContextPro
                       excludePerformance ? null : TestEnvironmentFeatures.PERFORMANCE,
                       excludeMysqlDriver ? TestEnvironmentFeatures.SKIP_MYSQL_DRIVER_TESTS : null,
                       excludePgDriver ? TestEnvironmentFeatures.SKIP_PG_DRIVER_TESTS : null,
+                      excludeBunpgDriver ? TestEnvironmentFeatures.SKIP_BUNPG_DRIVER_TESTS : null,
                       testAutoscalingOnly ? TestEnvironmentFeatures.RUN_AUTOSCALING_TESTS_ONLY : null,
                       excludeBg ? null : TestEnvironmentFeatures.BLUE_GREEN_DEPLOYMENT,
                       excludeTracesTelemetry ? null : TestEnvironmentFeatures.TELEMETRY_TRACES_ENABLED,
