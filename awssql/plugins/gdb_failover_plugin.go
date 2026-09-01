@@ -470,5 +470,5 @@ func (h *globalDbFailoverHandler) getAllowedFailoverConnection(
 }
 
 func (h *globalDbFailoverHandler) shortDelay() {
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(failoverShortDelay)
 }

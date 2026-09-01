@@ -5,26 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
 ## [Unreleased]
-
-> Ships as `2.1.0`: adds exported API and changes exported behaviour. `custom-endpoint` 1.1.0 requires it.
-
-### :magic_wand: Added
-
-* `AllowedAndBlockedHosts.FilterHosts`, so every path handing hosts to selection applies host permissions
-  identically ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
-* `RWMap.DoIf` and `RWMap.RemoveIfValue`, for check-then-act on a shared map under one write lock ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
-
+ 
 ### :bug: Fixed
-
-* `GetUpdatedHostListWithTimeout` returned an unfiltered topology, so reader failover could re-seed its
-  candidates with hosts a custom endpoint excludes, including the writer. `ForceRefreshHostListWithTimeout`
-  still returns the raw topology ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
-* Reader failover could spin at 100% of a core for the whole failover timeout when a retry round had no
-  candidate to try ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
-* `readWriteSplitting` served reads from the writer while reporting success, when the allowed host list
-  held exactly one host and it was a reader ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
-* `PartialPluginService.GetHosts` never matched its host permissions and so ignored them. Not reachable in
-  production; nothing calls it yet ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
+* [Custom Endpoint plugin](../docs/user-guide/using-plugins/UsingTheCustomEndpointPlugin.md) not filtering hosts during connect. The plugin now requires `rds:DescribeDBClusterEndpoints` ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
 
 ## [2.0.3] - 2026-07-29
 ### :bug: Fixed

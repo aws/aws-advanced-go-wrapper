@@ -33,6 +33,8 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils/telemetry"
 )
 
+const failoverShortDelay = 100 * time.Millisecond
+
 type FailoverMode string
 
 const (
@@ -461,10 +463,9 @@ func (p *FailoverPlugin) returnReaderFailoverErr(err error) error {
 	return error_util.NewFailoverFailedError(error_util.GetMessage("Failover.unableToConnectToReader"))
 }
 
-// shortDelay paces a retry round that performed no I/O, so the caller cannot spin. Matches
-// globalDbFailoverHandler.shortDelay.
+// shortDelay paces a retry round that performed no I/O, so the caller cannot spin.
 func (p *FailoverPlugin) shortDelay() {
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(failoverShortDelay)
 }
 
 func (p *FailoverPlugin) getReaderFailoverCandidates(hosts []*host_info_util.HostInfo) ([]*host_info_util.HostInfo, *host_info_util.HostInfo) {

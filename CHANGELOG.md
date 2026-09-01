@@ -4,50 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### :warning: Action required before upgrading
-
-The Custom Endpoint Plugin has not run since `awssql` v2 and is now functional, so `plugins=customEndpoint`
-stops being a no-op. Grant `rds:DescribeDBClusterEndpoints` to the credentials the wrapper resolves before
-upgrading, regardless of your database authentication method, or connections to a custom endpoint will fail.
-See [UsingTheCustomEndpointPlugin.md](docs/user-guide/using-plugins/UsingTheCustomEndpointPlugin.md).
-
-### :boom: Breaking Changes
-
-* Custom endpoint membership is now enforced for failover and read/write splitting, so the hosts available
-  for failover shrink to the endpoint's members. Excluding the writer leaves no writer to select. See
-  [UsingTheCustomEndpointPlugin.md](docs/user-guide/using-plugins/UsingTheCustomEndpointPlugin.md) ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
-* `GetUpdatedHostListWithTimeout` now returns a filtered topology. Use `ForceRefreshHostListWithTimeout`
-  for the raw one ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
-* The Custom Endpoint Plugin gates most network-bound methods, adding per-statement overhead when enabled
-  ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
-
 ### :bug: Fixed
-
-* Custom Endpoint Plugin was never invoked, so no host filtering was ever applied ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
-* Custom endpoint monitoring used the ambient AWS region instead of the endpoint's, failing every
-  connection when they differed ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
-* Unbounded `DescribeDBClusterEndpoints` retry loop on any SDK error ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
-* Panic on the monitor goroutine for an endpoint with no `CustomEndpointType`, which terminated the host
-  process ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
-* Monitor shutdown could block driver shutdown and the shared monitor-cleanup goroutine ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
-* Host filtering lapsed periodically, and could be lost entirely when a monitor was recreated ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
-* `readWriteSplitting` served reads from the writer while reporting success, when only one host was
-  allowed and it was a reader ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
-* Reader failover could spin at 100% of a core for the whole `failoverTimeoutMs` with no reader candidate
-  ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
-* Custom endpoint monitor logs named neither the endpoint nor the underlying error, and some rendered as
-  `%!v(MISSING)` ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
-
-### :crab: Changed
-
-* Documented the required IAM permission and its correct scope, corrected `wrapperPlugins` to `plugins`,
-  and added tests so the guide and the property definitions cannot drift apart. See [UsingTheCustomEndpointPlugin.md](docs/user-guide/using-plugins/UsingTheCustomEndpointPlugin.md) ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
-* Added custom endpoint integration tests, which the suite had none of ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
-
-### :warning: Known limitations
-
-* A custom endpoint's *type* (`READER`, `WRITER`, `ANY`) is not enforced, only its member list.
-* Writer selection during failover is not filtered by custom endpoint membership; reader selection is.
+* [Custom Endpoint plugin](./docs/user-guide/using-plugins/UsingTheCustomEndpointPlugin.md) not filtering hosts during connect. The plugin now requires `rds:DescribeDBClusterEndpoints` ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
 
 # Release (2026-07-29)
 ## General Highlights
