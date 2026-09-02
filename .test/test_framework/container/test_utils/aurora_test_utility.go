@@ -632,3 +632,156 @@ func SkipForDeployment(t *testing.T, deploymentToSkip DatabaseEngineDeployment, 
 		t.Skipf("Skipping test for deployment: %s", string(deploymentToSkip))
 	}
 }
+
+// --- Custom endpoint operations -----------------------------------------------------------------
+//
+// The custom endpoint plugin is the only feature that depends on RDS cluster endpoints, and a test
+// for it has to manage their whole lifecycle itself: unlike instances and clusters, the test
+// environment does not provision them.
+
+// customEndpointPollInterval is how often the wait helpers below re-describe an endpoint. Endpoint
+// creation and member changes are control-plane operations measured in minutes, so polling faster
+// only burns API quota.
+const customEndpointPollInterval = 3 * time.Second
+
+// CustomEndpointAvailableTimeout bounds waiting for a newly created endpoint to become available.
+const CustomEndpointAvailableTimeout = 5 * time.Minute
+
+// CustomEndpointMembersTimeout bounds waiting for a member-list change to take effect. Modifying an
+// endpoint's members is markedly slower than creating one, commonly around 140s, so this is
+// deliberately generous.
+const CustomEndpointMembersTimeout = 20 * time.Minute
+
+// CreateCustomEndpoint creates an "ANY"-type custom endpoint with the given static members.
+//
+// The type is ANY rather than READER or WRITER so that the endpoint's own role does not constrain
+// which instances the driver may select; the test controls that through the member list alone.
+func (a AuroraTestUtility) CreateCustomEndpoint(
+	ctx context.Context, endpointId string, clusterId string, staticMembers []string) error {
+	_, err := a.client.CreateDBClusterEndpoint(ctx, &rds.CreateDBClusterEndpointInput{
+		DBClusterEndpointIdentifier: aws.String(endpointId),
+		DBClusterIdentifier:         aws.String(clusterId),
+		EndpointType:                aws.String("ANY"),
+		StaticMembers:               staticMembers,
+	})
+	if err != nil {
+		return fmt.Errorf("could not create custom endpoint %s on cluster %s: %w", endpointId, clusterId, err)
+	}
+	return nil
+}
+
+// DeleteCustomEndpoint removes a custom endpoint. An endpoint that is already gone is not an error,
+// so this is safe to call from cleanup that may run after a failed creation.
+func (a AuroraTestUtility) DeleteCustomEndpoint(ctx context.Context, endpointId string) error {
+	_, err := a.client.DeleteDBClusterEndpoint(ctx, &rds.DeleteDBClusterEndpointInput{
+		DBClusterEndpointIdentifier: aws.String(endpointId),
+	})
+	if err != nil {
+		var notFound *types.DBClusterEndpointNotFoundFault
+		if errors.As(err, &notFound) {
+			return nil
+		}
+		return fmt.Errorf("could not delete custom endpoint %s: %w", endpointId, err)
+	}
+	return nil
+}
+
+// SetCustomEndpointStaticMembers replaces an endpoint's static member list. The change is accepted
+// immediately but takes minutes to apply; pair this with WaitUntilCustomEndpointHasMembers.
+func (a AuroraTestUtility) SetCustomEndpointStaticMembers(
+	ctx context.Context, endpointId string, staticMembers []string) error {
+	_, err := a.client.ModifyDBClusterEndpoint(ctx, &rds.ModifyDBClusterEndpointInput{
+		DBClusterEndpointIdentifier: aws.String(endpointId),
+		StaticMembers:               staticMembers,
+	})
+	if err != nil {
+		return fmt.Errorf("could not set static members of custom endpoint %s: %w", endpointId, err)
+	}
+	return nil
+}
+
+// GetCustomEndpoint describes a single custom endpoint.
+//
+// The type filter matters: without it a cluster's built-in writer and reader endpoints can be
+// returned alongside the custom one, and the caller cannot tell them apart by identifier alone.
+func (a AuroraTestUtility) GetCustomEndpoint(
+	ctx context.Context, endpointId string) (types.DBClusterEndpoint, error) {
+	output, err := a.client.DescribeDBClusterEndpoints(ctx, &rds.DescribeDBClusterEndpointsInput{
+		DBClusterEndpointIdentifier: aws.String(endpointId),
+		Filters: []types.Filter{{
+			Name:   aws.String("db-cluster-endpoint-type"),
+			Values: []string{"custom"},
+		}},
+	})
+	if err != nil {
+		return types.DBClusterEndpoint{}, err
+	}
+	if len(output.DBClusterEndpoints) != 1 {
+		return types.DBClusterEndpoint{}, fmt.Errorf(
+			"expected exactly 1 custom endpoint named %s, found %d", endpointId, len(output.DBClusterEndpoints))
+	}
+	return output.DBClusterEndpoints[0], nil
+}
+
+// WaitUntilCustomEndpointAvailable polls until the endpoint reports "available", and returns it.
+//
+// A newly created endpoint is not immediately describable, so a describe error is treated as "not
+// ready yet" rather than as a failure until the deadline passes.
+func (a AuroraTestUtility) WaitUntilCustomEndpointAvailable(
+	ctx context.Context, endpointId string, timeout time.Duration) (types.DBClusterEndpoint, error) {
+	deadline := time.Now().Add(timeout)
+	var lastErr error
+	for time.Now().Before(deadline) {
+		endpoint, err := a.GetCustomEndpoint(ctx, endpointId)
+		if err != nil {
+			lastErr = err
+		} else if endpoint.Status != nil && *endpoint.Status == "available" {
+			return endpoint, nil
+		} else {
+			lastErr = fmt.Errorf("status is %s", derefOrUnknown(endpoint.Status))
+		}
+		time.Sleep(customEndpointPollInterval)
+	}
+	return types.DBClusterEndpoint{}, fmt.Errorf(
+		"timed out after %s waiting for custom endpoint %s to become available: %w", timeout, endpointId, lastErr)
+}
+
+// WaitUntilCustomEndpointHasMembers polls until the endpoint is available and its static member list
+// matches the one given, ignoring order. This confirms the change at the AWS API level only; the
+// driver's own monitor picks it up on its next poll, which is a separate wait.
+func (a AuroraTestUtility) WaitUntilCustomEndpointHasMembers(
+	ctx context.Context, endpointId string, members []string, timeout time.Duration) error {
+	start := time.Now()
+	deadline := start.Add(timeout)
+	wanted := make([]string, len(members))
+	copy(wanted, members)
+	slices.Sort(wanted)
+
+	var lastState string
+	for time.Now().Before(deadline) {
+		endpoint, err := a.GetCustomEndpoint(ctx, endpointId)
+		if err != nil {
+			lastState = err.Error()
+		} else {
+			actual := make([]string, len(endpoint.StaticMembers))
+			copy(actual, endpoint.StaticMembers)
+			slices.Sort(actual)
+			if slices.Equal(actual, wanted) && endpoint.Status != nil && *endpoint.Status == "available" {
+				slog.Info("Custom endpoint reached the requested member list.",
+					"endpoint", endpointId, "members", actual, "took", time.Since(start).Round(time.Second))
+				return nil
+			}
+			lastState = fmt.Sprintf("status %s, members %v", derefOrUnknown(endpoint.Status), actual)
+		}
+		time.Sleep(customEndpointPollInterval)
+	}
+	return fmt.Errorf("timed out after %s waiting for custom endpoint %s to have members %v; last saw %s",
+		timeout, endpointId, wanted, lastState)
+}
+
+func derefOrUnknown(value *string) string {
+	if value == nil {
+		return "unknown"
+	}
+	return *value
+}

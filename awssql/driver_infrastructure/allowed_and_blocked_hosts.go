@@ -16,7 +16,12 @@
 
 package driver_infrastructure
 
-import "time"
+import (
+	"time"
+
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils"
+)
 
 // AllowedAndBlockedHostsStorageType is the storage type descriptor for allowed/blocked host data.
 var AllowedAndBlockedHostsStorageType = &StorageTypeDescriptor[*AllowedAndBlockedHosts]{
@@ -30,6 +35,11 @@ type AllowedAndBlockedHosts struct {
 	blockedHostIds map[string]bool
 }
 
+// NewAllowedAndBlockedHosts builds a host permission set.
+//
+// allowedHostIds: if empty, every host not in blockedHostIds is allowed.
+// blockedHostIds: if empty, every host in allowedHostIds is allowed; if both are empty there is no
+// host-id restriction.
 func NewAllowedAndBlockedHosts(
 	allowedHostIds map[string]bool,
 	blockedHostIds map[string]bool) *AllowedAndBlockedHosts {
@@ -54,4 +64,31 @@ func (a *AllowedAndBlockedHosts) GetAllowedHostIds() map[string]bool {
 
 func (a *AllowedAndBlockedHosts) GetBlockedHostIds() map[string]bool {
 	return a.blockedHostIds
+}
+
+// FilterHosts applies these permissions to a host list, so every path handing hosts to selection filters
+// identically.
+//
+// The result may be the input slice itself, so callers must not mutate it, and may be empty when none of
+// the endpoint's members are in the topology.
+func (a *AllowedAndBlockedHosts) FilterHosts(hosts []*host_info_util.HostInfo) []*host_info_util.HostInfo {
+	if a == nil {
+		return hosts
+	}
+
+	if len(a.allowedHostIds) > 0 {
+		hosts = utils.FilterSlice(hosts, func(item *host_info_util.HostInfo) bool {
+			value, ok := a.allowedHostIds[item.HostId]
+			return ok && value
+		})
+	}
+
+	if len(a.blockedHostIds) > 0 {
+		hosts = utils.FilterSlice(hosts, func(item *host_info_util.HostInfo) bool {
+			value, ok := a.blockedHostIds[item.HostId]
+			return !ok || !value
+		})
+	}
+
+	return hosts
 }

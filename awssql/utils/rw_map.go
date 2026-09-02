@@ -103,6 +103,42 @@ func (c *RWMap[K, V]) Remove(key K) {
 	}
 }
 
+// DoIf runs action under the write lock, but only when key is present and predicate holds for its value.
+// It reports whether action ran. For check-then-act sequences that a Get plus a second call cannot make
+// safe.
+//
+// action must not touch this map, since RWMutex is not reentrant, and any lock it takes sets a lock order
+// every other path must respect.
+func (c *RWMap[K, V]) DoIf(key K, predicate func(V) bool, action func()) bool {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	value, ok := c.cache[key]
+	if !ok || !predicate(value) {
+		return false
+	}
+	action()
+	return true
+}
+
+// RemoveIfValue deletes key only when predicate returns true for its current value, and reports
+// whether it deleted. The predicate runs under the write lock, so no writer can claim the key between
+// the test and the delete.
+func (c *RWMap[K, V]) RemoveIfValue(key K, predicate func(V) bool) bool {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	value, ok := c.cache[key]
+	if !ok || !predicate(value) {
+		return false
+	}
+	if c.disposalFunc != nil {
+		c.disposalFunc(value)
+	}
+	delete(c.cache, key)
+	return true
+}
+
 func (c *RWMap[K, V]) Clear() {
 	if c.disposalFunc != nil {
 		c.clearWithDisposalFunc()

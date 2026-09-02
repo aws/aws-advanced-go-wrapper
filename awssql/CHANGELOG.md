@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
+## [Unreleased]
+ 
+### :bug: Fixed
+* [Custom Endpoint plugin](../docs/user-guide/using-plugins/UsingTheCustomEndpointPlugin.md) not filtering hosts during connect. The plugin now requires `rds:DescribeDBClusterEndpoints` ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
+
 ## [2.0.3] - 2026-07-29
 ### :bug: Fixed
 * Coalesce concurrent MonitorManager initialization to prevent untracked duplicates monitors ([Issue #502](https://github.com/aws/aws-advanced-go-wrapper/issues/502)).

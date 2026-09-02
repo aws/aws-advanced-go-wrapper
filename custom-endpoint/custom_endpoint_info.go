@@ -17,7 +17,9 @@
 package custom_endpoint
 
 import (
+	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
@@ -55,6 +57,10 @@ func NewCustomEndpointInfo(endpoint types.DBClusterEndpoint) (*CustomEndpointInf
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("CustomEndpointInfo.nilDBClusterIdentifier"))
 	} else if endpoint.Endpoint == nil {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("CustomEndpointInfo.nilEndpoint"))
+	} else if endpoint.CustomEndpointType == nil {
+		// Checked like its three siblings above. Dereferencing this unguarded put a nil-pointer
+		// panic on the monitor goroutine, which would abort the host application.
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage("CustomEndpointInfo.nilCustomEndpointType"))
 	}
 
 	var members []string
@@ -75,6 +81,27 @@ func NewCustomEndpointInfo(endpoint types.DBClusterEndpoint) (*CustomEndpointInf
 		memberListType:     memberListType,
 		members:            stringSliceToSetMap(members),
 	}, nil
+}
+
+// String renders the endpoint info for logging. Without this the "%s" in
+// CustomEndpointMonitorImpl.detectedChangeInCustomEndpointInfo fell back to reflection and printed
+// the members map as `map[instance-1:%!s(bool=true)]`, because the set is modelled as map[string]bool.
+func (a *CustomEndpointInfo) String() string {
+	if a == nil {
+		return "<nil>"
+	}
+	members := make([]string, 0, len(a.members))
+	for member := range a.members {
+		members = append(members, member)
+	}
+	sort.Strings(members)
+
+	memberLabel := "static"
+	if a.memberListType == EXCLUSION_LIST {
+		memberLabel = "excluded"
+	}
+	return fmt.Sprintf("CustomEndpointInfo[endpoint=%s, cluster=%s, url=%s, role=%s, %s=%v]",
+		a.endpointIdentifier, a.clusterIdentifier, a.url, a.roleType, memberLabel, members)
 }
 
 func (a *CustomEndpointInfo) Equals(b *CustomEndpointInfo) bool {
