@@ -36,8 +36,7 @@ This plugin requires:
 2. [github.com/aws/aws-advanced-go-wrapper/federated-auth](../../../federated-auth) to be a dependency in the project
    - This can be accomplished by running `go get github.com/aws/aws-advanced-go-wrapper/federated-auth` in the same
         directory as the intended `go.mod` file.
-   - The module registers the plugin when it is imported, so the application must import it for its
-     side effects. Without the import, `federatedAuth` is an unknown plugin code.
+   - The module registers the plugin when it is imported, so the application must import it for its side effects. Without the import, `federatedAuth` is an unknown plugin code.
 
      ```go
      import (

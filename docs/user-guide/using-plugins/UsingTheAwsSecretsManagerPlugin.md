@@ -15,8 +15,7 @@ This plugin requires:
    - This can be accomplished by running `go get github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager` in the same directory as
      the intended `go.mod` file.
 
-   - The module registers the plugin when it is imported, so the application must import it for its
-     side effects. Without the import, `awsSecretsManager` is an unknown plugin code.
+   - The module registers the plugin when it is imported, so the application must import it for its side effects. Without the import, `awsSecretsManager` is an unknown plugin code.
 
      ```go
      import (

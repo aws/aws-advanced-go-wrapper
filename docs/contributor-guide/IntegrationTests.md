@@ -141,8 +141,7 @@ The following are the currently available integration test tasks. Each task may 
 - `test-aurora-pg-performance`, `test-aurora-mysql-performance`: run performance tests on one database type
 - `debug-aurora-pg-performance`, `debug-aurora-mysql-performance`: debug the performance tests
 
-`debug-all-environments` and `debug-docker` mirror `test-all-environments` and `test-docker` under a
-Delve headless server.
+`debug-all-environments` and `debug-docker` mirror `test-all-environments` and `test-docker` under a Delve headless server.
 
 ### Running the Integration Tests
 

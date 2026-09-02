@@ -199,7 +199,7 @@ All notable changes to this project will be documented in this file.
 * `https://github.com/aws/aws-advanced-go-wrapper/okta`: [v1.0.3](okta/CHANGELOG.md#103---2025-12-04)
 * `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.3](otlp/CHANGELOG.md#103---2025-12-04)
 * `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.0.3](pgx-driver/CHANGELOG.md#103---2025-12-04)
-* `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.3](xray/CHANGELOG.md#103---2025-10-17)
+* `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.3](xray/CHANGELOG.md#103---2025-12-04)
 
 # Release (2025-10-17)
 ## General Highlights

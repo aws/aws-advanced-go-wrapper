@@ -82,11 +82,7 @@ Plugins can also subscribe to the following pipelines:
 Subscribing to `*` subscribes to every method and every pipeline above.
 
 > [!IMPORTANT]
-> Plugins are selected for a pipeline by exact string match on the subscribed name. A plugin that
-> subscribes to a name the wrapper does not dispatch is dropped from that pipeline with no error and
-> no log line. Two names are not subscription keys: `acceptsStrategy`, which matches on the strategy
-> name instead (see the [AcceptsStrategy pipeline](./Pipelines.md#acceptsstrategy-pipeline)), and
-> `releaseResources`, which is driven by implementing `CanReleaseResources`.
+> Plugins are selected for a pipeline by exact string match on the subscribed name. A plugin that subscribes to a name the wrapper does not dispatch is dropped from that pipeline with no error and no log line. Two names are not subscription keys: `acceptsStrategy`, which matches on the strategy name instead (see the [AcceptsStrategy pipeline](./Pipelines.md#acceptsstrategy-pipeline)), and `releaseResources`, which is driven by implementing `CanReleaseResources`.
 
 ### Tips on Creating a Custom Plugin
 
