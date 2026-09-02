@@ -5,13 +5,13 @@
 A connection provider helps the wrapper connect to the database and helps select which host to connect to. If you would like to use your own connection provider you can do so by first creating a struct that implements the `ConnectionProvider` interface. Then, call the `driver_infrastructure.SetCustomConnectionProvider` method and pass in the struct that implements [`ConnectionProvider`](../../awssql/driver_infrastructure/connection_provider.go). For more details on wrapper behaviour and the impacted pipelines see: [Pipelines](../contributor-guide/Pipelines.md).
 
 ## Connect Pipeline
-By default, the connect pipeline will establish connections using the `DriverConnectionProvider` class. Once a custom connection provider is set, connection requests will attempt to connect through the custom provider. The `AcceptsUrl` method of `ConnectionProvider` filters which connections are supported by the provider, and the `Connect` method makes the connection to the database. `Connect` will only be called for a set of parameters if `AcceptsUrl` returns `true`. If you do not want to use your custom connection provider to connect, return `false` in `AcceptsUrl`. 
+By default, the connect pipeline will establish connections using `DriverConnectionProvider`. Once a custom connection provider is set, connection requests will attempt to connect through the custom provider. The `AcceptsUrl` method of `ConnectionProvider` filters which connections are supported by the provider, and the `Connect` method makes the connection to the database. `Connect` will only be called for a set of parameters if `AcceptsUrl` returns `true`. If you do not want to use your custom connection provider to connect, return `false` in `AcceptsUrl`. 
 
 > [!NOTE]
 > The force connect pipeline will not be impacted. 
 
 ## AcceptsStrategy and GetHostInfoByStrategy Pipelines
-By default, host selection will establish connections using the `DriverConnectionProvider` class and the [random](../user-guide/ReaderSelectionStrategies.md#reader-selection-strategies) selection strategy. 
+By default, host selection will establish connections using `DriverConnectionProvider` and the [random](../user-guide/ReaderSelectionStrategies.md#reader-selection-strategies) selection strategy. 
 
 > [!NOTE]
 > Host selection will first pass through other plugins that implement the `AcceptsStrategy` and `GetHostInfoByStrategy` pipelines. For example, the `limitless` plugin uses its own host selection strategies. For more information see the [Limitless](../user-guide/using-plugins/UsingTheLimitlessConnectionPlugin.md) and [Pipelines](../contributor-guide/Pipelines.md) documentation. 

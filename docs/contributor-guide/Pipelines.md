@@ -13,6 +13,9 @@ The plugin pipelines available in the driver are:
 - The NotifyHostListChanged pipeline.
 - The AcceptsStrategy pipeline.
 - The GetHostInfoByStrategy pipeline.
+- The GetHostSelectorStrategy pipeline.
+- The SetReadOnly pipeline.
+- The ReleaseResources pipeline.
 
 A plugin does not need to implement all pipelines. A plugin can implement one or more pipelines depending on its functionality.
 
@@ -20,7 +23,7 @@ For information on how to subscribe to these pipelines, please see the documenta
 
 ## Connect Pipeline
 
-The connect pipeline performs any additional setup or post connection steps required to establish a Go connection. By default, the connect pipeline will establish connections using the `DriverConnectionProvider` class for connections requested through the `DriverManager`. If you would like to use your own provider to connect see [Connection Provider](../custom-config/ConnectionProvider.md) for details.
+The connect pipeline performs any additional setup or post connection steps required to establish a Go connection. By default, the connect pipeline will establish connections using `DriverConnectionProvider`. If you would like to use your own provider to connect see [Connection Provider](../custom-config/ConnectionProvider.md) for details.
 
 The most common usage of the connect pipeline is to fetch extra credentials from external locations.
 
@@ -28,7 +31,7 @@ An example would be the [IAM connection plugin](../user-guide/using-plugins/Usin
 
 ## Force Connect Pipeline
 
-The force connect pipeline is similar to the connect pipeline except that it will use the default `DriverConnectionProvider` class to establish connections regardless of whether a non-default `ConnectionProvider` has been requested. For most plugins, the connect and force connect implementation will be equivalent.
+The force connect pipeline is similar to the connect pipeline except that it will use the default `DriverConnectionProvider` to establish connections regardless of whether a non-default `ConnectionProvider` has been requested. For most plugins, the connect and force connect implementation will be equivalent.
 
 ## Execute Pipeline
 
@@ -87,9 +90,24 @@ will be called whenever changes in the current host list are detected.
 
 ## AcceptsStrategy Pipeline
 
-Plugins should subscribe to this pipeline and the GetHostInfoByStrategy pipeline if they implement a host selection strategy via the `GetHostInfoByStrategy` method. In this case, plugins should override the `AcceptsStrategy` and `GetHostInfoByStrategy` methods to implement any desired logic. The `AcceptsStrategy` method should return true for each selection strategy that the plugin supports.
+Plugins that implement a host selection strategy should override `AcceptsStrategy` and return true for each strategy they support.
+
+> [!IMPORTANT]
+> Do not subscribe to the literal `acceptsStrategy`. This pipeline matches subscriptions against the host selection *strategy* name, so a plugin that subscribes to the method name is dropped from the pipeline with no error and no log line. Subscribe to the strategy names the plugin accepts, or to `ALL_METHODS`.
 
 ## GetHostInfoByStrategy pipeline
 
-Plugins should subscribe to this pipeline and the AcceptsStrategy pipeline if they implement a host selection strategy. The `GetHostInfoByStrategy` method should implement the desired logic for selecting a host using any plugin-accepted strategies. Host selection via a "random" strategy is supported by default.
+Plugins should subscribe to this pipeline if they implement a host selection strategy. The `GetHostInfoByStrategy` method should implement the desired logic for selecting a host using any plugin-accepted strategies. Host selection via a "random" strategy is supported by default.
+
+## GetHostSelectorStrategy pipeline
+
+Plugins can subscribe to this pipeline to supply a `HostSelector` for a strategy name, which the wrapper then uses in place of its built-in selectors.
+
+## SetReadOnly pipeline
+
+Plugins can subscribe to this pipeline to perform special handling when the connection switches between read-only and read-write mode. It is dispatched through the execute pipeline under the method name `setReadOnly`.
+
+## ReleaseResources pipeline
+
+Plugins can stop background work and free what they hold when the wrapper tears down by implementing the `CanReleaseResources` interface. Subscription does not apply here: every plugin in the chain that implements the interface is called.
 

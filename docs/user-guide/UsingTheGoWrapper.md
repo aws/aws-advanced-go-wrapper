@@ -14,9 +14,9 @@ have been enabled by default. Plugin compatibility can be verified in the [plugi
 
 ## Getting a Connection
 
-The AWS Advanced Go Wrapper is an implementation of Go's database/sql/driver interface. The wrapper contains modules for both the [pgx driver](https://github.com/jackc/pgx) and a [Go-MySQL-Driver](https://github.com/go-sql-driver/mysql). The appropriate driver module must be downloaded along with any additional [plugin](#Plugins) modules. The driver must be imported or imported for side effects to be used.
+The AWS Advanced Go Wrapper is an implementation of Go's database/sql/driver interface. The wrapper contains modules for the [pgx driver](https://github.com/jackc/pgx), the [Go-MySQL-Driver](https://github.com/go-sql-driver/mysql) and the [Bun pgdriver](https://bun.uptrace.dev/postgres/). The appropriate driver module must be downloaded along with any additional [plugin](#Plugins) modules. The driver must be imported or imported for side effects to be used.
 
-Use `"awssql-pgx"` or `"awssql-mysql` as `driverName` and a valid DSN as `dataSourceName`.
+Use `"awssql-pgx"`, `"awssql-mysql"` or `"awssql-bunpg"` as `driverName` and a valid DSN as `dataSourceName`.
 
 > [!NOTE]
 > The formatting of a valid DSN for a [MySQL](https://github.com/go-sql-driver/mysql#dsn-data-source-name) and [PostgreSQL](https://github.com/jackc/pgx?tab=readme-ov-file#example-usage) connection differs, please provide a valid DSN for the intended underlying driver.
@@ -150,7 +150,7 @@ For instance, to use the [IAM Authentication Connection Plugin](./using-plugins/
 the [Failover Connection Plugin](./using-plugins/UsingTheFailoverPlugin.md):
 
 ```go
-db, err := sql.Open("awssql", "host=host user=user dbname=database password=password plugins=iam,failover")
+db, err := sql.Open("awssql-pgx", "host=host user=user dbname=database password=password plugins=iam,failover")
 ```
 
 > [!NOTE]
@@ -159,7 +159,7 @@ db, err := sql.Open("awssql", "host=host user=user dbname=database password=pass
 Provide the string `"none"` to disable all plugins:
 
 ```go
-db, err := sql.Open("awssql", "host=host user=user dbname=database password=password plugins=none")
+db, err := sql.Open("awssql-pgx", "host=host user=user dbname=database password=password plugins=none")
 ```
 
 The wrapper behaves like the target driver when no plugins are used.
@@ -177,7 +177,7 @@ page for more details.
 | [GDB Failover Connection Plugin](./using-plugins/UsingTheGdbFailoverPlugin.md)                     | `gdbFailover`           | Aurora                 | Enables the failover functionality supported by Amazon Aurora Global Database. Allows setting complex failover modes depending on GDB primary region and the driver defined home region. It extends functionality of the Failover Connection Plugin. | None      
 | [Host Monitoring Plugin](./using-plugins/UsingTheHostMonitoringPlugin.md)                   | `efm`                | Aurora                 | Enables enhanced host connection failure monitoring, allowing faster failure detection rates. This plugin is enabled by default.                                                                                  | None                                                                                                                           |
 | [IAM Authentication Connection Plugin](./using-plugins/UsingTheIamAuthenticationPlugin.md)  | `iam`                | Aurora                 | Enables users to connect to their Amazon Aurora clusters using AWS Identity and Access Management (IAM).                                                                                                          | See the IAM Authentication Connection Plugin [prerequisites](./using-plugins/UsingTheIamAuthenticationPlugin.md#prerequisites) |
-| [AWS Secrets Manager Connection Plugin](./using-plugins/UsingTheAwsSecretsManagerPlugin.md) | `awsSecretsManager`  | Any database           | Enables fetching database credentials from the AWS Secrets Manager service.                                                                                                                                       | See the IAM Authentication Connection Plugin [prerequisites](./using-plugins/UsingTheAwsSecretsManagerPlugin.md#prerequisites) |
+| [AWS Secrets Manager Connection Plugin](./using-plugins/UsingTheAwsSecretsManagerPlugin.md) | `awsSecretsManager`  | Any database           | Enables fetching database credentials from the AWS Secrets Manager service.                                                                                                                                       | See the AWS Secrets Manager Connection Plugin [prerequisites](./using-plugins/UsingTheAwsSecretsManagerPlugin.md#prerequisites) |
 | [Federated Authentication Plugin](./using-plugins/UsingTheFederatedAuthPlugin.md)           | `federatedAuth`      | Aurora                 | Enables users to authenticate using Federated Identity and then connect to their Amazon Aurora Cluster using AWS Identity and Access Management (IAM).                                                            | See the Federated Authentication Plugin [prerequisites](./using-plugins/UsingTheFederatedAuthPlugin.md#prerequisites)          |
 | [Okta Authentication Plugin](./using-plugins/UsingTheOktaAuthPlugin.md)                     | `okta`               | Aurora                 | Enables users to authenticate using Federated Identity and then connect to their Amazon Aurora Cluster using AWS Identity and Access Management (IAM).                                                            | See the Okta Authentication Plugin [prerequisites](./using-plugins/UsingTheOktaAuthPlugin.md#prerequisites)                    |
 | [Limitless Connection Plugin](./using-plugins/UsingTheLimitlessConnectionPlugin.md)         | `limitless`          | Aurora                 | Enables client-side load-balancing of Transaction Routers on Amazon Aurora Limitless Databases.                                                                                                                   | None                                                                                                                           |

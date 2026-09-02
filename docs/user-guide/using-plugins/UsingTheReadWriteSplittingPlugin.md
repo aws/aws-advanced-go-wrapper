@@ -229,7 +229,7 @@ The wrapper driver can create and maintain a set of internal connection pools us
 1.  Create an instance of `InternalPooledConnectionProvider`.
 
 ```go
-import "github.com/aws/aws-advanced-go-wrapper/awssql/internal_pool"
+import "github.com/aws/aws-advanced-go-wrapper/awssql/v2/internal_pool"
 
 poolOptions := internal_pool.NewInternalPoolOptions(
 		internal_pool.WithMaxIdleConns(2),
@@ -249,8 +249,8 @@ The following table outlines the options for `InternalPoolConfig`
 | InternalPoolConfig Parameter      |  Value  | Required | Description                                                                                                                                                                                                                                                            | Default Value            |
 | -------------------- | :-----: | :------: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
 | `maxIdleConns`     | int  |    No    | The maximum number of connections to create.                                                                                                                                                                                                                           | `2`                     |
-| `maxConnLifetime`  | int  |    No    | The maximum life a connection object can exist                                                                                                                                                                                                         | `0` (no time limit)                  |
-| `maxConnIdleTime` | int  |    No    | The maximum duration that a connection object can be idle in the pool                                                                                     | `0` (no time limit)|
+| `maxConnLifetime`  | time.Duration  |    No    | The maximum life a connection object can exist                                                                                                                                                                                                         | `0` (no time limit)                  |
+| `maxConnIdleTime` | time.Duration  |    No    | The maximum duration that a connection object can be idle in the pool                                                                                     | `0` (no time limit)|
 
 
 To avoid collisions, the `InternalPooledConnectionProvider` uses a function called poolKeyFunc to retrieve a value from properties map or host info. The value for this gets combined with the host url, and the underlying database driver that's being used. By default, the driver uses the values from `user`, or `dbUser` if `user` does not exist, from the connection string. If needed, users can override this to get a different property by using the `NewInternalPooledConnectionProviderWithPoolKeyFunc()` constructor like below:
@@ -274,7 +274,7 @@ Please see [Internal Connection Pooling Postgres Example](../../../examples/read
 
 
 > [!WARNING]
-> If you do not include the username in your InternalPoolMapping function, connection pools may be shared between different users. As a result, an initial connection established with a privileged user may be returned to a connection request with a lower-privilege user without re-verifying credentials. This behavior is inherent to the nature of connection pools in general and not a bug with the driver. `provider.ReleaseResources()` can be called to close all pools and remove all cached pool connections.
+> If you do not include the username in your pool key function, connection pools may be shared between different users. As a result, an initial connection established with a privileged user may be returned to a connection request with a lower-privilege user without re-verifying credentials. This behavior is inherent to the nature of connection pools in general and not a bug with the driver. `provider.ReleaseResources()` can be called to close all pools and remove all cached pool connections.
 
 2. Set the connection provider by running `driver_infrastructure.SetCustomConnectionProvider(provider)`.
 

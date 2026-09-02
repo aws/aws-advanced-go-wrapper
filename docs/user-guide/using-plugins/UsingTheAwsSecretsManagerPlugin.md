@@ -15,6 +15,14 @@ This plugin requires:
    - This can be accomplished by running `go get github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager` in the same directory as
      the intended `go.mod` file.
 
+   - The module registers the plugin when it is imported, so the application must import it for its side effects. Without the import, `awsSecretsManager` is an unknown plugin code.
+
+     ```go
+     import (
+         _ "github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager"
+     )
+     ```
+
 When the `aws-secrets-manager` module is added as a dependency, the required AWS modules will also be added as indirect
 dependencies.
 
@@ -34,7 +42,7 @@ Secrets Manager.
 | Parameter                              |  Value  |                         Required                         | Description                                                                                                                                                                                                                      | Example                 | Default Value |
 |----------------------------------------|:-------:|:--------------------------------------------------------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:------------------------|---------------|
 | `secretsManagerSecretId`               | String  |                           Yes                            | Set this value to be the secret name or the secret ARN.                                                                                                                                                                          | `secretId`              | `nil`         |
-| `secretsManagerRegion`                 | String  | Yes unless the `secretsManagerSecretId` is a Secret ARN. | Set this value to be the region your secret is in.                                                                                                                                                                               | `us-east-2`             | `nil`         |
+| `secretsManagerRegion`                 | String  | Yes unless the `secretsManagerSecretId` is a Secret ARN. | Set this value to be the region your secret is in. Leaving it unset selects the default rather than failing, so set it explicitly unless your secret is in `us-east-1`.                                                            | `us-east-2`             | `us-east-1`   |
 | `secretsManagerEndpoint`               | String  |                            No                            | Set this value to be the endpoint override to retrieve your secret from. This parameter value should be in the form of a URL, with a valid protocol (ex. `http://`) and domain (ex. `localhost`). A port number is not required. | `http://localhost:1234` | `nil`         |
 | `secretsManagerExpirationSec`          | Integer |                            No                            | This property sets the time in seconds that secrets are cached before it is re-fetched.                                                                                                                                          | `600`                   | `870`         |
 | `secretsManagerSecretUsernameProperty` | String  |                            No                            | Set this value to be the key in the JSON secret that contains the username for database connection.                                                                                                                              | `db_user`               | `username`    |

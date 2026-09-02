@@ -64,21 +64,21 @@ The following diagrams show how the AWS Advanced Go Wrapper performs under a mor
 
 Common Failure Detection Setting
 
-| Parameter                  | Value    |
-|----------------------------|----------|
-| `failoverTimeoutMs`        | `120000` |
-| `failureDetectionTime`     | `30000`  |
-| `failureDetectionInterval` | `5000`   |
-| `failureDetectionCount`    | `3`      |
+| Parameter                    | Value    |
+|------------------------------|----------|
+| `failoverTimeoutMs`          | `120000` |
+| `failureDetectionTimeMs`     | `30000`  |
+| `failureDetectionIntervalMs` | `5000`   |
+| `failureDetectionCount`      | `3`      |
 
 Aggressive Failure Detection Setting
 
-| Parameter                  | Value    |
-|----------------------------|----------|
-| `failoverTimeoutMs`        | `120000` |
-| `failureDetectionTime`     | `6000`   |
-| `failureDetectionInterval` | `1000`   |
-| `failureDetectionCount`    | `1`      |
+| Parameter                    | Value    |
+|------------------------------|----------|
+| `failoverTimeoutMs`          | `120000` |
+| `failureDetectionTimeMs`     | `6000`   |
+| `failureDetectionIntervalMs` | `1000`   |
+| `failureDetectionCount`      | `1`      |
 
 For more details on failure detection settings, see [here](../user-guide/using-plugins/UsingTheHostMonitoringPlugin.md#enhanced-failure-monitoring-parameters).
 For more details on failover settings, see [here](../user-guide/FailoverConfigurationGuide.md).

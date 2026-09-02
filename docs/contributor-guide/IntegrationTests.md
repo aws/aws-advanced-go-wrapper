@@ -40,7 +40,7 @@ PostgreSQL and MySQL tests are currently supported.
 If the environment variable `REUSE_RDS_DB` is set to true, the integration tests will use the existing cluster defined by your environment variables. Otherwise, the integration tests will create a new Aurora cluster and then delete it automatically when the tests are done. Note that you will need a valid Docker environment to run any of the integration tests because they are run using a Docker environment as a host. The appropriate Docker containers will be created automatically when you run the tests, so you will not need to execute any Docker commands manually. If an environment variable listed in the tables below is not provided by the user, it may use a default value.
 
 > [!NOTE]
-> If you are running tests against an existing cluster, the tests will only run against the Aurora database engine of that cluster. For example, if you specify a MySQL cluster using the environment variables, only the MySQL tests will be run even if you pick test-all-aurora as the task. To run against PostgreSQL instead, you will need to change your environment variables.
+> If you are running tests against an existing cluster, the tests will only run against the Aurora database engine of that cluster. For example, if you specify a MySQL cluster using the environment variables, only the MySQL tests will be run even if you pick `test-aurora` as the task. To run against PostgreSQL instead, you will need to change your environment variables.
 
 ##### Environment Variables for Running Against a New Aurora Cluster
 
@@ -111,6 +111,37 @@ The following are the currently available integration test tasks. Each task may 
 - `debug-aurora`: debug Aurora tests with a Delve headless server
 - `debug-aurora-mysql`: debug Aurora tests on the MySQL database type
 - `debug-aurora-postgres`: debug Aurora tests on the PostgreSQL database type
+
+#### RDS Multi-AZ Integration Test Tasks
+
+- `test-multi-az-mysql`: run Multi-AZ DB cluster tests on the MySQL database type
+- `test-multi-az-postgres`: run Multi-AZ DB cluster tests on the PostgreSQL database type
+- `debug-multi-az-mysql`, `debug-multi-az-postgres`: the same tests under a Delve headless server
+
+#### Blue/Green Deployment Integration Test Tasks
+
+- `test-bgd-mysql-aurora`, `test-bgd-pg-aurora`: run Blue/Green tests against Aurora
+- `test-bgd-mysql-multiaz`, `test-bgd-pg-multiaz`: run Blue/Green tests against Multi-AZ DB clusters
+- `debug-bgd-mysql-aurora`: debug the Aurora MySQL Blue/Green tests
+
+#### Autoscaling Integration Test Tasks
+
+- `test-autoscaling`: run autoscaling tests on both database types
+- `test-autoscaling-mysql`, `test-autoscaling-postgres`: run autoscaling tests on one database type
+- `debug-autoscaling`: debug the autoscaling tests
+
+#### Limitless Integration Test Tasks
+
+- `test-aurora-limitless-postgres`: run Aurora Limitless tests
+- `debug-aurora-limitless-postgres`: debug the Aurora Limitless tests
+
+#### Performance Test Tasks
+
+- `test-all-aurora-performance`: run all Aurora performance tests
+- `test-aurora-pg-performance`, `test-aurora-mysql-performance`: run performance tests on one database type
+- `debug-aurora-pg-performance`, `debug-aurora-mysql-performance`: debug the performance tests
+
+`debug-all-environments` and `debug-docker` mirror `test-all-environments` and `test-docker` under a Delve headless server.
 
 ### Running the Integration Tests
 

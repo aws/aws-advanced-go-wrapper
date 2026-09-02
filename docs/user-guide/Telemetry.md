@@ -54,6 +54,16 @@ In order to enable Telemetry in the AWS Advanced Go Wrapper, you need to:
    - `go get github.com/aws/aws-advanced-go-wrapper/otlp`
    - `go get github.com/aws/aws-advanced-go-wrapper/xray`
 
+   The module registers its backend when it is imported, so the application must import it for its side effects:
+
+   ```go
+   import (
+       _ "github.com/aws/aws-advanced-go-wrapper/otlp"
+   )
+   ```
+
+   Without that import the backend is unavailable and the first connection fails.
+
 3. Set up the recorders that will export the telemetry data from the code to the ADOT Collector.
 
 Setting up the recorders require to instantiate an `OpenTelemetrySDK` in the application code prior to using the wrapper. Instantiating the `OpenTelemetrySDK` requires you to configure the endpoints where traces and metrics are being forwarded to.
@@ -69,9 +79,12 @@ In addition to the parameter that enables Telemetry, you can pass the following 
 | Parameter                 |  Value  | Required | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Default Value |
 |---------------------------|:-------:|:--------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
 | `enableTelemetry`         | Boolean |    No    | Telemetry will be enabled when this property is set to `true`, otherwise no telemetry data will be gathered during the execution of the wrapper.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | `false`       |
-| `telemetryTracesBackend`  | String  |    No    | Determines to which backend the gathered tracing data will be forwarded to. Possible values include: `NONE`, `XRAY`, and `OTLP`.<br>`NONE` indicates that the application will collect tracing data but this data will not be forwarded anywhere.<br>`XRAY` indicates that the traces will be collected by the AWS XRay Daemon.<br>`OTLP` indicates that the traces will be collected by the AWS OTEL Collector. Please ensure the wrapper telemetry module of the traces backend has been imported. See [using telemetry](#using-telemetry) for more information.                                                                                                                       | `NONE`        |
-| `telemetryMetricsBackend` | String  |    No    | Determines to which backend the gathered metrics data will be forwarded to. Possible values include: `NONE` and `OTLP`.<br>`NONE` indicates that the application will collect metrics data but this data will not be forwarded anywhere.<br>`OTLP` indicates that the metrics will be collected by the AWS OTEL Collector. Please ensure the wrapper telemetry module of the metrics backend has been imported. See [using telemetry](#using-telemetry) for more information.                                                                                                                                                                                                            | `NONE`        |
-| `telemetrySubmitTopLevel` | Boolean |    No    | By default the wrapper will look for open traces in the users application prior to record telemetry data. If there is a current open trace, the traces created will be attached to that open trace. If not, all telemetry traces created will be top level. Setting the parameter to `false` means that every call to the wrapper will generate a trace with no direct parent trace attached to it. If there is already an open trace being recorded by the application, no wrapper traces will be created. See the [Nested tracing strategies section](#nested-tracing-strategies-using-amazon-xray) for more information.                                                              | `false`       |
+| `telemetryTracesBackend`  | String  |    No    | Determines to which backend the gathered tracing data will be forwarded to. Possible values include: `NONE`, `XRAY`, and `OTLP`.<br>`NONE` indicates that the application will collect tracing data but this data will not be forwarded anywhere.<br>`XRAY` indicates that the traces will be collected by the AWS XRay Daemon.<br>`OTLP` indicates that the traces will be collected by the AWS OTEL Collector. Please ensure the wrapper telemetry module of the traces backend has been imported. See [using telemetry](#using-telemetry) for more information.                                                                                                                       | unset         |
+| `telemetryMetricsBackend` | String  |    No    | Determines to which backend the gathered metrics data will be forwarded to. Possible values include: `NONE` and `OTLP`.<br>`NONE` indicates that the application will collect metrics data but this data will not be forwarded anywhere.<br>`OTLP` indicates that the metrics will be collected by the AWS OTEL Collector. Please ensure the wrapper telemetry module of the metrics backend has been imported. See [using telemetry](#using-telemetry) for more information.                                                                                                                                                                                                            | unset         |
+| `telemetrySubmitToplevel` | Boolean |    No    | Controls whether the wrapper submits its traces as top level traces or nests them into the application's traces. The default, `false`, nests them; if the application has no open trace, no wrapper trace is submitted. Set it to `true` to always submit top level traces. See the [Nested tracing strategies section](#nested-tracing-strategies-using-amazon-xray) for more information.                                                                                                                                                                                                                                                                                              | `false`       |
+
+> [!IMPORTANT]
+> The two backend parameters have no default. With `enableTelemetry=true`, leaving one unset is an error, raised when the first connection is acquired rather than at `sql.Open`. Set it to `NONE` to collect telemetry without exporting it.
 
 ## Nested tracing strategies using Amazon XRay
 
@@ -91,20 +104,27 @@ When a trace is hierarchically linked to a parent trace, we say that this trace 
 
 Applications that interact with the AWS Advanced Go Wrapper may or may not have already opened telemetry traces on their own. In this case, it is up to the user to determine how they want to mix both application and wrapper traces.
 
-This can be done using the AWS Advanced Go Wrapper's `telemetrySubmitTopLevel` property. This property allows users to choose to submit the wrapper traces always as top level traces or to submit them nested to the application traces.
+This can be done using the AWS Advanced Go Wrapper's `telemetrySubmitToplevel` property. This property allows users to choose to submit the wrapper traces always as top level traces or to submit them nested to the application traces.
 The default value is set to `false`, which means the wrapper traces to always be nested into their application traces. That will happen unless there are no open application traces when the wrapper is running. In that case no wrapper traces will be collected or submitted. When the property is set to `true`, all the wrapper traces would be submitted top level traces. If the application has already open traces, it will not be possible for the wrapper traces to be top level and the wrapper traces therefore will not be submitted.
 
 ## List of Metrics
 
 The AWS Advanced Go Wrapper also submits a set of metrics to Amazon CloudWatch when the wrapper is used. These metrics are predefined, and they help give insight on what is happening inside the plugins when the plugins are used.
 
-Metrics can be one of 3 types: counters, gauges or histograms.
+All metrics the wrapper submits are counters.
 
 ### EFM plugin
 
 | Metric name                        | Metric type | Description                                                                                         |
 |------------------------------------|-------------|-----------------------------------------------------------------------------------------------------|
 | efm.connections.aborted            | Counter     | Number of times a connection was aborted after being defined as unhealthy by an EFM monitoring task |
+
+### Custom Endpoint plugin
+
+| Metric name                         | Metric type | Description                                                                  |
+|-------------------------------------|-------------|------------------------------------------------------------------------------|
+| customEndpoint.waitForInfo.counter  | Counter     | Number of times a call waited for custom endpoint information to become available |
+| customEndpoint.infoChanged.counter  | Counter     | Number of times the custom endpoint's configuration changed               |
 
 ### Secrets Manager plugin
 

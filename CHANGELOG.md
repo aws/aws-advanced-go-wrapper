@@ -133,7 +133,7 @@ All notable changes to this project will be documented in this file.
 # Release (2026-02-03)
 ## General Highlights
 ### :magic_wand: Added
-* New connection properties allowing users to load custom Secret Data format ([PR #310](https://github.com/aws/aws-advanced-go-wrapper/pull/320)), see [Using the AWS Secrets Manager Plugin](../docs/user-guide/using-plugins/UsingTheAwsSecretsManagerPlugin.md) for more details.
+* New connection properties allowing users to load custom Secret Data format ([PR #310](https://github.com/aws/aws-advanced-go-wrapper/pull/320)), see [Using the AWS Secrets Manager Plugin](docs/user-guide/using-plugins/UsingTheAwsSecretsManagerPlugin.md) for more details.
 * Support for EU, AU, and UK domains ([PR #325](https://github.com/aws/aws-advanced-go-wrapper/pull/325)).
 
 ### :bug: Fixed
