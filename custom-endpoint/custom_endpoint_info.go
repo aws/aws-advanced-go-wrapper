@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
 	"github.com/aws/aws-sdk-go-v2/service/rds/types"
 )
 
@@ -111,6 +112,18 @@ func (a *CustomEndpointInfo) Equals(b *CustomEndpointInfo) bool {
 		a.roleType == b.roleType &&
 		a.memberListType == b.memberListType &&
 		reflect.DeepEqual(a.members, b.members)
+}
+
+// GetRequiredRole reports the role instances in this endpoint must have, or host_info_util.UNKNOWN when
+// there is no requirement.
+//
+// Only an exclusion-list endpoint of type READER carries one. A static member list routes to all of its
+// listed members, a writer included, so it never constrains the role.
+func (a *CustomEndpointInfo) GetRequiredRole() host_info_util.HostRole {
+	if a.memberListType == EXCLUSION_LIST && a.roleType == READER {
+		return host_info_util.READER
+	}
+	return host_info_util.UNKNOWN
 }
 
 func (a *CustomEndpointInfo) GetStaticMembers() map[string]bool {

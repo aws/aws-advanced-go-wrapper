@@ -6,7 +6,7 @@ require (
 	github.com/Shopify/toxiproxy v2.1.4+incompatible
 	github.com/aws/aws-advanced-go-wrapper/auth-helpers v1.1.3
 	github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager v1.1.4
-	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.0.3
+	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.1.0
 	github.com/aws/aws-advanced-go-wrapper/bun-pg-driver v0.0.0
 	github.com/aws/aws-advanced-go-wrapper/custom-endpoint v1.0.6
 	github.com/aws/aws-advanced-go-wrapper/federated-auth v1.1.3
@@ -52,7 +52,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.37 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.33.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.38.6 // indirect
-	github.com/aws/smithy-go v1.27.8 // indirect
+	github.com/aws/smithy-go v1.27.8
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect

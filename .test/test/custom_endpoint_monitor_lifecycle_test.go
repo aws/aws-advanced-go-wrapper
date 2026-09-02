@@ -87,7 +87,7 @@ func TestCustomEndpointMonitor_StopDoesNotLogFetchFailure(t *testing.T) {
 	mockContainer, _, mockCounter, _ := createCustomEndpointMonitorMocks(t, ctrl)
 	api := &blockingRdsApi{started: make(chan struct{})}
 
-	monitor := newTestMonitor(t, mockContainer, "stop-quietly", time.Second, mockCounter, api)
+	monitor := newTestMonitor(t, mockContainer, "stop-quietly", time.Second, time.Minute, 2, mockCounter, api)
 
 	monitor.Start()
 	select {
@@ -125,8 +125,7 @@ func TestCustomEndpointMonitor_ReplacementMonitorKeepsOwnedKey(t *testing.T) {
 	mockCounter.EXPECT().Inc(gomock.Any()).AnyTimes()
 
 	endpointId := "handover"
-	outgoing := newTestMonitor(t, mockContainer, endpointId, 20*time.Millisecond,
-		mockCounter, &stubRdsApi{out: publishedEndpointOutput(endpointId)})
+	outgoing := newTestMonitor(t, mockContainer, endpointId, 20*time.Millisecond, time.Minute, 2, mockCounter, &stubRdsApi{out: publishedEndpointOutput(endpointId)})
 
 	outgoing.Start()
 	require.Eventually(t, outgoing.HasCustomEndpointInfo, 3*time.Second, 10*time.Millisecond,
@@ -134,8 +133,7 @@ func TestCustomEndpointMonitor_ReplacementMonitorKeepsOwnedKey(t *testing.T) {
 
 	// A long refresh rate, so that once the replacement has published it sits in a sleep. Otherwise a
 	// republish moments later would mask the outgoing monitor having deleted the entry.
-	replacement := newTestMonitor(t, mockContainer, endpointId, 30*time.Second,
-		mockCounter, &stubRdsApi{out: publishedEndpointOutput(endpointId)})
+	replacement := newTestMonitor(t, mockContainer, endpointId, 30*time.Second, time.Minute, 2, mockCounter, &stubRdsApi{out: publishedEndpointOutput(endpointId)})
 	replacement.Start()
 	require.Eventually(t, replacement.HasCustomEndpointInfo, 3*time.Second, 10*time.Millisecond,
 		"the replacement monitor never published endpoint info")
