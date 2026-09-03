@@ -19,6 +19,8 @@ package test
 import (
 	"database/sql/driver"
 	"errors"
+	"fmt"
+	"net"
 	"strings"
 	"testing"
 	"time"
@@ -27,6 +29,7 @@ import (
 	mock_driver_infrastructure "github.com/aws/aws-advanced-go-wrapper/.test/test/mocks/awssql/driver_infrastructure"
 	awssql "github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver_infrastructure"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/plugins/efm"
@@ -95,6 +98,58 @@ func TestMonitorConnectionState(t *testing.T) {
 	state.SetHostUnhealthy(false)
 	// Not unhealthy and no conn, no need to abort.
 	assert.False(t, state.ShouldAbort())
+}
+
+// IsHostUnhealthy must survive SetInactive, unlike ShouldAbort. The monitor calls
+// SetInactive before closing the connection, so by the time the aborted call
+// returns and the plugin needs to know why it failed, ShouldAbort is already
+// false. This is what lets the plugin tell a monitor-initiated abort apart from
+// an unrelated error rather than guessing from the driver's transport error.
+func TestMonitorConnectionStateIsHostUnhealthySurvivesSetInactive(t *testing.T) {
+	var conn driver.Conn = &MockDriverConn{}
+	state := efm.NewMonitorConnectionState(&conn)
+
+	assert.False(t, state.IsHostUnhealthy())
+
+	// The order the monitor actually uses: mark unhealthy, go inactive, then close.
+	state.SetHostUnhealthy(true)
+	assert.True(t, state.IsHostUnhealthy())
+	assert.True(t, state.ShouldAbort())
+
+	state.SetInactive()
+	assert.False(t, state.ShouldAbort(), "ShouldAbort is cleared by SetInactive")
+	assert.True(t, state.IsHostUnhealthy(), "IsHostUnhealthy must still report the monitor's verdict")
+
+	state.SetHostUnhealthy(false)
+	assert.False(t, state.IsHostUnhealthy())
+}
+
+// The failover gate must act on the monitor's explicit verdict, and must find it
+// through error wrapping - the EFM plugin wraps rather than replaces so the
+// original transport error stays available and each value stays distinct.
+func TestUnavailableHostErrorSurvivesWrapping(t *testing.T) {
+	unavailable := error_util.NewUnavailableHostError("host-1")
+
+	assert.True(t, error_util.IsType(unavailable, error_util.UnavailableHostErrorType))
+
+	// The shape the EFM plugin produces.
+	wrapped := fmt.Errorf("%w: %w", unavailable, net.ErrClosed)
+	assert.True(t, error_util.IsType(wrapped, error_util.UnavailableHostErrorType))
+	assert.True(t, errors.Is(wrapped, net.ErrClosed), "original cause must remain reachable")
+
+	// Also over a bare driver.ErrBadConn, which is the shape pgx produces when it
+	// notices the socket died at an IsClosed guard rather than mid-read.
+	wrappedBadConn := fmt.Errorf("%w: %w", error_util.NewUnavailableHostError("host-1"), driver.ErrBadConn)
+	assert.True(t, error_util.IsType(wrappedBadConn, error_util.UnavailableHostErrorType))
+	assert.True(t, errors.Is(wrappedBadConn, driver.ErrBadConn))
+
+	// Two aborts must not compare equal, or the failover plugin's
+	// !errors.Is(err, lastErrorDealtWith) guard would swallow the second one.
+	assert.False(t, errors.Is(wrappedBadConn, wrapped))
+
+	// An unrelated error must not be mistaken for a monitor abort.
+	assert.False(t, error_util.IsType(driver.ErrBadConn, error_util.UnavailableHostErrorType))
+	assert.False(t, error_util.IsType(net.ErrClosed, error_util.UnavailableHostErrorType))
 }
 
 func TestHostMonitoringServiceImpl(t *testing.T) {

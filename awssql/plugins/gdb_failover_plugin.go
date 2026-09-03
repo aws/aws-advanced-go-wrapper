@@ -176,7 +176,10 @@ func (h *globalDbFailoverHandler) dealWithError(err error) error {
 			if e != nil {
 				return e
 			}
-			p.servicesContainer.GetPluginService().SetAvailability(currentHost.Aliases, host_info_util.UNAVAILABLE)
+			// GetCurrentHostInfo can return a nil host with a nil error.
+			if currentHost != nil && p.shouldMarkCurrentHostUnavailable(err) {
+				p.servicesContainer.GetPluginService().SetAvailability(currentHost.Aliases, host_info_util.UNAVAILABLE)
+			}
 			e = h.failover()
 			if e != nil {
 				return e

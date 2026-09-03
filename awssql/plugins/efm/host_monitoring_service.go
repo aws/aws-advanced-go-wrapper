@@ -221,6 +221,24 @@ func (m *MonitorConnectionState) SetInactive() {
 	m.connToAbortRef = weak.Make((*driver.Conn)(nilPointer))
 }
 
+// IsHostUnhealthy reports whether the monitor declared this host unhealthy while
+// the state was active, regardless of whether the connection reference has since
+// been cleared. Callers use this after executeFunc returns to tell a deliberate
+// monitor-initiated abort apart from an unrelated failure: the transport error a
+// driver produces for an abort is not reliably distinguishable on its own (pgx
+// yields either net.ErrClosed or a bare driver.ErrBadConn depending on where it
+// notices the socket is gone).
+//
+// Note this is deliberately NOT ShouldAbort: the monitor calls SetInactive before
+// closing the connection, so ShouldAbort's connToAbortRef check is already false
+// by the time the aborted call returns.
+func (m *MonitorConnectionState) IsHostUnhealthy() bool {
+	m.hostHealthLock.RLock()
+	defer m.hostHealthLock.RUnlock()
+
+	return m.hostUnhealthy
+}
+
 func (m *MonitorConnectionState) ShouldAbort() bool {
 	m.connLock.RLock()
 	m.hostHealthLock.RLock()
