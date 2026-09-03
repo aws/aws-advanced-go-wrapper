@@ -638,3 +638,125 @@ func TestGetProtocol_Invalid(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, property_util.PGX_DRIVER_PROTOCOL, protocol)
 }
+
+// TestGetProtocolSupportedFormats covers every connection-string form the two
+// target drivers document, so that a change to one detection pattern cannot
+// quietly claim a DSN belonging to the other format.
+//
+// The PostgreSQL cases come from the keyword/value and URL examples in the pgx
+// ParseConfig documentation, the parameter keywords it lists, and the grammar its
+// keyword/value parser implements. The MySQL cases come from the go-sql-driver
+// "DSN (Data Source Name)" section and its Examples.
+func TestGetProtocolSupportedFormats(t *testing.T) {
+	testCases := []struct {
+		name     string
+		dsn      string
+		protocol string
+	}{
+		// PostgreSQL URL form.
+		{"pg url", "postgres://jack:secret@pg.example.com:5432/mydb?sslmode=verify-ca", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg url alternate scheme", "postgresql://jack:secret@pg.example.com:5432/mydb", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg url multiple hosts", "postgres://jack:secret@foo.example.com:5432,bar.example.com:5432/mydb", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg url no port", "postgres://jack:secret@pg.example.com/mydb", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg url no database", "postgres://jack:secret@pg.example.com:5432", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg url no credentials", "postgres://pg.example.com:5432/mydb", property_util.PGX_DRIVER_PROTOCOL},
+
+		// PostgreSQL keyword/value form.
+		{"pg keyword value", "user=jack password=secret host=pg.example.com port=5432 dbname=mydb sslmode=verify-ca", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg keyword value single keyword", "dbname=mydb", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg keyword value host only", "host=localhost", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg keyword value multiple hosts", "host=host1,host2 port=5432,5433 dbname=mydb", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg keyword value unix socket directory", "host=/var/run/postgresql dbname=mydb", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg keyword value file paths", "host=h sslcert=/tmp/c.pem sslkey=/tmp/k.pem sslrootcert=/tmp/r.pem passfile=/tmp/pgpass", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg keyword value service file", "host=h service=svc servicefile=/tmp/svc", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg keyword value timeouts and attrs", "host=h connect_timeout=10 target_session_attrs=read-write", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg keyword value protocol versions", "host=h min_protocol_version=3.0 max_protocol_version=3.2", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg keyword value auth parameters", "host=h channel_binding=require require_auth=scram-sha-256 sslnegotiation=postgres", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg keyword value kerberos", "host=h krbsrvname=postgres krbspn=spn sslsni=1", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg keyword value application name", "host=h application_name=myapp", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg keyword value runtime parameter", "host=h dbname=d plpgsql.check_asserts=on", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg keyword value monitoring prefix", "host=h connect_timeout=30 monitoring-connect_timeout=10", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg keyword value blue green monitoring prefix", "host=h blue-green-monitoring-connect_timeout=10", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg keyword value limitless monitor prefix", "host=h limitless-router-monitor-connect_timeout=10", property_util.PGX_DRIVER_PROTOCOL},
+
+		// PostgreSQL keyword/value grammar details.
+		{"pg quoted value with space", "host=localhost password='my secret' dbname=mydb", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg backslash escaped space", `host=localhost password=my\ secret dbname=mydb`, property_util.PGX_DRIVER_PROTOCOL},
+		{"pg escaped quote in value", `host=localhost password='it\'s' dbname=mydb`, property_util.PGX_DRIVER_PROTOCOL},
+		{"pg whitespace around equals", "host = localhost dbname = mydb", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg leading and trailing whitespace", "  host=localhost dbname=mydb  ", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg empty value", "host=localhost password=", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg empty quoted value", "host=localhost password=''", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg at sign in value", "host=localhost password=p@ss dbname=mydb", property_util.PGX_DRIVER_PROTOCOL},
+		{"pg url in value", "host=localhost customEndpoint=https://endpoint.example.com:3456", property_util.PGX_DRIVER_PROTOCOL},
+
+		// MySQL form.
+		{"mysql fullest form", "username:password@protocol(address)/dbname?param=value", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql database only", "/mydb", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql no database", "/", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql escaped database", "/dbname%2Fwithslash", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql tcp with port", "user:password@tcp(localhost:5555)/mydb?tls=skip-verify&autocommit=true", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql tcp without port", "user:password@tcp(localhost)/mydb", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql tcp without address", "user:password@tcp/mydb?charset=utf8mb4,utf8", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql default protocol", "user:password@/mydb?sql_mode=TRADITIONAL", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql user without password", "user@unix(/path/to/socket)/mydb", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql unix socket", "root:pw@unix(/tmp/mysql.sock)/myDatabase?loc=Local", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql unix socket instance path", "user:password@unix(/cloudsql/project-id:region-name:instance-name)/mydb", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql ipv6 literal", "user:password@tcp([de:ad:be:ef::ca:fe]:80)/mydb?timeout=90s", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql rds endpoint", "id:password@tcp(mydb.cluster-abc.us-east-2.rds.amazonaws.com:3306)/mydb", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql multiple hosts", "user:password@tcp(host1,host2:3306)/mydb", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql no credentials", "tcp(localhost:3306)/mydb", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql empty dsn", "", property_util.MYSQL_DRIVER_PROTOCOL},
+
+		// MySQL credentials need no escaping, which is what issue #587 broke.
+		{"mysql space in password", "user:pa ss@tcp(localhost:3306)/mydb?parseTime=true", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql space in user", "us er:pass@tcp(localhost:3306)/mydb?parseTime=true", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql space in password without parameters", "user:pa ss@tcp(localhost:3306)/mydb", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql tab in password", "user:pa\tss@tcp(localhost:3306)/mydb", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql space in database", "user:pass@tcp(localhost:3306)/my db", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql space in parameter value", "user:pass@tcp(localhost:3306)/mydb?comment=a b", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql equals in password", "user:pa=ss@tcp(localhost:3306)/mydb", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql at sign in password", "user:p@ss@tcp(localhost:3306)/mydb", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql slash in password", "user:pa/ss@tcp(localhost:3306)/mydb", property_util.MYSQL_DRIVER_PROTOCOL},
+		{"mysql iam token as password", "user:mydb.example.com:3306/?Action=connect&DBUser=user%@tcp(mydb.example.com:3306)/mydb", property_util.MYSQL_DRIVER_PROTOCOL},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			protocol, err := property_util.GetProtocol(testCase.dsn)
+			assert.NoError(t, err)
+			assert.Equal(t, testCase.protocol, protocol)
+
+			props, err := property_util.ParseDsn(testCase.dsn)
+			assert.NoError(t, err)
+			assert.Equal(t, testCase.protocol, property_util.DRIVER_PROTOCOL.Get(props))
+		})
+	}
+}
+
+func TestParseDsnMySqlWithSpaceInPassword(t *testing.T) {
+	dsn := "user:pa ss@tcp(myhost:3306)/db?parseTime=true"
+	props, err := property_util.ParseDsn(dsn)
+
+	assert.NoError(t, err)
+	assert.Equal(t, property_util.MYSQL_DRIVER_PROTOCOL, property_util.DRIVER_PROTOCOL.Get(props))
+	assert.Equal(t, "user", property_util.USER.Get(props))
+	assert.Equal(t, "pa ss", property_util.PASSWORD.Get(props))
+	assert.Equal(t, "myhost", property_util.HOST.Get(props))
+	assert.Equal(t, "3306", property_util.PORT.Get(props))
+	assert.Equal(t, "db", property_util.DATABASE.Get(props))
+	assert.Equal(t, "true", GetValueOrEmptyString(props, "parseTime"))
+}
+
+func TestMaskSensitiveInfoFromDsnMySqlWithSpaceInPassword(t *testing.T) {
+	maskedDsn := property_util.MaskSensitiveInfoFromDsn("user:pa ss@tcp(myhost:3306)/db?parseTime=true")
+
+	assert.Equal(t, "user:***@tcp(myhost:3306)/db?parseTime=true", maskedDsn)
+}
+
+func TestParseDsnKeywordValueUnterminatedQuoteEndingInBackslash(t *testing.T) {
+	// A backslash as the final byte used to slice past the end of the value.
+	_, err := property_util.ParseDsn(`host=h password='secret\`)
+
+	assert.Error(t, err)
+}

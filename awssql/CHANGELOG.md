@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   * `NewAllowedAndBlockedHosts` keeps its signature and its meaning of "no role requirement", but is deprecated in favour of it.
 
 ### :bug: Fixed
+* A MySQL DSN whose user or password contains a space was detected as a PostgreSQL keyword/value DSN, so the host, port and credentials were silently dropped and the password was left unmasked in log and error messages ([Issue #587](https://github.com/aws/aws-advanced-go-wrapper/issues/587)).
 * [Custom Endpoint plugin](../docs/user-guide/using-plugins/UsingTheCustomEndpointPlugin.md) not filtering hosts during connect. The plugin now requires `rds:DescribeDBClusterEndpoints` ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
 
 ## [2.0.3] - 2026-07-29
