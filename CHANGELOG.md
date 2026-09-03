@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### :bug: Fixed
+* A MySQL DSN whose user or password contains a space was detected as a PostgreSQL keyword/value DSN, so the host, port and credentials were silently dropped and the password was left unmasked in log and error messages ([Issue #587](https://github.com/aws/aws-advanced-go-wrapper/issues/587)).
 * [Custom Endpoint plugin](./docs/user-guide/using-plugins/UsingTheCustomEndpointPlugin.md) not filtering hosts during connect. The plugin now requires `rds:DescribeDBClusterEndpoints` ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
 
 ### :magic_wand: Added

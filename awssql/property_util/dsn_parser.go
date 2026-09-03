@@ -36,13 +36,34 @@ const (
 )
 
 var (
-	pgxKeyValueDsnPattern = regexp.MustCompile("([a-zA-Z0-9]+=[-a-zA-Z0-9+&@#/%?=~_!:,.']+[ ]*)+")
-	mySqlDsnPattern       = regexp.MustCompile(`^(?:(?P<user>[^:@/]+)(?::(?P<passwd>[^@]*))?@)?` + // [user[:password]@] - password can contain : / ?
+	// Accepted PGX DSN patterns, among others:
+	//
+	//	host=pg.example.com port=5432 dbname=mydb user=jack password=secret
+	//	host=pg.example.com sslmode=verify-ca sslrootcert=/tmp/root.pem
+	//	host=host1,host2 port=5432,5433 dbname=mydb
+	//	host=/var/run/postgresql dbname=mydb
+	//	host=pg.example.com password='my secret' dbname=mydb
+	//	host=pg.example.com connect_timeout=10 monitoring-connect_timeout=5
+	//	host = pg.example.com dbname = mydb
+	//	dbname=mydb
+	pgxKeyValueDsnPattern = regexp.MustCompile(`^\s*[a-zA-Z0-9_.-]+\s*=`)
+
+	// Accepted MySQL DSN patterns, among others:
+	//
+	//	user:password@tcp(localhost:5555)/mydb?tls=skip-verify&autocommit=true
+	//	user:password@tcp(mydb.cluster-abc.us-east-2.rds.amazonaws.com:3306)/mydb
+	//	user:pa ss@tcp(localhost:3306)/mydb
+	//	user@unix(/tmp/mysql.sock)/mydb?loc=Local
+	//	user:password@tcp([de:ad:be:ef::ca:fe]:80)/mydb?timeout=90s
+	//	user:password@tcp/mydb
+	//	user:password@/mydb
+	//	/mydb
+	//	/
+	mySqlDsnPattern = regexp.MustCompile(`^(?:(?P<user>[^:@/]+)(?::(?P<passwd>[^@]*))?@)?` + // [user[:password]@] - password can contain : / ?
 		`(?:(?P<net>[^()/:?]+)?(?:\((?P<addr>[^\)]*)\))?)?` + // [net[(addr)]]
 		`(?:/(?P<dbname>[^?]*))?` + // [/dbname] - made optional
 		`(?:\?(?P<params>.*))?` + // [?param1=value1&paramN=valueN]
 		`$`)
-	spaceBetweenWordsPattern = regexp.MustCompile(`^\s*\S+\s+\S.*$`)
 )
 
 func GetHostsFromDsn(dsn string, isSingleWriterDsn bool) (hostInfoList []*host_info_util.HostInfo, err error) {
@@ -207,7 +228,7 @@ func isDsnPgxKeyValueString(dsn string) bool {
 }
 
 func isDsnMySql(dsn string) bool {
-	return !spaceBetweenWordsPattern.MatchString(dsn) && mySqlDsnPattern.MatchString(dsn)
+	return !isDsnPgxKeyValueString(dsn) && mySqlDsnPattern.MatchString(dsn)
 }
 
 func parsePgxURLSettings(connString string) (*utils.RWMap[string, string], error) {
@@ -335,7 +356,9 @@ func parsePgxKeywordValueSettings(dsn string) (*utils.RWMap[string, string], err
 					end++
 				}
 			}
-			if end == len(dsn) {
+			// A backslash as the final byte leaves end past the closing quote it was
+			// escaping, so compare with >= to avoid slicing out of range below.
+			if end >= len(dsn) {
 				return nil, error_util.NewDsnParsingError(
 					error_util.GetMessage("DsnParser.unterminatedQuotedString", MaskSensitiveInfoFromDsn(dsn)))
 			}
