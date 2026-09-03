@@ -12,6 +12,7 @@
 | May 26 2026        | [Release 2026-05-26](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2026-05-26) |
 | July 2 2026        | [Release 2026-07-02](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2026-07-02) |
 | July 29 2026       | [Release 2026-07-29](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2026-07-29) |
+| September 8 2026   | [Release 2026-09-08](https://github.com/aws/aws-advanced-go-wrapper/releases/tag/release-2026-09-08) |
 
 `aws-advanced-go-wrapper` and its modules follows [semver](https://semver.org/#semantic-versioning-200) which means we will only
 release breaking changes in major versions. Generally speaking, patches will be released to fix existing problems without

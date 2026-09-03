@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
+## [1.2.0] - 2026-09-08
+### :magic_wand: Added
+* `IsReadOnlyError` on the `ErrorHandler`, `DriverDialect` and `PluginService` interfaces, so the [Failover Plugin](../docs/user-guide/using-plugins/UsingTheFailoverPlugin.md) fails over when a write reaches a reader and `failoverMode` is `strict-writer` ([PR #517](https://github.com/aws/aws-advanced-go-wrapper/pull/517)).
+
+### :bug: Fixed
+* SQLSTATE was matched for equality against a list of class prefixes, so codes such as `08006` and `53300` were not classified as network errors ([PR #513](https://github.com/aws/aws-advanced-go-wrapper/pull/513)).
+* `ECONNRESET`, `EPIPE` and `io.ErrUnexpectedEOF` are now matched by sentinel rather than by message text, so a wrapped occurrence is classified as a network error ([PR #515](https://github.com/aws/aws-advanced-go-wrapper/pull/515)).
+* `net.ErrClosed` is now matched by sentinel and `pgconn.ErrConnClosed` is excluded, so aborting a connection to a host judged unhealthy is classified as a network error while using an already-closed connection is not ([PR #514](https://github.com/aws/aws-advanced-go-wrapper/pull/514), [PR #582](https://github.com/aws/aws-advanced-go-wrapper/pull/582)).
+
+### :crab: Changed
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.1.0
+
 ## [1.1.3] - 2026-07-29
 ### :bug: Fixed
 * Exclude caller cancellation and stale connection from IsNetworkError ([Issue #492](https://github.com/aws/aws-advanced-go-wrapper/issues/492)).
@@ -58,6 +70,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [1.0.0] - 2025-07-31
 * The AWS Advanced Go Wrapper wraps the [pgx - PostgreSQL Driver and Toolkit](https://github.com/jackc/pgx) to connect to PostgreSQL, Aurora PostgreSQL, and RDS PostgreSQL databases. For more information on how to configure and use the `pgx` driver with the AWS Advanced Go Wrapper, see [Using The Go Wrapper](../docs/user-guide/UsingTheGoWrapper.md).  
 
+[1.2.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver%2Fv1.2.0
 [1.1.3]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver%2Fv1.1.3
 [1.1.2]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver%2Fv1.1.2
 [1.1.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/pgx-driver%2Fv1.1.1

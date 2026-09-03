@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
+## [1.2.0] - 2026-09-08
+### :magic_wand: Added
+* `IsReadOnlyError` on the `ErrorHandler`, `DriverDialect` and `PluginService` interfaces, so the [Failover Plugin](../docs/user-guide/using-plugins/UsingTheFailoverPlugin.md) fails over when a write reaches a reader and `failoverMode` is `strict-writer` ([PR #517](https://github.com/aws/aws-advanced-go-wrapper/pull/517)).
+
+### :bug: Fixed
+* SQLSTATE `08004`, which the server returns when it rejects a connection, was classified as a network error and triggered failover instead of being reported to the caller ([PR #516](https://github.com/aws/aws-advanced-go-wrapper/pull/516)).
+* `ECONNRESET`, `EPIPE` and `io.ErrUnexpectedEOF` are now matched by sentinel rather than by message text, so a wrapped occurrence is classified as a network error ([PR #515](https://github.com/aws/aws-advanced-go-wrapper/pull/515)).
+
+### :crab: Changed
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.1.0
+
 ## [1.1.3] - 2026-07-29
 ### :bug: Fixed
 * Exclude caller cancellation and stale connection from IsNetworkError ([Issue #492](https://github.com/aws/aws-advanced-go-wrapper/issues/492)).
@@ -59,6 +70,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [1.0.0] - 2025-07-31
 * The AWS Advanced Go Wrapper wraps the [Go-MySQL-Driver](https://github.com/go-sql-driver/mysql) to connect to MySQL, Aurora MySQL, and RDS MySQL databases. For more information on how to configure and use the `Go-MySQL` driver with the AWS Advanced Go Wrapper, see [Using The Go Wrapper](../docs/user-guide/UsingTheGoWrapper.md).
 
+[1.2.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/mysql-driver%2Fv1.2.0
 [1.1.3]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/mysql-driver%2Fv1.1.3
 [1.1.2]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/mysql-driver%2Fv1.1.2
 [1.1.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/mysql-driver%2Fv1.1.1
