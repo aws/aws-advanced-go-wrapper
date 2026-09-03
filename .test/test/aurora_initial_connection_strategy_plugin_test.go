@@ -262,8 +262,10 @@ func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndR
 
 	assert.NoError(t, err0)
 	assert.NoError(t, err1)
-	assert.NoError(t, err2)
-	assert.Equal(t, nil, actualConn)
+	// verifyInitialConnectionType was set explicitly, so exhausting the retry window is reported rather
+	// than returning the unverified connection the caller asked to have checked.
+	assert.Error(t, err2)
+	assert.Nil(t, actualConn)
 }
 
 func TestAuroraInitialConnectionStrategyPlugin_Connect_WithRdsWriterCluster_AndLoginError(t *testing.T) {

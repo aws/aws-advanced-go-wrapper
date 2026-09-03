@@ -4,6 +4,7 @@
 - [User Guide](user-guide/UsingTheGoWrapper.md)
   - [Cluster ID](user-guide/ClusterId.md)
   - [Database Dialects](user-guide/DatabaseDialects.md)
+  - [Database URL Type Compatibility](user-guide/CompatibilityEndpoints.md)
   - [Failover Configuration Guide](user-guide/FailoverConfigurationGuide.md)
   - [Global Databases](user-guide/GlobalDatabases.md)
   - [Reader Selection Strategies](user-guide/ReaderSelectionStrategies.md)
