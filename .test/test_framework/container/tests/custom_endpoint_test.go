@@ -29,6 +29,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
+	_ "github.com/aws/aws-advanced-go-wrapper/custom-endpoint"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
