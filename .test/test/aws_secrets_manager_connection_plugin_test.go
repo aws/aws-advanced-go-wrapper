@@ -19,6 +19,7 @@ package test
 import (
 	"context"
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -516,6 +517,374 @@ func TestAwsSecretsManagerConnectionPluginEmptyStringKey(t *testing.T) {
 	assert.NotNil(t, err)
 	errMsg := error_util.GetMessage("AwsSecretsManagerConnectionPlugin.emptySecretValue", "db_user", "db_pass")
 	assert.Equal(t, errMsg, err.Error())
+}
+
+// --- Secret rotation window: connect retry. ---
+
+const (
+	preRotationSecret    = `{"username":"testuser","password":"oldpassword"}`
+	postRotationSecret   = `{"username":"testuser","password":"newpassword"}`
+	postRotationPasswd   = "newpassword"
+	rotationTestSecretId = "myId"
+	rotationTestRegion   = "us-west-2"
+)
+
+// rotationTestProps builds the plugin properties for a rotation test. An empty connectRetryTimeoutMs omits
+// both retry properties, selecting the default single-retry path.
+func rotationTestProps(connectRetryTimeoutMs string, connectRetryIntervalMs string) *utils.RWMap[string, string] {
+	props := MakeMapFromKeysAndVals(
+		property_util.SECRETS_MANAGER_REGION.Name, rotationTestRegion,
+		property_util.SECRETS_MANAGER_SECRET_ID.Name, rotationTestSecretId,
+		property_util.DRIVER_PROTOCOL.Name, "mysql",
+	)
+	if connectRetryTimeoutMs != "" {
+		property_util.SECRETS_MANAGER_CONNECT_RETRY_TIMEOUT_MS.Set(props, connectRetryTimeoutMs)
+		property_util.SECRETS_MANAGER_CONNECT_RETRY_INTERVAL_MS.Set(props, connectRetryIntervalMs)
+	}
+	return props
+}
+
+// primeStaleSecretsCache puts the pre-rotation credentials in the cache, so that the first connect attempt
+// uses them without calling Secrets Manager. The before-hook clears the cache, so this has to be explicit.
+func primeStaleSecretsCache(t *testing.T) {
+	t.Helper()
+	aws_secrets_manager.SecretsCache.Put(
+		fmt.Sprintf("%s:%s", rotationTestSecretId, rotationTestRegion),
+		aws_secrets_manager.AwsRdsSecrets{Username: "testuser", Password: "oldpassword"},
+		time.Minute)
+}
+
+// rotationConnectFunc counts attempts and accepts only the post-rotation password, rejecting anything else
+// with a login error.
+func rotationConnectFunc(attempts *int) (driver_infrastructure.ConnectFunc, *mysql.MySQLError) {
+	loginError := &mysql.MySQLError{SQLState: [5]byte(([]byte(mysql_driver.SqlStateAccessError))[:5])}
+	return func(props *utils.RWMap[string, string]) (driver.Conn, error) {
+		*attempts++
+		if property_util.PASSWORD.Get(props) == postRotationPasswd {
+			return &MockConn{}, nil
+		}
+		return nil, loginError
+	}, loginError
+}
+
+func newRotationHostInfo(t *testing.T) *host_info_util.HostInfo {
+	t.Helper()
+	hostInfo, err := host_info_util.NewHostInfoBuilder().
+		SetHost("database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com").SetPort(1234).Build()
+	assert.Nil(t, err)
+	return hostInfo
+}
+
+// The default path still re-fetches once when the cached secret is stale. This branch had no coverage before.
+func TestAwsSecretsManagerConnectionPluginStaleCacheSingleRetry(t *testing.T) {
+	mockServicesContainer := beforeAwsSecretsManagerConnectionPluginTests(t)
+	primeStaleSecretsCache(t)
+	// The rotation has already completed, so the very first fetch returns the new secret.
+	client := &MockRotatingSecretsManagerClient{
+		PreRotationSecret:   preRotationSecret,
+		PostRotationSecret:  postRotationSecret,
+		PromoteAfterFetches: 0,
+	}
+	attempts := 0
+	connectFunc, _ := rotationConnectFunc(&attempts)
+
+	props := rotationTestProps("", "")
+	plugin, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(
+		mockServicesContainer, props, NewMockRotatingAwsSecretsManagerClient(client))
+	assert.Nil(t, err)
+
+	conn, err := plugin.Connect(newRotationHostInfo(t), props, false, connectFunc)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, conn)
+	assert.Equal(t, 2, attempts)
+	assert.Equal(t, int64(1), client.Fetches())
+}
+
+// A rotation window that outlasts a single re-fetch is bridged by the retry budget.
+func TestAwsSecretsManagerConnectionPluginRetriesAcrossRotationWindowWarmCache(t *testing.T) {
+	mockServicesContainer := beforeAwsSecretsManagerConnectionPluginTests(t)
+	primeStaleSecretsCache(t)
+	client := &MockRotatingSecretsManagerClient{
+		PreRotationSecret:   preRotationSecret,
+		PostRotationSecret:  postRotationSecret,
+		PromoteAfterFetches: 2,
+	}
+	attempts := 0
+	connectFunc, _ := rotationConnectFunc(&attempts)
+
+	props := rotationTestProps("5000", "100")
+	plugin, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(
+		mockServicesContainer, props, NewMockRotatingAwsSecretsManagerClient(client))
+	assert.Nil(t, err)
+
+	conn, err := plugin.Connect(newRotationHostInfo(t), props, false, connectFunc)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, conn)
+	// Attempt 1 uses the cache, so there is one more attempt than there are fetches.
+	assert.Equal(t, 4, attempts)
+	assert.Equal(t, int64(3), client.Fetches())
+}
+
+// With an empty cache the first attempt already fetched, the case the single-retry path skips.
+func TestAwsSecretsManagerConnectionPluginRetriesAcrossRotationWindowColdCache(t *testing.T) {
+	mockServicesContainer := beforeAwsSecretsManagerConnectionPluginTests(t)
+	client := &MockRotatingSecretsManagerClient{
+		PreRotationSecret:   preRotationSecret,
+		PostRotationSecret:  postRotationSecret,
+		PromoteAfterFetches: 2,
+	}
+	attempts := 0
+	connectFunc, _ := rotationConnectFunc(&attempts)
+
+	props := rotationTestProps("5000", "100")
+	plugin, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(
+		mockServicesContainer, props, NewMockRotatingAwsSecretsManagerClient(client))
+	assert.Nil(t, err)
+
+	conn, err := plugin.Connect(newRotationHostInfo(t), props, false, connectFunc)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, conn)
+	assert.Equal(t, 3, attempts)
+	assert.Equal(t, int64(3), client.Fetches())
+}
+
+func TestAwsSecretsManagerConnectionPluginConnectRetryBudgetExhausted(t *testing.T) {
+	mockServicesContainer := beforeAwsSecretsManagerConnectionPluginTests(t)
+	// The secret never rotates, so no attempt can succeed.
+	client := &MockRotatingSecretsManagerClient{
+		PreRotationSecret:   preRotationSecret,
+		PostRotationSecret:  preRotationSecret,
+		PromoteAfterFetches: 0,
+	}
+	attempts := 0
+	connectFunc, loginError := rotationConnectFunc(&attempts)
+
+	timeout := 400 * time.Millisecond
+	props := rotationTestProps("400", "100")
+	plugin, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(
+		mockServicesContainer, props, NewMockRotatingAwsSecretsManagerClient(client))
+	assert.Nil(t, err)
+
+	start := time.Now()
+	conn, err := plugin.Connect(newRotationHostInfo(t), props, false, connectFunc)
+	elapsed := time.Since(start)
+
+	assert.Nil(t, conn)
+	assert.Equal(t, loginError, err)
+	// Jitter makes the exact attempt count nondeterministic by design, so only bounds are asserted.
+	assert.GreaterOrEqual(t, attempts, 2)
+	assert.GreaterOrEqual(t, elapsed, timeout)
+	assert.Less(t, elapsed, 5*timeout)
+}
+
+// A driver may hand back a connection alongside an error. Every discarded connection must be closed and the
+// one handed to the caller must not be.
+func TestAwsSecretsManagerConnectionPluginConnectRetryClosesFailedConnections(t *testing.T) {
+	mockServicesContainer := beforeAwsSecretsManagerConnectionPluginTests(t)
+	client := &MockRotatingSecretsManagerClient{
+		PreRotationSecret:   preRotationSecret,
+		PostRotationSecret:  postRotationSecret,
+		PromoteAfterFetches: 2,
+	}
+	loginError := &mysql.MySQLError{SQLState: [5]byte(([]byte(mysql_driver.SqlStateAccessError))[:5])}
+	var conns []*MockConn
+	connectFunc := func(props *utils.RWMap[string, string]) (driver.Conn, error) {
+		// A fresh instance per call is what makes a per-attempt leak detectable.
+		c := &MockConn{}
+		conns = append(conns, c)
+		if property_util.PASSWORD.Get(props) == postRotationPasswd {
+			return c, nil
+		}
+		return c, loginError
+	}
+
+	props := rotationTestProps("5000", "100")
+	plugin, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(
+		mockServicesContainer, props, NewMockRotatingAwsSecretsManagerClient(client))
+	assert.Nil(t, err)
+
+	conn, err := plugin.Connect(newRotationHostInfo(t), props, false, connectFunc)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, conn)
+	assert.Len(t, conns, 3)
+	for i, c := range conns[:len(conns)-1] {
+		assert.Equal(t, 1, c.closeCounter, "failed attempt %d leaked its connection", i+1)
+	}
+	assert.Equal(t, 0, conns[len(conns)-1].closeCounter, "the returned connection must not be closed")
+}
+
+// A transient Secrets Manager failure mid-retry must not end the loop.
+func TestAwsSecretsManagerConnectionPluginConnectRetrySurvivesFetchFailure(t *testing.T) {
+	mockServicesContainer := beforeAwsSecretsManagerConnectionPluginTests(t)
+	client := &MockRotatingSecretsManagerClient{
+		PreRotationSecret:   preRotationSecret,
+		PostRotationSecret:  postRotationSecret,
+		PromoteAfterFetches: 2,
+		FailFetchesAt:       map[int64]bool{2: true},
+	}
+	attempts := 0
+	connectFunc, _ := rotationConnectFunc(&attempts)
+
+	props := rotationTestProps("5000", "100")
+	plugin, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(
+		mockServicesContainer, props, NewMockRotatingAwsSecretsManagerClient(client))
+	assert.Nil(t, err)
+
+	conn, err := plugin.Connect(newRotationHostInfo(t), props, false, connectFunc)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, conn)
+	// Fetch 1 is pre-rotation, fetch 2 fails, fetch 3 promotes. The failed fetch costs no connect attempt.
+	assert.Equal(t, int64(3), client.Fetches())
+	assert.Equal(t, 2, attempts)
+}
+
+// When the budget runs out the login failure is reported, not a fetch failure that happened along the way.
+func TestAwsSecretsManagerConnectionPluginConnectRetryReportsLoginError(t *testing.T) {
+	mockServicesContainer := beforeAwsSecretsManagerConnectionPluginTests(t)
+	client := &MockRotatingSecretsManagerClient{
+		PreRotationSecret:   preRotationSecret,
+		PostRotationSecret:  preRotationSecret,
+		PromoteAfterFetches: 0,
+		FailFetchesAt:       map[int64]bool{2: true},
+	}
+	attempts := 0
+	connectFunc, loginError := rotationConnectFunc(&attempts)
+
+	props := rotationTestProps("400", "100")
+	plugin, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(
+		mockServicesContainer, props, NewMockRotatingAwsSecretsManagerClient(client))
+	assert.Nil(t, err)
+
+	conn, err := plugin.Connect(newRotationHostInfo(t), props, false, connectFunc)
+
+	assert.Nil(t, conn)
+	assert.Equal(t, loginError, err)
+}
+
+func TestAwsSecretsManagerConnectionPluginConnectRetrySkipsNonLoginError(t *testing.T) {
+	mockServicesContainer := beforeAwsSecretsManagerConnectionPluginTests(t)
+	client := &MockRotatingSecretsManagerClient{
+		PreRotationSecret:   preRotationSecret,
+		PostRotationSecret:  postRotationSecret,
+		PromoteAfterFetches: 0,
+	}
+	networkError := errors.New("connection refused")
+	attempts := 0
+	connectFunc := func(_ *utils.RWMap[string, string]) (driver.Conn, error) {
+		attempts++
+		return nil, networkError
+	}
+
+	props := rotationTestProps("5000", "100")
+	plugin, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(
+		mockServicesContainer, props, NewMockRotatingAwsSecretsManagerClient(client))
+	assert.Nil(t, err)
+
+	conn, err := plugin.Connect(newRotationHostInfo(t), props, false, connectFunc)
+
+	assert.Nil(t, conn)
+	assert.Equal(t, networkError, err)
+	assert.Equal(t, 1, attempts)
+}
+
+func TestAwsSecretsManagerConnectionPluginConnectRetryOffByDefault(t *testing.T) {
+	mockServicesContainer := beforeAwsSecretsManagerConnectionPluginTests(t)
+	client := &MockRotatingSecretsManagerClient{
+		PreRotationSecret:   preRotationSecret,
+		PostRotationSecret:  postRotationSecret,
+		PromoteAfterFetches: 2,
+	}
+	attempts := 0
+	connectFunc, loginError := rotationConnectFunc(&attempts)
+
+	props := rotationTestProps("", "")
+	plugin, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(
+		mockServicesContainer, props, NewMockRotatingAwsSecretsManagerClient(client))
+	assert.Nil(t, err)
+
+	conn, err := plugin.Connect(newRotationHostInfo(t), props, false, connectFunc)
+
+	assert.Nil(t, conn)
+	assert.Equal(t, loginError, err)
+	// Cold cache, so the first attempt already fetched and the single-retry guard skips the retry.
+	assert.Equal(t, 1, attempts)
+	assert.Equal(t, int64(1), client.Fetches())
+}
+
+// ForceConnect shares the retry budget with Connect.
+func TestAwsSecretsManagerConnectionPluginForceConnectRetries(t *testing.T) {
+	mockServicesContainer := beforeAwsSecretsManagerConnectionPluginTests(t)
+	client := &MockRotatingSecretsManagerClient{
+		PreRotationSecret:   preRotationSecret,
+		PostRotationSecret:  postRotationSecret,
+		PromoteAfterFetches: 2,
+	}
+	attempts := 0
+	connectFunc, _ := rotationConnectFunc(&attempts)
+
+	props := rotationTestProps("5000", "100")
+	plugin, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(
+		mockServicesContainer, props, NewMockRotatingAwsSecretsManagerClient(client))
+	assert.Nil(t, err)
+
+	conn, err := plugin.ForceConnect(newRotationHostInfo(t), props, false, connectFunc)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, conn)
+	assert.Equal(t, 3, attempts)
+	assert.Equal(t, int64(3), client.Fetches())
+}
+
+func TestAwsSecretsManagerConnectionPluginConnectRetryCachesPostRotationSecret(t *testing.T) {
+	mockServicesContainer := beforeAwsSecretsManagerConnectionPluginTests(t)
+	client := &MockRotatingSecretsManagerClient{
+		PreRotationSecret:   preRotationSecret,
+		PostRotationSecret:  postRotationSecret,
+		PromoteAfterFetches: 1,
+	}
+	attempts := 0
+	connectFunc, _ := rotationConnectFunc(&attempts)
+
+	props := rotationTestProps("5000", "100")
+	plugin, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(
+		mockServicesContainer, props, NewMockRotatingAwsSecretsManagerClient(client))
+	assert.Nil(t, err)
+	hostInfo := newRotationHostInfo(t)
+
+	conn, err := plugin.Connect(hostInfo, props, false, connectFunc)
+	assert.NoError(t, err)
+	assert.NotNil(t, conn)
+	assert.Equal(t, 1, aws_secrets_manager.SecretsCache.Size())
+	fetchesAfterFirstConnect := client.Fetches()
+
+	// The second connection is served from the cache, with no further call to Secrets Manager.
+	conn, err = plugin.Connect(hostInfo, props, false, connectFunc)
+	assert.NoError(t, err)
+	assert.NotNil(t, conn)
+	assert.Equal(t, fetchesAfterFirstConnect, client.Fetches())
+}
+
+func TestAwsSecretsManagerConnectionPluginNegativeConnectRetryProps(t *testing.T) {
+	for _, prop := range []property_util.AwsWrapperProperty{
+		property_util.SECRETS_MANAGER_CONNECT_RETRY_TIMEOUT_MS,
+		property_util.SECRETS_MANAGER_CONNECT_RETRY_INTERVAL_MS,
+	} {
+		mockServicesContainer := beforeAwsSecretsManagerConnectionPluginTests(t)
+		props := rotationTestProps("1000", "100")
+		prop.Set(props, "-1")
+
+		_, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(
+			mockServicesContainer, props, NewMockAwsSecretsManagerClient)
+
+		assert.Equal(t,
+			error_util.GetMessage("AwsWrapperProperty.requiresNonNegativeIntValue", prop.Name),
+			err.Error())
+	}
 }
 
 func TestAwsSecretsManagerConnectionPluginMixedDataTypes(t *testing.T) {
