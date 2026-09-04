@@ -29,6 +29,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/.test/test_framework/container/test_utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
+	_ "github.com/aws/aws-advanced-go-wrapper/custom-endpoint"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -263,6 +264,13 @@ func TestCustomEndpointFollowsMemberChanges(t *testing.T) {
 	assert.Equal(t, newMember, readerId,
 		"the newly added member is the only reader in the endpoint, so the read-only connection should be on it")
 
+	// Back to the writer before the member list changes, so the reader being removed is not the connection
+	// in use at the time.
+	if _, err := setup.instanceId(db, writeCtx); err != nil {
+		require.True(t, error_util.IsType(err, error_util.FailoverSuccessErrorType),
+			"expected either a row or a failover error, got %v", err)
+	}
+
 	// Remove it again. The driver must stop selecting it.
 	require.NoError(t, setup.auroraUtil.SetCustomEndpointStaticMembers(
 		ctx, setup.endpointId, []string{setup.writerId}))
@@ -308,18 +316,27 @@ func TestCustomEndpointFailoverStaysWithinMembers(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, members, initialId)
 
+	// The failover has to be observed from inside a transaction.
+	tx, err := db.BeginTx(ctx, nil)
+	require.NoError(t, err)
+	defer func() { _ = tx.Rollback() }()
+	require.NoError(t, tx.QueryRowContext(ctx, "SELECT 1").Scan(new(int)))
+
 	// TriggerFailover rather than FailoverClusterAndWaitTillWriterChanged, matching every other failover
 	// test here: it resolves the cluster from the environment and substitutes a proxy-based failure for
 	// deployments where the failover API is not available.
 	require.NoError(t, setup.auroraUtil.TriggerFailover(setup.writerId, "", ""))
 
-	// The first query after failover reports it rather than returning a row.
-	_, err = setup.instanceId(db, writeCtx)
-	require.Error(t, err, "expected the failover to surface on the next query")
-	assert.True(t, error_util.IsType(err, error_util.FailoverSuccessErrorType),
-		"expected a failover error, got %v", err)
+	// Check for Transaction Resolution Unknown since failover occurred within a transaction.
+	_, err = setup.instanceId(tx, ctx)
+	require.Error(t, err, "expected the failover to surface on the next query in the transaction")
+	assert.True(t, error_util.IsType(err, error_util.TransactionResolutionUnknownErrorType),
+		"expected a transaction-resolution-unknown error, got %v", err)
 
-	afterFailoverId, err := setup.instanceId(db, writeCtx)
+	// Released transaction before going back through the pool.
+	_ = tx.Rollback()
+
+	afterFailoverId, err := setup.instanceId(db, ctx)
 	require.NoError(t, err)
 	assert.Contains(t, members, afterFailoverId,
 		"failover selected an instance outside the custom endpoint's member list")

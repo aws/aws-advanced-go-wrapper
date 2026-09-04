@@ -180,6 +180,7 @@ public class ContainerHelper {
         .withFileSystemBind("../../../xray", "/app/xray", BindMode.READ_ONLY)
         .withFileSystemBind("../../../otlp", "/app/otlp", BindMode.READ_ONLY)
         .withFileSystemBind("../../../okta", "/app/okta", BindMode.READ_ONLY)
+        .withFileSystemBind("../../../custom-endpoint", "/app/custom-endpoint", BindMode.READ_ONLY)
         .withFileSystemBind("../../../pgx-driver", "/app/pgx-driver", BindMode.READ_ONLY)
         .withFileSystemBind("../../../mysql-driver", "/app/mysql-driver", BindMode.READ_ONLY)
         .withFileSystemBind("../../../iam", "/app/iam", BindMode.READ_ONLY)
