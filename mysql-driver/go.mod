@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.1.0
-	github.com/go-sql-driver/mysql v1.10.0
+	github.com/go-sql-driver/mysql v1.10.1
 )
 
 require (
