@@ -2,16 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
-
+# Release (2026-09-08)
+## General Highlights
 ### :bug: Fixed
 * A MySQL DSN whose user or password contains a space was detected as a PostgreSQL keyword/value DSN, so the host, port and credentials were silently dropped and the password was left unmasked in log and error messages ([Issue #587](https://github.com/aws/aws-advanced-go-wrapper/issues/587)).
 * [Custom Endpoint plugin](./docs/user-guide/using-plugins/UsingTheCustomEndpointPlugin.md) not filtering hosts during connect. The plugin now requires `rds:DescribeDBClusterEndpoints` ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
+* Failover did not trigger when a connection was closed while a call was in flight, and the transaction state was reported incorrectly afterwards. `net.ErrClosed` is now matched by sentinel and `pgconn.ErrConnClosed` is excluded, so aborting a connection to an unhealthy host triggers failover while using an already-closed connection does not ([PR #582](https://github.com/aws/aws-advanced-go-wrapper/pull/582)).
+* Network errors went unclassified because `ECONNRESET`, `EPIPE` and `io.ErrUnexpectedEOF` were matched by message text rather than by sentinel, and PostgreSQL SQLSTATE was matched for equality against a list of class prefixes ([PR #513](https://github.com/aws/aws-advanced-go-wrapper/pull/513), [PR #515](https://github.com/aws/aws-advanced-go-wrapper/pull/515)).
+* MySQL SQLSTATE `08004`, which the server returns when it rejects a connection, was classified as a network error and triggered failover ([PR #516](https://github.com/aws/aws-advanced-go-wrapper/pull/516)).
 
 ### :magic_wand: Added
 * Custom endpoint monitoring backs off when the RDS API throttles it, and a `READER`-type custom endpoint can restrict host selection to readers ([PR #584](https://github.com/aws/aws-advanced-go-wrapper/pull/584)).
   * `customEndpointInfoRefreshRateBackoffFactor` (default `2`) widens the polling interval on a throttle and narrows it after a successful call, up to `customEndpointInfoMaxRefreshRateMs` (default `300000`).
-  * `customEndpointEnforceRoleFiltering` (default `false`) makes a `READER`-type endpoint with an exclusion member list route to readers only, dropping the writer from failover and read/write splitting. The default becomes `true` in the next major version - see [UsingTheCustomEndpointPlugin.md](docs/user-guide/using-plugins/UsingTheCustomEndpointPlugin.md).
+  * `customEndpointEnforceRoleFiltering` (default `false`) makes a `READER`-type endpoint with an exclusion member list route to readers only, dropping the writer from failover and read/write splitting. The default becomes `true` in the next major version - see [UsingTheCustomEndpointPlugin.md](./docs/user-guide/using-plugins/UsingTheCustomEndpointPlugin.md).
+* New configuration parameters `secretsManagerConnectRetryTimeoutMs` and `secretsManagerConnectRetryIntervalMs` for the [AWS Secrets Manager plugin](./docs/user-guide/using-plugins/UsingTheAwsSecretsManagerPlugin.md#secret-rotation), allowing connection retries upon login errors. Retrying is off by default ([PR #598](https://github.com/aws/aws-advanced-go-wrapper/pull/598)).
+
+### :crab: Changed
+* Correct property names and outdated references throughout the documentation, and update the GitHub workflows ([PR #586](https://github.com/aws/aws-advanced-go-wrapper/pull/586)).
+* Add the plugins that were missing from the plugin list in the documentation ([PR #558](https://github.com/aws/aws-advanced-go-wrapper/pull/558)).
+
+## Module Highlights
+* `https://github.com/aws/aws-advanced-go-wrapper/auth-helpers`: [v1.1.4](auth-helpers/CHANGELOG.md#114---2026-09-08)
+* `https://github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager`: [v1.2.0](aws-secrets-manager/CHANGELOG.md#120---2026-09-08)
+* `https://github.com/aws/aws-advanced-go-wrapper/awssql/v2`: [v2.1.0](awssql/CHANGELOG.md#210---2026-09-08)
+* `https://github.com/aws/aws-advanced-go-wrapper/custom-endpoint`: [v1.1.0](custom-endpoint/CHANGELOG.md#110---2026-09-08)
+* `https://github.com/aws/aws-advanced-go-wrapper/federated-auth`: [v1.1.4](federated-auth/CHANGELOG.md#114---2026-09-08)
+* `https://github.com/aws/aws-advanced-go-wrapper/iam`: [v1.1.4](iam/CHANGELOG.md#114---2026-09-08)
+* `https://github.com/aws/aws-advanced-go-wrapper/mysql-driver`: [v1.2.0](mysql-driver/CHANGELOG.md#120---2026-09-08)
+* `https://github.com/aws/aws-advanced-go-wrapper/okta`: [v1.1.4](okta/CHANGELOG.md#114---2026-09-08)
+* `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.10](otlp/CHANGELOG.md#1010---2026-09-08)
+* `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.2.0](pgx-driver/CHANGELOG.md#120---2026-09-08)
+* `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.10](xray/CHANGELOG.md#1010---2026-09-08)
 
 # Release (2026-07-29)
 ## General Highlights

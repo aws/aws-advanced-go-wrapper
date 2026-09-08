@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
+## [1.2.0] - 2026-09-08
+### :magic_wand: Added
+* New configuration parameters `secretsManagerConnectRetryTimeoutMs` and `secretsManagerConnectRetryIntervalMs` for the [AWS Secrets Manager plugin](../docs/user-guide/using-plugins/UsingTheAwsSecretsManagerPlugin.md#secret-rotation), allowing connection retries upon login errors. Retrying is off by default ([PR #598](https://github.com/aws/aws-advanced-go-wrapper/pull/598)).
+
+### :crab: Changed
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.1.0
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/auth-helpers` to v1.1.4
+
 ## [1.1.4] - 2026-07-29
 ### :crab: Changed
 * Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.0.3
@@ -54,6 +62,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [1.0.0] - 2025-07-31
 * The AWS Secrets Manager Plugin supports usage of database credentials stored as secrets in the AWS Secrets Manager. To see information on how to configure and use AWS Secrets Manager Plugin, see [Using the AWS Secrets Manager Plugin](../docs/user-guide/using-plugins/UsingTheAwsSecretsManagerPlugin.md). 
 
+[1.2.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/aws-secrets-manager%2Fv1.2.0
 [1.1.4]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/aws-secrets-manager%2Fv1.1.4
 [1.1.3]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/aws-secrets-manager%2Fv1.1.3
 [1.1.2]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/aws-secrets-manager%2Fv1.1.2

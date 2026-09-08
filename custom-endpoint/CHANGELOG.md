@@ -4,15 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
-## [Unreleased]
+## [1.1.0] - 2026-09-08
 
 ### :magic_wand: Added
-* The monitor backs off when the RDS API throttles it, and a `READER`-type endpoint can restrict host selection to readers ([PR #584](https://github.com/aws/aws-advanced-go-wrapper/pull/584)).
-  * `customEndpointInfoRefreshRateBackoffFactor` (default `2`) widens the polling interval on a throttle and narrows it after a successful call, up to `customEndpointInfoMaxRefreshRateMs` (default `300000`).
-  * `customEndpointEnforceRoleFiltering` (default `false`) makes a `READER`-type endpoint with an exclusion member list route to readers only, dropping the writer from failover and read/write splitting. The default becomes `true` in the next major version - see [UsingTheCustomEndpointPlugin.md](../docs/user-guide/using-plugins/UsingTheCustomEndpointPlugin.md).
+* New configuration parameters `customEndpointInfoRefreshRateBackoffFactor` and `customEndpointEnforceRoleFiltering`, allowing the custom endpoint monitoring backs off when the RDS API throttles it ([PR #584](https://github.com/aws/aws-advanced-go-wrapper/pull/584)). For more information, see [UsingTheCustomEndpointPlugin.md](../docs/user-guide/using-plugins/UsingTheCustomEndpointPlugin.md)
 
 ### :bug: Fixed
 * [Custom Endpoint plugin](../docs/user-guide/using-plugins/UsingTheCustomEndpointPlugin.md) not filtering hosts during connect. The plugin now requires `rds:DescribeDBClusterEndpoints` ([PR #583](https://github.com/aws/aws-advanced-go-wrapper/pull/583)).
+
+### :crab: Changed
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.1.0
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/auth-helpers` to v1.1.4
 
 ## [1.0.6] - 2026-07-29
 ### :crab: Changed
@@ -50,6 +52,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [1.0.0] - 2025-12-04
 * The Custom Endpoint Plugin adds support for RDS custom endpoints. To see information on how to configure and use the Custom Endpoint Plugin, see [Using the Custom Endpoint Plugin](../docs/user-guide/using-plugins/UsingTheCustomEndpointPlugin.md).
 
+[1.1.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/custom-endpoint%2Fv1.1.0
 [1.0.6]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/custom-endpoint%2Fv1.0.6
 [1.0.5]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/custom-endpoint%2Fv1.0.5
 [1.0.4]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/custom-endpoint%2Fv1.0.4

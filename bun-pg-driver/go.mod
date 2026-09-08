@@ -3,7 +3,7 @@ module github.com/aws/aws-advanced-go-wrapper/bun-pg-driver
 go 1.25.0
 
 require (
-	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.0.0
+	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.1.0
 	github.com/stretchr/testify v1.11.1
 	github.com/uptrace/bun/driver/pgdriver v1.2.18
 )
