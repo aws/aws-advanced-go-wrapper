@@ -184,7 +184,12 @@ func (p *FailoverPlugin) GetSubscribedMethods() []string {
 	return append([]string{
 		plugin_helpers.CONNECT_METHOD,
 		plugin_helpers.INIT_HOST_PROVIDER_METHOD,
+		plugin_helpers.NOTIFY_HOST_LIST_CHANGED_METHOD,
 	}, utils.NETWORK_BOUND_METHODS...)
+}
+
+func (p *FailoverPlugin) NotifyHostListChanged(changes map[string]map[driver_infrastructure.HostChangeOptions]bool) {
+	p.staleDnsHelper.NotifyHostListChanged(changes)
 }
 
 func (p *FailoverPlugin) InitHostProvider(
