@@ -1,16 +1,16 @@
 module github.com/aws/aws-advanced-go-wrapper/mysql-driver
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.1.0
-	github.com/go-sql-driver/mysql v1.10.0
+	github.com/go-sql-driver/mysql v1.10.1
 )
 
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.6.1 // indirect
-	golang.org/x/text v0.41.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
 )
 
 replace github.com/aws/aws-advanced-go-wrapper/awssql/v2 => ../awssql
