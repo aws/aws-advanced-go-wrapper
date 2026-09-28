@@ -946,8 +946,11 @@ var INITIAL_CONNECTION_RETRY_INTERVAL_MS = AwsWrapperProperty{
 }
 
 var VERIFY_INITIAL_CONNECTION_TYPE = AwsWrapperProperty{
-	Name:                "verifyInitialConnectionType",
-	description:         "Force to verify an opened connection to be either a writer or a reader.",
+	Name: "verifyInitialConnectionType",
+	description: "Requires an opened connection to have a given role, retrying until it does. " +
+		"Accepted values are 'writer', 'reader' and 'none'. " +
+		"Required to verify the role when connecting through a custom domain or IP address, " +
+		"where the role cannot be derived from the endpoint.",
 	defaultValue:        "",
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }

@@ -131,6 +131,9 @@ func (hostInfo *HostInfo) IsNil() bool {
 }
 
 func (hostInfo *HostInfo) String() string {
+	if hostInfo == nil {
+		return "HostInfo[nil]"
+	}
 	return fmt.Sprintf("HostInfo[hostId=%s,host=%s, port=%d, %s, %s, weight=%d, %s]",
 		hostInfo.HostId, hostInfo.Host, hostInfo.Port, hostInfo.Role, hostInfo.Availability, hostInfo.Weight, hostInfo.LastUpdateTime)
 }
