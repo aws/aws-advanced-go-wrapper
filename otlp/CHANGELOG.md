@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
+## [1.0.11] - 2026-10-09
+### :crab: Changed
+* Raise the minimum Go version to 1.26.
+* Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.1.1
+
 ## [1.0.10] - 2026-09-08
 ### :crab: Changed
 * Update dependency `github.com/aws/aws-advanced-go-wrapper/awssql` to v2.1.0
@@ -47,6 +52,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [1.0.0] - 2025-07-31
 * The AWS Advanced Go Wrapper supports the use of OpenTelemetry to collect telemetry data. To see information on how to configure and use OpenTelemetry with the AWS Advanced Go Wrapper, see [Telemetry User Guide](../docs/user-guide/Telemetry.md).
 
+[1.0.11]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/otlp%2Fv1.0.11
 [1.0.10]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/otlp%2Fv1.0.10
 [1.0.9]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/otlp%2Fv1.0.9
 [1.0.8]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/otlp%2Fv1.0.8
