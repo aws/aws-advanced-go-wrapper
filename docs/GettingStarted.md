@@ -4,7 +4,7 @@
 
 Before using the AWS Advanced Go Wrapper, you must install:
 
-- GoLang 1.25.0
+- GoLang 1.26.0
 
 If you are using the AWS Advanced Go Wrapper as part of a Go project, include one of the wrapper's available drivers as a dependency.
 
