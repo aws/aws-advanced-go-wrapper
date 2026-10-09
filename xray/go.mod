@@ -3,7 +3,7 @@ module github.com/aws/aws-advanced-go-wrapper/xray
 go 1.26.0
 
 require (
-	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.1.0
+	github.com/aws/aws-advanced-go-wrapper/awssql/v2 v2.1.1
 	github.com/aws/aws-xray-sdk-go v1.8.5
 )
 

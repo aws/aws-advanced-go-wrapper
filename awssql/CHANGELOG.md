@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
+## [2.1.1] - 2026-10-09
+### :crab: Changed
+* Raise the minimum Go version to 1.26.
+* Update various dependencies.
+
 ## [2.1.0] - 2026-09-08
 
 ### :magic_wand: Added
@@ -144,6 +149,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [1.0.0] - 2025-07-31
 * The Amazon Web Services (AWS) Advanced Go Wrapper allows an application to take advantage of the features of clustered Aurora databases.
 
+[2.1.1]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv2.1.1
 [2.1.0]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv2.1.0
 [2.0.3]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv2.0.3
 [2.0.2]: https://github.com/aws/aws-advanced-go-wrapper/releases/tag/awssql%2Fv2.0.2

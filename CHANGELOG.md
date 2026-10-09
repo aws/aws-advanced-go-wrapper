@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+# Release (2026-10-09)
+## General Highlights
+### :crab: Changed
+* Raise the minimum Go version to 1.26.
+* Update various dependencies ([PR #568](https://github.com/aws/aws-advanced-go-wrapper/pull/568), [PR #602](https://github.com/aws/aws-advanced-go-wrapper/pull/602), [PR #607](https://github.com/aws/aws-advanced-go-wrapper/pull/607)).
+* Reduce Dependabot update frequency ([PR #606](https://github.com/aws/aws-advanced-go-wrapper/pull/606)).
+
+## Module Highlights
+* `https://github.com/aws/aws-advanced-go-wrapper/auth-helpers`: [v1.1.5](auth-helpers/CHANGELOG.md#115---2026-10-09)
+* `https://github.com/aws/aws-advanced-go-wrapper/aws-secrets-manager`: [v1.2.1](aws-secrets-manager/CHANGELOG.md#121---2026-10-09)
+* `https://github.com/aws/aws-advanced-go-wrapper/awssql/v2`: [v2.1.1](awssql/CHANGELOG.md#211---2026-10-09)
+* `https://github.com/aws/aws-advanced-go-wrapper/custom-endpoint`: [v1.1.1](custom-endpoint/CHANGELOG.md#111---2026-10-09)
+* `https://github.com/aws/aws-advanced-go-wrapper/federated-auth`: [v1.1.5](federated-auth/CHANGELOG.md#115---2026-10-09)
+* `https://github.com/aws/aws-advanced-go-wrapper/iam`: [v1.1.5](iam/CHANGELOG.md#115---2026-10-09)
+* `https://github.com/aws/aws-advanced-go-wrapper/mysql-driver`: [v1.2.1](mysql-driver/CHANGELOG.md#121---2026-10-09)
+* `https://github.com/aws/aws-advanced-go-wrapper/okta`: [v1.1.5](okta/CHANGELOG.md#115---2026-10-09)
+* `https://github.com/aws/aws-advanced-go-wrapper/otlp`: [v1.0.11](otlp/CHANGELOG.md#1011---2026-10-09)
+* `https://github.com/aws/aws-advanced-go-wrapper/pgx-driver`: [v1.2.1](pgx-driver/CHANGELOG.md#121---2026-10-09)
+* `https://github.com/aws/aws-advanced-go-wrapper/xray`: [v1.0.11](xray/CHANGELOG.md#1011---2026-10-09)
+
 # Release (2026-09-08)
 ## General Highlights
 ### :bug: Fixed
