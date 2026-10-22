@@ -33,6 +33,15 @@ type StaleDnsHelper struct {
 	writerHostInfo  *host_info_util.HostInfo
 }
 
+func containsHostAndPort(hosts []*host_info_util.HostInfo, hostAndPort string) bool {
+	for _, host := range hosts {
+		if host.GetHostAndPort() == hostAndPort {
+			return true
+		}
+	}
+	return false
+}
+
 func NewStaleDnsHelper(pluginService driver_infrastructure.PluginService) (*StaleDnsHelper, error) {
 	staleDnsCounter, err := pluginService.GetTelemetryFactory().CreateCounter("staleDNS.stale.detected")
 	if err != nil {
@@ -73,21 +82,28 @@ func (s *StaleDnsHelper) GetVerifiedConnection(
 		}
 	}
 
-	slog.Info(utils.LogTopology(s.pluginService.GetHosts(), "[StaleDnsHelper.getVerifiedConnection]"))
+	slog.Debug(utils.LogTopology(s.pluginService.GetAllHosts(), "[StaleDnsHelper.getVerifiedConnection]"))
 
 	if s.writerHostInfo.IsNil() {
-		writerCandidate := host_info_util.GetWriter(s.pluginService.GetHosts())
+		writerCandidate := host_info_util.GetWriter(s.pluginService.GetAllHosts())
 		if !writerCandidate.IsNil() && utils.IsRdsClusterDns(writerCandidate.GetHost()) {
-			return nil, nil
+			if isConnectedToReader {
+				// Returning the reader now would return the wrong role, so close and throw an error.
+				_ = conn.Close()
+				return nil, error_util.NewGenericAwsWrapperError(
+					error_util.GetMessage("StaleDnsHelper.unresolvedWriterTopology", writerCandidate.GetHost()))
+			}
+			slog.Warn(error_util.GetMessage("StaleDnsHelper.unresolvedWriterTopology", writerCandidate.GetHost()))
+			return conn, nil
 		}
 		s.writerHostInfo = writerCandidate
 	}
 
-	slog.Info(error_util.GetMessage("StaleDnsHelper.writerHostInfo", s.writerHostInfo.String()))
-
 	if s.writerHostInfo.IsNil() {
 		return conn, nil
 	}
+
+	slog.Debug(error_util.GetMessage("StaleDnsHelper.writerHostInfo", s.writerHostInfo.String()))
 
 	if isConnectedToReader {
 		// Reconnect to writer host if current connection is reader.
@@ -95,6 +111,15 @@ func (s *StaleDnsHelper) GetVerifiedConnection(
 		slog.Info(error_util.GetMessage("StaleDnsHelper.staleDnsDetected", s.writerHostInfo.String()))
 
 		s.staleDnsCounter.Inc(s.pluginService.GetTelemetryContext())
+
+		if !containsHostAndPort(s.pluginService.GetHosts(), s.writerHostInfo.GetHostAndPort()) {
+			// The writer is excluded from the allowed host list, e.g. by a custom endpoint or by Global
+			// Database region filtering. Reconnecting to it anyway would violate that restriction.
+			return nil, error_util.NewGenericAwsWrapperError(
+				error_util.GetMessage("StaleDnsHelper.currentWriterNotAllowed",
+					s.writerHostInfo.GetHostAndPort(),
+					utils.LogTopology(s.pluginService.GetHosts(), "")))
+		}
 
 		writerConn, connectErr := s.pluginService.Connect(s.writerHostInfo, props, nil)
 		if connectErr != nil {
@@ -107,9 +132,22 @@ func (s *StaleDnsHelper) GetVerifiedConnection(
 
 		if conn != nil {
 			_ = conn.Close()
-			return writerConn, nil
 		}
+		return writerConn, nil
 	}
 
 	return conn, nil
+}
+
+func (s *StaleDnsHelper) NotifyHostListChanged(changes map[string]map[driver_infrastructure.HostChangeOptions]bool) {
+	if s.writerHostInfo.IsNil() {
+		return
+	}
+	for host, hostChanges := range changes {
+		if host == s.writerHostInfo.GetHostAndPort() && hostChanges[driver_infrastructure.PROMOTED_TO_READER] {
+			slog.Debug(error_util.GetMessage("StaleDnsHelper.reset"))
+			s.writerHostInfo = nil
+			return
+		}
+	}
 }
