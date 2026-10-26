@@ -17,81 +17,90 @@ Many different URL types (endpoints) can be used with the AWS Advanced Go Wrappe
 
 The last two rows of each table are not plugins. They are behaviors that several plugins depend on, listed here because they fail on the same endpoint types.
 
+### Legend
+
+| Symbol | Meaning |
+|:------:|---------|
+| ✅ | Supported |
+| ❌ | Not supported |
+
+A cell with a `[^N]` footnote marker links to the configuration required or the reason it fails on that endpoint type.
+
 ## Aurora Global Database Endpoint
 
 | Plugin codes / Database URL types | Aurora Global Database Endpoint |
 |-----------------------------------|:-------------------------------:|
-| [`customEndpoint`](./using-plugins/UsingTheCustomEndpointPlugin.md) | ✗ [^1] |
-| [`efm`](./using-plugins/UsingTheHostMonitoringPlugin.md) | ✓ |
-| [`failover`](./using-plugins/UsingTheFailoverPlugin.md) | ✓ |
-| [`gdbFailover`](./using-plugins/UsingTheGdbFailoverPlugin.md) | ✓ |
-| [`iam`](./using-plugins/UsingTheIamAuthenticationPlugin.md) / [`awsSecretsManager`](./using-plugins/UsingTheAwsSecretsManagerPlugin.md) / [`federatedAuth`](./using-plugins/UsingTheFederatedAuthPlugin.md) / [`okta`](./using-plugins/UsingTheOktaAuthPlugin.md) | ✓ [^2] |
-| [`readWriteSplitting`](./using-plugins/UsingTheReadWriteSplittingPlugin.md) | ✓ |
-| [`gdbReadWriteSplitting`](./using-plugins/UsingTheGdbReadWriteSplittingPlugin.md) | ✓ |
-| [`auroraConnectionTracker`](./UsingTheAuroraConnectionTrackerPlugin.md) | ✓ |
-| [`initialConnection`](./using-plugins/UsingTheAuroraInitialConnectionStrategyPlugin.md) role verification | ✓ |
-| [`limitless`](./using-plugins/UsingTheLimitlessConnectionPlugin.md) | ✗ [^3] |
-| [`bg`](./using-plugins/UsingTheBlueGreenPlugin.md) | ✗ [^4] |
-| `connectTime` / `executionTime` / `dev` | ✓ [^5] |
-| Stale DNS correction, within `failover` | ✓ |
-| [Internal connection pooling](./using-plugins/UsingTheReadWriteSplittingPlugin.md#internal-connection-pooling) | ✓ |
+| [`customEndpoint`](./using-plugins/UsingTheCustomEndpointPlugin.md) | ❌ [^1] |
+| [`efm`](./using-plugins/UsingTheHostMonitoringPlugin.md) | ✅ |
+| [`failover`](./using-plugins/UsingTheFailoverPlugin.md) | ✅ |
+| [`gdbFailover`](./using-plugins/UsingTheGdbFailoverPlugin.md) | ✅ |
+| [`iam`](./using-plugins/UsingTheIamAuthenticationPlugin.md) / [`awsSecretsManager`](./using-plugins/UsingTheAwsSecretsManagerPlugin.md) / [`federatedAuth`](./using-plugins/UsingTheFederatedAuthPlugin.md) / [`okta`](./using-plugins/UsingTheOktaAuthPlugin.md) | ✅ [^2] |
+| [`readWriteSplitting`](./using-plugins/UsingTheReadWriteSplittingPlugin.md) | ✅ |
+| [`gdbReadWriteSplitting`](./using-plugins/UsingTheGdbReadWriteSplittingPlugin.md) | ✅ |
+| [`auroraConnectionTracker`](./UsingTheAuroraConnectionTrackerPlugin.md) | ✅ |
+| [`initialConnection`](./using-plugins/UsingTheAuroraInitialConnectionStrategyPlugin.md) role verification | ✅ |
+| [`limitless`](./using-plugins/UsingTheLimitlessConnectionPlugin.md) | ❌ [^3] |
+| [`bg`](./using-plugins/UsingTheBlueGreenPlugin.md) | ❌ [^4] |
+| `connectTime` / `executionTime` / `dev` | ✅ [^5] |
+| Stale DNS correction, within `failover` | ✅ |
+| [Internal connection pooling](./using-plugins/UsingTheReadWriteSplittingPlugin.md#internal-connection-pooling) | ✅ |
 
 ## Aurora Endpoints
 
 | Plugin codes / Database URL types | Aurora Cluster Writer Endpoint | Aurora Cluster Reader Endpoint | Aurora Cluster Custom Endpoint | Aurora Instance Endpoint,<br>RDS Instance Endpoint |
 |-----------------------------------|:------------------------------:|:------------------------------:|:------------------------------:|:--------------------------------------------------:|
-| [`customEndpoint`](./using-plugins/UsingTheCustomEndpointPlugin.md) | ✗ [^1] | ✗ [^1] | ✓ | ✗ [^1] |
-| [`efm`](./using-plugins/UsingTheHostMonitoringPlugin.md) | ✓ | ✓ | ✓ | ✓ |
-| [`failover`](./using-plugins/UsingTheFailoverPlugin.md) | ✓ | ✓ | ✓ | ✓ |
-| [`gdbFailover`](./using-plugins/UsingTheGdbFailoverPlugin.md) | ✓ | ✓ | ✓ | ✓ |
-| [`iam`](./using-plugins/UsingTheIamAuthenticationPlugin.md) / [`awsSecretsManager`](./using-plugins/UsingTheAwsSecretsManagerPlugin.md) / [`federatedAuth`](./using-plugins/UsingTheFederatedAuthPlugin.md) / [`okta`](./using-plugins/UsingTheOktaAuthPlugin.md) | ✓ [^2] | ✓ [^2] | ✓ [^2] | ✓ |
-| [`readWriteSplitting`](./using-plugins/UsingTheReadWriteSplittingPlugin.md) | ✓ | ✓ | ✓ | ✓ |
-| [`gdbReadWriteSplitting`](./using-plugins/UsingTheGdbReadWriteSplittingPlugin.md) | ✓ | ✓ | ✓ | ✓ |
-| [`auroraConnectionTracker`](./UsingTheAuroraConnectionTrackerPlugin.md) | ✓ | ✓ | ✓ | ✓ |
-| [`initialConnection`](./using-plugins/UsingTheAuroraInitialConnectionStrategyPlugin.md) role verification | ✓ | ✓ | ✓ [^6] | ✗ [^7] |
-| [`limitless`](./using-plugins/UsingTheLimitlessConnectionPlugin.md) | ✗ [^3] | ✗ [^3] | ✗ [^3] | ✗ [^3] |
-| [`bg`](./using-plugins/UsingTheBlueGreenPlugin.md) | ✓ | ✓ | ✓ | ✓ |
-| `connectTime` / `executionTime` / `dev` | ✓ [^5] | ✓ [^5] | ✓ [^5] | ✓ [^5] |
-| Stale DNS correction, within `failover` | ✓ | ✗ [^8] | ✗ [^8] | ✗ [^8] |
-| [Internal connection pooling](./using-plugins/UsingTheReadWriteSplittingPlugin.md#internal-connection-pooling) | ✓ | ✓ | ✓ | ✓ |
+| [`customEndpoint`](./using-plugins/UsingTheCustomEndpointPlugin.md) | ❌ [^1] | ❌ [^1] | ✅ | ❌ [^1] |
+| [`efm`](./using-plugins/UsingTheHostMonitoringPlugin.md) | ✅ | ✅ | ✅ | ✅ |
+| [`failover`](./using-plugins/UsingTheFailoverPlugin.md) | ✅ | ✅ | ✅ | ✅ |
+| [`gdbFailover`](./using-plugins/UsingTheGdbFailoverPlugin.md) | ✅ | ✅ | ✅ | ✅ |
+| [`iam`](./using-plugins/UsingTheIamAuthenticationPlugin.md) / [`awsSecretsManager`](./using-plugins/UsingTheAwsSecretsManagerPlugin.md) / [`federatedAuth`](./using-plugins/UsingTheFederatedAuthPlugin.md) / [`okta`](./using-plugins/UsingTheOktaAuthPlugin.md) | ✅ [^2] | ✅ [^2] | ✅ [^2] | ✅ |
+| [`readWriteSplitting`](./using-plugins/UsingTheReadWriteSplittingPlugin.md) | ✅ | ✅ | ✅ | ✅ |
+| [`gdbReadWriteSplitting`](./using-plugins/UsingTheGdbReadWriteSplittingPlugin.md) | ✅ | ✅ | ✅ | ✅ |
+| [`auroraConnectionTracker`](./UsingTheAuroraConnectionTrackerPlugin.md) | ✅ | ✅ | ✅ | ✅ |
+| [`initialConnection`](./using-plugins/UsingTheAuroraInitialConnectionStrategyPlugin.md) role verification | ✅ | ✅ | ✅ [^6] | ❌ [^7] |
+| [`limitless`](./using-plugins/UsingTheLimitlessConnectionPlugin.md) | ❌ [^3] | ❌ [^3] | ❌ [^3] | ❌ [^3] |
+| [`bg`](./using-plugins/UsingTheBlueGreenPlugin.md) | ✅ | ✅ | ✅ | ✅ |
+| `connectTime` / `executionTime` / `dev` | ✅ [^5] | ✅ [^5] | ✅ [^5] | ✅ [^5] |
+| Stale DNS correction, within `failover` | ✅ | ❌ [^8] | ❌ [^8] | ❌ [^8] |
+| [Internal connection pooling](./using-plugins/UsingTheReadWriteSplittingPlugin.md#internal-connection-pooling) | ✅ | ✅ | ✅ | ✅ |
 
 ## RDS Multi-AZ, RDS Proxy and Limitless Endpoints
 
 | Plugin codes / Database URL types | RDS Multi-AZ DB Cluster Writer Endpoint | RDS Multi-AZ DB Cluster Reader Endpoint | RDS Proxy Endpoint | DB Shard Group Endpoint (Aurora Limitless) |
 |-----------------------------------|:---------------------------------------:|:---------------------------------------:|:------------------:|:------------------------------------------:|
-| [`customEndpoint`](./using-plugins/UsingTheCustomEndpointPlugin.md) | ✗ [^1] | ✗ [^1] | ✗ [^1] | ✗ [^1] |
-| [`efm`](./using-plugins/UsingTheHostMonitoringPlugin.md) | ✓ | ✓ | ✗ [^9] | ✗ [^9] |
-| [`failover`](./using-plugins/UsingTheFailoverPlugin.md) | ✓ | ✓ | ✗ [^10] | ✗ [^11] |
-| [`gdbFailover`](./using-plugins/UsingTheGdbFailoverPlugin.md) | ✓ | ✓ | ✗ [^10] | ✗ [^11] |
-| [`iam`](./using-plugins/UsingTheIamAuthenticationPlugin.md) / [`awsSecretsManager`](./using-plugins/UsingTheAwsSecretsManagerPlugin.md) / [`federatedAuth`](./using-plugins/UsingTheFederatedAuthPlugin.md) / [`okta`](./using-plugins/UsingTheOktaAuthPlugin.md) | ✓ [^2] | ✓ [^2] | ✓ | ✓ |
-| [`readWriteSplitting`](./using-plugins/UsingTheReadWriteSplittingPlugin.md) | ✓ | ✓ | ✗ [^12] | ✗ [^11] |
-| [`gdbReadWriteSplitting`](./using-plugins/UsingTheGdbReadWriteSplittingPlugin.md) | ✓ | ✓ | ✗ [^12] | ✗ [^11] |
-| [`auroraConnectionTracker`](./UsingTheAuroraConnectionTrackerPlugin.md) | ✓ | ✓ | ✓ | ✓ [^22] |
-| [`initialConnection`](./using-plugins/UsingTheAuroraInitialConnectionStrategyPlugin.md) role verification | ✓ | ✓ | ✗ [^7] | ✗ [^7] |
-| [`limitless`](./using-plugins/UsingTheLimitlessConnectionPlugin.md) | ✗ [^3] | ✗ [^3] | ✗ [^3] | ✓ |
-| [`bg`](./using-plugins/UsingTheBlueGreenPlugin.md) | ✗ [^13] | ✗ [^13] | ✓ | ✗ [^14] |
-| `connectTime` / `executionTime` / `dev` | ✓ [^5] | ✓ [^5] | ✓ [^5] | ✓ [^5] |
-| Stale DNS correction, within `failover` | ✓ | ✗ [^8] | ✗ [^8] | ✗ [^8] |
-| [Internal connection pooling](./using-plugins/UsingTheReadWriteSplittingPlugin.md#internal-connection-pooling) | ✓ | ✓ | ✓ | ✓ |
+| [`customEndpoint`](./using-plugins/UsingTheCustomEndpointPlugin.md) | ❌ [^1] | ❌ [^1] | ❌ [^1] | ❌ [^1] |
+| [`efm`](./using-plugins/UsingTheHostMonitoringPlugin.md) | ✅ | ✅ | ❌ [^9] | ❌ [^9] |
+| [`failover`](./using-plugins/UsingTheFailoverPlugin.md) | ✅ | ✅ | ❌ [^10] | ❌ [^11] |
+| [`gdbFailover`](./using-plugins/UsingTheGdbFailoverPlugin.md) | ✅ | ✅ | ❌ [^10] | ❌ [^11] |
+| [`iam`](./using-plugins/UsingTheIamAuthenticationPlugin.md) / [`awsSecretsManager`](./using-plugins/UsingTheAwsSecretsManagerPlugin.md) / [`federatedAuth`](./using-plugins/UsingTheFederatedAuthPlugin.md) / [`okta`](./using-plugins/UsingTheOktaAuthPlugin.md) | ✅ [^2] | ✅ [^2] | ✅ | ✅ |
+| [`readWriteSplitting`](./using-plugins/UsingTheReadWriteSplittingPlugin.md) | ✅ | ✅ | ❌ [^12] | ❌ [^11] |
+| [`gdbReadWriteSplitting`](./using-plugins/UsingTheGdbReadWriteSplittingPlugin.md) | ✅ | ✅ | ❌ [^12] | ❌ [^11] |
+| [`auroraConnectionTracker`](./UsingTheAuroraConnectionTrackerPlugin.md) | ✅ | ✅ | ✅ | ✅ [^22] |
+| [`initialConnection`](./using-plugins/UsingTheAuroraInitialConnectionStrategyPlugin.md) role verification | ✅ | ✅ | ❌ [^7] | ❌ [^7] |
+| [`limitless`](./using-plugins/UsingTheLimitlessConnectionPlugin.md) | ❌ [^3] | ❌ [^3] | ❌ [^3] | ✅ |
+| [`bg`](./using-plugins/UsingTheBlueGreenPlugin.md) | ❌ [^13] | ❌ [^13] | ✅ | ❌ [^14] |
+| `connectTime` / `executionTime` / `dev` | ✅ [^5] | ✅ [^5] | ✅ [^5] | ✅ [^5] |
+| Stale DNS correction, within `failover` | ✅ | ❌ [^8] | ❌ [^8] | ❌ [^8] |
+| [Internal connection pooling](./using-plugins/UsingTheReadWriteSplittingPlugin.md#internal-connection-pooling) | ✅ | ✅ | ✅ | ✅ |
 
 ## IP Address and User Custom Domain
 
 | Plugin codes / Database URL types | IP address | User custom domain (CNAME alias) |
 |-----------------------------------|:----------:|:--------------------------------:|
-| [`customEndpoint`](./using-plugins/UsingTheCustomEndpointPlugin.md) | ✗ [^1] | ✗ [^1] |
-| [`efm`](./using-plugins/UsingTheHostMonitoringPlugin.md) | ✗ [^15] | ✗ [^15] |
-| [`failover`](./using-plugins/UsingTheFailoverPlugin.md) | ✓ [^16] | ✓ [^16] |
-| [`gdbFailover`](./using-plugins/UsingTheGdbFailoverPlugin.md) | ✓ [^16] | ✓ [^16] |
-| [`iam`](./using-plugins/UsingTheIamAuthenticationPlugin.md) / [`awsSecretsManager`](./using-plugins/UsingTheAwsSecretsManagerPlugin.md) / [`federatedAuth`](./using-plugins/UsingTheFederatedAuthPlugin.md) / [`okta`](./using-plugins/UsingTheOktaAuthPlugin.md) | ✓ [^17] | ✓ [^17] |
-| [`readWriteSplitting`](./using-plugins/UsingTheReadWriteSplittingPlugin.md) | ✓ [^16] | ✓ [^16] |
-| [`gdbReadWriteSplitting`](./using-plugins/UsingTheGdbReadWriteSplittingPlugin.md) | ✓ [^16] | ✓ [^16] |
-| [`auroraConnectionTracker`](./UsingTheAuroraConnectionTrackerPlugin.md) | ✓ | ✓ |
-| [`initialConnection`](./using-plugins/UsingTheAuroraInitialConnectionStrategyPlugin.md) role verification | ✓ [^18] | ✓ [^18] |
-| [`limitless`](./using-plugins/UsingTheLimitlessConnectionPlugin.md) | ✗ [^3] | ✗ [^3] |
-| [`bg`](./using-plugins/UsingTheBlueGreenPlugin.md) | ✗ [^19] | ✗ [^19] |
-| `connectTime` / `executionTime` / `dev` | ✓ [^5] | ✓ [^5] |
-| Stale DNS correction, within `failover` | ✗ [^20] | ✗ [^20] |
-| [Internal connection pooling](./using-plugins/UsingTheReadWriteSplittingPlugin.md#internal-connection-pooling) | ✗ [^21] | ✗ [^21] |
+| [`customEndpoint`](./using-plugins/UsingTheCustomEndpointPlugin.md) | ❌ [^1] | ❌ [^1] |
+| [`efm`](./using-plugins/UsingTheHostMonitoringPlugin.md) | ❌ [^15] | ❌ [^15] |
+| [`failover`](./using-plugins/UsingTheFailoverPlugin.md) | ✅ [^16] | ✅ [^16] |
+| [`gdbFailover`](./using-plugins/UsingTheGdbFailoverPlugin.md) | ✅ [^16] | ✅ [^16] |
+| [`iam`](./using-plugins/UsingTheIamAuthenticationPlugin.md) / [`awsSecretsManager`](./using-plugins/UsingTheAwsSecretsManagerPlugin.md) / [`federatedAuth`](./using-plugins/UsingTheFederatedAuthPlugin.md) / [`okta`](./using-plugins/UsingTheOktaAuthPlugin.md) | ✅ [^17] | ✅ [^17] |
+| [`readWriteSplitting`](./using-plugins/UsingTheReadWriteSplittingPlugin.md) | ✅ [^16] | ✅ [^16] |
+| [`gdbReadWriteSplitting`](./using-plugins/UsingTheGdbReadWriteSplittingPlugin.md) | ✅ [^16] | ✅ [^16] |
+| [`auroraConnectionTracker`](./UsingTheAuroraConnectionTrackerPlugin.md) | ✅ | ✅ |
+| [`initialConnection`](./using-plugins/UsingTheAuroraInitialConnectionStrategyPlugin.md) role verification | ✅ [^18] | ✅ [^18] |
+| [`limitless`](./using-plugins/UsingTheLimitlessConnectionPlugin.md) | ❌ [^3] | ❌ [^3] |
+| [`bg`](./using-plugins/UsingTheBlueGreenPlugin.md) | ❌ [^19] | ❌ [^19] |
+| `connectTime` / `executionTime` / `dev` | ✅ [^5] | ✅ [^5] |
+| Stale DNS correction, within `failover` | ❌ [^20] | ❌ [^20] |
+| [Internal connection pooling](./using-plugins/UsingTheReadWriteSplittingPlugin.md#internal-connection-pooling) | ❌ [^21] | ❌ [^21] |
 
 ## Connecting Through a Custom Domain
 
@@ -100,7 +109,7 @@ A CNAME in front of a cluster endpoint is supported for failover. Set [`clusterI
 Make sure the pattern is an instance template and not a cluster one. Instance endpoints have no `cluster-` part, so `?.cluster-XYZ.us-east-1.rds.amazonaws.com` builds hostnames that never resolve. Use `?.XYZ.us-east-1.rds.amazonaws.com` when the instances are still reachable at their RDS endpoints, or `?.my-company.com` when the instances are behind your own DNS as well.
 
 > [!NOTE]
-> `clusterInstanceHostPattern` supplies the instance endpoint template only. No endpoint-recognition check consults it, so setting it does not make the ✗ cells above start working.
+> `clusterInstanceHostPattern` supplies the instance endpoint template only. No endpoint-recognition check consults it, so setting it does not make the ❌ cells above start working.
 
 To have an out-of-date endpoint replaced behind a CNAME, enable `initialConnection` and set `verifyInitialConnectionType`. Stale DNS correction does not cover this case, so without those two the endpoint is not corrected and the first failure on that connection triggers normal failover instead.
 
