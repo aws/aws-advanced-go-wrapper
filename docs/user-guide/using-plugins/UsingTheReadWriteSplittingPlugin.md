@@ -8,10 +8,10 @@ The Read/Write Splitting Plugin is not loaded by default. To load the plugin, in
 
 ### Supplying the connection string
 
-When using the Read/Write Splitting Plugin against Aurora clusters, you do not have to supply multiple instance URLs in the connection string. Instead, supply only the URL for the initial connection. The Read/Write Splitting Plugin will automatically discover the URLs for the other instances in the cluster and will use this info to switch between the writer/reader when `awsctx.setReadOnly` is set.
+When using the Read/Write Splitting Plugin against Aurora clusters, you do not have to supply multiple instance URLs in the connection string. Instead, supply only the URL for the initial connection. The Read/Write Splitting Plugin will automatically discover the URLs for the other instances in the cluster and will use this info to switch between the writer/reader when `awsctx.SetReadOnly` is set.
 
 > [!IMPORTANT]
-> You must set the [`clusterInstanceHostPattern`](./UsingTheFailoverPlugin.md#failover-parameters) if you are connecting using an IP address or custom domain.
+> You must set the [`clusterInstanceHostPattern`](./UsingTheFailoverPlugin.md#failover-parameters) if you are connecting using an IP address or custom domain. Internal connection pooling is not available for those endpoint forms. For more information, see [Endpoint Compatibility](../CompatibilityEndpoints.md).
 
 ### Using the Read/Write Splitting Plugin
 
@@ -182,7 +182,7 @@ Users can use `sql.DB` as is if they do not pass in `awsctx.SetReadOnly`.
 dsn := "host=myhost user=myuser password=mypassword port=5432 plugins=readWriteSplitting"
 db, _ := sql.Open("awssql-pgx", dsn)
 
-// context can be anything as long as it doesn't contain awsctx.setReadOnly
+// context can be anything as long as it doesn't contain awsctx.SetReadOnly
 db.ExecContext(context.TODO(), "SELECT 1") 
 db.QueryContext(context.TODO(), "SELECT @my_var")
 
@@ -215,11 +215,11 @@ The Read/Write Splitting Plugin is not currently supported for non-Aurora cluste
 > [!WARNING]
 > If internal connection pools are enabled, database passwords may not be verified with every connection request. The initial connection request for each database instance in the cluster will verify the password, but subsequent requests may return a cached pool connection without re-verifying the password. This behavior is inherent to the nature of connection pools in general and not a bug with the wrapper. `<name-of-ConnectionProvider>.ReleaseResources()` can be called to close all pools and remove all cached pool connections. See [Internal Connection Pool Password Warning Example for Postgres](../../../examples/aws_internal_connection_pool_password_warning_postgresql_example.go) and [Internal Connection Pool Password Warning Example for MySQL](../../../examples/aws_internal_connection_pool_password_warning_mysql_example.go)
 
-When `awsctx.setReadOnly=true` is first passed in, the read/write plugin will internally open a new physical connection to a reader. After this first call, the physical reader connection will be cached. Future calls passing `awsctx.setReadOnly=true` object will not require opening a new physical connection, as this was done the first time `awsctx.setReadOnly=true` was passed in.
+When `awsctx.SetReadOnly=true` is first passed in, the read/write plugin will internally open a new physical connection to a reader. After this first call, the physical reader connection will be cached. Future calls passing `awsctx.SetReadOnly=true` object will not require opening a new physical connection, as this was done the first time `awsctx.SetReadOnly=true` was passed in.
 
 Due to the abstraction of go's `database/sql` library, many users may often find themselves executing queries with the `sql.DB` object. `sql.DB` is a high-level connection pool, users do not have control of which `sql.Conn` is being used when running queries using methods on this object (such as`db.ExecContext`). That is, if a user were to run `db.ExecContext` multiple times, each of those times could result in creating a new connection object and making a new physical connection to the reader.
 
-If your application uses `sql.DB`, then you can enable internal connection pooling to improve performance. When enabled, the wrapper driver will maintain an internal connection pool for each instance in the cluster. This allows the read/write splitting plugin to reuse connections that were established by queries using `awsctx.setReadOnly=true`.
+If your application uses `sql.DB`, then you can enable internal connection pooling to improve performance. When enabled, the wrapper driver will maintain an internal connection pool for each instance in the cluster. This allows the read/write splitting plugin to reuse connections that were established by queries using `awsctx.SetReadOnly=true`.
 
 > [!NOTE]
 > Initial connections to a cluster URL will not be pooled. The driver does not pool cluster URLs because it can be problematic to pool a URL that resolves to different instances over time. The main benefit of internal connection pools is when setReadOnly is called. When setReadOnly is called (regardless of the initial connection URL), an internal pool will be created for the writer/reader that the plugin switches to and connections for that instance can be reused in the future.
@@ -278,9 +278,9 @@ Please see [Internal Connection Pooling Postgres Example](../../../examples/read
 
 2. Set the connection provider by running `driver_infrastructure.SetCustomConnectionProvider(provider)`.
 
-3. By default, the read/write plugin randomly selects a reader instance the first time a query runs with a context containing a key-value pair of `awsctx.setReadOnly` to true. If you would like the plugin to select a reader based on a different selection strategy, please see the [Reader Selection](#reader-selection) section for more information.
+3. By default, the read/write plugin randomly selects a reader instance the first time a query runs with a context containing a key-value pair of `awsctx.SetReadOnly` to true. If you would like the plugin to select a reader based on a different selection strategy, please see the [Reader Selection](#reader-selection) section for more information.
 
-4. Continue as normal: create connections and use them as needed. Signal using `awsctx.setReadOnly` whether you want each operation to be on a reader or writer instance. Remember that not providing this value is equivalent to setting `awsctx.setReadOnly` to false.
+4. Continue as normal: create connections and use them as needed. Signal using `awsctx.SetReadOnly` whether you want each operation to be on a reader or writer instance. Remember that not providing this value is equivalent to setting `awsctx.SetReadOnly` to false.
 
 5. When you are finished using all connections, call `driver.ClearCaches()`, and then `provider.ReleaseResources()`.
 

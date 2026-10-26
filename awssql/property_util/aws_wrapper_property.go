@@ -194,6 +194,8 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	CLUSTER_TOPOLOGY_CONNECT_TIMEOUT_MS.Name:              true,
 	CLUSTER_TOPOLOGY_SOCKET_TIMEOUT_MS.Name:               true,
 	WEIGHTED_RANDOM_HOST_WEIGHT_PAIRS.Name:                true,
+	ROUND_ROBIN_HOST_WEIGHT_PAIRS.Name:                    true,
+	ROUND_ROBIN_DEFAULT_WEIGHT.Name:                       true,
 	IAM_TOKEN_EXPIRATION_SEC.Name:                         true,
 	IDP_USERNAME.Name:                                     true,
 	IDP_PASSWORD.Name:                                     true,
@@ -219,6 +221,7 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	LIMITLESS_GET_ROUTER_RETRY_INTERVAL_MS.Name:           true,
 	LIMITLESS_MAX_CONN_RETRIES.Name:                       true,
 	LIMITLESS_ROUTER_QUERY_TIMEOUT_MS.Name:                true,
+	LIMITLESS_USE_SHARD_GROUP_URL.Name:                    true,
 	TRANSFER_SESSION_STATE_ON_SWITCH.Name:                 true,
 	RESET_SESSION_STATE_ON_CLOSE.Name:                     true,
 	ROLLBACK_ON_SWITCH.Name:                               true,
@@ -847,9 +850,10 @@ var BG_SUSPEND_NEW_BLUE_CONNECTIONS = AwsWrapperProperty{
 }
 
 var ROUND_ROBIN_HOST_WEIGHT_PAIRS = AwsWrapperProperty{
-	Name:         "roundRobinHostWeightPairs",
-	description:  "Comma separated list of database host-weight pairs in the format of `<host>:<weight>`.",
-	defaultValue: "",
+	Name:                "roundRobinHostWeightPairs",
+	description:         "Comma separated list of database host-weight pairs in the format of `<host>:<weight>`.",
+	defaultValue:        "",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 
 var ROUND_ROBIN_DEFAULT_WEIGHT = AwsWrapperProperty{

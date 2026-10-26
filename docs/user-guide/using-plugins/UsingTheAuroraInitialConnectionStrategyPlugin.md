@@ -18,4 +18,26 @@ The following properties can be used to configure the Aurora Initial Connection 
 | `readerInitialConnectionHostSelectorStrategy` | String  |    No    | The strategy that will be used to select a new reader host when opening a new connection. <br><br> For more information on the available reader selection strategies, see this [table](../ReaderSelectionStrategies.md). | `roundRobin`       | `random`      |
 | `initialConnectionRetryTimeoutMs`                | Integer |    No    | The maximum allowed time for retries when opening a connection in milliseconds.                                                                                                                                          | `40000`            | `30000`       |
 | `initialConnectionRetryIntervalMs`               | Integer |    No    | The time between retries when opening a connection in milliseconds.                                                                                                                                                      | `2000`             | `1000`        |
-| `verifyInitialConnectionType`                 | String  |    No    | Force to verify an opened connection to be either `writer` or `reader`.                                                                                                                                                  | `reader`           | ``            |
+| `verifyInitialConnectionType`                 | String  |    No    | Verify that an opened connection is to a `writer` or to a `reader`, and replace it with one of that role if it is not. Set it to `none`, or leave it unset, to perform no role verification. | `reader`           | ``            |
+
+## Supported Endpoints
+
+The plugin infers the role it should verify from the initial connection host. A cluster endpoint and a
+read-only cluster endpoint name their role, so the plugin verifies them without any extra
+configuration. An Aurora cluster custom endpoint, an IP address and a custom domain do not provide any information about the connection role, so they are verified only when you set `verifyInitialConnectionType`.
+
+To connect through a CNAME in front of a cluster endpoint and still have the out-of-date endpoint
+replaced, set both parameters:
+
+```
+host=db.example.com clusterInstanceHostPattern=?.example.com verifyInitialConnectionType=writer
+```
+
+Any value other than `writer`, `reader` and `none` is treated as unset, so no verification is
+performed.
+
+> [!WARNING]
+> If you set `verifyInitialConnectionType` and verification does not succeed within
+> `initialConnectionRetryTimeoutMs`, the connection fails with an error rather than returning a
+> connection of the role you excluded. Where the role comes from the endpoint name instead of this
+> parameter, an exhausted timeout still returns the connection opened through the original endpoint.

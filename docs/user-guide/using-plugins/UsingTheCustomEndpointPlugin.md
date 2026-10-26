@@ -84,9 +84,11 @@ the custom endpoint, as reported by `rds:DescribeDBClusterEndpoints`. This cover
 read/write splitting.
 
 > [!NOTE]
-> `auroraInitialConnectionStrategy` is **not** covered. It engages only for a cluster endpoint
-> (`.cluster-`), not a custom endpoint (`.cluster-custom-`), so it does not resolve an instance behind a
-> custom endpoint at all - filtered or otherwise.
+> `initialConnection` is **not** covered by default. By default it engages only for a cluster endpoint
+> (`.cluster-`). To enable it for a custom endpoint (`.cluster-custom-`), set `verifyInitialConnectionType`.
+> Note that `verifyInitialConnectionType=writer` picks the writer from the unfiltered topology, so it can land
+> on a writer the endpoint excludes; `reader` selects from the filtered list and stays inside the
+> endpoint. For more information, see [Endpoint Compatibility](../CompatibilityEndpoints.md).
 
 The member list comes from the endpoint's own configuration, in one of two forms:
 

@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
+## [Unreleased]
+### :bug: Fixed
+* `verifyInitialConnectionType` had no effect on an IP address or a custom domain, the two endpoint forms that cannot imply a role from their name, so the [Aurora Initial Connection Strategy Plugin](../docs/user-guide/using-plugins/UsingTheAuroraInitialConnectionStrategyPlugin.md) could not replace an out-of-date endpoint behind a CNAME ([Issue #588](https://github.com/aws/aws-advanced-go-wrapper/issues/588)).
+* `roundRobinHostWeightPairs` and `roundRobinDefaultWeight` were forwarded into the target driver's DSN instead of being consumed by the wrapper, so setting either one documented in [Reader Selection Strategies](../docs/user-guide/ReaderSelectionStrategies.md) made the database reject the connection.
+
+### :crab: Changed
+* `verifyInitialConnectionType` now logs a warning on an unrecognized value, which is still treated as unset, and accepts `none` to decline verification on any endpoint. See [Endpoint Compatibility](../docs/user-guide/CompatibilityEndpoints.md).
+* An initial connection whose role cannot be verified within `initialConnectionRetryTimeoutMs` now fails instead of returning the unverified connection, when `verifyInitialConnectionType` is set. Where the role is implied by the endpoint name rather than by that parameter, the connection opened through the original endpoint is still returned, as before.
+* `verifyInitialConnectionType` on an IP address or custom domain requires `clusterInstanceHostPattern`, and fails immediately if it is unset rather than retrying for the full timeout.
+
 ## [2.1.1] - 2026-10-09
 ### :crab: Changed
 * Raise the minimum Go version to 1.26.
