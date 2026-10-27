@@ -128,7 +128,7 @@ Refer to [this diagram](../images/failover_behavior.png) about AWS Advanced Go W
 URLs and more details and examples.
 
 > [!NOTE]
-> This parameter only supplies the instance endpoint template used to construct the cluster topology. The Aurora Initial Connection Strategy plugin does not use this paramater and won't be able to verify the connection role when connection via an IP address or a custom domain. See [Endpoint Compatibility](./CompatibilityEndpoints.md).
+> This parameter only supplies the instance endpoint template used to construct the cluster topology. The Aurora Initial Connection Strategy plugin does not use this parameter and won't be able to verify the connection role when connecting via an IP address or a custom domain without setting additional parameters. See [Endpoint Compatibility](./CompatibilityEndpoints.md).
 
 ## Plugins
 

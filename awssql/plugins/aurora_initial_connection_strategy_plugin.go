@@ -19,7 +19,6 @@ package plugins
 import (
 	"database/sql/driver"
 	"log/slog"
-	"sort"
 	"strings"
 	"time"
 
@@ -46,7 +45,11 @@ func (factory AuroraInitialConnectionStrategyPluginFactory) GetInstance(
 	return NewAuroraInitialConnectionStrategyPlugin(servicesContainer, props)
 }
 
-const noVerification = "none"
+const (
+	noVerification                       = "none"
+	acceptedVerifyInitialConnectionTypes = string(host_info_util.WRITER) + ", " +
+		string(host_info_util.READER) + ", " + noVerification
+)
 
 // "none" and the empty default both mean no verification.
 var verifyInitialConnectionTypeValues = map[string]host_info_util.HostRole{
@@ -60,16 +63,9 @@ var verifyInitialConnectionTypeValues = map[string]host_info_util.HostRole{
 func verifiedOpenedConnectionTypeFromString(value string) host_info_util.HostRole {
 	role, ok := verifyInitialConnectionTypeValues[strings.ToLower(strings.TrimSpace(value))]
 	if !ok {
-		accepted := make([]string, 0, len(verifyInitialConnectionTypeValues))
-		for v := range verifyInitialConnectionTypeValues {
-			if v != "" {
-				accepted = append(accepted, v)
-			}
-		}
-		sort.Strings(accepted)
 		slog.Warn(error_util.GetMessage(
 			"AuroraInitialConnectionStrategyPlugin.invalidVerifyInitialConnectionType",
-			value, property_util.VERIFY_INITIAL_CONNECTION_TYPE.Name, strings.Join(accepted, ", ")))
+			value, property_util.VERIFY_INITIAL_CONNECTION_TYPE.Name, acceptedVerifyInitialConnectionTypes))
 		return host_info_util.UNKNOWN
 	}
 	return role
@@ -273,7 +269,7 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) getVerifiedWriterConnection
 	return plugin.handleRetryTimeout(host_info_util.WRITER, isInitialConnection, props, connectFunc)
 }
 
-// Error out if failed to get a verified connection within the retry windonw, instead of falling back to connectFunc and returning a unverified connection.
+// Error out if failed to get a verified connection within the retry window, instead of falling back to connectFunc and returning an unverified connection.
 func (plugin *AuroraInitialConnectionStrategyPlugin) handleRetryTimeout(
 	role host_info_util.HostRole,
 	isInitialConnection bool,
@@ -442,9 +438,13 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) getReader(props *utils.RWMa
 			hostCandidates = plugin.servicesContainer.GetPluginService().GetHosts()
 		}
 
-		// Propagate: a nil host reads as "topology is outdated" at the call site, which would retry
-		// until the window closed and then report a timeout instead of the real cause.
-		return plugin.servicesContainer.GetPluginService().GetHostInfoByStrategy(host_info_util.READER, strategy, hostCandidates)
+		host, err := plugin.servicesContainer.GetPluginService().GetHostInfoByStrategy(host_info_util.READER, strategy, hostCandidates)
+		if err != nil {
+			// No reader was found. Fallback to a writer.
+			slog.Debug(error_util.GetMessage("AuroraInitialConnectionStrategyPlugin.errorGettingConnection", err))
+			return nil, nil
+		}
+		return host, nil
 	}
 	return nil, error_util.NewUnsupportedStrategyError(error_util.GetMessage("AuroraInitialConnectionStrategyPlugin.unsupportedStrategy", strategy))
 }
