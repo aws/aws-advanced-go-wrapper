@@ -53,6 +53,7 @@ type PluginServiceImpl struct {
 	isInTransaction     atomic.Bool
 	currentTx           driver.Tx
 	sessionStateService driver_infrastructure.SessionStateService
+	lastSqlAnalysis     atomic.Pointer[utils.SqlStatementAnalysis]
 }
 
 func NewPluginServiceImpl(
@@ -604,6 +605,7 @@ func (p *PluginServiceImpl) UpdateState(sql string, methodArgs ...any) {
 	var transactionIsolation driver_infrastructure.TransactionIsolationLevel
 
 	statements := utils.GetSeparateSqlStatements(query)
+	p.lastSqlAnalysis.Store(utils.AnalyzeStatements(query, statements))
 	for i := len(statements) - 1; i >= 0 && !updateAutoCommitOk && !updateReadOnlyOk && !updateSchemaOk && !updateCatalogOk && !updateTransactionIsolationOk; i-- {
 		autoCommit, updateAutoCommitOk = p.dialect.DoesStatementSetAutoCommit(statements[i])
 		readOnly, updateReadOnlyOk = p.dialect.DoesStatementSetReadOnly(statements[i])
@@ -628,6 +630,10 @@ func (p *PluginServiceImpl) UpdateState(sql string, methodArgs ...any) {
 		p.sessionStateService.SetupPristineTransactionIsolation()
 		p.sessionStateService.SetTransactionIsolation(transactionIsolation)
 	}, updateTransactionIsolationOk)
+}
+
+func (p *PluginServiceImpl) GetLastSqlAnalysis() *utils.SqlStatementAnalysis {
+	return p.lastSqlAnalysis.Load()
 }
 
 func (p *PluginServiceImpl) ReleaseResources() {

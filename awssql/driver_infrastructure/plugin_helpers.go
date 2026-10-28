@@ -87,6 +87,7 @@ type PluginService interface {
 	GetTelemetryFactory() telemetry.TelemetryFactory
 	SetTelemetryContext(ctx context.Context)
 	UpdateState(sql string, methodArgs ...any)
+	GetLastSqlAnalysis() *utils.SqlStatementAnalysis
 	IsPluginInUse(pluginName string) bool
 	ResetSession()
 	CreatePartialPluginService() PluginService
