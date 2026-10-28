@@ -45,14 +45,30 @@ func (factory AuroraInitialConnectionStrategyPluginFactory) GetInstance(
 	return NewAuroraInitialConnectionStrategyPlugin(servicesContainer, props)
 }
 
+const (
+	noVerification                       = "none"
+	acceptedVerifyInitialConnectionTypes = string(host_info_util.WRITER) + ", " +
+		string(host_info_util.READER) + ", " + noVerification
+)
+
+// "none" and the empty default both mean no verification.
+var verifyInitialConnectionTypeValues = map[string]host_info_util.HostRole{
+	string(host_info_util.WRITER): host_info_util.WRITER,
+	string(host_info_util.READER): host_info_util.READER,
+	noVerification:                host_info_util.UNKNOWN,
+	"":                            host_info_util.UNKNOWN,
+}
+
+// An unrecognized value is logged and treated as unset, so it performs no verification.
 func verifiedOpenedConnectionTypeFromString(value string) host_info_util.HostRole {
-	if strings.ToLower(strings.TrimSpace(value)) == string(host_info_util.WRITER) {
-		return host_info_util.WRITER
-	} else if strings.ToLower(strings.TrimSpace(value)) == string(host_info_util.READER) {
-		return host_info_util.READER
-	} else {
+	role, ok := verifyInitialConnectionTypeValues[strings.ToLower(strings.TrimSpace(value))]
+	if !ok {
+		slog.Warn(error_util.GetMessage(
+			"AuroraInitialConnectionStrategyPlugin.invalidVerifyInitialConnectionType",
+			value, property_util.VERIFY_INITIAL_CONNECTION_TYPE.Name, acceptedVerifyInitialConnectionTypes))
 		return host_info_util.UNKNOWN
 	}
+	return role
 }
 
 type AuroraInitialConnectionStrategyPlugin struct {
@@ -61,8 +77,10 @@ type AuroraInitialConnectionStrategyPlugin struct {
 	hostListProviderService  driver_infrastructure.HostListProviderService
 	props                    *utils.RWMap[string, string]
 	verifyOpenConnectionType host_info_util.HostRole
-	retryDelayMs             int
-	retryTimeoutMs           int
+	// An unset property leaves the role implied by a cluster endpoint in force. "none" overrides it.
+	verificationDeclined bool
+	retryDelayMs         int
+	retryTimeoutMs       int
 }
 
 func NewAuroraInitialConnectionStrategyPlugin(
@@ -76,14 +94,15 @@ func NewAuroraInitialConnectionStrategyPlugin(
 	if err != nil {
 		return nil, err
 	}
+	rawVerifyType := property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.VERIFY_INITIAL_CONNECTION_TYPE)
 
 	return &AuroraInitialConnectionStrategyPlugin{
-		servicesContainer: servicesContainer,
-		props:             props,
-		verifyOpenConnectionType: verifiedOpenedConnectionTypeFromString(
-			property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.VERIFY_INITIAL_CONNECTION_TYPE)),
-		retryDelayMs:   retryDelayMs,
-		retryTimeoutMs: retryTimeoutMs,
+		servicesContainer:        servicesContainer,
+		props:                    props,
+		verifyOpenConnectionType: verifiedOpenedConnectionTypeFromString(rawVerifyType),
+		verificationDeclined:     strings.EqualFold(strings.TrimSpace(rawVerifyType), noVerification),
+		retryDelayMs:             retryDelayMs,
+		retryTimeoutMs:           retryTimeoutMs,
 	}, nil
 }
 
@@ -106,44 +125,68 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) InitHostProvider(
 	return initHostProviderFunc()
 }
 
+// roleToVerify returns the role an initial connection must be verified against, or UNKNOWN when no
+// verification applies. The cluster types imply a role from the endpoint name; OTHER and IP_ADDRESS
+// can only get one from verifyInitialConnectionType.
+//
+// Instance, proxy and shard-group endpoints are excluded because verification here always replaces
+// the host, which would substitute away a named instance or bypass a proxy.
+func (plugin *AuroraInitialConnectionStrategyPlugin) roleToVerify(
+	urlType utils.RdsUrlType,
+	isInitialConnection bool) host_info_util.HostRole {
+	if plugin.verificationDeclined {
+		return host_info_util.UNKNOWN
+	}
+
+	switch urlType {
+	case utils.RDS_WRITER_CLUSTER, utils.RDS_GLOBAL_WRITER_CLUSTER:
+		return host_info_util.WRITER
+	case utils.RDS_READER_CLUSTER:
+		if isInitialConnection && plugin.verifyOpenConnectionType == host_info_util.WRITER {
+			return host_info_util.WRITER
+		}
+		return host_info_util.READER
+	case utils.RDS_CUSTOM_CLUSTER, utils.OTHER, utils.IP_ADDRESS:
+		if isInitialConnection {
+			return plugin.verifyOpenConnectionType
+		}
+		return host_info_util.UNKNOWN
+	default:
+		return host_info_util.UNKNOWN
+	}
+}
+
 func (plugin *AuroraInitialConnectionStrategyPlugin) Connect(
 	hostInfo *host_info_util.HostInfo,
 	props *utils.RWMap[string, string],
 	isInitialConnection bool,
 	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
 	urlType := utils.IdentifyRdsUrlType(hostInfo.GetHost())
-	if !urlType.IsRdsCluster {
-		// It's not a cluster endpoint. Continue with a normal workflow.
+	role := plugin.roleToVerify(urlType, isInitialConnection)
+
+	// Fail fast if we don't have CLUSTER_INSTANCE_HOST_PATTERN SET for IP address or custom domains since we can't construct proper topology information.
+	if role != host_info_util.UNKNOWN && (urlType == utils.OTHER || urlType == utils.IP_ADDRESS) &&
+		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.CLUSTER_INSTANCE_HOST_PATTERN) == "" {
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage(
+			"AuroraInitialConnectionStrategyPlugin.hostPatternRequired",
+			property_util.VERIFY_INITIAL_CONNECTION_TYPE.Name,
+			property_util.CLUSTER_INSTANCE_HOST_PATTERN.Name,
+			hostInfo.GetHost()))
+	}
+
+	switch role {
+	case host_info_util.WRITER:
+		return plugin.getVerifiedWriterConnection(props, isInitialConnection, connectFunc)
+	case host_info_util.READER:
+		return plugin.getVerifiedReaderConnection(urlType, hostInfo, props, isInitialConnection, connectFunc)
+	default:
+		if isInitialConnection && plugin.verifyOpenConnectionType != host_info_util.UNKNOWN {
+			slog.Warn(error_util.GetMessage(
+				"AuroraInitialConnectionStrategyPlugin.roleVerificationUnsupportedForEndpoint",
+				property_util.VERIFY_INITIAL_CONNECTION_TYPE.Name, hostInfo.GetHost()))
+		}
 		return connectFunc(props)
 	}
-
-	if urlType == utils.RDS_WRITER_CLUSTER || urlType == utils.RDS_GLOBAL_WRITER_CLUSTER ||
-		isInitialConnection && plugin.verifyOpenConnectionType == host_info_util.WRITER {
-		writerCandidateConn, err := plugin.getVerifiedWriterConnection(props, isInitialConnection, connectFunc)
-		if err != nil {
-			return nil, err
-		}
-		if writerCandidateConn == nil {
-			// Can't get writer connection. Continue with a normal workflow.
-			return connectFunc(props)
-		}
-		return writerCandidateConn, nil
-	}
-
-	if urlType == utils.RDS_READER_CLUSTER ||
-		isInitialConnection && plugin.verifyOpenConnectionType == host_info_util.READER {
-		readerCandidateConn, err := plugin.getVerifiedReaderConnection(urlType, hostInfo, props, isInitialConnection, connectFunc)
-		if err != nil {
-			return nil, err
-		}
-		if readerCandidateConn == nil {
-			// Can't get reader connection. Continue with a normal workflow.
-			return connectFunc(props)
-		}
-		return readerCandidateConn, nil
-	}
-
-	return connectFunc(props)
 }
 
 func (plugin *AuroraInitialConnectionStrategyPlugin) getVerifiedWriterConnection(
@@ -185,7 +228,9 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) getVerifiedWriterConnection
 
 			if writerCandidate == nil || writerCandidate.Role != host_info_util.WRITER {
 				// Shouldn't be here. But let's try again.
-				_ = writerCandidateConn.Close()
+				if writerCandidateConn != nil {
+					_ = writerCandidateConn.Close()
+				}
 				plugin.delayMs()
 				continue
 			}
@@ -195,7 +240,7 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) getVerifiedWriterConnection
 			}
 			return writerCandidateConn, nil
 		}
-		writerCandidateConn, err := plugin.servicesContainer.GetPluginService().Connect(writerCandidate, props, plugin)
+		writerCandidateConn, err = plugin.servicesContainer.GetPluginService().Connect(writerCandidate, props, plugin)
 		if err != nil {
 			if plugin.handleErrorAndShouldRetry(writerCandidateConn, writerCandidate, err) {
 				continue
@@ -221,7 +266,21 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) getVerifiedWriterConnection
 		}
 		return writerCandidateConn, nil
 	}
-	return nil, nil
+	return plugin.handleRetryTimeout(host_info_util.WRITER, isInitialConnection, props, connectFunc)
+}
+
+// Error out if failed to get a verified connection within the retry window, instead of falling back to connectFunc and returning an unverified connection.
+func (plugin *AuroraInitialConnectionStrategyPlugin) handleRetryTimeout(
+	role host_info_util.HostRole,
+	isInitialConnection bool,
+	props *utils.RWMap[string, string],
+	connectFunc driver_infrastructure.ConnectFunc) (driver.Conn, error) {
+	if isInitialConnection && plugin.verifyOpenConnectionType != host_info_util.UNKNOWN {
+		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage(
+			"AuroraInitialConnectionStrategyPlugin.timeout",
+			role, plugin.retryTimeoutMs, property_util.VERIFY_INITIAL_CONNECTION_TYPE.Name))
+	}
+	return connectFunc(props)
 }
 
 func (plugin *AuroraInitialConnectionStrategyPlugin) getVerifiedReaderConnection(
@@ -341,7 +400,7 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) getVerifiedReaderConnection
 		}
 		return readerCandidateConn, nil
 	}
-	return nil, nil
+	return plugin.handleRetryTimeout(host_info_util.READER, isInitialConnection, props, connectFunc)
 }
 
 func (plugin *AuroraInitialConnectionStrategyPlugin) handleErrorAndShouldRetry(
@@ -381,6 +440,8 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) getReader(props *utils.RWMa
 
 		host, err := plugin.servicesContainer.GetPluginService().GetHostInfoByStrategy(host_info_util.READER, strategy, hostCandidates)
 		if err != nil {
+			// No reader was found. Fallback to a writer.
+			slog.Debug(error_util.GetMessage("AuroraInitialConnectionStrategyPlugin.errorGettingConnection", err))
 			return nil, nil
 		}
 		return host, nil
