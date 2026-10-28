@@ -14,13 +14,13 @@ You can now make changes in the repository.
 
 The AWS Advanced Go Wrapper uses the following tests to verify its correctness and performance:
 
-| Tests                                         | Description                                                                                                           |
-|-----------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
-| Unit tests                                    | Tests for AWS Advanced Go Wrapper correctness.                                                                        |
-| Failover integration tests                    | Wrapper-specific tests for different reader and writer failover workflows using the Failover Connection Plugin.       |
-| Enhanced failure monitoring integration tests | Wrapper-specific tests for the enhanced failure monitoring functionality using the Host Monitoring Connection Plugin. |
-| AWS authentication integration tests          | Wrapper-specific tests for AWS authentication methods with the AWS IAM Authentication Plugin.                         |
-| Connection plugin manager benchmarks          | The benchmarks measure the overhead from executing method calls with multiple connection plugins enabled.             |
+| Tests                                         | Description                                                                                                           | Location                                                                                          |
+|-----------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|
+| Unit tests                                    | Tests for AWS Advanced Go Wrapper correctness.                                                                        | `.test/test`                                                                                      |
+| Failover integration tests                    | Wrapper-specific tests for different reader and writer failover workflows using the Failover Connection Plugin.       | `.test/test_framework/container/tests` (`failover_conn_test.go`, `failover_db_test.go`)           |
+| Enhanced failure monitoring integration tests | Wrapper-specific tests for the enhanced failure monitoring functionality using the Host Monitoring Connection Plugin. | `.test/test_framework/container/tests` (`efm_integration_test.go`)                                |
+| AWS authentication integration tests          | Wrapper-specific tests for AWS authentication methods with the AWS IAM Authentication Plugin.                         | `.test/test_framework/container/tests` (`iam_integration_test.go`, `aws_secrets_manager_test.go`) |
+| Connection plugin manager benchmarks          | The benchmarks measure the overhead from executing method calls with multiple connection plugins enabled.             | `.test/test` (`plugin_manager_benchmark_test.go`)                                                 |
 
 ### Performance Tests
 

@@ -27,11 +27,13 @@ Contributions via pull requests are much appreciated. Before sending us a pull r
 2. You check existing open, and recently merged, pull requests to make sure someone else hasn't addressed the problem already.
 3. You open an issue to discuss any significant work - we would hate for your time to be wasted.
 
+For further information on the structure of the project and testing please see the [Contributor Guide](docs/contributor-guide/ContributorGuide.md).
+
 To send us a pull request, please:
 
 1. Fork the repository.
 2. Modify the source; please focus on the specific change you are contributing. If you also reformat all the code, it will be hard for us to focus on your change.
-3. Ensure local tests pass.
+3. Ensure local tests pass. If you are adding tests for your change, unit tests are located in aws-advanced-go-wrapper/.test/test and integration tests in aws-advanced-go-wrapper/.test/test_framework/container/tests.
 4. Commit to your fork using clear commit messages.
 5. Send us a pull request, answering any default questions in the pull request interface.
 6. Pay attention to any automated CI failures reported in the pull request, and stay involved in the conversation.
