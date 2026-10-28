@@ -37,6 +37,7 @@ func setupDefaultPluginMocks(ctrl *gomock.Controller) (*mock_driver_infrastructu
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
 	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	mockPluginService.EXPECT().GetLastSqlAnalysis().Return(nil).AnyTimes()
 	return mockPluginService, mockContainer
 }
 
