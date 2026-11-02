@@ -249,6 +249,9 @@ func (p *PartialPluginService) GetTelemetryFactory() telemetry.TelemetryFactory 
 func (p *PartialPluginService) UpdateState(sql string, methodArgs ...any) {
 	panic("Method not implemented.")
 }
+func (p *PartialPluginService) GetLastSqlAnalysis() *utils.SqlStatementAnalysis {
+	panic("Method not implemented.")
+}
 func (p *PartialPluginService) IsPluginInUse(pluginName string) bool {
 	panic("Method not implemented.")
 }
