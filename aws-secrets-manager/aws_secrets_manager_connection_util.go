@@ -113,7 +113,7 @@ func GetAwsSecretsManagerRegion(regionStr string, secretId string) (region_util.
 	region := region_util.GetRegionFromArn(secretId)
 	if region == "" {
 		defaultValue := property_util.GetVerifiedWrapperPropertyValueFromMap[string](map[string]string{}, property_util.SECRETS_MANAGER_REGION)
-		region := region_util.GetRegionFromRegionString(defaultValue)
+		region = region_util.GetRegionFromRegionString(defaultValue)
 
 		if region == "" {
 			// This should not be reached.

@@ -31,6 +31,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/error_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/property_util"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/region_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils"
 	"github.com/golang/mock/gomock"
 
@@ -199,6 +200,13 @@ func TestAwsSecretsManagerConnectionPluginValidIdDefaultRegion(t *testing.T) {
 	_, err := aws_secrets_manager.NewAwsSecretsManagerPlugin(mockPluginService, props, NewMockAwsSecretsManagerClient)
 
 	assert.NoError(t, err)
+}
+
+func TestAwsSecretsManagerRegionDefaultsForPlainSecretName(t *testing.T) {
+	region, err := aws_secrets_manager.GetAwsSecretsManagerRegion("", "my-plain-secret-name")
+
+	assert.NoError(t, err)
+	assert.Equal(t, region_util.Region("us-east-1"), region)
 }
 
 func TestAwsSecretsManagerConnectionPluginValidRegionThroughArn(t *testing.T) {
