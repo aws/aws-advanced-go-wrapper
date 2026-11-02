@@ -85,11 +85,11 @@ func TestCustomEndpointDocHasNoUnknownParameters(t *testing.T) {
 
 	// Identifiers matching that shape that are legitimately mentioned but are not parameters.
 	notProperties := map[string]bool{
-		"auroraConnectionTracker":         true, // a plugin code
-		"auroraInitialConnectionStrategy": true, // a plugin code
-		"customEndpoint":                  true, // a plugin code
-		"strictReader":                    true, // a failoverMode value
-		"setReadOnly":                     true, // a driver method
+		"auroraConnectionTracker": true, // a plugin code
+		"initialConnection":       true, // a plugin code
+		"customEndpoint":          true, // a plugin code
+		"strictReader":            true, // a failoverMode value
+		"setReadOnly":             true, // a driver method
 	}
 
 	var unknown []string
