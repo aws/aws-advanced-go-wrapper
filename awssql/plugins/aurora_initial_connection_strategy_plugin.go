@@ -164,7 +164,7 @@ func (plugin *AuroraInitialConnectionStrategyPlugin) Connect(
 	urlType := utils.IdentifyRdsUrlType(hostInfo.GetHost())
 	role := plugin.roleToVerify(urlType, isInitialConnection)
 
-	// Fail fast if we don't have CLUSTER_INSTANCE_HOST_PATTERN SET for IP address or custom domains since we can't construct proper topology information.
+	// Fail fast if we don't have CLUSTER_INSTANCE_HOST_PATTERN set for IP address or custom domains since we can't construct proper topology information.
 	if role != host_info_util.UNKNOWN && (urlType == utils.OTHER || urlType == utils.IP_ADDRESS) &&
 		property_util.GetVerifiedWrapperPropertyValue[string](props, property_util.CLUSTER_INSTANCE_HOST_PATTERN) == "" {
 		return nil, error_util.NewGenericAwsWrapperError(error_util.GetMessage(
