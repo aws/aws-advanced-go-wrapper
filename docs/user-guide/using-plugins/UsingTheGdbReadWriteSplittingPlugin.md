@@ -8,7 +8,7 @@ Unless otherwise stated, all recommendations, configurations and code examples m
 
 ## Loading the Global Database Read/Write Splitting Plugin
 
-The GDB Read/Write Splitting Plugin is not loaded by default. To load the plugin, include it in the `plugins` connection parameter. If you would like to load the GDB Read/Write Splitting Plugin alongside the failover and host monitoring plugins, the GDB Read/Write Splitting Plugin **must be listed before** these plugins in the plugin chain. If it is not, failover exceptions will not be properly processed by the plugin. See the example below to properly load the GDB Read/Write Splitting Plugin with these plugins. Although the driver performs proper plugin sorting by default (see [`autoSortWrapperPluginOrder` configuration parameter](../UsingTheGoWrapper.md#connection-plugin-manager-parameters)), this note remains important.
+The GDB Read/Write Splitting Plugin is not loaded by default. To load the plugin, include it in the `plugins` connection parameter. If you would like to load the GDB Read/Write Splitting Plugin alongside the failover and host monitoring plugins, the GDB Read/Write Splitting Plugin **must be listed before** these plugins in the plugin chain. If it is not, failover exceptions will not be properly processed by the plugin. See the example below to properly load the GDB Read/Write Splitting Plugin with these plugins. Although the driver performs proper plugin sorting by default (see [`autoSortPluginOrder` configuration parameter](../UsingTheGoWrapper.md#connection-plugin-manager-parameters)), this note remains important.
 
 ```go
 // MySQL
