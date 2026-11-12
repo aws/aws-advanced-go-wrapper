@@ -406,6 +406,7 @@ func TestMethodInvokedOnOldConnection(t *testing.T) {
 		return currentConn
 	}).AnyTimes()
 	mockPluginService.EXPECT().UpdateState(gomock.Any(), gomock.Any()).AnyTimes()
+	mockPluginService.EXPECT().GetLastSqlAnalysis().Return(nil).AnyTimes()
 	mockPluginService.EXPECT().SetCurrentTx(gomock.Any()).AnyTimes()
 	mockPluginService.EXPECT().SetInTransaction(gomock.Any()).AnyTimes()
 

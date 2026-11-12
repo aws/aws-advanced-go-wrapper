@@ -65,9 +65,11 @@ func (d *DefaultPlugin) Execute(
 		return
 	}
 
-	if utils.DoesOpenTransaction(methodName, methodArgs...) {
+	opensTransaction, closesTransaction := utils.GetTransactionBoundary(
+		methodName, pluginService.GetLastSqlAnalysis(), methodArgs...)
+	if opensTransaction {
 		pluginService.SetInTransaction(true)
-	} else if utils.DoesCloseTransaction(methodName, methodArgs...) {
+	} else if closesTransaction {
 		pluginService.SetInTransaction(false)
 	}
 
