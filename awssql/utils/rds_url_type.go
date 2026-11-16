@@ -33,4 +33,8 @@ var (
 	RDS_AURORA_LIMITLESS_DB_SHARD_GROUP RdsUrlType = RdsUrlType{6, true, false, true}
 	RDS_GLOBAL_WRITER_CLUSTER           RdsUrlType = RdsUrlType{7, true, true, false}
 	IP_ADDRESS                          RdsUrlType = RdsUrlType{8, false, false, false}
+	RDS_CLUSTER_GROUP_WRITER            RdsUrlType = RdsUrlType{9, true, false, true}
+	RDS_CLUSTER_GROUP_READER            RdsUrlType = RdsUrlType{10, true, false, true}
+	RDS_DATA_GROUP_WRITER               RdsUrlType = RdsUrlType{11, true, false, true}
+	RDS_DATA_GROUP_READER               RdsUrlType = RdsUrlType{12, true, false, true}
 )
