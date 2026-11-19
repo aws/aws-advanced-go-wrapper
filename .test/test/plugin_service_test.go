@@ -447,3 +447,24 @@ func TestSetStatusUpdateExistingStatus(t *testing.T) {
 	_, found = driver_infrastructure.BlueGreenStatusStorageType.Get(storage, cacheKey)
 	assert.False(t, found, "Should remove status")
 }
+
+func TestUpdateStateStoresLastSqlAnalysis(t *testing.T) {
+	target, _, _, _, err := beforePluginServiceTests()
+	assert.NoError(t, err)
+	target.SetDialect(&driver_infrastructure.PgDatabaseDialect{})
+	assert.Nil(t, target.GetLastSqlAnalysis())
+
+	target.UpdateState("begin; select 1")
+	analysis := target.GetLastSqlAnalysis()
+	assert.NotNil(t, analysis)
+	assert.Equal(t, "begin; select 1", analysis.Query)
+	assert.True(t, analysis.OpensTransaction)
+	assert.False(t, analysis.ClosesTransaction)
+
+	// A query passed through the method arguments replaces the previous analysis.
+	target.UpdateState("", "commit")
+	analysis = target.GetLastSqlAnalysis()
+	assert.Equal(t, "commit", analysis.Query)
+	assert.False(t, analysis.OpensTransaction)
+	assert.True(t, analysis.ClosesTransaction)
+}

@@ -472,6 +472,20 @@ func (mr *MockPluginServiceMockRecorder) GetInitialConnectionHostInfo() *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInitialConnectionHostInfo", reflect.TypeOf((*MockPluginService)(nil).GetInitialConnectionHostInfo))
 }
 
+// GetLastSqlAnalysis mocks base method.
+func (m *MockPluginService) GetLastSqlAnalysis() *utils.SqlStatementAnalysis {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLastSqlAnalysis")
+	ret0, _ := ret[0].(*utils.SqlStatementAnalysis)
+	return ret0
+}
+
+// GetLastSqlAnalysis indicates an expected call of GetLastSqlAnalysis.
+func (mr *MockPluginServiceMockRecorder) GetLastSqlAnalysis() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLastSqlAnalysis", reflect.TypeOf((*MockPluginService)(nil).GetLastSqlAnalysis))
+}
+
 // GetProperties mocks base method.
 func (m *MockPluginService) GetProperties() *utils.RWMap[string, string] {
 	m.ctrl.T.Helper()
