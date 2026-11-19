@@ -17,6 +17,7 @@
 package test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils"
@@ -32,6 +33,10 @@ const (
 	usEastRegionProxy                 = "proxy-test-name.proxy-XYZ.us-east-2.rds.amazonaws.com"
 	usEastRegionCustomDomain          = "custom-test-name.cluster-custom-XYZ.us-east-2.rds.amazonaws.com"
 	usEastRegionLimitlessDbShardGroup = "database-test-name.shardgrp-XYZ.us-east-2.rds.amazonaws.com"
+	usEastRegionClusterGroupWriter    = "group-test-name.rw-XYZ.db-cluster-group.us-east-2.rds.amazonaws.com"
+	usEastRegionClusterGroupReader    = "group-test-name.ro-XYZ.db-cluster-group.us-east-2.rds.amazonaws.com"
+	usEastRegionDataGroupWriter       = "database-test-name.XYZ.data-group.us-east-2.rds.amazonaws.com"
+	usEastRegionDataGroupReader       = "database-test-name.ro-XYZ.data-group.us-east-2.rds.amazonaws.com"
 
 	euRedshift      = "redshift-test-name.XYZ.eusc-de-east-1.rds.amazonaws.eu"
 	ukRedshift      = "redshift-test-name.XYZ.eusc-de-east-1.rds.amazonaws.uk"
@@ -612,6 +617,10 @@ func TestRdsUrlType_HasRegion(t *testing.T) {
 		{"RDS_AURORA_LIMITLESS_DB_SHARD_GROUP", utils.RDS_AURORA_LIMITLESS_DB_SHARD_GROUP, true},
 		{"RDS_GLOBAL_WRITER_CLUSTER", utils.RDS_GLOBAL_WRITER_CLUSTER, false},
 		{"IP_ADDRESS", utils.IP_ADDRESS, false},
+		{"RDS_CLUSTER_GROUP_WRITER", utils.RDS_CLUSTER_GROUP_WRITER, true},
+		{"RDS_CLUSTER_GROUP_READER", utils.RDS_CLUSTER_GROUP_READER, true},
+		{"RDS_DATA_GROUP_WRITER", utils.RDS_DATA_GROUP_WRITER, true},
+		{"RDS_DATA_GROUP_READER", utils.RDS_DATA_GROUP_READER, true},
 	}
 
 	for _, tc := range testCases {
@@ -619,4 +628,77 @@ func TestRdsUrlType_HasRegion(t *testing.T) {
 			assert.Equal(t, tc.hasRegion, tc.urlType.HasRegion)
 		})
 	}
+}
+
+func TestClusterGroupDns(t *testing.T) {
+	assert.True(t, utils.IsClusterGroupWriterDns(usEastRegionClusterGroupWriter))
+	assert.False(t, utils.IsClusterGroupWriterDns(usEastRegionClusterGroupReader))
+	assert.False(t, utils.IsClusterGroupWriterDns(usEastRegionCluster))
+	assert.False(t, utils.IsClusterGroupWriterDns(usEastRegionInstance))
+
+	assert.True(t, utils.IsClusterGroupReaderDns(usEastRegionClusterGroupReader))
+	assert.False(t, utils.IsClusterGroupReaderDns(usEastRegionClusterGroupWriter))
+	assert.False(t, utils.IsClusterGroupReaderDns(usEastRegionClusterReadOnly))
+	assert.False(t, utils.IsClusterGroupReaderDns(usEastRegionInstance))
+
+	assert.True(t, utils.IsRdsDns(usEastRegionClusterGroupWriter))
+	assert.True(t, utils.IsRdsDns(usEastRegionClusterGroupReader))
+	assert.False(t, utils.IsRdsInstance(usEastRegionClusterGroupWriter))
+	assert.False(t, utils.IsRdsInstance(usEastRegionClusterGroupReader))
+	assert.False(t, utils.IsRdsClusterDns(usEastRegionClusterGroupWriter))
+	assert.False(t, utils.IsRdsClusterDns(usEastRegionClusterGroupReader))
+	assert.False(t, utils.IsWriterClusterDns(usEastRegionClusterGroupWriter))
+	assert.False(t, utils.IsReaderClusterDns(usEastRegionClusterGroupReader))
+
+	assert.Equal(t, "us-east-2", utils.GetRdsRegion(usEastRegionClusterGroupWriter))
+	assert.Equal(t, "us-east-2", utils.GetRdsRegion(usEastRegionClusterGroupReader))
+	assert.Equal(t, "group-test-name", utils.GetRdsClusterId(usEastRegionClusterGroupWriter))
+	assert.Equal(t, "group-test-name", utils.GetRdsClusterId(usEastRegionClusterGroupReader))
+	assert.Equal(t, "?.XYZ.db-cluster-group.us-east-2.rds.amazonaws.com", utils.GetRdsInstanceHostPattern(usEastRegionClusterGroupWriter))
+
+	assert.Equal(t, utils.RDS_CLUSTER_GROUP_WRITER, utils.IdentifyRdsUrlType(usEastRegionClusterGroupWriter))
+	assert.Equal(t, utils.RDS_CLUSTER_GROUP_READER, utils.IdentifyRdsUrlType(usEastRegionClusterGroupReader))
+	assert.Equal(t, utils.RDS_CLUSTER_GROUP_WRITER, utils.IdentifyRdsUrlType(strings.ToUpper(usEastRegionClusterGroupWriter)))
+}
+
+func TestDataGroupDns(t *testing.T) {
+	assert.True(t, utils.IsDataGroupWriterDns(usEastRegionDataGroupWriter))
+	assert.False(t, utils.IsDataGroupWriterDns(usEastRegionDataGroupReader))
+	assert.False(t, utils.IsDataGroupWriterDns(usEastRegionCluster))
+	assert.False(t, utils.IsDataGroupWriterDns(usEastRegionInstance))
+	assert.False(t, utils.IsDataGroupWriterDns(usEastRegionClusterGroupWriter))
+
+	assert.True(t, utils.IsDataGroupReaderDns(usEastRegionDataGroupReader))
+	assert.False(t, utils.IsDataGroupReaderDns(usEastRegionDataGroupWriter))
+	assert.False(t, utils.IsDataGroupReaderDns(usEastRegionClusterReadOnly))
+	assert.False(t, utils.IsDataGroupReaderDns(usEastRegionInstance))
+	assert.False(t, utils.IsDataGroupReaderDns(usEastRegionClusterGroupReader))
+
+	assert.False(t, utils.IsClusterGroupReaderDns(usEastRegionDataGroupReader))
+	assert.False(t, utils.IsClusterGroupWriterDns(usEastRegionDataGroupWriter))
+
+	assert.True(t, utils.IsRdsDns(usEastRegionDataGroupWriter))
+	assert.True(t, utils.IsRdsDns(usEastRegionDataGroupReader))
+	assert.False(t, utils.IsRdsInstance(usEastRegionDataGroupWriter))
+	assert.False(t, utils.IsRdsInstance(usEastRegionDataGroupReader))
+	assert.True(t, utils.IsRdsInstance(usEastRegionInstance))
+	assert.False(t, utils.IsRdsClusterDns(usEastRegionDataGroupWriter))
+	assert.False(t, utils.IsRdsClusterDns(usEastRegionDataGroupReader))
+	assert.False(t, utils.IsWriterClusterDns(usEastRegionDataGroupWriter))
+	assert.False(t, utils.IsReaderClusterDns(usEastRegionDataGroupReader))
+
+	assert.Equal(t, "us-east-2", utils.GetRdsRegion(usEastRegionDataGroupWriter))
+	assert.Equal(t, "us-east-2", utils.GetRdsRegion(usEastRegionDataGroupReader))
+	assert.Equal(t, "database-test-name", utils.GetRdsClusterId(usEastRegionDataGroupWriter))
+	assert.Equal(t, "database-test-name", utils.GetRdsClusterId(usEastRegionDataGroupReader))
+	assert.Equal(t, "?.XYZ.data-group.us-east-2.rds.amazonaws.com", utils.GetRdsInstanceHostPattern(usEastRegionDataGroupWriter))
+
+	assert.Equal(t, utils.RDS_DATA_GROUP_WRITER, utils.IdentifyRdsUrlType(usEastRegionDataGroupWriter))
+	assert.Equal(t, utils.RDS_DATA_GROUP_READER, utils.IdentifyRdsUrlType(usEastRegionDataGroupReader))
+	assert.Equal(t, utils.RDS_DATA_GROUP_WRITER, utils.IdentifyRdsUrlType(strings.ToUpper(usEastRegionDataGroupWriter)))
+	assert.Equal(t, utils.RDS_DATA_GROUP_READER, utils.IdentifyRdsUrlType(strings.ToUpper(usEastRegionDataGroupReader)))
+
+	assert.Equal(t, utils.RDS_CLUSTER_GROUP_WRITER, utils.IdentifyRdsUrlType(usEastRegionClusterGroupWriter))
+	assert.Equal(t, utils.RDS_CLUSTER_GROUP_READER, utils.IdentifyRdsUrlType(usEastRegionClusterGroupReader))
+	assert.Equal(t, utils.RDS_INSTANCE, utils.IdentifyRdsUrlType(usEastRegionInstance))
 }
