@@ -34,6 +34,7 @@ const (
 	AURORA_INITIAL_CONNECTION_STRATEGY_PLUGIN_CODE string = "initialConnection"
 	GDB_FAILOVER_PLUGIN_CODE                       string = "gdbFailover"
 	GDB_READ_WRITE_SPLITTING_PLUGIN_CODE           string = "gdbReadWriteSplitting"
+	CONNECTION_LIFETIME_PLUGIN_CODE                string = "connectionLifetime"
 )
 
 type HostChangeOptions int

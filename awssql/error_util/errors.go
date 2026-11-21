@@ -16,7 +16,10 @@
 
 package error_util
 
-import "errors"
+import (
+	"database/sql/driver"
+	"errors"
+)
 
 type AwsWrapperErrorType int
 
@@ -30,6 +33,8 @@ const (
 	UnavailableHostErrorType              AwsWrapperErrorType = 6
 	DsnParsingErrorType                   AwsWrapperErrorType = 7
 	TimeoutErrorType                      AwsWrapperErrorType = 8
+	ConnectionLifetimeClosedErrorType     AwsWrapperErrorType = 9
+	ConnectionLifetimeFailedErrorType     AwsWrapperErrorType = 10
 	FailoverSuccessErrorType              AwsWrapperErrorType = 300
 	FailoverFailedErrorType               AwsWrapperErrorType = 301
 	TransactionResolutionUnknownErrorType AwsWrapperErrorType = 302
@@ -38,10 +43,16 @@ const (
 type AwsWrapperError struct {
 	Message   string
 	ErrorType AwsWrapperErrorType
+	// Cause is the error that led to this one, if any. It is reachable through errors.Is and errors.As.
+	Cause error
 }
 
 func (a *AwsWrapperError) Error() string {
 	return a.Message
+}
+
+func (a *AwsWrapperError) Unwrap() error {
+	return a.Cause
 }
 
 func (a *AwsWrapperError) IsType(errorType AwsWrapperErrorType) bool {
@@ -62,49 +73,78 @@ func (a *AwsWrapperError) IsFailoverErrorType() bool {
 }
 
 func NewGenericAwsWrapperError(message string) *AwsWrapperError {
-	return &AwsWrapperError{message, GenericAwsWrapperErrorType}
+	return &AwsWrapperError{Message: message, ErrorType: GenericAwsWrapperErrorType}
 }
 
 func NewTimeoutError(message string) *AwsWrapperError {
-	return &AwsWrapperError{message, TimeoutErrorType}
+	return &AwsWrapperError{Message: message, ErrorType: TimeoutErrorType}
 }
 
 func NewUnsupportedStrategyError(message string) *AwsWrapperError {
 	return &AwsWrapperError{
-		message,
-		UnsupportedStrategyErrorType}
+		Message:   message,
+		ErrorType: UnsupportedStrategyErrorType}
 }
 
 func NewUnsupportedMethodError(method string, object string) *AwsWrapperError {
-	return &AwsWrapperError{GetMessage("AwsWrapper.unsupportedMethodError", method, object), UnsupportedStrategyErrorType}
+	return &AwsWrapperError{Message: GetMessage("AwsWrapper.unsupportedMethodError", method, object), ErrorType: UnsupportedStrategyErrorType}
 }
 
 func NewIllegalArgumentError(message string) *AwsWrapperError {
-	return &AwsWrapperError{message, IllegalArgumentErrorType}
+	return &AwsWrapperError{Message: message, ErrorType: IllegalArgumentErrorType}
 }
 
-var FailoverSuccessError = &AwsWrapperError{GetMessage("Failover.connectionChangedError"), FailoverSuccessErrorType}
+var FailoverSuccessError = &AwsWrapperError{Message: GetMessage("Failover.connectionChangedError"), ErrorType: FailoverSuccessErrorType}
 
 func NewFailoverFailedError(message string) *AwsWrapperError {
-	return &AwsWrapperError{message, FailoverFailedErrorType}
+	return &AwsWrapperError{Message: message, ErrorType: FailoverFailedErrorType}
 }
 
 var TransactionResolutionUnknownError = &AwsWrapperError{
-	GetMessage("Failover.transactionResolutionUnknownError"),
-	TransactionResolutionUnknownErrorType}
+	Message:   GetMessage("Failover.transactionResolutionUnknownError"),
+	ErrorType: TransactionResolutionUnknownErrorType}
 
 func NewLoginError(message string) *AwsWrapperError {
-	return &AwsWrapperError{message, LoginErrorType}
+	return &AwsWrapperError{Message: message, ErrorType: LoginErrorType}
 }
 
-var InternalQueryTimeoutError = &AwsWrapperError{GetMessage("Failover.timeoutError"), InternalQueryTimeoutErrorType}
+var InternalQueryTimeoutError = &AwsWrapperError{Message: GetMessage("Failover.timeoutError"), ErrorType: InternalQueryTimeoutErrorType}
 
 func NewUnavailableHostError(host string) *AwsWrapperError {
-	return &AwsWrapperError{GetMessage("HostMonitoringConnectionPlugin.unavailableHost", host), UnavailableHostErrorType}
+	return &AwsWrapperError{Message: GetMessage("HostMonitoringConnectionPlugin.unavailableHost", host), ErrorType: UnavailableHostErrorType}
 }
 
 func NewDsnParsingError(message string) *AwsWrapperError {
-	return &AwsWrapperError{message, DsnParsingErrorType}
+	return &AwsWrapperError{Message: message, ErrorType: DsnParsingErrorType}
 }
 
 var ShouldNotBeCalledError = &AwsWrapperError{Message: "Shouldn't be called.", ErrorType: GenericAwsWrapperErrorType}
+
+// ConnectionLifetimeSuccessError reports that the connection lifetime plugin replaced an expired physical connection.
+// The pending call was not executed; the connection is usable and the call can be retried after restoring session state.
+// It has the same error type as FailoverSuccessError, so code that already retries after a successful failover handles
+// it without change.
+var ConnectionLifetimeSuccessError = &AwsWrapperError{
+	Message:   GetMessage("ConnectionLifetimePlugin.connectionChanged"),
+	ErrorType: FailoverSuccessErrorType}
+
+// NewConnectionLifetimeClosedError reports a connection closed because it reached its maximum lifetime.
+// It wraps driver.ErrBadConn because the pending call was not sent, so database/sql discards the connection and
+// retries on another one. closeErr, when not nil, is the error returned while closing the physical connection.
+func NewConnectionLifetimeClosedError(closeErr error) *AwsWrapperError {
+	return &AwsWrapperError{
+		Message:   GetMessage("ConnectionLifetimePlugin.connectionClosed"),
+		ErrorType: ConnectionLifetimeClosedErrorType,
+		Cause:     errors.Join(driver.ErrBadConn, closeErr),
+	}
+}
+
+// NewConnectionLifetimeFailedError reports that replacing an expired physical connection failed. It wraps
+// driver.ErrBadConn for the same reason as NewConnectionLifetimeClosedError, together with the reconnect error.
+func NewConnectionLifetimeFailedError(reconnectErr error) *AwsWrapperError {
+	return &AwsWrapperError{
+		Message:   GetMessage("ConnectionLifetimePlugin.unableToReconnect", reconnectErr.Error()),
+		ErrorType: ConnectionLifetimeFailedErrorType,
+		Cause:     errors.Join(driver.ErrBadConn, reconnectErr),
+	}
+}

@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/#semantic-versioning-200).
 
 ## [Unreleased]
+### :magic_wand: Added
+* [Connection Lifetime Plugin](../docs/user-guide/using-plugins/UsingTheConnectionLifetimePlugin.md) (`connectionLifetime`), which closes a physical connection or reconnects to the original host once it has been in use for `connectionLifetimeMs`.
+* `AwsWrapperError` has a `Cause` field and an `Unwrap` method, so `errors.Is` and `errors.As` can reach the error it wraps.
+* `InternalPooledConnectionProvider` evicts connections that the Connection Lifetime Plugin closes, so the pool closes an expired physical connection instead of reusing it. Custom providers can opt in by implementing `driver_infrastructure.ConnectionEvictor`.
+
 ### :bug: Fixed
 * `verifyInitialConnectionType` had no effect on an IP address or a custom domain, the two endpoint forms that cannot imply a role from their name, so the [Aurora Initial Connection Strategy Plugin](../docs/user-guide/using-plugins/UsingTheAuroraInitialConnectionStrategyPlugin.md) could not replace an out-of-date endpoint behind a CNAME ([Issue #588](https://github.com/aws/aws-advanced-go-wrapper/issues/588)).
 * `roundRobinHostWeightPairs` and `roundRobinDefaultWeight` were forwarded into the target driver's DSN instead of being consumed by the wrapper, so setting either one documented in [Reader Selection Strategies](../docs/user-guide/ReaderSelectionStrategies.md) made the database reject the connection.

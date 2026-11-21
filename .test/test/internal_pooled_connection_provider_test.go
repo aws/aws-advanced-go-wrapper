@@ -161,3 +161,35 @@ func TestInternalPooledConnectionProvider_Connect_NewConnectionsUseUpdatedPasswo
 	assert.NotNil(t, conn2)
 	_ = conn2.Close()
 }
+
+func TestInternalPooledConnectionProvider_EvictConnection(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDriver := mock_database_sql_driver.NewMockDriver(ctrl)
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockDriverDialect := mock_driver_infrastructure.NewMockDriverDialect(ctrl)
+	provider := internal_pool.NewInternalPooledConnectionProvider(internal_pool.NewInternalPoolOptions(), time.Minute)
+	hostInfo := &host_info_util.HostInfo{Host: "database-test-name.cluster-XYZ.us-east-2.rds.amazonaws.com"}
+	props := map[string]string{"user": "testuser"}
+
+	driverName := "test-driver-evict"
+	awsDriver.RegisterUnderlyingDriver(driverName, mockDriver)
+	defer awsDriver.RemoveUnderlyingDriver(driverName)
+	mockPluginService.EXPECT().GetTargetDriverDialect().Return(mockDriverDialect)
+	mockDriverDialect.EXPECT().PrepareDsn(props, hostInfo).Return("test-dsn")
+	mockDriverDialect.EXPECT().GetDriverRegistrationName().Return(driverName)
+	mockDriver.EXPECT().Open("test-dsn").Return(mockConn, nil)
+
+	conn, err := provider.Connect(hostInfo, props, mockPluginService)
+	assert.NoError(t, err)
+
+	assert.True(t, provider.EvictConnection(conn))
+	mockConn.EXPECT().Close().Times(1)
+	assert.NoError(t, conn.Close())
+
+	// A connection that did not come from an internal pool is not evicted.
+	assert.False(t, provider.EvictConnection(mockConn))
+	provider.ReleaseResources()
+}

@@ -41,7 +41,7 @@ A cell with a `[^N]` footnote marker links to the configuration required or the 
 | [`initialConnection`](./using-plugins/UsingTheAuroraInitialConnectionStrategyPlugin.md) role verification | ✅ |
 | [`limitless`](./using-plugins/UsingTheLimitlessConnectionPlugin.md) | ❌ [^3] |
 | [`bg`](./using-plugins/UsingTheBlueGreenPlugin.md) | ❌ [^4] |
-| `connectTime` / `executionTime` / `dev` | ✅ [^5] |
+| `connectTime` / `executionTime` / `dev` / [`connectionLifetime`](./using-plugins/UsingTheConnectionLifetimePlugin.md) | ✅ [^5] |
 | Stale DNS correction, within `failover` | ✅ |
 | [Internal connection pooling](./using-plugins/UsingTheReadWriteSplittingPlugin.md#internal-connection-pooling) | ✅ |
 
@@ -60,7 +60,7 @@ A cell with a `[^N]` footnote marker links to the configuration required or the 
 | [`initialConnection`](./using-plugins/UsingTheAuroraInitialConnectionStrategyPlugin.md) role verification | ✅ | ✅ | ✅ [^6] | ❌ [^7] |
 | [`limitless`](./using-plugins/UsingTheLimitlessConnectionPlugin.md) | ❌ [^3] | ❌ [^3] | ❌ [^3] | ❌ [^3] |
 | [`bg`](./using-plugins/UsingTheBlueGreenPlugin.md) | ✅ | ✅ | ✅ | ✅ |
-| `connectTime` / `executionTime` / `dev` | ✅ [^5] | ✅ [^5] | ✅ [^5] | ✅ [^5] |
+| `connectTime` / `executionTime` / `dev` / [`connectionLifetime`](./using-plugins/UsingTheConnectionLifetimePlugin.md) | ✅ [^5] | ✅ [^5] | ✅ [^5] | ✅ [^5] |
 | Stale DNS correction, within `failover` | ✅ | ❌ [^8] | ❌ [^8] | ❌ [^8] |
 | [Internal connection pooling](./using-plugins/UsingTheReadWriteSplittingPlugin.md#internal-connection-pooling) | ✅ | ✅ | ✅ | ✅ |
 
@@ -79,7 +79,7 @@ A cell with a `[^N]` footnote marker links to the configuration required or the 
 | [`initialConnection`](./using-plugins/UsingTheAuroraInitialConnectionStrategyPlugin.md) role verification | ✅ | ✅ | ❌ [^7] | ❌ [^7] |
 | [`limitless`](./using-plugins/UsingTheLimitlessConnectionPlugin.md) | ❌ [^3] | ❌ [^3] | ❌ [^3] | ✅ |
 | [`bg`](./using-plugins/UsingTheBlueGreenPlugin.md) | ❌ [^13] | ❌ [^13] | ✅ | ❌ [^14] |
-| `connectTime` / `executionTime` / `dev` | ✅ [^5] | ✅ [^5] | ✅ [^5] | ✅ [^5] |
+| `connectTime` / `executionTime` / `dev` / [`connectionLifetime`](./using-plugins/UsingTheConnectionLifetimePlugin.md) | ✅ [^5] | ✅ [^5] | ✅ [^5] | ✅ [^5] |
 | Stale DNS correction, within `failover` | ✅ | ❌ [^8] | ❌ [^8] | ❌ [^8] |
 | [Internal connection pooling](./using-plugins/UsingTheReadWriteSplittingPlugin.md#internal-connection-pooling) | ✅ | ✅ | ✅ | ✅ |
 
@@ -98,7 +98,7 @@ A cell with a `[^N]` footnote marker links to the configuration required or the 
 | [`initialConnection`](./using-plugins/UsingTheAuroraInitialConnectionStrategyPlugin.md) role verification | ✅ [^18] | ✅ [^18] |
 | [`limitless`](./using-plugins/UsingTheLimitlessConnectionPlugin.md) | ❌ [^3] | ❌ [^3] |
 | [`bg`](./using-plugins/UsingTheBlueGreenPlugin.md) | ❌ [^19] | ❌ [^19] |
-| `connectTime` / `executionTime` / `dev` | ✅ [^5] | ✅ [^5] |
+| `connectTime` / `executionTime` / `dev` / [`connectionLifetime`](./using-plugins/UsingTheConnectionLifetimePlugin.md) | ✅ [^5] | ✅ [^5] |
 | Stale DNS correction, within `failover` | ❌ [^20] | ❌ [^20] |
 | [Internal connection pooling](./using-plugins/UsingTheReadWriteSplittingPlugin.md#internal-connection-pooling) | ❌ [^21] | ❌ [^21] |
 

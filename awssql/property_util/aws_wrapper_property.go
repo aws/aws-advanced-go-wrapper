@@ -248,6 +248,8 @@ var ALL_WRAPPER_PROPERTIES = map[string]bool{
 	INITIAL_CONNECTION_RETRY_TIMEOUT_MS.Name:              true,
 	INITIAL_CONNECTION_RETRY_INTERVAL_MS.Name:             true,
 	VERIFY_INITIAL_CONNECTION_TYPE.Name:                   true,
+	CONNECTION_LIFETIME_MS.Name:                           true,
+	CONNECTION_LIFETIME_ACTION.Name:                       true,
 }
 
 var USER = AwsWrapperProperty{
@@ -953,6 +955,19 @@ var VERIFY_INITIAL_CONNECTION_TYPE = AwsWrapperProperty{
 	Name:                "verifyInitialConnectionType",
 	description:         "Force to verify an opened connection to be either a writer or a reader.",
 	defaultValue:        "",
+	wrapperPropertyType: WRAPPER_TYPE_STRING,
+}
+
+var CONNECTION_LIFETIME_MS = AwsWrapperProperty{
+	Name:                "connectionLifetimeMs",
+	description:         "Maximum physical connection lifetime in milliseconds.",
+	wrapperPropertyType: WRAPPER_TYPE_INT,
+}
+
+var CONNECTION_LIFETIME_ACTION = AwsWrapperProperty{
+	Name:                "connectionLifetimeAction",
+	description:         "Action to take after the physical connection reaches its configured lifetime. Supported values are close and reconnect.",
+	defaultValue:        "reconnect",
 	wrapperPropertyType: WRAPPER_TYPE_STRING,
 }
 

@@ -17,6 +17,7 @@
 package test
 
 import (
+	"database/sql/driver"
 	"errors"
 	"reflect"
 	"testing"
@@ -231,4 +232,39 @@ func TestDriverConnectionProvider(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Equal(t, testError, err)
 	assert.True(t, driverConnProvider.AcceptsUrl(*host0, nil))
+}
+
+type recordingEvictor struct {
+	driver_infrastructure.ConnectionProvider
+	evicts bool
+	calls  int
+}
+
+func (e *recordingEvictor) EvictConnection(_ driver.Conn) bool {
+	e.calls++
+	return e.evicts
+}
+
+func TestConnectionProviderManagerEvictConnection(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	conn := mock_database_sql_driver.NewMockConn(ctrl)
+
+	// A provider without its own pool is skipped.
+	nonEvicting := mock_driver_infrastructure.NewMockConnectionProvider(ctrl)
+	manager := driver_infrastructure.ConnectionProviderManager{DefaultProvider: nonEvicting}
+	assert.False(t, manager.EvictConnection(conn))
+
+	// The custom provider is asked first, then the effective one, then the default.
+	custom := &recordingEvictor{}
+	effective := &recordingEvictor{evicts: true}
+	defaultProvider := &recordingEvictor{evicts: true}
+	driver_infrastructure.SetCustomConnectionProvider(custom)
+	defer driver_infrastructure.ResetCustomConnectionProvider()
+	manager = driver_infrastructure.ConnectionProviderManager{DefaultProvider: defaultProvider, EffectiveProvider: effective}
+
+	assert.True(t, manager.EvictConnection(conn))
+	assert.Equal(t, 1, custom.calls)
+	assert.Equal(t, 1, effective.calls)
+	assert.Equal(t, 0, defaultProvider.calls)
 }
