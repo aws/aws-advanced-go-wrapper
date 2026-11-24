@@ -77,6 +77,23 @@ description: Self-contained assistant for configuring the AWS Advanced Go Wrappe
 > `rds:DescribeDBClusterEndpoints` permission, and fixed a bug that made a
 > MySQL DSN whose user or password contains a space parse as a PostgreSQL
 > DSN.
+>
+> The main branch has fixes that no release contains yet (checked
+> 2026-11-24). This skill describes the release, so its advice still
+> applies to the versions above:
+>
+> - `aws-secrets-manager`: a secret name without `secretsManagerRegion`
+>   gets the documented `us-east-1` default. In v1.2.1 it gets no region
+>   (§5.5).
+> - Core: `roundRobinHostWeightPairs` and `roundRobinDefaultWeight` are
+>   removed from the DSN before the driver call. In v2.1.1 they reach the
+>   driver (§6.1, §7).
+> - Core: `verifyInitialConnectionType` works on an IP address or a custom
+>   domain (it then needs `clusterInstanceHostPattern`), and accepts
+>   `none`. In v2.1.1 it has no effect on those hosts (§5.11).
+>
+> If a user runs a later version that includes a fix, tell them the
+> v2.1.1 or v1.2.1 caveat no longer applies.
 
 ---
 
@@ -233,7 +250,8 @@ When you deliver a final configuration:
     them, so a value that contains a space (often a password) breaks the
     connection. This was reproduced against pgx's DSN parser, not against
     a database. Suggest a password without spaces, or `awssql-bunpg`,
-    which escapes values.
+    which escapes values; with `awssql-bunpg` the application's DSN must
+    still single-quote the value or use a percent-encoded URL (§3.6).
 - **Always set `plugins` explicitly.** When `plugins` is absent, the
   wrapper loads `auroraConnectionTracker,failover,efm`. Setting `plugins`
   replaces that list; it does not add to it. `plugins=none` (or an empty
@@ -305,11 +323,11 @@ When you deliver a final configuration:
     registered `tls.Config`, as the IAM MySQL example does).
   - `awsSecretsManager` with a secret name (not an ARN) and without
     `secretsManagerRegion`: the docs promise a `us-east-1` default, but
-    the source returns an empty region and the Secrets Manager call fails
-    with "Missing Region", even when `AWS_REGION` is set. Treat
+    the v1.2.1 source returns an empty region and the Secrets Manager
+    call fails with "Missing Region", even when `AWS_REGION` is set. Treat
     `secretsManagerRegion` as required unless the secret ID is an ARN.
-  - `roundRobinHostWeightPairs` or `roundRobinDefaultWeight` in a DSN: the
-    wrapper does not strip them, so they reach the underlying driver.
+  - `roundRobinHostWeightPairs` or `roundRobinDefaultWeight` in a DSN: core
+    v2.1.1 does not strip them, so they reach the underlying driver.
     pgx sends unknown keys to the server as startup parameters, and
     Go-MySQL-Driver sends them as session variables, and the server
     refuses the login (reproduced on local PostgreSQL and MySQL servers,
@@ -765,20 +783,30 @@ module must upgrade first.
    `databaseDialect=global-aurora-pg` or `global-aurora-mysql`, and the
    same `clusterId`, `plugins` and `globalClusterInstanceHostPatterns`
    on writer and reader connections.
-3. **After a cross-region switchover or failover, should the connection
-   follow the writer to the new region, or behave differently in the home
-   region?**
-   - Follow the writer anywhere: `failover,efm`, with `failoverMode`
-     `strict-reader` or `reader-or-writer` on reader connections.
-   - Behave differently in and outside the home region:
-     `gdbFailover,efm`, with `failoverHomeRegion` (required when the host
-     is without a region, such as the global writer endpoint),
-     `activeHomeFailoverMode` and `inactiveHomeFailoverMode`. Their
+3. **After a cross-region switchover or failover, should any connection
+   behave differently in the home region than outside it?** The answer
+   picks one failover plugin for the whole Global Database. Put that
+   plugin in the `plugins` of every writer and reader connection, and use
+   the same whole `plugins` value on all of them, `initialConnection` and
+   `auroraConnectionTracker` included (the rule in question 2). Express the per-connection behavior through the
+   mode parameters. Writer connections that follow the writer across
+   regions, with reader connections that stay in the home region, are a
+   `gdbFailover` setup: `strict-writer` modes on the writer connections,
+   `strict-home-reader` modes on the reader connections (§3.12).
+   - No connection depends on the home region: `failover,efm` on every
+     connection, with `failoverMode` `strict-reader` or
+     `reader-or-writer` on reader connections.
+   - At least one connection depends on the home region:
+     `gdbFailover,efm` on every connection, with `failoverHomeRegion`
+     (required when the host is without a region, such as the global
+     writer endpoint), `activeHomeFailoverMode` and `inactiveHomeFailoverMode`. Their
      values are `strict-writer`, `strict-home-reader`,
      `strict-out-of-home-reader`, `strict-any-reader`,
      `home-reader-or-writer`, `out-of-home-reader-or-writer` and
      `any-reader-or-writer` (§9). An invalid value is an error.
      `gdbFailover` ignores `failoverMode`.
+   - Never `failover` on some connections and `gdbFailover` on others,
+     and never both on one connection.
 4. **Read/write splitting inside the home region?** Use
    `gdbReadWriteSplitting` with `gdbRwHomeRegion` (required when the host
    is without a region). By default it keeps new writer and reader connections
@@ -942,7 +970,11 @@ Go through these in order until the cause is clear:
 6. **Logs?** Call `slog.SetLogLoggerLevel(slog.LevelDebug)` early in
    `main`; the wrapper logs through the default `log/slog` logger. Look
    for the Info line "Plugin order has been rearranged. The following
-   order is in effect:" to see the order in use (§16).
+   order is in effect:" to see the order in use (§16). It is absent for
+   the exact default list, an unset `plugins`, a single plugin, or
+   `autoSortPluginOrder=false` (§4.3); the Debug line "Initializing
+   database handler with the following properties" still shows the
+   wrapper is in use.
 7. **Match against known causes.** Common ones are:
    - `Unknown plugin code: '<code>'`: a misspelled or wrong-case code, or
      a plugin module that is not imported.
@@ -1518,8 +1550,10 @@ func main() {
 How the pool and the wrapper interact:
 
 - Each pooled `database/sql` connection is one wrapper connection with
-  its own physical connection. Background monitors and the topology
-  cache are shared across the process and keyed by `clusterId` (§3.14).
+  its own physical connection. The topology cache and its monitor are
+  shared across the process and keyed by `clusterId` (§3.14). Other
+  background monitors are shared too, under their own keys: `efm` by
+  host and detection settings, `customEndpoint` by endpoint.
 - Put session settings in the DSN when the driver supports them, as
   `timezone=UTC` does for pgx here. The wrapper builds every physical
   connection from the same DSN properties, including the ones failover
@@ -1618,9 +1652,15 @@ Points to state:
 - Install with `go get
   github.com/aws/aws-advanced-go-wrapper/bun-pg-driver@latest`; this
   release does not give the module a version (§3.1).
-- The wrapper rebuilds the DSN as a `postgres://` URL for `pgdriver` and
-  URL-escapes the user, password, and parameter values, so a password
-  with spaces works here. It uses port 5432 when the DSN has none.
+- A password with spaces works with `awssql-bunpg` once the wrapper's
+  own DSN parser has read it whole. In a keyword/value DSN an unquoted
+  value ends at the first space, so single-quote it
+  (`password='<password>'`, with `\'` for a quote and `\\` for a
+  backslash inside), or use the URL form with the password
+  percent-encoded (`url.UserPassword` does this). The wrapper then
+  rebuilds the DSN as a `postgres://` URL for `pgdriver` and URL-escapes
+  the user, password, and parameter values. It uses port 5432 when the
+  DSN has none.
   `pgdriver` reads `connect_timeout` as a number of seconds.
 - The wrapper's docs and examples stop at the `database/sql` driver. They
   do not show the Bun ORM (`bun.NewDB` with a dialect) on top of
@@ -1801,7 +1841,7 @@ Points to state:
   correctly.
 - Set `secretsManagerRegion` whenever `secretsManagerSecretId` is a
   secret name rather than an ARN. The docs say the region defaults to
-  `us-east-1`, but in the source that default is never returned: with a
+  `us-east-1`, but in the v1.2.1 source that default is never returned: with a
   secret name and no region, the client gets an empty region and the
   call fails with `Missing Region`, even when `AWS_REGION` is set. With
   an ARN, the region comes from the ARN.
@@ -1919,8 +1959,12 @@ Points to state:
   `*sql.Tx`: a request for a reader is ignored, and a request for the
   writer while on a reader fails. `Begin` and `Prepare` without a context
   do not support splitting.
-- A session setting made with SQL on the writer is not copied to the
-  reader connection the plugin opens; put it in the DSN. The recipe sets
+- On a switch, the wrapper re-applies the session state it tracks (§6.4:
+  read-only, isolation level and `search_path` on PostgreSQL; autocommit,
+  read-only, isolation level and `USE <db>` on MySQL) to the new
+  connection, while `transferSessionStateOnSwitch=true` (the default).
+  Any other setting made with SQL, such as the time zone, is not copied
+  to the reader connection the plugin opens; put it in the DSN. The recipe sets
   `timezone=UTC` in the DSN, as §3.5 does, so every physical connection
   gets it, including the ones reader switches open.
 - The plugin finds the readers from cluster topology, so the DSN needs
@@ -2158,6 +2202,10 @@ Points to state:
 - The docs' examples use `initialConnection,gdbFailover,efm`; the
   recipe adds `auroraConnectionTracker` because `database/sql` pools
   connections, as the Global Database docs advise.
+- Keep `initialConnection` in the shared list for reader connections
+  too. On a regional reader cluster endpoint it picks its reader only
+  among the instances in that endpoint's region, so it does not move a
+  home-region reader connection out of the home region.
 - For an application that stops writing when the primary moves out of
   its region, the docs' example 3 uses the regional cluster writer
   endpoint with `activeHomeFailoverMode=strict-writer` and
@@ -3143,9 +3191,10 @@ Secrets Manager secret, caches them, and connects with them.
 Points to state:
 
 - **Always set `secretsManagerRegion` unless the secret ID is an ARN.**
-  The docs say an unset region selects the default `us-east-1`. The source
-  does not: `GetAwsSecretsManagerRegion` declares a new `region` variable
-  inside the branch for an unset region, so the `us-east-1` value is never
+  The docs say an unset region selects the default `us-east-1`. The
+  `aws-secrets-manager` v1.2.1 source does not:
+  `GetAwsSecretsManagerRegion` declares a new `region` variable inside
+  the branch for an unset region, so the `us-east-1` value is never
   returned. For a secret name without a region, the plugin builds the Secrets
   Manager client with an empty region, and a probe against the release
   code got `Invalid Configuration: Missing Region` from `GetSecretValue`,
@@ -3558,7 +3607,7 @@ with the RDS API call `rds:DescribeDBClusterEndpoints`.
 | `customEndpointInfoRefreshRateMs` | `30000` | How often the monitor fetches the member list. A value of 0 or below is replaced by 30000. |
 | `customEndpointInfoRefreshRateBackoffFactor` | `2` | When the RDS API throttles the monitor, the interval is multiplied by this factor, and divided by it after a successful call. A value below 1 is replaced by 1, which disables backoff. |
 | `customEndpointInfoMaxRefreshRateMs` | `300000` | Upper limit for the backed-off interval. A value below `customEndpointInfoRefreshRateMs` is raised to it, which disables backoff. |
-| `customEndpointEnforceRoleFiltering` | `false` | For a `READER` endpoint with an exclusion member list, use only readers. The default `false` is deprecated and becomes `true` in the next major version. While it is `false`, the plugin logs a warning once per process. |
+| `customEndpointEnforceRoleFiltering` | `false` | Has an effect only on an endpoint of type `READER` whose member list is an exclusion list; on a static list or a `WRITER` or `ANY` endpoint it changes nothing. There, `true` removes the writer from the hosts the wrapper selects. Set it only after confirming both the endpoint type and the member list type, and only for connections that never switch to the writer (see the points below). The default `false` is deprecated and becomes `true` in the next major version. While it is `false`, the plugin logs a warning once per process. |
 | `customEndpointMonitorExpirationMs` | `900000` | How long a monitor may stay unused before it is removed (15 minutes). |
 | `waitForCustomEndpointInfo` | `true` | Wait for the member list before connecting or running a method, when the endpoint has not been used recently. With `false`, connections can reach instances outside the endpoint before the first successful fetch. |
 | `waitForCustomEndpointInfoTimeoutMs` | `5000` | Maximum wait for the member list. |
@@ -3572,10 +3621,24 @@ Points to state:
 - The member list is AWS-side data. Changing the endpoint's members
   changes the wrapper's routing within one refresh interval, without a
   deployment.
-- An exclusion list that names the writer leaves the wrapper without a
-  writer to select. Reader failover and switching out of read-only mode
-  then fail. The same happens with `customEndpointEnforceRoleFiltering=true`
-  on a `READER` endpoint with an exclusion list.
+- Two settings take the writer out of the hosts the wrapper selects: an
+  exclusion list that names the writer, and
+  `customEndpointEnforceRoleFiltering=true` on a `READER` endpoint with an
+  exclusion list. In both cases, from the source:
+  - Switching out of read-only mode (`awsctx.SetReadOnly` false with
+    `readWriteSplitting`) has no target and fails.
+  - Reader failover picks only from the readers left in the endpoint and
+    loses its last-resort attempt on the old writer. It fails only when
+    no reader in the endpoint answers before `failoverTimeoutMs`.
+  - Writer failover (`failoverMode=strict-writer`) takes the new writer
+    from the full cluster topology, so it connects to the writer even
+    when the endpoint leaves it out. A connection that must stay inside
+    the endpoint through failover needs `strict-reader` or
+    `reader-or-writer`, which both run reader failover.
+- So for a `READER` exclusion-list endpoint that a connection only reads
+  from, with `failoverMode=strict-reader`, `true` matches the endpoint's
+  purpose. Leave it `false` when the same connection also switches to
+  the writer.
 - `Tx.Rollback`, `Conn.IsValid` and `Conn.ResetSession` do not wait for
   the member list, so a rollback and the pool's connection checks keep
   working while the list is missing.
@@ -3765,9 +3828,10 @@ follows when it reads that DSN:
    and `database`, and every key that starts with `monitoring-`,
    `blue-green-monitoring-` or `limitless`. Every other key reaches the
    driver unchanged.
-6. **Two wrapper keys leak to the driver.** `roundRobinHostWeightPairs`
-   and `roundRobinDefaultWeight` are missing from the wrapper's list of
-   its own keys, so they are passed to the underlying driver. I ran the
+6. **Two wrapper keys leak to the driver in v2.1.1.**
+   `roundRobinHostWeightPairs` and `roundRobinDefaultWeight` are missing
+   from that release's list of its own keys (the main branch has since
+   added them), so they are passed to the underlying driver. I ran the
    release code and saw `roundRobinDefaultWeight=2` in the DSN given to
    pgx and to Bun's pgdriver. pgx sends unknown keys to the server as
    startup parameters, and Go-MySQL-Driver sends unknown query keys as
@@ -3965,7 +4029,8 @@ The topology monitor does not read a prefix. It copies the
 application's settings and then sets its connect timeout (and, for
 Go-MySQL-Driver, its read timeout) from
 `clusterTopologyConnectTimeoutMs` and `clusterTopologySocketTimeoutMs`
-(§6.3).
+(§6.3). Under `awssql-bunpg` it sets neither, so the monitor uses only
+the application's settings (§15.4).
 
 ```go
 // pgx: connect_timeout is in whole seconds. The monitoring- copy applies
@@ -4049,7 +4114,7 @@ Rules for these values:
   `roundRobinDefaultWeight` below 1 also fails.
 - **`roundRobin` state is shared.** One round-robin selector serves the
   whole process. It keeps its turn per cluster for 10 minutes.
-- **`roundRobin` weights reach the driver.** Its two parameters are
+- **`roundRobin` weights reach the driver in v2.1.1.** Its two parameters are
   passed to the underlying driver (§6.1), and the server refuses the
   login (reproduced on local PostgreSQL and MySQL servers, §16.3).
   Recommend `weightedRandom` when the user wants weights.
@@ -4061,8 +4126,9 @@ Rules for these values:
   the reader with the most replica lag, then the most CPU. On Global
   Database topology the weight is the visibility lag × 100, on Multi-AZ
   DB clusters it is 0 for every host, and hosts built without a weight
-  get 100. The `limitless` plugin uses `highestWeight` internally with
-  its own router weights, where a higher weight means a lower load.
+  get 100. The `limitless` plugin uses `weightedRandom` for its first
+  router pick and `highestWeight` for retries, with its own router
+  weights, where a higher weight means a lower load.
 - **All four skip unavailable hosts.** A host the wrapper marked
   unavailable after a failed connect is left out.
 
@@ -4080,7 +4146,9 @@ const dsn = "host=<cluster-endpoint> port=5432 user=<user>" +
 ```
 
 The default provider reads the weights once per wrapper connection and
-keeps them for that connection.
+keeps them for that connection. With the internal pool installed
+(§3.10), one selector serves the provider, so the weights of the first
+connection that uses `weightedRandom` apply to the whole process.
 
 ---
 
@@ -4146,7 +4214,8 @@ Recommend setting `databaseDialect` whenever the database type is known.
 The dialect page gives the reason: detection takes time. Two more reasons
 come from the source. Detection runs extra queries on the first
 connection, and a check query that fails (for example because the user
-cannot read the topology view) leaves a less capable dialect in place.
+cannot read the topology view) leaves a less capable dialect in place,
+and the wrapper caches that result for the host for 24 hours.
 The Global Database page also sets the dialect explicitly.
 
 ### 8.3 Driver dialects
@@ -4911,8 +4980,9 @@ explains why the documented `us-east-1` fallback does not happen.
 The two layers do different work. Each time `database/sql` opens a new
 connection, the wrapper parses the DSN, builds the plugin chain and opens
 a physical connection. The background monitors and the topology cache
-are shared across the process and keyed by `clusterId`, so they are not
-built again. The internal pool keeps the physical connections behind
+are shared across the process (the topology cache and its monitor keyed
+by `clusterId`, `efm` monitors by host and detection settings), so they
+are not built again. The internal pool keeps the physical connections behind
 those wrapper connections, so a switch to an instance reuses one instead
 of opening a new one.
 
@@ -5424,7 +5494,10 @@ How it differs from `awssql-pgx`, from the source:
 
 - The wrapper rebuilds the DSN as a `postgres://` URL and URL-escapes the
   user, the password and the parameter values, so a password with a space
-  works. It uses port 5432 when the DSN is without a port.
+  works, provided the application's DSN quotes it: single quotes in a
+  keyword/value DSN (an unquoted value ends at the space), or
+  percent-encoding in a URL DSN (§3.6). It uses port 5432 when the DSN is
+  without a port.
 - The wrapper does not add a connect timeout of its own to the
   connections it opens for topology monitoring with this driver.
   `clusterTopologyConnectTimeoutMs` and `clusterTopologySocketTimeoutMs`
@@ -5559,7 +5632,12 @@ The example returns from `main` after a failed `Ping` instead of calling
    context on a `*sql.Conn`, a `*sql.Tx` or a `*sql.Stmt` (§3.9).
 8. Add `driver.ClearCaches()` to the shutdown path (§15.6).
 9. Start the application once with Debug logs and check the dialect line
-   and the plugin order line (§16.2).
+   (§16.2). The plugin order line appears only when the sort runs
+   (§4.3): never for `plugins` written exactly as the default string
+   `auroraConnectionTracker,failover,efm`, for an unset `plugins`, for
+   one plugin, or with `autoSortPluginOrder=false`. In those cases the
+   Debug line `Initializing database handler with the following
+   properties` shows that the wrapper is in use.
 
 ---
 
@@ -5663,7 +5741,7 @@ I read in the source.
 | --- | --- | --- |
 | `Initializing database handler with the following properties: '<map>'.` | Debug (seen) | The parsed DSN properties for a new wrapper connection, with `password` masked. Check key names and values here first. |
 | `Current dialect: <code>, canUpdate: <true or false>.` | Info (seen) | The database dialect in use (§8). Without `databaseDialect` it usually appears twice: `canUpdate: true` from the host name, then `canUpdate: false` after the wrapper asked the server. Check it first when topology, failover or Global Database behavior is wrong. |
-| `Plugin order has been rearranged. The following order is in effect: '<types>'.` | Info (seen) | The plugin chain after the weight sort (§4.3). It lists Go type names, not plugin codes, for example `*plugins.AuroraInitialConnectionStrategyPlugin,*plugins.AuroraConnectionTrackerPlugin,*plugins.FailoverPlugin,*efm.HostMonitorConnectionPlugin,*plugins.DefaultPlugin`. `failover` and `gdbFailover` both appear as `*plugins.FailoverPlugin`. The line is absent when `plugins` equals the default string exactly, when one plugin is listed, and when `autoSortPluginOrder=false`. |
+| `Plugin order has been rearranged. The following order is in effect: '<types>'.` | Info (seen) | The plugin chain after the weight sort (§4.3). It lists Go type names, not plugin codes, for example `*plugins.AuroraInitialConnectionStrategyPlugin,*plugins.AuroraConnectionTrackerPlugin,*plugins.FailoverPlugin,*efm.HostMonitorConnectionPlugin,*plugins.DefaultPlugin`. `failover` and `gdbFailover` both appear as `*plugins.FailoverPlugin`. The line is absent when `plugins` is unset or equals the default string exactly, when one plugin is listed, and when `autoSortPluginOrder=false`. |
 | `From SQL Query` or `From cache`, then `Topology:` and one `HostInfo[...]` line per host | Info (seen) | The host list from topology, with each host's role and weight. Only the topology dialects print it (§8). |
 | `Failover parameter: failoverMode=<mode>.` | Debug (seen) | The failover mode `failover` resolved for this connection (§9). `gdbFailover` logs `activeHomeFailoverMode`, `inactiveHomeFailoverMode` and `failoverHomeRegion` the same way. |
 | `Start cluster topology monitoring routine for '<host>'.` | Debug | A topology monitor started. |
@@ -5674,7 +5752,7 @@ I read in the source.
 | `Connected to: '<host>'.` and `Writer failover elapsed in <duration>.` or `Reader failover elapsed in <duration>.` | Info | Failover reached a new instance, and how long it took. |
 | `The active SQL connection has changed due to a connection failure. Please re-configure session state if required.` | Warn | The application is about to receive `FailoverSuccessError` (this is its text). |
 | `Transaction resolution unknown. Please re-configure session state if required and try restarting the transaction.` | Info | The application is about to receive `TransactionResolutionUnknownError`. |
-| `The request to discover the new topology timed out or was unsuccessful.`, `An error occurred while trying to connect to the new writer '<host>'.` | Error | Writer failover could not read the new topology or reach the new writer. A `FailoverFailedError` follows. |
+| `The request to discover the new topology timed out or was unsuccessful.`, `An error occurred while trying to connect to the new writer '<error>'.` | Error | Writer failover could not read the new topology or reach the new writer. A `FailoverFailedError` follows. |
 | `Invalidating opened connections to host: '<host>'` | Debug | `auroraConnectionTracker` is closing connections to a host whose role changed. |
 | `The driver is unable to track this opened connection because the instance endpoint is unknown: '<host>'` | Debug (seen) | `auroraConnectionTracker` cannot tell which instance the host is, so it does not track that connection. Expected for an IP address or a self-managed server. |
 | `Check if writer changed!!` | standard output | Printed by `auroraConnectionTracker` with `fmt.Println`, not the logger, when a failover error passes through it (§5.10). It is not an error. |
@@ -5712,7 +5790,7 @@ I read in the source.
 | `The home region could not be determined. Please set the failoverHomeRegion property.` | `gdbFailover` with a host without a region in it: the global writer endpoint, an IP address or a custom domain. | Set `failoverHomeRegion` (§3.12). |
 | `The globalClusterInstanceHostPatterns property is required for Global Aurora Databases.` | A `global-aurora-*` dialect without the per-region patterns. | Set `globalClusterInstanceHostPatterns`, one pattern per region (§3.11). |
 | `The provided host was not a Limitless DB shard group URL: '<host>'.` | `limitless` with a host that is not a DB shard group endpoint. | Connect to the shard group endpoint, or remove `limitless`. |
-| Secrets Manager fails with `Missing Region` | `secretsManagerSecretId` is a secret name and `secretsManagerRegion` is unset. The docs promise a `us-east-1` default that the source never returns. | Set `secretsManagerRegion`, or use the secret ARN (§3.8). |
+| Secrets Manager fails with `Missing Region` | `secretsManagerSecretId` is a secret name and `secretsManagerRegion` is unset. The docs promise a `us-east-1` default that `aws-secrets-manager` v1.2.1 never returns. | Set `secretsManagerRegion`, or use the secret ARN (§3.8). |
 | `A secret id or a secret arn must be provided in the 'secretsManagerSecretId' property.` | `awsSecretsManager` without `secretsManagerSecretId`. | Set it. |
 | `Unable to fetch database credentials with the given username key and password key. Please review the values specified in secretsManagerUsernameProperty ...` | The secret's JSON keys differ from `username` and `password`. The message names the parameters without `Secret`; the real names are `secretsManagerSecretUsernameProperty` and `secretsManagerSecretPasswordProperty`. | Set the two parameters to the secret's key names. |
 | `Missing required parameter(s) for plugin '<code>': '<list>'.` | `federatedAuth` or `okta` without one of its required parameters (`dbUser`, `idpUsername`, `idpPassword`, `idpEndpoint`, `iamRoleArn`, `iamIdpArn`, and `appId` for `okta`). | Add the parameters in the list. |
@@ -6197,7 +6275,7 @@ sends reads: through `*sql.DB` calls, or on a `*sql.Conn`?
 
 **User:** Through `*sql.DB`, with `awsctx.SetReadOnly` on each read.
 
-**AI:** Then two changes help:
+**AI:** Then these changes help:
 
 ```
 readerHostSelectorStrategy=weightedRandom
@@ -6212,6 +6290,12 @@ weightedRandomHostWeightPairs=<instance-1-endpoint>:1,<instance-2-endpoint>:4
   likely as `instance-1`; it is not a strict rotation. If you want plain
   turns without weights, `readerHostSelectorStrategy=roundRobin` alone
   is fine.
+- Passing `awsctx.SetReadOnly` only on reads is not safe through
+  `*sql.DB`: the pool can hand a write a connection that an earlier read
+  left on a reader. Either pass `context.WithValue(ctx,
+  awsctx.SetReadOnly, false)` on every write as well, or move the reads
+  and writes to a `*sql.Conn`, a `*sql.Tx` from `BeginTx` or a
+  `*sql.Stmt` (§3.9).
 - Because the reads go through `*sql.DB`, install the internal connection
   pools (§3.10). Without them, each pooled connection opens its own
   reader connection the first time it switches.
