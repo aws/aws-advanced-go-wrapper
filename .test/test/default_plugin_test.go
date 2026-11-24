@@ -28,6 +28,7 @@ import (
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/plugin_helpers"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/plugins"
+	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils"
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/utils/telemetry"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -37,6 +38,7 @@ func setupDefaultPluginMocks(ctrl *gomock.Controller) (*mock_driver_infrastructu
 	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
 	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
 	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	mockPluginService.EXPECT().GetLastSqlAnalysis().Return(nil).AnyTimes()
 	return mockPluginService, mockContainer
 }
 
@@ -101,6 +103,36 @@ func TestDefaultPlugin_Execute_CloseTransaction(t *testing.T) {
 	rv1, _, ok, err := dp.Execute(mockConn, methodName, executeFunc)
 
 	assert.Equal(t, "done", rv1)
+	assert.True(t, ok)
+	assert.NoError(t, err)
+}
+
+func TestDefaultPlugin_Execute_UsesLastSqlAnalysis(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockPluginService := mock_driver_infrastructure.NewMockPluginService(ctrl)
+	mockContainer := mock_driver_infrastructure.NewMockServicesContainer(ctrl)
+	mockContainer.EXPECT().GetPluginService().Return(mockPluginService).AnyTimes()
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+
+	// The stored analysis says the query opens a transaction although its text does not,
+	// so SetInTransaction(true) shows the plugin used the stored result instead of reparsing.
+	query := "select 1"
+	mockPluginService.EXPECT().GetCurrentConnection().Return(mockConn).Times(1)
+	mockPluginService.EXPECT().GetLastSqlAnalysis().
+		Return(&utils.SqlStatementAnalysis{Query: query, OpensTransaction: true}).Times(1)
+	mockPluginService.EXPECT().SetInTransaction(true).Times(1)
+
+	dp := &plugins.DefaultPlugin{
+		ServicesContainer: mockContainer,
+	}
+	executeFunc := func() (any, any, bool, error) {
+		return nil, nil, true, nil
+	}
+
+	_, _, ok, err := dp.Execute(mockConn, utils.CONN_QUERY_CONTEXT, executeFunc, query)
+
 	assert.True(t, ok)
 	assert.NoError(t, err)
 }
