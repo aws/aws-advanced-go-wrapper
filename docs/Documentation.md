@@ -26,6 +26,7 @@
     - [GDB Read Write Splitting Plugin](./user-guide/using-plugins/UsingTheGdbReadWriteSplittingPlugin.md)
     - [Blue/Green Deployment Plugin](./user-guide/using-plugins/UsingTheBlueGreenPlugin.md)
     - [Custom Endpoint Plugin](./user-guide/using-plugins/UsingTheCustomEndpointPlugin.md)
+    - [Connection Lifetime Plugin](./user-guide/using-plugins/UsingTheConnectionLifetimePlugin.md)
     - [Developer Plugin](./user-guide/using-plugins/UsingTheDeveloperPlugin.md)
   - Custom Configuration
     - [AWS Credentials Configuration](custom-config/AwsCredentialsConfiguration.md)

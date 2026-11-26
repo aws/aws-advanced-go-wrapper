@@ -18,6 +18,7 @@ package internal_pool
 
 import (
 	"database/sql/driver"
+	"log/slog"
 	"time"
 
 	awsDriver "github.com/aws/aws-advanced-go-wrapper/awssql/v2/driver"
@@ -34,6 +35,8 @@ type poolEntry struct {
 	pool *InternalConnPool
 	dsn  string
 }
+
+var _ driver_infrastructure.ConnectionEvictor = (*InternalPooledConnectionProvider)(nil)
 
 type InternalPooledConnectionProvider struct {
 	acceptedStrategies     map[string]driver_infrastructure.HostSelector
@@ -137,6 +140,17 @@ func (p *InternalPooledConnectionProvider) Connect(hostInfo *host_info_util.Host
 	}
 
 	return entry.pool.Get()
+}
+
+// EvictConnection evicts conn from the internal pool that issued it. It returns false if conn did not come from an
+// internal pool.
+func (p *InternalPooledConnectionProvider) EvictConnection(conn driver.Conn) bool {
+	pc, ok := conn.(*internalPooledConn)
+	if !ok || !pc.pool.Evict(pc) {
+		return false
+	}
+	slog.Debug(error_util.GetMessage("InternalPooledConnectionProvider.connectionEvicted"))
+	return true
 }
 
 func (p *InternalPooledConnectionProvider) getPoolKey(hostInfo *host_info_util.HostInfo, props map[string]string) string {

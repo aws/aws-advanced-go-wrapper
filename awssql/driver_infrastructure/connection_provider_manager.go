@@ -17,6 +17,7 @@
 package driver_infrastructure
 
 import (
+	"database/sql/driver"
 	"sync"
 
 	"github.com/aws/aws-advanced-go-wrapper/awssql/v2/host_info_util"
@@ -98,6 +99,18 @@ func (connProviderManager *ConnectionProviderManager) GetHostSelectorStrategy(st
 	}
 
 	return connProviderManager.DefaultProvider.GetHostSelectorStrategy(strategy)
+}
+
+// EvictConnection asks the custom, effective and default providers in turn to evict conn, and reports whether one
+// did. Providers that do not implement ConnectionEvictor are skipped.
+func (connProviderManager *ConnectionProviderManager) EvictConnection(conn driver.Conn) bool {
+	for _, provider := range []ConnectionProvider{
+		getCustomConnectionProvider(), connProviderManager.EffectiveProvider, connProviderManager.DefaultProvider} {
+		if evictor, ok := provider.(ConnectionEvictor); ok && evictor.EvictConnection(conn) {
+			return true
+		}
+	}
+	return false
 }
 
 var customConnectionProvider ConnectionProvider

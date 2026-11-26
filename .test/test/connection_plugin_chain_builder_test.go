@@ -128,6 +128,33 @@ func TestSortAllPlugins(t *testing.T) {
 	assert.Equal(t, "*plugins.DefaultPlugin", reflect.TypeOf(pluginList[5]).String())
 }
 
+func TestSortPluginsPlacesConnectionLifetimeFirst(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockContainer := setupChainBuilderMocks(ctrl)
+
+	builder := &awsDriver.ConnectionPluginChainBuilder{}
+	props := MakeMapFromKeysAndVals(
+		property_util.PLUGINS.Name, "iam,efm,failover,connectionLifetime",
+		property_util.CONNECTION_LIFETIME_MS.Name, "300000")
+	availablePlugins := map[string]driver_infrastructure.ConnectionPluginFactory{
+		"failover":           plugins.NewFailoverPluginFactory(),
+		"efm":                efm.NewHostMonitoringPluginFactory(),
+		"iam":                iam.NewIamAuthPluginFactory(),
+		"connectionLifetime": plugins.NewConnectionLifetimePluginFactory(),
+	}
+	pluginList, err := builder.GetPlugins(mockContainer, props, availablePlugins)
+	require.Nil(t, err)
+
+	assert.Equal(t, 5, len(pluginList), "Expected 5 plugins.")
+	assert.Equal(t, "*plugins.ConnectionLifetimePlugin", reflect.TypeOf(pluginList[0]).String())
+	assert.Equal(t, "*plugins.FailoverPlugin", reflect.TypeOf(pluginList[1]).String())
+	assert.Equal(t, "*efm.HostMonitorConnectionPlugin", reflect.TypeOf(pluginList[2]).String())
+	assert.Equal(t, "*iam.IamAuthPlugin", reflect.TypeOf(pluginList[3]).String())
+	assert.Equal(t, "*plugins.DefaultPlugin", reflect.TypeOf(pluginList[4]).String())
+}
+
 func TestNoPlugins(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

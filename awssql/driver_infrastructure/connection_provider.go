@@ -29,3 +29,11 @@ type ConnectionProvider interface {
 	GetHostSelectorStrategy(strategy string) (HostSelector, error)
 	Connect(hostInfo *host_info_util.HostInfo, props map[string]string, pluginService PluginService) (driver.Conn, error)
 }
+
+// ConnectionEvictor is implemented by a ConnectionProvider that keeps its own connection pool. Closing a pooled
+// connection only returns it to the pool, so a connection that must not be used again is evicted as well.
+type ConnectionEvictor interface {
+	// EvictConnection keeps conn, returned earlier by Connect, from being handed out again and closes its physical
+	// connection. It returns false if conn does not belong to this provider's pools.
+	EvictConnection(conn driver.Conn) bool
+}

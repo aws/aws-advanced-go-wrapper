@@ -50,6 +50,7 @@ var pluginFactoryByCode = utils.NewRWMapFromMap(map[string]driver_infrastructure
 	driver_infrastructure.DEVELOPER_PLUGIN_CODE:                          plugins.NewDeveloperConnectionPluginFactory(),
 	driver_infrastructure.GDB_FAILOVER_PLUGIN_CODE:                       plugins.NewGlobalDbFailoverPluginFactory(),
 	driver_infrastructure.GDB_READ_WRITE_SPLITTING_PLUGIN_CODE:           read_write_splitting.NewGdbReadWriteSplittingPluginFactory(),
+	driver_infrastructure.CONNECTION_LIFETIME_PLUGIN_CODE:                plugins.NewConnectionLifetimePluginFactory(),
 })
 
 var underlyingDriverList = utils.NewRWMap[string, driver.Driver]()

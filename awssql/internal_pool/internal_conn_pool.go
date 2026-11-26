@@ -19,6 +19,7 @@ package internal_pool
 import (
 	"context"
 	"database/sql/driver"
+	"slices"
 	"sync"
 	"time"
 
@@ -35,6 +36,8 @@ type internalPooledConn struct {
 
 	mu       sync.Mutex
 	returned bool
+	// Guarded by pool.mu. An evicted connection is closed when it is returned instead of going back to the pool.
+	evicted bool
 }
 
 func (pc *internalPooledConn) Close() error {
@@ -51,8 +54,8 @@ func (pc *internalPooledConn) Close() error {
 	pc.pool.mu.Lock()
 	defer pc.pool.mu.Unlock()
 
-	// If pool is closed, close the real conn
-	if pc.pool.closed {
+	// If pool is closed or the connection was evicted, close the real conn
+	if pc.pool.closed || pc.evicted {
 		return pc.Conn.Close()
 	}
 
@@ -198,6 +201,28 @@ func (p *InternalConnPool) Close() error {
 	}
 	p.idleConns = nil
 	return err
+}
+
+// Evict keeps conn from being handed out again and closes its physical connection: an idle connection is closed now,
+// and a checked-out one when it is returned. It returns false if conn was not issued by this pool.
+func (p *InternalConnPool) Evict(conn driver.Conn) bool {
+	pc, ok := conn.(*internalPooledConn)
+	if !ok || pc.pool != p {
+		return false
+	}
+
+	p.mu.Lock()
+	pc.evicted = true
+	idleIndex := slices.Index(p.idleConns, pc)
+	if idleIndex >= 0 {
+		p.idleConns = slices.Delete(p.idleConns, idleIndex, idleIndex+1)
+	}
+	p.mu.Unlock()
+
+	if idleIndex >= 0 {
+		_ = pc.Conn.Close()
+	}
+	return true
 }
 
 func (p *InternalConnPool) SetNewConnFunc(f func() (driver.Conn, error)) {

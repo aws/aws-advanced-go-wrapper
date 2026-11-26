@@ -198,3 +198,110 @@ func TestConnPool_NewConnFails(t *testing.T) {
 	assert.Nil(t, conn)
 	assert.Equal(t, expectedErr, err)
 }
+
+func newEvictionTestPool(factory func() (driver.Conn, error)) *internal_pool.InternalConnPool {
+	return internal_pool.NewConnPool(factory, internal_pool.NewInternalPoolOptions(
+		internal_pool.WithMaxIdleConns(2),
+		internal_pool.WithMaxConnLifetime(0),
+		internal_pool.WithMaxConnIdleTime(0),
+	))
+}
+
+func TestConnPool_EvictBeforeCloseClosesPhysicalConnection(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	first := mock_database_sql_driver.NewMockConn(ctrl)
+	second := mock_database_sql_driver.NewMockConn(ctrl)
+	first.EXPECT().Close().Times(1)
+	second.EXPECT().Close().Times(1)
+	physical := []driver.Conn{&mockPoolConn{first}, &mockPoolConn{second}}
+	pool := newEvictionTestPool(func() (driver.Conn, error) {
+		next := physical[0]
+		physical = physical[1:]
+		return next, nil
+	})
+
+	conn, err := pool.Get()
+	assert.NoError(t, err)
+	assert.True(t, pool.Evict(conn))
+	assert.NoError(t, conn.Close())
+
+	// The evicted connection was not pooled, so the next Get opens a new one.
+	next, err := pool.Get()
+	assert.NoError(t, err)
+	assert.NotSame(t, conn, next)
+	assert.NoError(t, next.Close())
+	assert.NoError(t, pool.Close())
+}
+
+func TestConnPool_EvictAfterCloseRemovesIdleConnection(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	var created int32
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockConn.EXPECT().Close().Times(2)
+	pool := newEvictionTestPool(func() (driver.Conn, error) {
+		atomic.AddInt32(&created, 1)
+		return &mockPoolConn{mockConn}, nil
+	})
+
+	conn, err := pool.Get()
+	assert.NoError(t, err)
+	assert.NoError(t, conn.Close())
+	assert.True(t, pool.Evict(conn))
+
+	next, err := pool.Get()
+	assert.NoError(t, err)
+	assert.Equal(t, int32(2), atomic.LoadInt32(&created))
+	assert.NoError(t, next.Close())
+	assert.NoError(t, pool.Close())
+}
+
+func TestConnPool_EvictIgnoresConnectionsFromOtherPools(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+	mockConn.EXPECT().Close().Times(1)
+	pool := newEvictionTestPool(func() (driver.Conn, error) { return &mockPoolConn{mockConn}, nil })
+	other := newEvictionTestPool(func() (driver.Conn, error) { return nil, errors.New("unused") })
+
+	conn, err := pool.Get()
+	assert.NoError(t, err)
+	assert.False(t, other.Evict(conn))
+	assert.False(t, pool.Evict(mockConn))
+
+	// The connection is still pooled and closed only when the pool closes.
+	assert.NoError(t, conn.Close())
+	assert.NoError(t, pool.Close())
+}
+
+func TestConnPool_ConcurrentEvictAndCloseClosePhysicalConnectionOnce(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	for i := 0; i < 200; i++ {
+		var closes int32
+		mockConn := mock_database_sql_driver.NewMockConn(ctrl)
+		mockConn.EXPECT().Close().DoAndReturn(func() error {
+			atomic.AddInt32(&closes, 1)
+			return nil
+		}).AnyTimes()
+		pool := newEvictionTestPool(func() (driver.Conn, error) { return &mockPoolConn{mockConn}, nil })
+
+		conn, err := pool.Get()
+		assert.NoError(t, err)
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			pool.Evict(conn)
+		}()
+		_ = conn.Close()
+		<-done
+
+		assert.NoError(t, pool.Close())
+		assert.Equal(t, int32(1), atomic.LoadInt32(&closes))
+	}
+}
