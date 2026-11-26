@@ -31,6 +31,18 @@ var (
 			"(?P<domain>[a-zA-Z0-9]+\\.(?P<region>[a-zA-Z0-9\\-]+)" +
 			"\\.(rds|rds-fips)\\.amazonaws\\.(com|au|eu|uk)\\.?)$")
 
+	AURORA_CLUSTER_GROUP_DNS_PATTERN = regexp.MustCompile(
+		"(?i)^(?P<instance>.+)\\." +
+			"(?P<dns>rw-|ro-)" +
+			"(?P<domain>[a-zA-Z0-9]+\\.db-cluster-group\\.(?P<region>[a-zA-Z0-9\\-]+)" +
+			"\\.(rds|rds-fips)\\.amazonaws\\.(com|au|eu|uk)\\.?)$")
+
+	AURORA_DATA_GROUP_DNS_PATTERN = regexp.MustCompile(
+		"(?i)^(?P<instance>.+)\\." +
+			"(?P<dns>ro-)?" +
+			"(?P<domain>[a-zA-Z0-9]+\\.data-group\\.(?P<region>[a-zA-Z0-9\\-]+)" +
+			"\\.(rds|rds-fips)\\.amazonaws\\.(com|au|eu|uk)\\.?)$")
+
 	AURORA_CHINA_DNS_PATTERN = regexp.MustCompile(
 		"(?i)^(?P<instance>.+)\\." +
 			"(?P<dns>proxy-|cluster-|cluster-ro-|cluster-custom-|shardgrp-)?" +
@@ -68,7 +80,15 @@ var (
 	BG_GREEN_HOSTID_PATTERN = regexp.MustCompile("(?i)(.*)-green-[0-9a-z]{6}")
 	BG_GREEN_HOST_PATTERN   = regexp.MustCompile("(?i).*(?P<prefix>-green-[0-9a-z]{6})..*")
 
-	dnsRegexpArray    = [5]*regexp.Regexp{AURORA_DNS_PATTERN, AURORA_CHINA_DNS_PATTERN, AURORA_OLD_CHINA_DNS_PATTERN, AURORA_GOV_DNS_PATTERN, AURORA_GLOBAL_WRITER_DNS_PATTERN}
+	dnsRegexpArray = [7]*regexp.Regexp{
+		AURORA_CLUSTER_GROUP_DNS_PATTERN,
+		AURORA_DATA_GROUP_DNS_PATTERN,
+		AURORA_DNS_PATTERN,
+		AURORA_CHINA_DNS_PATTERN,
+		AURORA_OLD_CHINA_DNS_PATTERN,
+		AURORA_GOV_DNS_PATTERN,
+		AURORA_GLOBAL_WRITER_DNS_PATTERN,
+	}
 	cachedDnsRegexp   = sync.Map{}
 	cachedDnsPatterns = sync.Map{}
 
@@ -99,6 +119,14 @@ func IdentifyRdsUrlType(host string) RdsUrlType {
 		return RDS_CUSTOM_CLUSTER
 	} else if IsLimitlessDbShardGroupDns(host) {
 		return RDS_AURORA_LIMITLESS_DB_SHARD_GROUP
+	} else if IsClusterGroupWriterDns(host) {
+		return RDS_CLUSTER_GROUP_WRITER
+	} else if IsClusterGroupReaderDns(host) {
+		return RDS_CLUSTER_GROUP_READER
+	} else if IsDataGroupWriterDns(host) {
+		return RDS_DATA_GROUP_WRITER
+	} else if IsDataGroupReaderDns(host) {
+		return RDS_DATA_GROUP_READER
 	} else if IsRdsProxyDns(host) {
 		return RDS_PROXY
 	} else if IsRdsDns(host) {
@@ -153,6 +181,31 @@ func IsLimitlessDbShardGroupDns(host string) bool {
 	return strings.EqualFold(dnsGroup, "shardgrp-")
 }
 
+func IsClusterGroupWriterDns(host string) bool {
+	dnsGroup := getDnsGroup(GetPreparedHost(host))
+	return strings.EqualFold(dnsGroup, "rw-")
+}
+
+func IsClusterGroupReaderDns(host string) bool {
+	return matchesDnsGroup(AURORA_CLUSTER_GROUP_DNS_PATTERN, GetPreparedHost(host), "ro-")
+}
+
+func IsDataGroupWriterDns(host string) bool {
+	return matchesDnsGroup(AURORA_DATA_GROUP_DNS_PATTERN, GetPreparedHost(host), "")
+}
+
+func IsDataGroupReaderDns(host string) bool {
+	return matchesDnsGroup(AURORA_DATA_GROUP_DNS_PATTERN, GetPreparedHost(host), "ro-")
+}
+
+func matchesDnsGroup(pattern *regexp.Regexp, host string, dnsGroup string) bool {
+	if host == "" {
+		return false
+	}
+	matches := pattern.FindStringSubmatch(host)
+	return matches != nil && strings.EqualFold(matches[pattern.SubexpIndex(DNS_GROUP)], dnsGroup)
+}
+
 func IsRdsProxyDns(host string) bool {
 	dnsGroup := getDnsGroup(GetPreparedHost(host))
 	return strings.HasPrefix(dnsGroup, "proxy-")
@@ -180,7 +233,7 @@ func IsRdsDns(host string) bool {
 func IsRdsInstance(host string) bool {
 	preparedHost := GetPreparedHost(host)
 
-	return getDnsGroup(preparedHost) == "" && IsRdsDns(preparedHost)
+	return getDnsGroup(preparedHost) == "" && IsRdsDns(preparedHost) && !IsDataGroupWriterDns(preparedHost)
 }
 
 func IsGreenInstance(host string) bool {
